@@ -1912,7 +1912,8 @@ void _lapackeSolve(
 ///
 /// Throws a [SingularMatrixException] if the matrix $A$ is singular or ill-conditioned.
 ///
-/// {@example test/examples/linalg_example_test.dart [lang=dart] [indent=keep]}
+/// **Example:**
+/// {@example /example/linalg_example.dart#solve_system lang=dart}
 NDArray<T> solve<T extends Object>(
   NDArray<T> a,
   NDArray<T> b, {

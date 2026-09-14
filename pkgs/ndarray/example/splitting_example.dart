@@ -9,7 +9,7 @@ void main() {
   runDSplitExamples();
 }
 
-// #docregion split
+// #region split
 void runSplitExamples() {
   print('--- 1. Equal Splitting (split / split_at) ---');
   NDArray.scope(() {
@@ -30,9 +30,9 @@ void runSplitExamples() {
   });
 }
 
-// #enddocregion split
+// #endregion
 
-// #docregion array_split
+// #region array_split
 void runArraySplitExamples() {
   print('--- 2. Unequal Splitting (array_split / array_split_at) ---');
   NDArray.scope(() {
@@ -55,9 +55,9 @@ void runArraySplitExamples() {
   });
 }
 
-// #enddocregion array_split
+// #endregion
 
-// #docregion hsplit
+// #region hsplit
 void runHSplitExamples() {
   print('--- 3. Horizontal Splitting (hsplit / hsplit_at) ---');
   NDArray.scope(() {
@@ -76,9 +76,9 @@ void runHSplitExamples() {
   });
 }
 
-// #enddocregion hsplit
+// #endregion
 
-// #docregion vsplit
+// #region vsplit
 void runVSplitExamples() {
   print('--- 4. Vertical Splitting (vsplit / vsplit_at) ---');
   NDArray.scope(() {
@@ -97,9 +97,9 @@ void runVSplitExamples() {
   });
 }
 
-// #enddocregion vsplit
+// #endregion
 
-// #docregion dsplit
+// #region dsplit
 void runDSplitExamples() {
   print('--- 5. Depth-wise Splitting (dsplit / dsplit_at) ---');
   NDArray.scope(() {
@@ -127,4 +127,4 @@ void runDSplitExamples() {
   });
 }
 
-// #enddocregion dsplit
+// #endregion

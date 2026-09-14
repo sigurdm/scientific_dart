@@ -68,48 +68,32 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(size1d));
 
-        c.bench(
-          'reduce(add) [2D 1000x1000 axis:0]',
-          () {
-            final res = a2d.reduce(op: BinaryOp.add, axis: 0);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(dim2d * dim2d),
-        );
+        c.bench('reduce(add) [2D 1000x1000 axis:0]', () {
+          final res = a2d.reduce(op: BinaryOp.add, axis: 0);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(dim2d * dim2d));
 
         final slice100k = a1d.slice([Slice(stop: 100000)]);
-        c.bench(
-          'reduce(multiply) [1D 100K global]',
-          () {
-            final res = slice100k.reduce(op: BinaryOp.multiply);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(100000),
-        );
+        c.bench('reduce(multiply) [1D 100K global]', () {
+          final res = slice100k.reduce(op: BinaryOp.multiply);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(100000));
       });
 
       c.group('2. Accumulate', () {
-        c.bench(
-          'accumulate(add) [1D 1M cumsum]',
-          () {
-            final res = a1d.accumulate(op: BinaryOp.add);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size1d),
-        );
+        c.bench('accumulate(add) [1D 1M cumsum]', () {
+          final res = a1d.accumulate(op: BinaryOp.add);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size1d));
 
-        c.bench(
-          'accumulate(add) [2D 1000x1000 axis:0]',
-          () {
-            final res = a2d.accumulate(op: BinaryOp.add, axis: 0);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(dim2d * dim2d),
-        );
+        c.bench('accumulate(add) [2D 1000x1000 axis:0]', () {
+          final res = a2d.accumulate(op: BinaryOp.add, axis: 0);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(dim2d * dim2d));
       });
 
       c.group('3. Outer Product', () {
@@ -119,65 +103,41 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(1000 * 1000));
 
-        c.bench(
-          'outer(multiply) [1000 x 1000]',
-          () {
-            final res = aOuter.outer(bOuter, op: BinaryOp.multiply);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(1000 * 1000),
-        );
+        c.bench('outer(multiply) [1000 x 1000]', () {
+          final res = aOuter.outer(bOuter, op: BinaryOp.multiply);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(1000 * 1000));
       });
 
       c.group('4. Segment Reduction & Scatter (reduceat & at)', () {
-        c.bench(
-          'reduceat(add) [1M array, 1000 segments]',
-          () {
-            final res = a1d.reduceat(indicesReduceat, op: BinaryOp.add);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size1d),
-        );
+        c.bench('reduceat(add) [1M array, 1000 segments]', () {
+          final res = a1d.reduceat(indicesReduceat, op: BinaryOp.add);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size1d));
 
-        c.bench(
-          'at(add) [1M array, 10K scatter updates]',
-          () {
-            a1d.at(indicesAt, valsAt, op: BinaryOp.add);
-          },
-          throughput: Throughput.elements(10000),
-        );
+        c.bench('at(add) [1M array, 10K scatter updates]', () {
+          a1d.at(indicesAt, valsAt, op: BinaryOp.add);
+        }, throughput: Throughput.elements(10000));
       });
 
       c.group('5. Masked Functions (where=)', () {
-        c.bench(
-          'add(where=mask) [1D 1M contiguous]',
-          () {
-            add(a1d, b1d, where: mask1d, out: out1d);
-          },
-          throughput: Throughput.elements(size1d),
-        );
+        c.bench('add(where=mask) [1D 1M contiguous]', () {
+          add(a1d, b1d, where: mask1d, out: out1d);
+        }, throughput: Throughput.elements(size1d));
 
-        c.bench(
-          'multiply(where=mask) [1D 1M contiguous]',
-          () {
-            multiply(a1d, b1d, where: mask1d, out: out1d);
-          },
-          throughput: Throughput.elements(size1d),
-        );
+        c.bench('multiply(where=mask) [1D 1M contiguous]', () {
+          multiply(a1d, b1d, where: mask1d, out: out1d);
+        }, throughput: Throughput.elements(size1d));
 
         final aStrided = a2d.flatten().slice([Slice(step: 2)]);
         final bStrided = b2d.flatten().slice([Slice(step: 2)]);
         final outStrided = NDArray.zeros([aStrided.shape[0]], DType.float64);
 
-        c.bench(
-          'add(where=mask) [1D strided view step=2]',
-          () {
-            add(aStrided, bStrided, out: outStrided);
-          },
-          throughput: Throughput.elements(aStrided.shape[0]),
-        );
+        c.bench('add(where=mask) [1D strided view step=2]', () {
+          add(aStrided, bStrided, out: outStrided);
+        }, throughput: Throughput.elements(aStrided.shape[0]));
       });
     },
     config: CriterionConfig(

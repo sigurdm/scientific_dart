@@ -395,10 +395,8 @@ NDArray<T> clipArray<T>(
         broadcastMin.offsetElements,
         broadcastMax.offsetElements,
         result.offsetElements,
-        (x, mn, mx) => castValue(
-          (x as num).clamp(mn as num, mx as num),
-          a.dtype,
-        ),
+        (x, mn, mx) =>
+            castValue((x as num).clamp(mn as num, mx as num), a.dtype),
         maskHolder.pointer,
       );
 

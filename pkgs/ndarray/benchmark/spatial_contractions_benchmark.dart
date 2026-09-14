@@ -25,39 +25,23 @@ void main() async {
       ).reshape([numPoints, pointDim]);
 
       c.group('1. Pairwise Spatial Distance Metrics', () {
-        c.bench(
-          'cdist(A, B, euclidean) [500x20 vs 500x20 -> 500x500]',
-          () {
-            final res = cdist(
-              pointsA,
-              pointsB,
-              metric: DistanceMetric.euclidean,
-            );
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(numPoints * numPoints),
-        );
+        c.bench('cdist(A, B, euclidean) [500x20 vs 500x20 -> 500x500]', () {
+          final res = cdist(pointsA, pointsB, metric: DistanceMetric.euclidean);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(numPoints * numPoints));
 
-        c.bench(
-          'cdist(A, B, cosine) [500x20 vs 500x20 -> 500x500]',
-          () {
-            final res = cdist(pointsA, pointsB, metric: DistanceMetric.cosine);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(numPoints * numPoints),
-        );
+        c.bench('cdist(A, B, cosine) [500x20 vs 500x20 -> 500x500]', () {
+          final res = cdist(pointsA, pointsB, metric: DistanceMetric.cosine);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(numPoints * numPoints));
 
-        c.bench(
-          'pdist(A, euclidean) [500x20 -> 124,750 pairs]',
-          () {
-            final res = pdist(pointsA, metric: DistanceMetric.euclidean);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements((numPoints * (numPoints - 1)) ~/ 2),
-        );
+        c.bench('pdist(A, euclidean) [500x20 -> 124,750 pairs]', () {
+          final res = pdist(pointsA, metric: DistanceMetric.euclidean);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements((numPoints * (numPoints - 1)) ~/ 2));
       });
 
       c.group('2. Tensor Dot & Contractions', () {
@@ -77,15 +61,11 @@ void main() async {
         ).reshape([matDim, matDim]);
 
         final einsumSpec = EinsumSubscripts.parse('ij,jk->ik');
-        c.bench(
-          'einsum("ij,jk->ik", [A, B]) [200x200 @ 200x200]',
-          () {
-            final res = einsum(einsumSpec, [matA, matB]);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(matDim * matDim),
-        );
+        c.bench('einsum("ij,jk->ik", [A, B]) [200x200 @ 200x200]', () {
+          final res = einsum(einsumSpec, [matA, matB]);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(matDim * matDim));
 
         const tensorDim = 40;
         final tA = linspace<double>(
@@ -111,15 +91,11 @@ void main() async {
         final vA = linspace<double>(0.0, 10.0, vLen, dtype: DType.float64);
         final vB = linspace<double>(5.0, 15.0, vLen, dtype: DType.float64);
 
-        c.bench(
-          'outer(vA, vB) [1000 x 1000 -> 1M]',
-          () {
-            final res = outer(vA, vB);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(vLen * vLen),
-        );
+        c.bench('outer(vA, vB) [1000 x 1000 -> 1M]', () {
+          final res = outer(vA, vB);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(vLen * vLen));
 
         const krA = 50;
         const krB = 10;
@@ -136,15 +112,11 @@ void main() async {
           dtype: DType.float64,
         ).reshape([krB, krB]);
 
-        c.bench(
-          'kron(kA, kB) [50x50 x 10x10 -> 500x500]',
-          () {
-            final res = kron(kA, kB);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(500 * 500),
-        );
+        c.bench('kron(kA, kB) [50x50 x 10x10 -> 500x500]', () {
+          final res = kron(kA, kB);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(500 * 500));
       });
     },
     config: CriterionConfig(

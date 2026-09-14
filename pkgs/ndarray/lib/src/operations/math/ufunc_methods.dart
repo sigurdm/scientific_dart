@@ -124,15 +124,38 @@ NDArray<R> binaryUfunc<T extends Object, R extends Object>(
       return power(a, b, where: where, out: out as NDArray<double>?)
           as NDArray<R>;
     case BinaryOp.logaddexp:
-      return logaddexp<num, num>(a as NDArray<num>, b as NDArray<num>, where: where, out: out as NDArray<double>?) as NDArray<R>;
+      return logaddexp<num, num>(
+            a as NDArray<num>,
+            b as NDArray<num>,
+            where: where,
+            out: out as NDArray<double>?,
+          )
+          as NDArray<R>;
     case BinaryOp.logaddexp2:
-      return logaddexp2<num, num>(a as NDArray<num>, b as NDArray<num>, where: where, out: out as NDArray<double>?) as NDArray<R>;
+      return logaddexp2<num, num>(
+            a as NDArray<num>,
+            b as NDArray<num>,
+            where: where,
+            out: out as NDArray<double>?,
+          )
+          as NDArray<R>;
     case BinaryOp.arctan2:
-      return atan2<num, num>(a as NDArray<num>, b as NDArray<num>, where: where, out: out as NDArray<double>?) as NDArray<R>;
+      return atan2<num, num>(
+            a as NDArray<num>,
+            b as NDArray<num>,
+            where: where,
+            out: out as NDArray<double>?,
+          )
+          as NDArray<R>;
     case BinaryOp.hypot:
       return hypot<dynamic, dynamic, R>(a, b, where: where, out: out);
     case BinaryOp.copysign:
-      return copysign<R>(a as NDArray<R>, b as NDArray<R>, where: where, out: out);
+      return copysign<R>(
+        a as NDArray<R>,
+        b as NDArray<R>,
+        where: where,
+        out: out,
+      );
     case BinaryOp.bitwiseAnd:
       return bitwise_and<dynamic, dynamic, R>(a, b, where: where, out: out);
     case BinaryOp.bitwiseOr:

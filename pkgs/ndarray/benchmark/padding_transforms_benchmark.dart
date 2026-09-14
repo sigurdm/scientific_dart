@@ -16,35 +16,23 @@ void main() async {
       ).reshape([dim, dim]);
 
       c.group('1. Multidimensional Array Padding', () {
-        c.bench(
-          'pad(constant, pad_width=10) [500x500 -> 520x520]',
-          () {
-            final res = pad(mat, PadWidth.all(10), mode: PadMode.constant);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(520 * 520),
-        );
+        c.bench('pad(constant, pad_width=10) [500x500 -> 520x520]', () {
+          final res = pad(mat, PadWidth.all(10), mode: PadMode.constant);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(520 * 520));
 
-        c.bench(
-          'pad(edge, pad_width=10) [500x500 -> 520x520]',
-          () {
-            final res = pad(mat, PadWidth.all(10), mode: PadMode.edge);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(520 * 520),
-        );
+        c.bench('pad(edge, pad_width=10) [500x500 -> 520x520]', () {
+          final res = pad(mat, PadWidth.all(10), mode: PadMode.edge);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(520 * 520));
 
-        c.bench(
-          'pad(reflect, pad_width=10) [500x500 -> 520x520]',
-          () {
-            final res = pad(mat, PadWidth.all(10), mode: PadMode.reflect);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(520 * 520),
-        );
+        c.bench('pad(reflect, pad_width=10) [500x500 -> 520x520]', () {
+          final res = pad(mat, PadWidth.all(10), mode: PadMode.reflect);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(520 * 520));
       });
 
       c.group('2. Array Flipping & Rolling', () {
@@ -74,16 +62,12 @@ void main() async {
           dtype: DType.float64,
         ).reshape([largeRows, dim]);
 
-        c.bench(
-          'split(10 chunks, axis=0) [1000x500]',
-          () {
-            final parts = split(largeMat, 10, axis: 0);
-            for (final p in parts) {
-              blackhole(p);
-            }
-          },
-          throughput: Throughput.elements(largeRows * dim),
-        );
+        c.bench('split(10 chunks, axis=0) [1000x500]', () {
+          final parts = split(largeMat, 10, axis: 0);
+          for (final p in parts) {
+            blackhole(p);
+          }
+        }, throughput: Throughput.elements(largeRows * dim));
       });
     },
     config: CriterionConfig(

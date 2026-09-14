@@ -18,15 +18,11 @@ void main() async {
       );
 
       c.group('1. Polynomial Evaluation & Orthogonal Series', () {
-        c.bench(
-          'polyval(deg=5, x) [size=100,000]',
-          () {
-            final y = polyval(coeffs5, xPoints);
-            blackhole(y);
-            y.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('polyval(deg=5, x) [size=100,000]', () {
+          final y = polyval(coeffs5, xPoints);
+          blackhole(y);
+          y.dispose();
+        }, throughput: Throughput.elements(size));
 
         final chebCoeffs = NDArray<double>.fromList(
           [0.5, 1.2, -0.8, 2.1, 0.3],
@@ -35,15 +31,11 @@ void main() async {
         );
         final xNorm = linspace<double>(-1.0, 1.0, size, dtype: DType.float64);
 
-        c.bench(
-          'chebval(deg=4, x) [size=100,000]',
-          () {
-            final y = chebval(xNorm, chebCoeffs);
-            blackhole(y);
-            y.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('chebval(deg=4, x) [size=100,000]', () {
+          final y = chebval(xNorm, chebCoeffs);
+          blackhole(y);
+          y.dispose();
+        }, throughput: Throughput.elements(size));
       });
 
       c.group('2. Least-Squares Polynomial Fitting (polyfit)', () {
@@ -58,25 +50,17 @@ void main() async {
           DType.float64,
         );
 
-        c.bench(
-          'polyfit(x, y, deg=3) [N=10,000 points]',
-          () {
-            final fit = polyfit(xFit, yFit, 3);
-            blackhole(fit);
-            fit.dispose();
-          },
-          throughput: Throughput.elements(fitN),
-        );
+        c.bench('polyfit(x, y, deg=3) [N=10,000 points]', () {
+          final fit = polyfit(xFit, yFit, 3);
+          blackhole(fit);
+          fit.dispose();
+        }, throughput: Throughput.elements(fitN));
 
-        c.bench(
-          'polyfit(x, y, deg=9) [N=10,000 points]',
-          () {
-            final fit = polyfit(xFit, yFit, 9);
-            blackhole(fit);
-            fit.dispose();
-          },
-          throughput: Throughput.elements(fitN),
-        );
+        c.bench('polyfit(x, y, deg=9) [N=10,000 points]', () {
+          final fit = polyfit(xFit, yFit, 9);
+          blackhole(fit);
+          fit.dispose();
+        }, throughput: Throughput.elements(fitN));
       });
 
       c.group('3. 1D Piecewise Linear Interpolation', () {

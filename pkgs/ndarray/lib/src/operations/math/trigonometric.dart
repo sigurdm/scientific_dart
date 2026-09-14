@@ -2483,7 +2483,8 @@ NDArray<R> hypot<Ta, Tb, R>(
   final broadcastResult = broadcast(a, b);
   final shape = broadcastResult.shape;
   final isCpx = (a.dtype.isComplex || b.dtype.isComplex);
-  final is64BitComplex = (a.dtype == DType.complex128 ||
+  final is64BitComplex =
+      (a.dtype == DType.complex128 ||
       b.dtype == DType.complex128 ||
       a.dtype == DType.float64 ||
       b.dtype == DType.float64 ||

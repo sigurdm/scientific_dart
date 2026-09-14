@@ -36,15 +36,11 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'sinc(x) (Normalized Sinc) [100k]',
-          () {
-            final res = sinc<double, double>(floatVec);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('sinc(x) (Normalized Sinc) [100k]', () {
+          final res = sinc<double, double>(floatVec);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
       });
 
       c.group('3. Bitwise Integer Operations (100k elements)', () {
@@ -87,25 +83,17 @@ void main() async {
           DType.int32,
         );
 
-        c.bench(
-          'left_shift(a, shift) [100k Int32]',
-          () {
-            final res = left_shift(intA, shiftAmt);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('left_shift(a, shift) [100k Int32]', () {
+          final res = left_shift(intA, shiftAmt);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'right_shift(a, shift) [100k Int32]',
-          () {
-            final res = right_shift(intA, shiftAmt);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('right_shift(a, shift) [100k Int32]', () {
+          final res = right_shift(intA, shiftAmt);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
       });
     },
     config: CriterionConfig(

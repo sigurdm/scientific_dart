@@ -30,7 +30,7 @@ NDArray<T> _sliceAlongAxis<T>(NDArray<T> a, int axis, int start, int stop) {
 /// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
 ///
 /// **Example:**
-/// {@example /example/splitting_example.dart region=array_split lang=dart}
+/// {@example /example/splitting_example.dart#array_split lang=dart}
 ///
 /// Refer to the [NumPy array_split reference](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html)
 /// for details.
@@ -106,7 +106,7 @@ List<NDArray<T>> array_split<T>(
 /// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
 ///
 /// **Example:**
-/// {@example /example/splitting_example.dart region=array_split lang=dart}
+/// {@example /example/splitting_example.dart#array_split lang=dart}
 ///
 /// Refer to the [NumPy array_split reference](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html)
 /// for details.
@@ -186,7 +186,7 @@ List<NDArray<T>> array_split_at<T>(
 /// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
 ///
 /// **Example:**
-/// {@example /example/splitting_example.dart region=split lang=dart}
+/// {@example /example/splitting_example.dart#split lang=dart}
 ///
 /// Refer to the [NumPy split reference](https://numpy.org/doc/stable/reference/generated/numpy.split.html)
 /// for details.
@@ -234,7 +234,7 @@ List<NDArray<T>> split<T>(
 /// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
 ///
 /// **Example:**
-/// {@example /example/splitting_example.dart region=split lang=dart}
+/// {@example /example/splitting_example.dart#split lang=dart}
 ///
 /// Refer to the [NumPy split reference](https://numpy.org/doc/stable/reference/generated/numpy.split.html)
 /// for details.
@@ -263,7 +263,7 @@ List<NDArray<T>> split_at<T>(
 /// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
 ///
 /// **Example:**
-/// {@example /example/splitting_example.dart region=hsplit lang=dart}
+/// {@example /example/splitting_example.dart#hsplit lang=dart}
 ///
 /// Refer to the [NumPy hsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html)
 /// for details.
@@ -298,7 +298,7 @@ List<NDArray<T>> hsplit<T>(
 /// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
 ///
 /// **Example:**
-/// {@example /example/splitting_example.dart region=hsplit lang=dart}
+/// {@example /example/splitting_example.dart#hsplit lang=dart}
 ///
 /// Refer to the [NumPy hsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html)
 /// for details.
@@ -333,7 +333,7 @@ List<NDArray<T>> hsplit_at<T>(
 /// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
 ///
 /// **Example:**
-/// {@example /example/splitting_example.dart region=vsplit lang=dart}
+/// {@example /example/splitting_example.dart#vsplit lang=dart}
 ///
 /// Refer to the [NumPy vsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html)
 /// for details.
@@ -367,7 +367,7 @@ List<NDArray<T>> vsplit<T>(
 /// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
 ///
 /// **Example:**
-/// {@example /example/splitting_example.dart region=vsplit lang=dart}
+/// {@example /example/splitting_example.dart#vsplit lang=dart}
 ///
 /// Refer to the [NumPy vsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html)
 /// for details.
@@ -405,7 +405,7 @@ List<NDArray<T>> vsplit_at<T>(
 /// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
 ///
 /// **Example:**
-/// {@example /example/splitting_example.dart region=dsplit lang=dart}
+/// {@example /example/splitting_example.dart#dsplit lang=dart}
 ///
 /// Refer to the [NumPy dsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html)
 /// for details.
@@ -439,7 +439,7 @@ List<NDArray<T>> dsplit<T>(
 /// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
 ///
 /// **Example:**
-/// {@example /example/splitting_example.dart region=dsplit lang=dart}
+/// {@example /example/splitting_example.dart#dsplit lang=dart}
 ///
 /// Refer to the [NumPy dsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html)
 /// for details.

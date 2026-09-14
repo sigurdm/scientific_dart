@@ -12,13 +12,9 @@ void main() async {
       final matT = mat.transpose();
       final out = NDArray<double>.create([2000, 2000], DType.float64);
 
-      c.bench(
-        'strided sin(matT) [shape=2000x2000 transposed]',
-        () {
-          sin(matT, out: out);
-        },
-        throughput: Throughput.elements(2000 * 2000),
-      );
+      c.bench('strided sin(matT) [shape=2000x2000 transposed]', () {
+        sin(matT, out: out);
+      }, throughput: Throughput.elements(2000 * 2000));
     },
     config: CriterionConfig(
       generateHtmlReport: true,

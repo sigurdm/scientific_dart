@@ -25,25 +25,17 @@ void main() async {
           blackhole(res);
         }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'mean(mat, axis=0) [1000x1000]',
-          () {
-            final res = mean(mat2d, axis: 0);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(matrixRows * matrixCols),
-        );
+        c.bench('mean(mat, axis=0) [1000x1000]', () {
+          final res = mean(mat2d, axis: 0);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(matrixRows * matrixCols));
 
-        c.bench(
-          'mean(mat, axis=1) [1000x1000]',
-          () {
-            final res = mean(mat2d, axis: 1);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(matrixRows * matrixCols),
-        );
+        c.bench('mean(mat, axis=1) [1000x1000]', () {
+          final res = mean(mat2d, axis: 1);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(matrixRows * matrixCols));
 
         c.bench('std() [1D flat 100k]', () {
           final res = std(vec1d);
@@ -79,14 +71,10 @@ void main() async {
           blackhole(res);
         }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'ptp() (Peak-to-Peak) [100k items]',
-          () {
-            final res = ptp(randVec);
-            blackhole(res);
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('ptp() (Peak-to-Peak) [100k items]', () {
+          final res = ptp(randVec);
+          blackhole(res);
+        }, throughput: Throughput.elements(size));
       });
 
       c.group('3. Covariance & Correlation', () {

@@ -48,15 +48,11 @@ void main() async {
             linspace<double>(-1000.0, 500.0, nPeriods, dtype: DType.float64)
                 as NDArray<Float64>;
 
-        c.bench(
-          'npv(rate=0.05, cashflows=[10k])',
-          () {
-            final res = npv(singleRate, cashFlows);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(nPeriods),
-        );
+        c.bench('npv(rate=0.05, cashflows=[10k])', () {
+          final res = npv(singleRate, cashFlows);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(nPeriods));
 
         final irrFlows = NDArray<Float64>.fromList(
           [-10000.0, ...List.filled(49, 350.0)],

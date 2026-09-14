@@ -2,7 +2,7 @@
 
 A web-based interactive notebook and REPL interface for **Dart** and **`package:ndarray`**, powered by the Dart VM Service, LSP autocompletions, and high-performance SIMD/FFI C bindings.
 
-![Notebook Overview](file:///usr/local/google/home/sigurdm/.gemini/jetski/brain/ffa2090f-c03d-4ba0-bf84-d11309b7325d/media__notebook_full.png)
+![Notebook Overview](doc/images/media__notebook_full.png)
 
 ## Features
 
@@ -48,7 +48,7 @@ var y = sin(x);
 Plot(y, x: x, title: 'Sine Wave Plot')
 ```
 
-![Plot Widget](file:///usr/local/google/home/sigurdm/.gemini/jetski/brain/ffa2090f-c03d-4ba0-bf84-d11309b7325d/media__plot_widget.png)
+![Plot Widget](doc/images/media__plot_widget.png)
 
 ---
 
@@ -64,7 +64,7 @@ var grid = NDArray.fromList([
 Heatmap(grid, title: '3x3 Matrix Heatmap')
 ```
 
-![Heatmap Widget](file:///usr/local/google/home/sigurdm/.gemini/jetski/brain/ffa2090f-c03d-4ba0-bf84-d11309b7325d/media__heatmap_widget.png)
+![Heatmap Widget](doc/images/media__heatmap_widget.png)
 
 ---
 
@@ -84,7 +84,7 @@ for (var i = 0; i < 20; i++) {
 Animation(frames, fps: 15)
 ```
 
-![Animation Widget](file:///usr/local/google/home/sigurdm/.gemini/jetski/brain/ffa2090f-c03d-4ba0-bf84-d11309b7325d/media__animation_widget.png)
+![Animation Widget](doc/images/media__animation_widget.png)
 
 ---
 
@@ -100,7 +100,7 @@ var matrix = NDArray.fromList([
 Table(matrix, headers: ['Alpha', 'Beta', 'Gamma'], title: 'Experimental Data Matrix')
 ```
 
-![Table Widget](file:///usr/local/google/home/sigurdm/.gemini/jetski/brain/ffa2090f-c03d-4ba0-bf84-d11309b7325d/media__table_widget.png)
+![Table Widget](doc/images/media__table_widget.png)
 
 ---
 
@@ -114,7 +114,7 @@ var data = NDArray.fromList([
 Histogram(data, bins: 5, title: 'Sample Distribution')
 ```
 
-![Histogram Widget](file:///usr/local/google/home/sigurdm/.gemini/jetski/brain/ffa2090f-c03d-4ba0-bf84-d11309b7325d/media__histogram_widget.png)
+![Histogram Widget](doc/images/media__histogram_widget.png)
 
 ---
 
@@ -132,7 +132,7 @@ display(Audio(samples, sampleRate: 44100));
 display(Spectrogram(samples, sampleRate: 44100, title: 'Chirp Spectrogram'))
 ```
 
-![Spectrogram Widget](file:///usr/local/google/home/sigurdm/.gemini/jetski/brain/ffa2090f-c03d-4ba0-bf84-d11309b7325d/media__spectrogram_widget.png)
+![Spectrogram Widget](doc/images/media__spectrogram_widget.png)
 
 ---
 
@@ -143,7 +143,7 @@ Renders LaTeX math formulas using KaTeX.
 LaTeX(r'\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}')
 ```
 
-![LaTeX Widget](file:///usr/local/google/home/sigurdm/.gemini/jetski/brain/ffa2090f-c03d-4ba0-bf84-d11309b7325d/media__latex_widget.png)
+![LaTeX Widget](doc/images/media__latex_widget.png)
 
 ---
 
@@ -154,4 +154,4 @@ Renders Markdown documentation inside notebook cells.
 Markdown('# Scientific Dart Notebook\n\nInteractive **NDArray** computation kernel powered by **Dart FFI & SIMD**.')
 ```
 
-![Markdown Widget](file:///usr/local/google/home/sigurdm/.gemini/jetski/brain/ffa2090f-c03d-4ba0-bf84-d11309b7325d/media__markdown_widget.png)
+![Markdown Widget](doc/images/media__markdown_widget.png)

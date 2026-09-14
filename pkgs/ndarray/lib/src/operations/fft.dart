@@ -994,7 +994,10 @@ NDArray<R> _padOrTruncate<T, R extends Complex>(
     }
   }
 
-  if (!needsSliceOrPad && arr.dtype == targetDType && arr.isContiguous && arr is NDArray<R>) {
+  if (!needsSliceOrPad &&
+      arr.dtype == targetDType &&
+      arr.isContiguous &&
+      arr is NDArray<R>) {
     return (arr as NDArray<R>).copy();
   }
 

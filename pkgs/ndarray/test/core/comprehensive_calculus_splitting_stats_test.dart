@@ -3,43 +3,45 @@ import 'package:ndarray/ndarray.dart';
 
 void main() {
   group('Comprehensive Calculus, Splitting & Stats Suite', () {
-    test('Multi-dimensional splitting (split, array_split, hsplit, vsplit, dsplit)', () {
-      NDArray.scope(() {
-        final a2d = NDArray.fromList(
-          List.generate(24, (i) => i.toDouble()),
-          [4, 6],
-          DType.float64,
-        );
+    test(
+      'Multi-dimensional splitting (split, array_split, hsplit, vsplit, dsplit)',
+      () {
+        NDArray.scope(() {
+          final a2d = NDArray.fromList(List.generate(24, (i) => i.toDouble()), [
+            4,
+            6,
+          ], DType.float64);
 
-        final hsplits = hsplit(a2d, 3);
-        expect(hsplits.length, 3);
-        expect(hsplits[0].shape, [4, 2]);
+          final hsplits = hsplit(a2d, 3);
+          expect(hsplits.length, 3);
+          expect(hsplits[0].shape, [4, 2]);
 
-        final vsplits = vsplit(a2d, 2);
-        expect(vsplits.length, 2);
-        expect(vsplits[0].shape, [2, 6]);
+          final vsplits = vsplit(a2d, 2);
+          expect(vsplits.length, 2);
+          expect(vsplits[0].shape, [2, 6]);
 
-        final splitSections = split(a2d, 2, axis: 0);
-        expect(splitSections.length, 2);
+          final splitSections = split(a2d, 2, axis: 0);
+          expect(splitSections.length, 2);
 
-        final arrSplits = array_split(a2d, 5, axis: 1);
-        expect(arrSplits.length, 5);
+          final arrSplits = array_split(a2d, 5, axis: 1);
+          expect(arrSplits.length, 5);
 
-        // 3D dsplit
-        final a3d = NDArray.fromList(
-          List.generate(24, (i) => i.toDouble()),
-          [2, 3, 4],
-          DType.float64,
-        );
+          // 3D dsplit
+          final a3d = NDArray.fromList(List.generate(24, (i) => i.toDouble()), [
+            2,
+            3,
+            4,
+          ], DType.float64);
 
-        final dsplits = dsplit(a3d, 2);
-        expect(dsplits.length, 2);
-        expect(dsplits[0].shape, [2, 3, 2]);
+          final dsplits = dsplit(a3d, 2);
+          expect(dsplits.length, 2);
+          expect(dsplits[0].shape, [2, 3, 2]);
 
-        final split3dIdx = split(a3d, 2, axis: 2);
-        expect(split3dIdx.length, 2);
-      });
-    });
+          final split3dIdx = split(a3d, 2, axis: 2);
+          expect(split3dIdx.length, 2);
+        });
+      },
+    );
 
     test('Calculus (gradient, gradientArray, diff, trapz)', () {
       NDArray.scope(() {
@@ -81,29 +83,53 @@ void main() {
       });
     });
 
-    test('Histogram, Binning & Digitalization (histogram, bincount, digitize)', () {
-      NDArray.scope(() {
-        final data1d = NDArray.fromList([0.5, 1.2, 2.1, 3.8, 4.5, 2.3, 1.9, 0.1], [8], DType.float64);
-        final weights = NDArray.fromList([1.0, 1.0, 2.0, 1.0, 1.0, 2.0, 1.0, 1.0], [8], DType.float64);
+    test(
+      'Histogram, Binning & Digitalization (histogram, bincount, digitize)',
+      () {
+        NDArray.scope(() {
+          final data1d = NDArray.fromList(
+            [0.5, 1.2, 2.1, 3.8, 4.5, 2.3, 1.9, 0.1],
+            [8],
+            DType.float64,
+          );
+          final weights = NDArray.fromList(
+            [1.0, 1.0, 2.0, 1.0, 1.0, 2.0, 1.0, 1.0],
+            [8],
+            DType.float64,
+          );
 
-        final h1 = histogram(data1d, bins: 4);
-        expect(h1.hist.shape, [4]);
-        expect(h1.binEdges.shape, [5]);
+          final h1 = histogram(data1d, bins: 4);
+          expect(h1.hist.shape, [4]);
+          expect(h1.binEdges.shape, [5]);
 
-        final h1w = histogram(data1d, bins: 4, weights: weights, density: true);
-        expect(h1w.hist.shape, [4]);
+          final h1w = histogram(
+            data1d,
+            bins: 4,
+            weights: weights,
+            density: true,
+          );
+          expect(h1w.hist.shape, [4]);
 
-        final intData = NDArray.fromList([1, 2, 1, 3, 2, 2, 4, 0], [8], DType.int64);
-        final bc = bincount(intData);
-        expect(bc.shape, [5]);
+          final intData = NDArray.fromList(
+            [1, 2, 1, 3, 2, 2, 4, 0],
+            [8],
+            DType.int64,
+          );
+          final bc = bincount(intData);
+          expect(bc.shape, [5]);
 
-        final bcw = bincount(intData, weights: weights);
-        expect(bcw.shape, [5]);
+          final bcw = bincount(intData, weights: weights);
+          expect(bcw.shape, [5]);
 
-        final bins = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
-        final dig = digitize(data1d, bins, right: true);
-        expect(dig.shape, [8]);
-      });
-    });
+          final bins = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [4],
+            DType.float64,
+          );
+          final dig = digitize(data1d, bins, right: true);
+          expect(dig.shape, [8]);
+        });
+      },
+    );
   });
 }

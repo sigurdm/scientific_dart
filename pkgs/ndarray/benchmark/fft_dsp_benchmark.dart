@@ -16,26 +16,18 @@ void main() async {
             dtype: DType.float64,
           );
 
-          c.bench(
-            'rfft(realSignal) [length=$length]',
-            () {
-              final spec = rfft(realSignal);
-              blackhole(spec);
-              spec.dispose();
-            },
-            throughput: Throughput.elements(length),
-          );
+          c.bench('rfft(realSignal) [length=$length]', () {
+            final spec = rfft(realSignal);
+            blackhole(spec);
+            spec.dispose();
+          }, throughput: Throughput.elements(length));
 
           final specInput = rfft(realSignal);
-          c.bench(
-            'irfft(spec) [length=$length]',
-            () {
-              final recovered = irfft(specInput, n: length);
-              blackhole(recovered);
-              recovered.dispose();
-            },
-            throughput: Throughput.elements(length),
-          );
+          c.bench('irfft(spec) [length=$length]', () {
+            final recovered = irfft(specInput, n: length);
+            blackhole(recovered);
+            recovered.dispose();
+          }, throughput: Throughput.elements(length));
         }
       });
 

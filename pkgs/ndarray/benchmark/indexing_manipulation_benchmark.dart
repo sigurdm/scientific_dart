@@ -17,15 +17,11 @@ void main() async {
       ).reshape([matrixDim, matrixDim]);
 
       c.group('1. Views, Slicing & Reshaping (Zero-Copy Metadata)', () {
-        c.bench(
-          '1D Strided Slice a[::2] [size=100,000]',
-          () {
-            final view = a1d.slice([const Slice(step: 2)]);
-            blackhole(view.shape);
-            view.dispose();
-          },
-          throughput: Throughput.elements(size ~/ 2),
-        );
+        c.bench('1D Strided Slice a[::2] [size=100,000]', () {
+          final view = a1d.slice([const Slice(step: 2)]);
+          blackhole(view.shape);
+          view.dispose();
+        }, throughput: Throughput.elements(size ~/ 2));
 
         c.bench(
           '2D Multi-Axis Strided Slice mat[10:490:2, 20:480:3] [500x500]',
@@ -40,25 +36,17 @@ void main() async {
           throughput: Throughput.elements(240 * 153),
         );
 
-        c.bench(
-          '2D Transpose (strides swap) [500x500]',
-          () {
-            final view = mat2d.transposed;
-            blackhole(view.shape);
-            view.dispose();
-          },
-          throughput: Throughput.elements(matrixDim * matrixDim),
-        );
+        c.bench('2D Transpose (strides swap) [500x500]', () {
+          final view = mat2d.transposed;
+          blackhole(view.shape);
+          view.dispose();
+        }, throughput: Throughput.elements(matrixDim * matrixDim));
 
-        c.bench(
-          'Reshape [500, 500] -> [250, 1000]',
-          () {
-            final view = mat2d.reshape([250, 1000]);
-            blackhole(view.shape);
-            view.dispose();
-          },
-          throughput: Throughput.elements(matrixDim * matrixDim),
-        );
+        c.bench('Reshape [500, 500] -> [250, 1000]', () {
+          final view = mat2d.reshape([250, 1000]);
+          blackhole(view.shape);
+          view.dispose();
+        }, throughput: Throughput.elements(matrixDim * matrixDim));
       });
 
       c.group('2. Advanced Indexing & Selection', () {
@@ -68,35 +56,23 @@ void main() async {
           dtype: DType.int32,
         ).reshape([matrixDim, 1]);
 
-        c.bench(
-          'take_along_axis [500x500, axis=0]',
-          () {
-            final res = take_along_axis(mat2d, indices, 0);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(matrixDim),
-        );
+        c.bench('take_along_axis [500x500, axis=0]', () {
+          final res = take_along_axis(mat2d, indices, 0);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(matrixDim));
 
         final putValues = NDArray<double>.ones([matrixDim, 1], DType.float64);
-        c.bench(
-          'put_along_axis [500x500, axis=0]',
-          () {
-            put_along_axis(mat2d, indices, putValues, 0);
-            blackhole(mat2d);
-          },
-          throughput: Throughput.elements(matrixDim),
-        );
+        c.bench('put_along_axis [500x500, axis=0]', () {
+          put_along_axis(mat2d, indices, putValues, 0);
+          blackhole(mat2d);
+        }, throughput: Throughput.elements(matrixDim));
 
-        c.bench(
-          'diag() Extraction [500x500]',
-          () {
-            final d = diag(mat2d);
-            blackhole(d);
-            d.dispose();
-          },
-          throughput: Throughput.elements(matrixDim),
-        );
+        c.bench('diag() Extraction [500x500]', () {
+          final d = diag(mat2d);
+          blackhole(d);
+          d.dispose();
+        }, throughput: Throughput.elements(matrixDim));
 
         final choices = [
           NDArray<double>.zeros([10000], DType.float64),
@@ -109,15 +85,11 @@ void main() async {
           DType.int32,
         );
 
-        c.bench(
-          'choose() Multi-Array Selection [size=10,000, 3 choices]',
-          () {
-            final res = choose(selector, choices);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(10000),
-        );
+        c.bench('choose() Multi-Array Selection [size=10,000, 3 choices]', () {
+          final res = choose(selector, choices);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(10000));
       });
 
       c.group('3. Array Assembly & Joining', () {
@@ -134,37 +106,25 @@ void main() async {
           throughput: Throughput.elements(500 * 500),
         );
 
-        c.bench(
-          'stack([A, B], axis=0) [2 x 250x500 -> 2x250x500]',
-          () {
-            final res = stack([blockA, blockB], axis: 0);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(250 * 500 * 2),
-        );
+        c.bench('stack([A, B], axis=0) [2 x 250x500 -> 2x250x500]', () {
+          final res = stack([blockA, blockB], axis: 0);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(250 * 500 * 2));
 
         final smallTile = NDArray<double>.ones([50, 50], DType.float64);
-        c.bench(
-          'tile([50, 50], [10, 10]) -> [500, 500]',
-          () {
-            final res = tile(smallTile, [10, 10]);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(500 * 500),
-        );
+        c.bench('tile([50, 50], [10, 10]) -> [500, 500]', () {
+          final res = tile(smallTile, [10, 10]);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(500 * 500));
 
         final repVec = linspace<double>(0.0, 10.0, 1000, dtype: DType.float64);
-        c.bench(
-          'repeat([1000], repeats=50) -> [50,000]',
-          () {
-            final res = repeat(repVec, [50]);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(50000),
-        );
+        c.bench('repeat([1000], repeats=50) -> [50,000]', () {
+          final res = repeat(repVec, [50]);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(50000));
       });
     },
     config: CriterionConfig(

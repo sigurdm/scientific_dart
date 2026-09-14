@@ -123,10 +123,10 @@ dart benchmark/gpu_array_benchmark.dart
 
 ## Roadmap & Parity Goals
 
-See **[ROADMAP.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/gpuarray/ROADMAP.md)** for our phased milestones toward full **CuPy** (scientific computing) and **PyTorch** (deep learning / autodiff) feature parity.
+See **[ROADMAP.md](ROADMAP.md)** for our phased milestones toward full **CuPy** (scientific computing) and **PyTorch** (deep learning / autodiff) feature parity.
 
 ---
 
 ## License
 
-This package is licensed under the **[Apache License, Version 2.0](file:///usr/local/google/home/sigurdm/projects/math/pkgs/gpuarray/LICENSE)**.
+This package is licensed under the **[Apache License, Version 2.0](LICENSE)**.

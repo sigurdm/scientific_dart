@@ -31,43 +31,27 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'gradientArray(grid2D) [500x500]',
-          () {
-            final grads = gradientArray(grid2d);
-            for (final g in grads) {
-              blackhole(g);
-              g.dispose();
-            }
-          },
-          throughput: Throughput.elements(gridDim * gridDim),
-        );
+        c.bench('gradientArray(grid2D) [500x500]', () {
+          final grads = gradientArray(grid2d);
+          for (final g in grads) {
+            blackhole(g);
+            g.dispose();
+          }
+        }, throughput: Throughput.elements(gridDim * gridDim));
       });
 
       c.group('2. Numerical Integration', () {
-        c.bench(
-          'trapz(y, spacing=0.01) [100k points]',
-          () {
-            final res = trapz(vec1d, spacing: const Spacing.step(0.01));
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('trapz(y, spacing=0.01) [100k points]', () {
+          final res = trapz(vec1d, spacing: const Spacing.step(0.01));
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'trapz(grid2D, axis=0) [500x500]',
-          () {
-            final res = trapz(
-              grid2d,
-              axis: 0,
-              spacing: const Spacing.step(0.01),
-            );
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(gridDim * gridDim),
-        );
+        c.bench('trapz(grid2D, axis=0) [500x500]', () {
+          final res = trapz(grid2d, axis: 0, spacing: const Spacing.step(0.01));
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(gridDim * gridDim));
       });
     },
     config: CriterionConfig(

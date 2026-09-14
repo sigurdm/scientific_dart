@@ -15,15 +15,11 @@ void main() async {
       final outStrided = NDArray.create([2, arraySize ~/ 2], DType.float32);
 
       c.group('Float32 Addition Paths', () {
-        c.bench(
-          '1. Vectorized SIMD Additions Fast Path (Float32x4List)',
-          () {
-            final res = add(a, b);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(arraySize),
-        );
+        c.bench('1. Vectorized SIMD Additions Fast Path (Float32x4List)', () {
+          final res = add(a, b);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(arraySize));
 
         c.bench(
           '2. Non-Contiguous Strided Additions Fallback (Pure loops)',

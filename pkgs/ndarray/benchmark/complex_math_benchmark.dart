@@ -24,77 +24,49 @@ void main() async {
       );
 
       c.group('1. Vectorized Complex Arithmetic (Complex128)', () {
-        c.bench(
-          'cMul (cA * cB) [size=100,000 Complex128]',
-          () {
-            final res = multiply(cA, cB);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('cMul (cA * cB) [size=100,000 Complex128]', () {
+          final res = multiply(cA, cB);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'cDiv (cA / cB) [size=100,000 Complex128]',
-          () {
-            final res = divide(cA, cB);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('cDiv (cA / cB) [size=100,000 Complex128]', () {
+          final res = divide(cA, cB);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'cAdd (cA + cB) [size=100,000 Complex128]',
-          () {
-            final res = add(cA, cB);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('cAdd (cA + cB) [size=100,000 Complex128]', () {
+          final res = add(cA, cB);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
       });
 
       c.group('2. Complex Transformations & Projections', () {
-        c.bench(
-          'conj(cA) [size=100,000 Complex128]',
-          () {
-            final res = conj(cA);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('conj(cA) [size=100,000 Complex128]', () {
+          final res = conj(cA);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'abs(cA) (Magnitude) [size=100,000 Complex128 -> Float64]',
-          () {
-            final res = abs(cA);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('abs(cA) (Magnitude) [size=100,000 Complex128 -> Float64]', () {
+          final res = abs(cA);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'angle(cA) (Phase) [size=100,000 Complex128 -> Float64]',
-          () {
-            final res = angle(cA);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('angle(cA) (Phase) [size=100,000 Complex128 -> Float64]', () {
+          final res = angle(cA);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'exp(cA) (Complex Exponential) [size=100,000 Complex128]',
-          () {
-            final res = exp(cA);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('exp(cA) (Complex Exponential) [size=100,000 Complex128]', () {
+          final res = exp(cA);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
       });
     },
     config: CriterionConfig(

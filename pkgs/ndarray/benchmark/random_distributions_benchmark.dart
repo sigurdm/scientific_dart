@@ -15,15 +15,11 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'normal([100k], loc=5.0, scale=2.0)',
-          () {
-            final res = normal<double>([size], loc: 5.0, scale: 2.0);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('normal([100k], loc=5.0, scale=2.0)', () {
+          final res = normal<double>([size], loc: 5.0, scale: 2.0);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
         c.bench('exponential([100k], scale=1.5)', () {
           final res = exponential<double>([size], scale: 1.5);
@@ -43,15 +39,11 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'randint([100k], low=0, high=100)',
-          () {
-            final res = randint<int>([size], low: 0, high: 100);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('randint([100k], low=0, high=100)', () {
+          final res = randint<int>([size], low: 0, high: 100);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
       });
 
       c.group('2. Permutations, Choice & Shuffling', () {
@@ -62,15 +54,11 @@ void main() async {
           dtype: DType.float64,
         );
 
-        c.bench(
-          'choice(pool, size=100k, replace=true)',
-          () {
-            final res = choice(samplePool, size: [size], replace: true);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('choice(pool, size=100k, replace=true)', () {
+          final res = choice(samplePool, size: [size], replace: true);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
         c.bench('permutation(arr) [100k]', () {
           final res = permutation(samplePool);

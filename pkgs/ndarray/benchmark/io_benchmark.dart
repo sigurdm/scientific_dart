@@ -24,26 +24,18 @@ void main() async {
         );
 
         c.group('1. Binary NumPy (.npy) File IO', () {
-          c.bench(
-            'save() 8MB float64 array to .npy',
-            () {
-              save(npyPath, rawArray);
-            },
-            throughput: Throughput.bytes(byteSize),
-          );
+          c.bench('save() 8MB float64 array to .npy', () {
+            save(npyPath, rawArray);
+          }, throughput: Throughput.bytes(byteSize));
 
           // Ensure file exists for load benchmark
           save(npyPath, rawArray);
 
-          c.bench(
-            'load() 8MB float64 array from .npy',
-            () {
-              final loaded = load(npyPath);
-              blackhole(loaded);
-              loaded.dispose();
-            },
-            throughput: Throughput.bytes(byteSize),
-          );
+          c.bench('load() 8MB float64 array from .npy', () {
+            final loaded = load(npyPath);
+            blackhole(loaded);
+            loaded.dispose();
+          }, throughput: Throughput.bytes(byteSize));
         });
 
         c.group('2. NumPy Zip Archive (.npz) IO', () {
@@ -55,49 +47,33 @@ void main() async {
           );
           final multiArrays = {'arr_a': rawArray, 'arr_b': halfArray};
 
-          c.bench(
-            'savez() 12MB multi-array archive (.npz)',
-            () {
-              savez(npzPath, multiArrays);
-            },
-            throughput: Throughput.bytes(byteSize + (byteSize ~/ 2)),
-          );
+          c.bench('savez() 12MB multi-array archive (.npz)', () {
+            savez(npzPath, multiArrays);
+          }, throughput: Throughput.bytes(byteSize + (byteSize ~/ 2)));
 
           savez(npzPath, multiArrays);
 
-          c.bench(
-            'loadz() 12MB multi-array archive (.npz)',
-            () {
-              final loadedMap = loadz(npzPath);
-              for (final arr in loadedMap.values) {
-                blackhole(arr);
-                arr.dispose();
-              }
-            },
-            throughput: Throughput.bytes(byteSize + (byteSize ~/ 2)),
-          );
+          c.bench('loadz() 12MB multi-array archive (.npz)', () {
+            final loadedMap = loadz(npzPath);
+            for (final arr in loadedMap.values) {
+              blackhole(arr);
+              arr.dispose();
+            }
+          }, throughput: Throughput.bytes(byteSize + (byteSize ~/ 2)));
 
-          c.bench(
-            'savez_compressed() Deflate 12MB (.npz)',
-            () {
-              savez(npzCompressedPath, multiArrays, compressed: true);
-            },
-            throughput: Throughput.bytes(byteSize + (byteSize ~/ 2)),
-          );
+          c.bench('savez_compressed() Deflate 12MB (.npz)', () {
+            savez(npzCompressedPath, multiArrays, compressed: true);
+          }, throughput: Throughput.bytes(byteSize + (byteSize ~/ 2)));
 
           savez(npzCompressedPath, multiArrays, compressed: true);
 
-          c.bench(
-            'loadz() compressed Deflate 12MB (.npz)',
-            () {
-              final loadedMap = loadz(npzCompressedPath);
-              for (final arr in loadedMap.values) {
-                blackhole(arr);
-                arr.dispose();
-              }
-            },
-            throughput: Throughput.bytes(byteSize + (byteSize ~/ 2)),
-          );
+          c.bench('loadz() compressed Deflate 12MB (.npz)', () {
+            final loadedMap = loadz(npzCompressedPath);
+            for (final arr in loadedMap.values) {
+              blackhole(arr);
+              arr.dispose();
+            }
+          }, throughput: Throughput.bytes(byteSize + (byteSize ~/ 2)));
         });
       },
       config: CriterionConfig(

@@ -69,36 +69,24 @@ void main() async {
           final bContig = NDArray<double>.ones([sizeHalf], DType.float32);
           final outContig = NDArray<double>.create([sizeHalf], DType.float32);
 
-          c.bench(
-            'Scalar Strided add() [$sizeHalf]',
-            () {
-              add(aView, bView, out: outView);
-            },
-            throughput: Throughput.elements(sizeHalf),
-          );
+          c.bench('Scalar Strided add() [$sizeHalf]', () {
+            add(aView, bView, out: outView);
+          }, throughput: Throughput.elements(sizeHalf));
 
-          c.bench(
-            'Contiguous SIMD add() [$sizeHalf]',
-            () {
-              add(aContig, bContig, out: outContig);
-            },
-            throughput: Throughput.elements(sizeHalf),
-          );
+          c.bench('Contiguous SIMD add() [$sizeHalf]', () {
+            add(aContig, bContig, out: outContig);
+          }, throughput: Throughput.elements(sizeHalf));
 
-          c.bench(
-            'Contiguous FFI cblas_saxpy [$sizeHalf]',
-            () {
-              cblas_saxpy(
-                sizeHalf,
-                1.0,
-                bContig.pointer.cast<ffi.Float>(),
-                1,
-                outContig.pointer.cast<ffi.Float>(),
-                1,
-              );
-            },
-            throughput: Throughput.elements(sizeHalf),
-          );
+          c.bench('Contiguous FFI cblas_saxpy [$sizeHalf]', () {
+            cblas_saxpy(
+              sizeHalf,
+              1.0,
+              bContig.pointer.cast<ffi.Float>(),
+              1,
+              outContig.pointer.cast<ffi.Float>(),
+              1,
+            );
+          }, throughput: Throughput.elements(sizeHalf));
         }
       });
     },

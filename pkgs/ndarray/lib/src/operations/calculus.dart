@@ -308,7 +308,8 @@ NDArray<T> trapz<T extends Object>(
         } else {
           NDArray<num>? spacingArray;
           try {
-            final bool useFloat = y.dtype == DType.float32 || y.dtype == DType.complex64;
+            final bool useFloat =
+                y.dtype == DType.float32 || y.dtype == DType.complex64;
             if (useFloat) {
               spacingArray = NDArray<Float32>.create([N], DType.float32);
               var i = 0;
@@ -687,7 +688,8 @@ NDArray<T> gradient<T extends Object>(
         } else {
           NDArray<num>? spacingArray;
           try {
-            final bool useFloat = f.dtype == DType.float32 || f.dtype == DType.complex64;
+            final bool useFloat =
+                f.dtype == DType.float32 || f.dtype == DType.complex64;
             if (useFloat) {
               spacingArray = NDArray<Float32>.create([N], DType.float32);
               var i = 0;

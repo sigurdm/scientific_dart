@@ -70,36 +70,24 @@ void main() async {
           blackhole(res);
         }, throughput: Throughput.elements(100 * 100 * 100));
 
-        c.bench(
-          'pinv(A) (Moore-Penrose SVD) [100x100]',
-          () {
-            final res = pinv(mat100);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(100 * 100 * 100),
-        );
+        c.bench('pinv(A) (Moore-Penrose SVD) [100x100]', () {
+          final res = pinv(mat100);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(100 * 100 * 100));
 
-        c.bench(
-          'norm(A) (Frobenius matrix norm) [100x100]',
-          () {
-            final nVal = norm(mat100);
-            blackhole(nVal);
-            nVal.dispose();
-          },
-          throughput: Throughput.elements(100 * 100),
-        );
+        c.bench('norm(A) (Frobenius matrix norm) [100x100]', () {
+          final nVal = norm(mat100);
+          blackhole(nVal);
+          nVal.dispose();
+        }, throughput: Throughput.elements(100 * 100));
 
         final mat50 = makeInvertible(50);
-        c.bench(
-          'matrix_power(A, 5) [50x50]',
-          () {
-            final pMat = matrix_power(mat50, 5);
-            blackhole(pMat);
-            pMat.dispose();
-          },
-          throughput: Throughput.elements(50 * 50 * 50 * 4),
-        );
+        c.bench('matrix_power(A, 5) [50x50]', () {
+          final pMat = matrix_power(mat50, 5);
+          blackhole(pMat);
+          pMat.dispose();
+        }, throughput: Throughput.elements(50 * 50 * 50 * 4));
       });
     },
     config: CriterionConfig(

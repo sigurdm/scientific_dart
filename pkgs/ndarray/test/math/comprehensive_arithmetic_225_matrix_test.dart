@@ -35,68 +35,79 @@ void main() {
       return NDArray<Object>.fromList(rawList, shape, dt as DType<Object>);
     }
 
-    test('All Cross-DType Pairs for add, subtract, multiply, divide across Contiguous, Transposed & Broadcast', () {
-      NDArray.scope(() {
-        final mask = NDArray<bool>.fromList([true, false, true, false, true, false], [2, 3], DType.boolean);
+    test(
+      'All Cross-DType Pairs for add, subtract, multiply, divide across Contiguous, Transposed & Broadcast',
+      () {
+        NDArray.scope(() {
+          final mask = NDArray<bool>.fromList(
+            [true, false, true, false, true, false],
+            [2, 3],
+            DType.boolean,
+          );
 
-        for (final dtA in coreDTypes) {
-          for (final dtB in coreDTypes) {
-            // Mode 1: Contiguous same shape [2, 3] -> hits v_*
-            final aContig = makeArr(dtA, [2, 3], seed: 1);
-            final bContig = makeArr(dtB, [2, 3], seed: 2);
+          for (final dtA in coreDTypes) {
+            for (final dtB in coreDTypes) {
+              // Mode 1: Contiguous same shape [2, 3] -> hits v_*
+              final aContig = makeArr(dtA, [2, 3], seed: 1);
+              final bContig = makeArr(dtB, [2, 3], seed: 2);
 
-            final rAdd1 = add(aContig, bContig);
-            expect(rAdd1.shape, [2, 3]);
+              final rAdd1 = add(aContig, bContig);
+              expect(rAdd1.shape, [2, 3]);
 
-            final rSub1 = subtract(aContig, bContig);
-            expect(rSub1.shape, [2, 3]);
+              final rSub1 = subtract(aContig, bContig);
+              expect(rSub1.shape, [2, 3]);
 
-            final rMul1 = multiply(aContig, bContig);
-            expect(rMul1.shape, [2, 3]);
+              final rMul1 = multiply(aContig, bContig);
+              expect(rMul1.shape, [2, 3]);
 
-            final rDiv1 = divide(aContig, bContig);
-            expect(rDiv1.shape, [2, 3]);
+              final rDiv1 = divide(aContig, bContig);
+              expect(rDiv1.shape, [2, 3]);
 
-            // Mode 2: Non-contiguous transposed view -> hits s_*
-            final aBase = makeArr(dtA, [3, 2], seed: 1);
-            final bBase = makeArr(dtB, [3, 2], seed: 2);
-            final aTrans = aBase.transpose();
-            final bTrans = bBase.transpose();
+              // Mode 2: Non-contiguous transposed view -> hits s_*
+              final aBase = makeArr(dtA, [3, 2], seed: 1);
+              final bBase = makeArr(dtB, [3, 2], seed: 2);
+              final aTrans = aBase.transpose();
+              final bTrans = bBase.transpose();
 
-            final rAdd2 = add(aTrans, bTrans, where: mask);
-            expect(rAdd2.shape, [2, 3]);
+              final rAdd2 = add(aTrans, bTrans, where: mask);
+              expect(rAdd2.shape, [2, 3]);
 
-            final rSub2 = subtract(aTrans, bTrans, where: mask);
-            expect(rSub2.shape, [2, 3]);
+              final rSub2 = subtract(aTrans, bTrans, where: mask);
+              expect(rSub2.shape, [2, 3]);
 
-            final rMul2 = multiply(aTrans, bTrans, where: mask);
-            expect(rMul2.shape, [2, 3]);
+              final rMul2 = multiply(aTrans, bTrans, where: mask);
+              expect(rMul2.shape, [2, 3]);
 
-            final rDiv2 = divide(aTrans, bTrans, where: mask);
-            expect(rDiv2.shape, [2, 3]);
+              final rDiv2 = divide(aTrans, bTrans, where: mask);
+              expect(rDiv2.shape, [2, 3]);
 
-            // Mode 3: Broadcasting [2, 3] + [1, 3] -> hits s_* broadcasting
-            final bBcast = makeArr(dtB, [1, 3], seed: 3);
+              // Mode 3: Broadcasting [2, 3] + [1, 3] -> hits s_* broadcasting
+              final bBcast = makeArr(dtB, [1, 3], seed: 3);
 
-            final rAdd3 = add(aContig, bBcast);
-            expect(rAdd3.shape, [2, 3]);
+              final rAdd3 = add(aContig, bBcast);
+              expect(rAdd3.shape, [2, 3]);
 
-            final rSub3 = subtract(aContig, bBcast);
-            expect(rSub3.shape, [2, 3]);
+              final rSub3 = subtract(aContig, bBcast);
+              expect(rSub3.shape, [2, 3]);
 
-            final rMul3 = multiply(aContig, bBcast);
-            expect(rMul3.shape, [2, 3]);
+              final rMul3 = multiply(aContig, bBcast);
+              expect(rMul3.shape, [2, 3]);
 
-            final rDiv3 = divide(aContig, bBcast);
-            expect(rDiv3.shape, [2, 3]);
+              final rDiv3 = divide(aContig, bBcast);
+              expect(rDiv3.shape, [2, 3]);
+            }
           }
-        }
-      });
-    });
+        });
+      },
+    );
 
     test('All Non-complex Pairs for floor_divide, remainder, fmod, power', () {
       NDArray.scope(() {
-        final mask = NDArray<bool>.fromList([true, false, true, false, true, false], [2, 3], DType.boolean);
+        final mask = NDArray<bool>.fromList(
+          [true, false, true, false, true, false],
+          [2, 3],
+          DType.boolean,
+        );
 
         for (final dtA in coreDTypes) {
           for (final dtB in coreDTypes) {

@@ -12,21 +12,13 @@ void main() async {
       final matT = mat.transpose();
       final out = NDArray<double>.create([1500, 1500], DType.float64);
 
-      c.bench(
-        'strided tan(matT) [shape=1500x1500 transposed]',
-        () {
-          tan(matT, out: out);
-        },
-        throughput: Throughput.elements(1500 * 1500),
-      );
+      c.bench('strided tan(matT) [shape=1500x1500 transposed]', () {
+        tan(matT, out: out);
+      }, throughput: Throughput.elements(1500 * 1500));
 
-      c.bench(
-        'strided exp(matT) [shape=1500x1500 transposed]',
-        () {
-          exp(matT, out: out);
-        },
-        throughput: Throughput.elements(1500 * 1500),
-      );
+      c.bench('strided exp(matT) [shape=1500x1500 transposed]', () {
+        exp(matT, out: out);
+      }, throughput: Throughput.elements(1500 * 1500));
     },
     config: CriterionConfig(
       generateHtmlReport: true,

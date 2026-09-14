@@ -8,6 +8,7 @@ void main() {
   runQRDecompositionExample();
   runSVDDecompositionExample();
   runBatchedMatmulStackExample();
+  runLinearSystemSolveExample();
 }
 
 void runMatrixInversionExample() {
@@ -161,3 +162,28 @@ void runBatchedMatmulStackExample() {
   print('Row 0: [${outputs.toList().sublist(4, 6)}]');
   print('Row 1: [${outputs.toList().sublist(6, 8)}]');
 }
+
+// #region solve_system
+void runLinearSystemSolveExample() {
+  print('\n--- Solve Linear Matrix Equation (AX = B) ---');
+  // Solve:
+  // [3.0, 1.0] [x0] = [9.0]
+  // [1.0, 2.0] [x1]   [8.0]
+  // Solution: x0 = 2.0, x1 = 3.0
+  final a = NDArray.fromList(Float64List.fromList([3.0, 1.0, 1.0, 2.0]), [
+    2,
+    2,
+  ], DType.float64);
+  final b = NDArray.fromList(Float64List.fromList([9.0, 8.0]), [
+    2,
+  ], DType.float64);
+
+  final x = solve(a, b);
+  print('Exact Solution Vector x: ${x.toList()}');
+  // Output: [2.0, 3.0]
+
+  a.dispose();
+  b.dispose();
+  x.dispose();
+}
+// #endregion
