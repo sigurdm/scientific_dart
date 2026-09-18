@@ -9,7 +9,9 @@ This means memory should be explicitly freed for any serious programs.
 To make this safe and ergonomic, `ndarray` provides an **Automatic Disposal Scope** mechanism.
 
 ---
-Without setting up allocation scopes, you must manually track and dispose of every array you create:
+## Manual Disposal
+
+Without allocation scopes, you must manually track and dispose of every array you create:
 
 ```dart
 void calculate() {
@@ -36,7 +38,7 @@ This is verbose, prone to leaks if you forget a `dispose()` call, and especially
 
 ---
 
-## The Solution: `NDArray.scope`
+## Automatic Disposal with `NDArray.scope`
 
 `NDArray.scope` runs your callback inside a Dart [`Zone`](https://api.dart.dev/dart-async/Zone-class.html) (`dart:async` `runZoned` via `package:resource_scope`) where every root array allocated is automatically registered and deterministically freed when the scope finishes. Because tracking is stored in `Zone.current`, it automatically follows asynchronous calls (`Future`s and `async`/`await` continuations) spawned inside the scope and waits for an `async` callback's returned `Future` to complete before freeing the arrays.
 
@@ -60,7 +62,7 @@ void calculate() {
 
 ### Returning Values with `detachToParentScope()`
 
-If you need a specific array to survive beyond the scope (e.g., as a return value), use `attachToParentScope()`. This "unregisters" the array from the current scope.
+If you need a specific array to survive beyond the scope (e.g., as a return value), use `detachToParentScope()`. This unregisters the array from the current scope and attaches it to the enclosing scope (if any).
 
 ```dart
 NDArray computeResult() {
