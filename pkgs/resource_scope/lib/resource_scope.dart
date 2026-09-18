@@ -50,7 +50,9 @@ final class ResourceScope {
 
   /// Checks that all tracked [ScopedResource]s have been disposed.
   /// Throws a [StateError] if any undisposed resources remain.
-  static void checkNoLeaks() {
+  ///
+  /// Returns `true` if no leaks are detected, allowing calls inside `assert`.
+  static bool checkNoLeaks() {
     if (_trackedAllocations.isNotEmpty) {
       final leaks = _trackedAllocations.toList();
       throw StateError(
@@ -58,6 +60,7 @@ final class ResourceScope {
         "${leaks.map((r) => '  $r').join('\n')}",
       );
     }
+    return true;
   }
 
   /// Clears the list of tracked allocations.

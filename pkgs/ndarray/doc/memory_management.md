@@ -1,12 +1,12 @@
 # Memory Management with NDArray Scopes
 
-NDArrays are backed by  C-heap memory for its interoperability with native libraries like OpenBLAS and PocketFFT.
+NDArrays are backed by C-heap memory for interoperability with native libraries like OpenBLAS and PocketFFT.
 
-NDArrays will reclaim this memory when they are garbage collected. However the garbage collector cannot "feel" the pressure of the array allocations because they are made outside the Dart heap.
+Each root `NDArray` attaches a `dart:ffi` [`NativeFinalizer`](https://api.dart.dev/dart-ffi/NativeFinalizer-class.html) (`calloc.nativeFree`) so its backing C memory is eventually reclaimed when the Dart object becomes unreachable and is garbage collected. However, the Dart garbage collector cannot "feel" the memory pressure of large off-heap allocations because the `NDArray` wrapper on the Dart heap is tiny.
 
 This means memory should be explicitly freed for any serious programs.
 
-To make this safe and somewhat ergonomic, `ndarray` provides an **Automatic Disposal Scope** mechanism.
+To make this safe and ergonomic, `ndarray` provides an **Automatic Disposal Scope** mechanism.
 
 ---
 Without setting up allocation scopes, you must manually track and dispose of every array you create:
@@ -38,7 +38,7 @@ This is verbose, prone to leaks if you forget a `dispose()` call, and especially
 
 ## The Solution: `NDArray.scope`
 
-`NDArray.scope` creates a "safe zone" where every array created is automatically tracked and deterministically freed when the scope finishes.
+`NDArray.scope` runs your callback inside a Dart [`Zone`](https://api.dart.dev/dart-async/Zone-class.html) (`dart:async` `runZoned` via `package:resource_scope`) where every root array allocated is automatically registered and deterministically freed when the scope finishes. Because tracking is stored in `Zone.current`, it automatically follows asynchronous calls (`Future`s and `async`/`await` continuations) spawned inside the scope and waits for an `async` callback's returned `Future` to complete before freeing the arrays.
 
 ### Basic Usage
 
@@ -95,7 +95,7 @@ Future<void> processDataAsync() async {
 
 While `NDArray.scope` cleans up intermediate allocations automatically, allocating new arrays inside high-frequency hot loops still incurs heap allocation and garbage collection overhead. 
 
-Instead it is often better to pre-allocate a fixed destination array once and pass it to the `out:` named parameter in subsequent operations. This completely avoids repeated allocations by writing the result directly into the pre-allocated memory:
+Instead it is often better to pre-allocate a fixed destination array once and pass it to the `out:` named parameter in subsequent operations. This avoids repeated allocations by writing the result directly into the pre-allocated memory:
 
 ```dart
 void processInLoop(NDArray<Float64> input) {
@@ -261,7 +261,7 @@ void main() {
   print(NDArray.trackedAllocations.length); // Prints 0
 
   // Throws StateError if there are any undisposed tracked arrays
-  NDArray.checkNoLeaks(); 
+  assert(NDArray.checkNoLeaks());
 }
 ```
 

@@ -316,7 +316,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   static List<NDArray> get trackedAllocations =>
       ResourceScope.trackedAllocations.whereType<NDArray>().toList();
 
-  static void checkNoLeaks() => ResourceScope.checkNoLeaks();
+  static bool checkNoLeaks() => ResourceScope.checkNoLeaks();
 
   static void clearTrackedAllocations() =>
       ResourceScope.clearTrackedAllocations();
