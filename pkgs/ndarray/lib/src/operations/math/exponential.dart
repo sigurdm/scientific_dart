@@ -36,20 +36,18 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
         (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
   }
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for exp.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType);
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ?? NDArray.create(a.shape, targetDType, zeroInit: where != null);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -208,20 +206,23 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
     targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for log.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType as DType<R>);
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        NDArray.create(
+          a.shape,
+          targetDType as DType<R>,
+          zeroInit: where != null,
+        );
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -374,20 +375,23 @@ NDArray<R> log2<T, R>(
     targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for log2.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType as DType<R>);
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        NDArray.create(
+          a.shape,
+          targetDType as DType<R>,
+          zeroInit: where != null,
+        );
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -541,20 +545,23 @@ NDArray<R> log10<T, R>(
     targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for log10.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType as DType<R>);
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        NDArray.create(
+          a.shape,
+          targetDType as DType<R>,
+          zeroInit: where != null,
+        );
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:

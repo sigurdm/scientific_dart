@@ -1,12 +1,14 @@
 import 'package:ndarray/ndarray.dart';
 
 void main() {
-  print('=== NDArray Splitting Examples ===\n');
-  runSplitExamples();
-  runArraySplitExamples();
-  runHSplitExamples();
-  runVSplitExamples();
-  runDSplitExamples();
+  NDArray.scope(() {
+    print('=== NDArray Splitting Examples ===\n');
+    runSplitExamples();
+    runArraySplitExamples();
+    runHSplitExamples();
+    runVSplitExamples();
+    runDSplitExamples();
+  });
 }
 
 // #region split

@@ -127,6 +127,13 @@ NDArray<T> take_along_axis<T extends Object>(
         'out shape (${out.shape}) must match target shape ($targetShape)',
       );
     }
+    if (sharesMemory(arr, out) || sharesMemory(indices, out)) {
+      return NDArray.scope(() {
+        final temp = take_along_axis(arr, indices, axis);
+        temp.copy(out: out);
+        return out;
+      });
+    }
   }
 
   final result = out ?? NDArray<T>.create(targetShape, arr.dtype);
@@ -197,6 +204,9 @@ NDArray<T> take_along_axis<T extends Object>(
     };
 
     if (status != 0) {
+      if (out == null) {
+        result.dispose();
+      }
       if (status == -1) {
         final badIdx = cOutErrorIdx.value;
         final axisSize = arr.shape[normAxis];
@@ -259,8 +269,8 @@ NDArray<T> put_along_axis<T extends Object>(
     throw RangeError.range(normAxis, 0, rank - 1, 'axis');
   }
 
-  final bool valuesAllocated = values is! NDArray<T>;
-  final valuesArr = valuesAllocated ? toNDArray(values, arr.dtype) : values;
+  final bool valuesAllocated = values is! NDArray || values.dtype != arr.dtype;
+  final NDArray<T> valuesArr = toNDArray<T>(values, arr.dtype);
   if (valuesArr.isDisposed) {
     if (valuesAllocated) valuesArr.dispose();
     throw StateError('Cannot execute put_along_axis with disposed values.');
@@ -284,11 +294,33 @@ NDArray<T> put_along_axis<T extends Object>(
       if (valuesAllocated) valuesArr.dispose();
       throw ArgumentError('out shape must match arr shape');
     }
-    if (!identical(out, arr)) {
-      arr.copy(out: out);
+    if (sharesMemory(arr, out) ||
+        sharesMemory(indices, out) ||
+        sharesMemory(valuesArr, out)) {
+      try {
+        return NDArray.scope(() {
+          final temp = NDArray<T>.create(arr.shape, arr.dtype);
+          put_along_axis(arr, indices, valuesArr, axis, out: temp);
+          temp.copy(out: out);
+          return out;
+        });
+      } finally {
+        if (valuesAllocated) {
+          valuesArr.dispose();
+        }
+      }
     }
     target = out;
   } else {
+    if (sharesMemory(arr, indices) || sharesMemory(arr, valuesArr)) {
+      try {
+        return put_along_axis(arr, indices, valuesArr, axis, out: arr);
+      } finally {
+        if (valuesAllocated) {
+          valuesArr.dispose();
+        }
+      }
+    }
     target = arr;
   }
 
@@ -337,6 +369,10 @@ NDArray<T> put_along_axis<T extends Object>(
         cValShape[i] = valDim;
         cValStrides[i] = valuesArr.strides[valDimIndex];
       }
+    }
+
+    if (!identical(target, arr)) {
+      arr.copy(out: target);
     }
 
     final status = switch (arr.dtype) {
@@ -433,35 +469,49 @@ NDArray<T> choose<T extends Object>(
     throw ArgumentError('choices list must not be empty');
   }
 
+  for (var i = 0; i < choices.length; i++) {
+    final c = choices[i];
+    if (c is NDArray && c.isDisposed) {
+      throw StateError(
+        'Cannot execute choose with a disposed choice array at index $i.',
+      );
+    }
+  }
+
   return NDArray.scope(() {
+    final hasArray = choices.any((c) => c is NDArray);
+    DType getItemDType(Object item) {
+      if (item is NDArray) return item.dtype;
+      if (item is int) {
+        if (hasArray) {
+          final arrayIntDTypes = choices
+              .whereType<NDArray>()
+              .map((a) => a.dtype)
+              .where((dt) => dt.isInteger);
+          if (arrayIntDTypes.isNotEmpty) {
+            return arrayIntDTypes.first;
+          }
+        }
+        return DType.int64;
+      }
+      if (item is bool) return DType.boolean;
+      if (item is Complex) return DType.complex128;
+      return DType.float64;
+    }
+
     final resolvedDType =
         (out?.dtype) ??
         (() {
-          final first = choices.first;
-          DType dt = first is NDArray
-              ? first.dtype
-              : toNDArray(first, DType.float64).dtype;
+          DType dt = getItemDType(choices.first);
           for (var i = 1; i < choices.length; i++) {
-            final item = choices[i];
-            final itemDt = item is NDArray
-                ? item.dtype
-                : toNDArray(item, DType.float64).dtype;
-            dt = resolveDType(dt, itemDt);
+            dt = resolveDType(dt, getItemDType(choices[i]));
           }
           return dt as DType<T>;
         })();
 
     final choiceArrays = choices
-        .map((c) => c is NDArray<T> ? c : toNDArray(c, resolvedDType))
+        .map((c) => toNDArray<T>(c, resolvedDType))
         .toList();
-
-    for (var i = 0; i < choiceArrays.length; i++) {
-      if (choiceArrays[i].isDisposed) {
-        throw StateError(
-          'Cannot execute choose with a disposed choice array at index $i.',
-        );
-      }
-    }
 
     final allShapes = <List<int>>[a.shape, ...choiceArrays.map((c) => c.shape)];
     final targetShape = _broadcastMultiShapes(allShapes);
@@ -477,7 +527,14 @@ NDArray<T> choose<T extends Object>(
       }
     }
 
-    final result = out ?? NDArray<T>.create(targetShape, resolvedDType);
+    final bool needsTemp =
+        out != null &&
+        (sharesMemory(a, out) ||
+            choices.any((c) => c is NDArray && sharesMemory(c, out)) ||
+            choiceArrays.any((c) => sharesMemory(c, out)));
+    final result = needsTemp || out == null
+        ? NDArray<T>.create(targetShape, resolvedDType)
+        : out;
     final nChoices = choiceArrays.length;
     final marker = ScratchArena.marker;
     try {
@@ -518,7 +575,13 @@ NDArray<T> choose<T extends Object>(
         result.setCell(coords, val);
       }
 
-      return out != null ? result : result.detachToParentScope();
+      if (out != null) {
+        if (needsTemp) {
+          result.copy(out: out);
+        }
+        return out;
+      }
+      return result.detachToParentScope();
     } finally {
       ScratchArena.reset(marker);
     }
@@ -553,6 +616,9 @@ NDArray<T> select<T extends Object>(
   DType<T>? dtype,
   NDArray<T>? out,
 }) {
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot execute select with a disposed out array.');
+  }
   if (condlist.isEmpty || choicelist.isEmpty) {
     throw ArgumentError('condlist and choicelist must not be empty');
   }
@@ -593,21 +659,26 @@ NDArray<T> select<T extends Object>(
           return dt as DType<T>;
         })();
 
-    final choiceArrays = choicelist
-        .map((c) => c is NDArray<T> ? c : toNDArray(c, resolvedDType))
-        .toList();
-    for (var i = 0; i < choiceArrays.length; i++) {
-      if (choiceArrays[i].isDisposed) {
+    for (var i = 0; i < choicelist.length; i++) {
+      final c = choicelist[i];
+      if (c is NDArray && c.isDisposed) {
         throw StateError(
           'Cannot execute select with a disposed choice array at index $i.',
         );
       }
     }
+    if (defaultValue is NDArray && defaultValue.isDisposed) {
+      throw StateError(
+        'Cannot execute select with a disposed defaultValue array.',
+      );
+    }
+
+    final choiceArrays = choicelist
+        .map((c) => toNDArray<T>(c, resolvedDType))
+        .toList();
 
     final defaultValObj = defaultValue ?? 0;
-    final defaultArr = defaultValObj is NDArray<T>
-        ? defaultValObj
-        : toNDArray(defaultValObj, resolvedDType);
+    final defaultArr = toNDArray<T>(defaultValObj, resolvedDType);
     if (defaultArr.isDisposed) {
       throw StateError('Cannot execute select with a disposed default array.');
     }
@@ -633,7 +704,16 @@ NDArray<T> select<T extends Object>(
       }
     }
 
-    final result = out ?? NDArray<T>.create(targetShape, resolvedDType);
+    final bool needsTemp =
+        out != null &&
+        (condlist.any((c) => sharesMemory(c, out)) ||
+            choicelist.any((c) => c is NDArray && sharesMemory(c, out)) ||
+            choiceArrays.any((c) => sharesMemory(c, out)) ||
+            (defaultValue is NDArray && sharesMemory(defaultValue, out)) ||
+            sharesMemory(defaultArr, out));
+    final result = needsTemp || out == null
+        ? NDArray<T>.create(targetShape, resolvedDType)
+        : out;
     final nConds = condlist.length;
     final marker = ScratchArena.marker;
     try {
@@ -672,7 +752,13 @@ NDArray<T> select<T extends Object>(
         }
       }
 
-      return out != null ? result : result.detachToParentScope();
+      if (out != null) {
+        if (needsTemp) {
+          result.copy(out: out);
+        }
+        return out;
+      }
+      return result.detachToParentScope();
     } finally {
       ScratchArena.reset(marker);
     }

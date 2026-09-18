@@ -356,7 +356,7 @@ void main() {
           expect(svdRes.s.isDisposed, isTrue);
           expect(svdRes.vh.isDisposed, isTrue);
 
-          final hessRes = hessenberg<Float64>(a);
+          final hessRes = hessenberg<Float64, Float64>(a);
           expect(hessRes.h.shape, equals([2, 2]));
           expect(hessRes.q.shape, equals([2, 2]));
           hessRes.dispose();
@@ -442,7 +442,7 @@ void main() {
           expect(eigh00.eigenvectors.shape, equals([0, 0]));
 
           // hessenberg
-          final hess00 = hessenberg(mat00);
+          final hess00 = hessenberg<Float64, Float64>(mat00);
           expect(hess00.h.shape, equals([0, 0]));
           expect(hess00.q.shape, equals([0, 0]));
         });
@@ -466,7 +466,7 @@ void main() {
 
           // hessenberg return generic <T> check
           ({NDArray<Float64> h, NDArray<Float64> q}) resHess =
-              hessenberg<Float64>(mat);
+              hessenberg<Float64, Float64>(mat);
           expect(resHess.h.dtype, equals(DType.float64));
           expect(resHess.q.dtype, equals(DType.float64));
 

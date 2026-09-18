@@ -8,8 +8,528 @@ import '../ndarray_extensions_bindings.dart';
 import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports
+import 'helpers.dart';
 import 'math.dart';
 import 'linalg.dart';
+
+int _defaultSeedCounter = 0;
+
+int _nextDefaultSeed() {
+  final now = DateTime.now().microsecondsSinceEpoch;
+  final counter = _defaultSeedCounter++;
+  return (now ^ (counter * 0x9e3779b9)) & 0xFFFFFFFF;
+}
+
+/// A stateful pseudo-random number generator that produces reproducible
+/// sequences of draws from various probability distributions.
+final class RandomGenerator {
+  final Random _rand;
+
+  /// Creates a stateful random number generator with an optional [seed].
+  ///
+  /// If [seed] is omitted, a unique timestamp-and-counter-based seed is generated.
+  RandomGenerator([int? seed])
+    : _rand = seed != null ? Random(seed) : Random(_nextDefaultSeed());
+
+  int _nextSeedVal(bool secure) {
+    if (secure) return Random.secure().nextInt(4294967296);
+    return _rand.nextInt(4294967296);
+  }
+
+  /// Generates an array with random values uniformly distributed in the half-open interval `[0.0, 1.0)`.
+  NDArray<T> uniform<T extends Object>(
+    List<int> shape, {
+    DType<T>? dtype,
+    NDArray<T>? out,
+    bool secure = false,
+  }) {
+    return _uniformImpl(
+      shape,
+      dtype: dtype,
+      seedVal: _nextSeedVal(secure),
+      out: out,
+      secure: secure,
+    );
+  }
+
+  /// Returns random integers from the half-open interval `[low, high)`.
+  NDArray<T> randint<T extends num>(
+    List<int> shape, {
+    required int low,
+    required int high,
+    DType<T>? dtype,
+    NDArray<T>? out,
+    bool secure = false,
+  }) {
+    return _randintImpl(
+      shape,
+      low: low,
+      high: high,
+      dtype: dtype,
+      seedVal: _nextSeedVal(secure),
+      out: out,
+      secure: secure,
+    );
+  }
+
+  /// Draws random samples from a normal (Gaussian) distribution.
+  NDArray<T> normal<T extends Object>(
+    List<int> shape, {
+    double loc = 0.0,
+    double scale = 1.0,
+    DType<T>? dtype,
+    NDArray<T>? out,
+    bool secure = false,
+  }) {
+    return _normalImpl(
+      shape,
+      loc: loc,
+      scale: scale,
+      dtype: dtype,
+      seedVal: _nextSeedVal(secure),
+      out: out,
+      secure: secure,
+    );
+  }
+
+  /// Draws samples from an exponential distribution.
+  NDArray<T> exponential<T extends Object>(
+    List<int> shape, {
+    double scale = 1.0,
+    double? lam,
+    DType<T>? dtype,
+    NDArray<T>? out,
+    bool secure = false,
+  }) {
+    return _exponentialImpl(
+      shape,
+      scale: scale,
+      lam: lam,
+      dtype: dtype,
+      seedVal: _nextSeedVal(secure),
+      out: out,
+      secure: secure,
+    );
+  }
+}
+
+void _validateOutBuffer<T>(
+  NDArray<T>? out,
+  List<int> expectedShape,
+  DType<T> expectedDType,
+) {
+  if (out == null) return;
+  if (out.isDisposed) {
+    throw StateError('Cannot write random result to a disposed output array.');
+  }
+  if (!listEquals(out.shape, expectedShape) || out.dtype != expectedDType) {
+    throw ArgumentError('Incompatible out buffer shape or dtype.');
+  }
+}
+
+NDArray<T> _uniformImpl<T extends Object>(
+  List<int> shape, {
+  DType<T>? dtype,
+  required int seedVal,
+  NDArray<T>? out,
+  bool secure = false,
+}) {
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
+  if (!identical(resolvedDType, DType.float64) &&
+      !identical(resolvedDType, DType.float32)) {
+    throw ArgumentError('uniform only supports float types for now');
+  }
+  _validateOutBuffer(out, shape, resolvedDType);
+
+  if (out != null && !out.isContiguous) {
+    return NDArray.scope(() {
+      final temp = NDArray<T>.create(shape, resolvedDType);
+      final len = temp.size;
+      switch (resolvedDType) {
+        case DType.float64:
+          if (secure) {
+            v_secure_uniform_double(temp.pointer.cast<ffi.Double>(), len);
+          } else {
+            v_uniform_double(temp.pointer.cast<ffi.Double>(), len, seedVal);
+          }
+        case DType.float32:
+          if (secure) {
+            v_secure_uniform_float(temp.pointer.cast<ffi.Float>(), len);
+          } else {
+            v_uniform_float(temp.pointer.cast<ffi.Float>(), len, seedVal);
+          }
+        default:
+          throw ArgumentError('uniform only supports float types for now');
+      }
+      temp.copy(out: out);
+      return out;
+    });
+  }
+
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final len = arr.size;
+
+  switch (resolvedDType) {
+    case DType.float64:
+      if (secure) {
+        v_secure_uniform_double(arr.pointer.cast<ffi.Double>(), len);
+      } else {
+        v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
+      }
+    case DType.float32:
+      if (secure) {
+        v_secure_uniform_float(arr.pointer.cast<ffi.Float>(), len);
+      } else {
+        v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seedVal);
+      }
+    default:
+      throw ArgumentError('uniform only supports float types for now');
+  }
+  return arr;
+}
+
+NDArray<T> _randintImpl<T extends num>(
+  List<int> shape, {
+  required int low,
+  required int high,
+  DType<T>? dtype,
+  required int seedVal,
+  NDArray<T>? out,
+  bool secure = false,
+}) {
+  if (low >= high) {
+    throw ArgumentError('low must be less than high');
+  }
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
+  if (!identical(resolvedDType, DType.int64) &&
+      !identical(resolvedDType, DType.int32) &&
+      !identical(resolvedDType, DType.uint8) &&
+      !identical(resolvedDType, DType.int16)) {
+    throw ArgumentError(
+      'randint only supports integer types (int64, int32, int16, uint8)',
+    );
+  }
+  _validateOutBuffer(out, shape, resolvedDType);
+
+  if (out != null && !out.isContiguous) {
+    return NDArray.scope(() {
+      final temp = NDArray<T>.create(shape, resolvedDType);
+      final len = temp.size;
+      switch (resolvedDType) {
+        case DType.int64:
+          if (secure) {
+            v_secure_randint_int64(
+              temp.pointer.cast<ffi.Int64>(),
+              len,
+              low,
+              high,
+            );
+          } else {
+            v_randint_int64(
+              temp.pointer.cast<ffi.Int64>(),
+              len,
+              low,
+              high,
+              seedVal,
+            );
+          }
+        case DType.int32:
+          if (secure) {
+            v_secure_randint_int32(
+              temp.pointer.cast<ffi.Int32>(),
+              len,
+              low,
+              high,
+            );
+          } else {
+            v_randint_int32(
+              temp.pointer.cast<ffi.Int32>(),
+              len,
+              low,
+              high,
+              seedVal,
+            );
+          }
+        case DType.uint8:
+          if (secure) {
+            v_secure_randint_uint8(
+              temp.pointer.cast<ffi.Uint8>(),
+              len,
+              low,
+              high,
+            );
+          } else {
+            v_randint_uint8(
+              temp.pointer.cast<ffi.Uint8>(),
+              len,
+              low,
+              high,
+              seedVal,
+            );
+          }
+        case DType.int16:
+          if (secure) {
+            v_secure_randint_int16(
+              temp.pointer.cast<ffi.Int16>(),
+              len,
+              low,
+              high,
+            );
+          } else {
+            v_randint_int16(
+              temp.pointer.cast<ffi.Int16>(),
+              len,
+              low,
+              high,
+              seedVal,
+            );
+          }
+        default:
+          throw ArgumentError(
+            'randint only supports integer types (int64, int32, int16, uint8)',
+          );
+      }
+      temp.copy(out: out);
+      return out;
+    });
+  }
+
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final len = arr.size;
+
+  switch (resolvedDType) {
+    case DType.int64:
+      if (secure) {
+        v_secure_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high);
+      } else {
+        v_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high, seedVal);
+      }
+    case DType.int32:
+      if (secure) {
+        v_secure_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high);
+      } else {
+        v_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high, seedVal);
+      }
+    case DType.uint8:
+      if (secure) {
+        v_secure_randint_uint8(arr.pointer.cast<ffi.Uint8>(), len, low, high);
+      } else {
+        v_randint_uint8(arr.pointer.cast<ffi.Uint8>(), len, low, high, seedVal);
+      }
+    case DType.int16:
+      if (secure) {
+        v_secure_randint_int16(arr.pointer.cast<ffi.Int16>(), len, low, high);
+      } else {
+        v_randint_int16(arr.pointer.cast<ffi.Int16>(), len, low, high, seedVal);
+      }
+    default:
+      throw ArgumentError(
+        'randint only supports integer types (int64, int32, int16, uint8)',
+      );
+  }
+  return arr;
+}
+
+NDArray<T> _normalImpl<T extends Object>(
+  List<int> shape, {
+  double loc = 0.0,
+  double scale = 1.0,
+  DType<T>? dtype,
+  required int seedVal,
+  NDArray<T>? out,
+  bool secure = false,
+}) {
+  if (scale <= 0.0) {
+    throw ArgumentError(
+      'scale (standard deviation) must be strictly positive (was $scale)',
+    );
+  }
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
+  if (!identical(resolvedDType, DType.float64) &&
+      !identical(resolvedDType, DType.float32)) {
+    throw ArgumentError(
+      'normal only supports floating point dtypes (float32/float64)',
+    );
+  }
+  _validateOutBuffer(out, shape, resolvedDType);
+
+  if (out != null && !out.isContiguous) {
+    return NDArray.scope(() {
+      final temp = NDArray<T>.create(shape, resolvedDType);
+      final len = temp.size;
+      switch (resolvedDType) {
+        case DType.float64:
+          if (secure) {
+            v_secure_normal_double(
+              temp.pointer.cast<ffi.Double>(),
+              len,
+              loc,
+              scale,
+            );
+          } else {
+            v_normal_double(
+              temp.pointer.cast<ffi.Double>(),
+              len,
+              loc,
+              scale,
+              seedVal,
+            );
+          }
+        case DType.float32:
+          if (secure) {
+            v_secure_normal_float(
+              temp.pointer.cast<ffi.Float>(),
+              len,
+              loc,
+              scale,
+            );
+          } else {
+            v_normal_float(
+              temp.pointer.cast<ffi.Float>(),
+              len,
+              loc,
+              scale,
+              seedVal,
+            );
+          }
+        default:
+          throw ArgumentError(
+            'normal only supports floating point dtypes (float32/float64)',
+          );
+      }
+      temp.copy(out: out);
+      return out;
+    });
+  }
+
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final len = arr.size;
+
+  switch (resolvedDType) {
+    case DType.float64:
+      if (secure) {
+        v_secure_normal_double(arr.pointer.cast<ffi.Double>(), len, loc, scale);
+      } else {
+        v_normal_double(
+          arr.pointer.cast<ffi.Double>(),
+          len,
+          loc,
+          scale,
+          seedVal,
+        );
+      }
+    case DType.float32:
+      if (secure) {
+        v_secure_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale);
+      } else {
+        v_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale, seedVal);
+      }
+    default:
+      throw ArgumentError(
+        'normal only supports floating point dtypes (float32/float64)',
+      );
+  }
+  return arr;
+}
+
+NDArray<T> _exponentialImpl<T extends Object>(
+  List<int> shape, {
+  double scale = 1.0,
+  double? lam,
+  DType<T>? dtype,
+  required int seedVal,
+  NDArray<T>? out,
+  bool secure = false,
+}) {
+  final targetScale = lam != null ? 1.0 / lam : scale;
+  if (targetScale <= 0.0) {
+    throw ArgumentError(
+      'scale parameter (or 1 / lam) must be strictly positive (was $targetScale)',
+    );
+  }
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
+  if (!identical(resolvedDType, DType.float64) &&
+      !identical(resolvedDType, DType.float32)) {
+    throw ArgumentError(
+      'exponential only supports floating point dtypes (float32/float64)',
+    );
+  }
+  _validateOutBuffer(out, shape, resolvedDType);
+
+  if (out != null && !out.isContiguous) {
+    return NDArray.scope(() {
+      final temp = NDArray<T>.create(shape, resolvedDType);
+      final len = temp.size;
+      switch (resolvedDType) {
+        case DType.float64:
+          if (secure) {
+            v_secure_uniform_double(temp.pointer.cast<ffi.Double>(), len);
+          } else {
+            v_uniform_double(temp.pointer.cast<ffi.Double>(), len, seedVal);
+          }
+          final ptr = temp.pointer.cast<ffi.Double>();
+          for (var i = 0; i < len; i++) {
+            var u = ptr[i];
+            if (u >= 1.0) u = 0.9999999999999999;
+            ptr[i] = -targetScale * math.log(1.0 - u);
+          }
+        case DType.float32:
+          if (secure) {
+            v_secure_uniform_float(temp.pointer.cast<ffi.Float>(), len);
+          } else {
+            v_uniform_float(temp.pointer.cast<ffi.Float>(), len, seedVal);
+          }
+          final ptr = temp.pointer.cast<ffi.Float>();
+          for (var i = 0; i < len; i++) {
+            var u = ptr[i];
+            if (u >= 1.0) u = 0.999999;
+            ptr[i] = -targetScale * math.log(1.0 - u);
+          }
+        default:
+          throw ArgumentError(
+            'exponential only supports floating point dtypes (float32/float64)',
+          );
+      }
+      temp.copy(out: out);
+      return out;
+    });
+  }
+
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final len = arr.size;
+
+  switch (resolvedDType) {
+    case DType.float64:
+      if (secure) {
+        v_secure_uniform_double(arr.pointer.cast<ffi.Double>(), len);
+      } else {
+        v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
+      }
+      final ptr = arr.pointer.cast<ffi.Double>();
+      for (var i = 0; i < len; i++) {
+        var u = ptr[i];
+        if (u >= 1.0) u = 0.9999999999999999;
+        ptr[i] = -targetScale * math.log(1.0 - u);
+      }
+    case DType.float32:
+      if (secure) {
+        v_secure_uniform_float(arr.pointer.cast<ffi.Float>(), len);
+      } else {
+        v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seedVal);
+      }
+      final ptr = arr.pointer.cast<ffi.Float>();
+      for (var i = 0; i < len; i++) {
+        var u = ptr[i];
+        if (u >= 1.0) u = 0.999999;
+        ptr[i] = -targetScale * math.log(1.0 - u);
+      }
+    default:
+      throw ArgumentError(
+        'exponential only supports floating point dtypes (float32/float64)',
+      );
+  }
+  return arr;
+}
 
 /// Generates an array with random values uniformly distributed in the half-open interval `[0.0, 1.0)`.
 ///
@@ -38,39 +558,14 @@ NDArray<T> uniform<T extends Object>(
   NDArray<T>? out,
   bool secure = false,
 }) {
-  if (out != null && out.isDisposed) {
-    throw StateError('Cannot write uniform result to a disposed output array.');
-  }
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
-  if (out != null) {
-    if (!out.isContiguous) {
-      throw ArgumentError('out buffer must be contiguous.');
-    }
-    if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible out buffer shape or dtype.');
-    }
-  }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.size;
-  final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
-
-  switch (resolvedDType) {
-    case DType.float64:
-      if (secure) {
-        v_secure_uniform_double(arr.pointer.cast<ffi.Double>(), len);
-      } else {
-        v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
-      }
-    case DType.float32:
-      if (secure) {
-        v_secure_uniform_float(arr.pointer.cast<ffi.Float>(), len);
-      } else {
-        v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seedVal);
-      }
-    default:
-      throw ArgumentError('uniform only supports float types for now');
-  }
-  return arr;
+  final seedVal = secure ? 0 : (seed ?? _nextDefaultSeed());
+  return _uniformImpl(
+    shape,
+    dtype: dtype,
+    seedVal: seedVal,
+    out: out,
+    secure: secure,
+  );
 }
 
 /// Returns random integers from the half-open interval `[low, high)`.
@@ -113,56 +608,16 @@ NDArray<T> randint<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
-  if (out != null && out.isDisposed) {
-    throw StateError('Cannot write randint result to a disposed output array.');
-  }
-  if (low >= high) {
-    throw ArgumentError('low must be less than high');
-  }
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
-  if (out != null) {
-    if (!out.isContiguous) {
-      throw ArgumentError('out buffer must be contiguous.');
-    }
-    if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible out buffer shape or dtype.');
-    }
-  }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.size;
-  final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
-
-  switch (resolvedDType) {
-    case DType.int64:
-      if (secure) {
-        v_secure_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high);
-      } else {
-        v_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high, seedVal);
-      }
-    case DType.int32:
-      if (secure) {
-        v_secure_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high);
-      } else {
-        v_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high, seedVal);
-      }
-    case DType.uint8:
-      if (secure) {
-        v_secure_randint_uint8(arr.pointer.cast<ffi.Uint8>(), len, low, high);
-      } else {
-        v_randint_uint8(arr.pointer.cast<ffi.Uint8>(), len, low, high, seedVal);
-      }
-    case DType.int16:
-      if (secure) {
-        v_secure_randint_int16(arr.pointer.cast<ffi.Int16>(), len, low, high);
-      } else {
-        v_randint_int16(arr.pointer.cast<ffi.Int16>(), len, low, high, seedVal);
-      }
-    default:
-      throw ArgumentError(
-        'randint only supports integer types (int64, int32, int16, uint8)',
-      );
-  }
-  return arr;
+  final seedVal = secure ? 0 : (seed ?? _nextDefaultSeed());
+  return _randintImpl(
+    shape,
+    low: low,
+    high: high,
+    dtype: dtype,
+    seedVal: seedVal,
+    out: out,
+    secure: secure,
+  );
 }
 
 /// Draws random samples from a normal (Gaussian) distribution.
@@ -199,52 +654,16 @@ NDArray<T> normal<T extends Object>(
   NDArray<T>? out,
   bool secure = false,
 }) {
-  if (out != null && out.isDisposed) {
-    throw StateError('Cannot write normal result to a disposed output array.');
-  }
-  if (scale <= 0.0) {
-    throw ArgumentError(
-      'scale (standard deviation) must be strictly positive (was $scale)',
-    );
-  }
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
-  if (out != null) {
-    if (!out.isContiguous) {
-      throw ArgumentError('out buffer must be contiguous.');
-    }
-    if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible out buffer shape or dtype.');
-    }
-  }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.size;
-  final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
-
-  switch (resolvedDType) {
-    case DType.float64:
-      if (secure) {
-        v_secure_normal_double(arr.pointer.cast<ffi.Double>(), len, loc, scale);
-      } else {
-        v_normal_double(
-          arr.pointer.cast<ffi.Double>(),
-          len,
-          loc,
-          scale,
-          seedVal,
-        );
-      }
-    case DType.float32:
-      if (secure) {
-        v_secure_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale);
-      } else {
-        v_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale, seedVal);
-      }
-    default:
-      throw ArgumentError(
-        'normal only supports floating point dtypes (float32/float64)',
-      );
-  }
-  return arr;
+  final seedVal = secure ? 0 : (seed ?? _nextDefaultSeed());
+  return _normalImpl(
+    shape,
+    loc: loc,
+    scale: scale,
+    dtype: dtype,
+    seedVal: seedVal,
+    out: out,
+    secure: secure,
+  );
 }
 
 /// Draws samples from an exponential distribution.
@@ -277,61 +696,16 @@ NDArray<T> exponential<T extends Object>(
   NDArray<T>? out,
   bool secure = false,
 }) {
-  if (out != null && out.isDisposed) {
-    throw StateError(
-      'Cannot write exponential result to a disposed output array.',
-    );
-  }
-  final targetScale = lam != null ? 1.0 / lam : scale;
-  if (targetScale <= 0.0) {
-    throw ArgumentError(
-      'scale parameter (or 1 / lam) must be strictly positive (was $targetScale)',
-    );
-  }
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
-  if (out != null) {
-    if (!out.isContiguous) {
-      throw ArgumentError('out buffer must be contiguous.');
-    }
-    if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible out buffer shape or dtype.');
-    }
-  }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.size;
-  final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
-
-  switch (resolvedDType) {
-    case DType.float64:
-      if (secure) {
-        v_secure_uniform_double(arr.pointer.cast<ffi.Double>(), len);
-      } else {
-        v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
-      }
-      final ptr = arr.pointer.cast<ffi.Double>();
-      for (var i = 0; i < len; i++) {
-        var u = ptr[i];
-        if (u >= 1.0) u = 0.9999999999999999;
-        ptr[i] = -targetScale * math.log(1.0 - u);
-      }
-    case DType.float32:
-      if (secure) {
-        v_secure_uniform_float(arr.pointer.cast<ffi.Float>(), len);
-      } else {
-        v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seedVal);
-      }
-      final ptr = arr.pointer.cast<ffi.Float>();
-      for (var i = 0; i < len; i++) {
-        var u = ptr[i];
-        if (u >= 1.0) u = 0.999999;
-        ptr[i] = -targetScale * math.log(1.0 - u);
-      }
-    default:
-      throw ArgumentError(
-        'exponential only supports floating point dtypes (float32/float64)',
-      );
-  }
-  return arr;
+  final seedVal = secure ? 0 : (seed ?? _nextDefaultSeed());
+  return _exponentialImpl(
+    shape,
+    scale: scale,
+    lam: lam,
+    dtype: dtype,
+    seedVal: seedVal,
+    out: out,
+    secure: secure,
+  );
 }
 
 /// Draws samples from a Poisson distribution.
@@ -377,19 +751,40 @@ NDArray<T> poisson<T extends num>(
     throw ArgumentError('lambda must be strictly positive (was $lam)');
   }
   final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
+  if (!identical(resolvedDType, DType.int64) &&
+      !identical(resolvedDType, DType.int32)) {
+    throw ArgumentError('poisson only supports integer dtypes (int32/int64)');
+  }
   if (out != null) {
-    if (!out.isContiguous) {
-      throw ArgumentError('out buffer must be contiguous.');
-    }
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.size;
   final seedVal = secure
       ? Random.secure().nextInt(4294967296)
       : (seed ?? Random().nextInt(4294967296));
+
+  if (out != null && !out.isContiguous) {
+    return NDArray.scope(() {
+      final temp = NDArray<T>.create(shape, resolvedDType);
+      final len = temp.size;
+      switch (resolvedDType) {
+        case DType.int64:
+          v_poisson_int64(temp.pointer.cast<ffi.Int64>(), len, lam, seedVal);
+        case DType.int32:
+          v_poisson_int32(temp.pointer.cast<ffi.Int32>(), len, lam, seedVal);
+        default:
+          throw ArgumentError(
+            'poisson only supports integer dtypes (int32/int64)',
+          );
+      }
+      temp.copy(out: out);
+      return out;
+    });
+  }
+
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final len = arr.size;
 
   switch (resolvedDType) {
     case DType.int64:
@@ -456,19 +851,40 @@ NDArray<T> binomial<T extends Object>(
     );
   }
   final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
+  if (!identical(resolvedDType, DType.int64) &&
+      !identical(resolvedDType, DType.int32)) {
+    throw ArgumentError('binomial only supports integer dtypes (int32/int64)');
+  }
   if (out != null) {
-    if (!out.isContiguous) {
-      throw ArgumentError('out buffer must be contiguous.');
-    }
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.size;
   final seedVal = secure
       ? Random.secure().nextInt(4294967296)
       : (seed ?? Random().nextInt(4294967296));
+
+  if (out != null && !out.isContiguous) {
+    return NDArray.scope(() {
+      final temp = NDArray<T>.create(shape, resolvedDType);
+      final len = temp.size;
+      switch (resolvedDType) {
+        case DType.int64:
+          v_binomial_int64(temp.pointer.cast<ffi.Int64>(), len, n, p, seedVal);
+        case DType.int32:
+          v_binomial_int32(temp.pointer.cast<ffi.Int32>(), len, n, p, seedVal);
+        default:
+          throw ArgumentError(
+            'binomial only supports integer dtypes (int32/int64)',
+          );
+      }
+      temp.copy(out: out);
+      return out;
+    });
+  }
+
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final len = arr.size;
 
   switch (resolvedDType) {
     case DType.int64:
@@ -588,16 +1004,24 @@ NDArray<T> multivariateNormal<T extends Object>(
     final lT = l.transpose();
 
     final z2D = z.reshape([sampleCount, d]);
-    final x2D =
-        out?.reshape([sampleCount, d]) ??
-        NDArray<T>.create([sampleCount, d], resolvedDType);
+    final bool useTempOut =
+        out != null &&
+        (!out.isContiguous ||
+            sharesMemory(mean, out) ||
+            sharesMemory(cov, out));
+    final target = (out == null || useTempOut)
+        ? NDArray<T>.create(finalShape, resolvedDType)
+        : out;
+    final x2D = target.reshape([sampleCount, d]);
     add(matmul(z2D, lT), mean, out: x2D);
 
     if (out != null) {
+      if (useTempOut) {
+        target.copy(out: out);
+      }
       return out;
     }
-    final result = x2D.reshape(finalShape);
-    return result.detachToParentScope();
+    return target.detachToParentScope();
   });
 }
 
@@ -665,6 +1089,9 @@ NDArray<T> multinomial<T extends num, P extends Object>(
   }
 
   final k = pvals.shape[0];
+  if (k == 0) {
+    throw ArgumentError.value(pvals.shape, 'pvals', 'pvals cannot be empty');
+  }
   final rand = secure
       ? Random.secure()
       : (seed != null ? Random(seed) : Random());
@@ -674,13 +1101,23 @@ NDArray<T> multinomial<T extends num, P extends Object>(
   for (var i = 0; i < k; i++) {
     final val = pvals.getCellFlat(i);
     final p = (val is num ? val : (val as dynamic).value as num).toDouble();
-    if (p < 0.0) {
-      throw ArgumentError(
-        'pvals must contain non-negative probabilities (was $p at index $i)',
+    if (p.isNaN || p < 0.0) {
+      throw ArgumentError.value(
+        p,
+        'pvals',
+        'Probabilities cannot be negative or NaN',
       );
     }
     sumP += p;
     cdf[i] = sumP;
+  }
+
+  if (sumP <= 0.0 || sumP.isNaN || sumP.isInfinite) {
+    throw ArgumentError.value(
+      sumP,
+      'pvals',
+      'Sum of probabilities must be positive',
+    );
   }
 
   if ((sumP - 1.0).abs() > 1e-3) {
@@ -688,6 +1125,7 @@ NDArray<T> multinomial<T extends num, P extends Object>(
       cdf[i] /= sumP;
     }
   }
+  cdf[k - 1] = 1.0;
 
   final sampleShape = <int>[];
   if (size != null) {
@@ -807,40 +1245,10 @@ NDArray<T> choice<T>(
   if (a.shape.length != 1) {
     throw ArgumentError('choice only supports 1-D input arrays.');
   }
-  if (p != null) {
-    if (p.isDisposed) {
-      throw StateError('Provided probability array p is disposed.');
-    }
-    if (p.shape.length != 1 || p.shape[0] != a.shape[0]) {
-      throw ArgumentError(
-        'Probability array p must be 1-D and match the size of a.',
-      );
-    }
-  }
-
   final sampleShape = size ?? <int>[];
   final sampleCount = sampleShape.isEmpty
       ? 1
       : sampleShape.reduce((x, y) => x * y);
-
-  if (a.size == 0) {
-    if (sampleCount > 0) {
-      throw ArgumentError(
-        'Cannot choose $sampleCount elements from an empty array.',
-      );
-    }
-    return out ?? NDArray<T>.create(sampleShape, a.dtype);
-  }
-
-  if (sampleCount == 0) {
-    return out ?? NDArray<T>.create(sampleShape, a.dtype);
-  }
-
-  if (!replace && sampleCount > a.size) {
-    throw ArgumentError(
-      'Cannot choose $sampleCount elements without replacement from an array of size ${a.size}.',
-    );
-  }
 
   if (out != null) {
     if (out.isDisposed) {
@@ -853,128 +1261,159 @@ NDArray<T> choice<T>(
     }
   }
 
+  double sumP = 0.0;
+  if (p != null) {
+    if (p.isDisposed) {
+      throw StateError('Provided probability array p is disposed.');
+    }
+    if (p.shape.length != 1 || p.shape[0] != a.shape[0]) {
+      throw ArgumentError(
+        'Probability array p must be 1-D and match the size of a.',
+      );
+    }
+    for (var i = 0; i < a.size; i++) {
+      final prob = p.getCellFlat(i).value;
+      if (prob < 0.0) {
+        throw ArgumentError(
+          'pvals must contain non-negative probabilities (was $prob at index $i)',
+        );
+      }
+      sumP += prob;
+    }
+    if (sumP <= 0.0) {
+      throw ArgumentError('probabilities do not sum to 1');
+    }
+  }
+
+  if (a.size == 0) {
+    if (sampleCount > 0) {
+      throw ArgumentError(
+        'Cannot choose $sampleCount elements from an empty array.',
+      );
+    }
+    return out ?? NDArray<T>.create(sampleShape, a.dtype);
+  }
+
+  if (!replace && sampleCount > a.size) {
+    throw ArgumentError(
+      'Cannot choose $sampleCount elements without replacement from an array of size ${a.size}.',
+    );
+  }
+
+  if (sampleCount == 0) {
+    return out ?? NDArray<T>.create(sampleShape, a.dtype);
+  }
+
   final seedVal = secure
       ? Random.secure().nextInt(4294967296)
       : (seed ?? Random().nextInt(4294967296));
 
-  final result1D = out != null
-      ? (out.shape.length == 1 && out.shape[0] == sampleCount
-            ? out
-            : out.reshape([sampleCount]))
-      : NDArray<T>.create([sampleCount], a.dtype);
+  return NDArray.scope(() {
+    final bool useTempOut =
+        out != null &&
+        (!out.isContiguous ||
+            sharesMemory(a, out) ||
+            (p != null && sharesMemory(p, out)));
+    final target = (out == null || useTempOut)
+        ? NDArray<T>.create(sampleShape, a.dtype)
+        : out;
+    final result1D = target.reshape([sampleCount]);
 
-  final srcPtr = ffi.Pointer<ffi.Void>.fromAddress(
-    a.pointer.address + a.offsetElements * a.dtype.byteWidth,
-  );
-  final destPtr = ffi.Pointer<ffi.Void>.fromAddress(
-    result1D.pointer.address +
-        result1D.offsetElements * result1D.dtype.byteWidth,
-  );
-  final srcStride = a.strides.isEmpty ? 1 : a.strides[0];
-  final destStride = result1D.strides.isEmpty ? 1 : result1D.strides[0];
+    final srcPtr = a.pointer.cast<ffi.Uint8>().cast<ffi.Void>();
+    final destPtr = result1D.pointer.cast<ffi.Uint8>().cast<ffi.Void>();
+    final srcStride = a.strides.isEmpty ? 1 : a.strides[0];
+    final destStride = result1D.strides.isEmpty ? 1 : result1D.strides[0];
 
-  if (p == null) {
-    if (replace) {
-      native_choice_uniform(
-        srcPtr,
-        srcStride,
-        destPtr,
-        destStride,
-        a.size,
-        sampleCount,
-        a.dtype.byteWidth,
-        seedVal,
-      );
-    } else {
-      native_choice_without_replacement(
-        srcPtr,
-        srcStride,
-        destPtr,
-        destStride,
-        a.size,
-        sampleCount,
-        a.dtype.byteWidth,
-        seedVal,
-      );
-    }
-  } else {
-    final marker = ScratchArena.marker;
-    try {
-      final nonNullP = p;
+    if (p == null) {
       if (replace) {
-        final cdfPtr = ScratchArena.allocate<ffi.Double>(
-          a.size * ffi.sizeOf<ffi.Double>(),
-        );
-        var sumP = 0.0;
-        for (var i = 0; i < a.size; i++) {
-          final prob = nonNullP.getCellFlat(i).value;
-          if (prob < 0.0) {
-            throw ArgumentError(
-              'pvals must contain non-negative probabilities (was $prob at index $i)',
-            );
-          }
-          sumP += prob;
-          cdfPtr[i] = sumP;
-        }
-        if ((sumP - 1.0).abs() > 1e-3) {
-          for (var i = 0; i < a.size; i++) {
-            cdfPtr[i] /= sumP;
-          }
-        }
-        native_choice_weighted(
+        native_choice_uniform(
           srcPtr,
           srcStride,
           destPtr,
           destStride,
-          cdfPtr,
           a.size,
           sampleCount,
           a.dtype.byteWidth,
           seedVal,
         );
       } else {
-        final probsPtr = ScratchArena.allocate<ffi.Double>(
-          a.size * ffi.sizeOf<ffi.Double>(),
-        );
-        var sumP = 0.0;
-        for (var i = 0; i < a.size; i++) {
-          final prob = nonNullP.getCellFlat(i).value;
-          if (prob < 0.0) {
-            throw ArgumentError(
-              'pvals must contain non-negative probabilities (was $prob at index $i)',
-            );
-          }
-          sumP += prob;
-          probsPtr[i] = prob;
-        }
-        if ((sumP - 1.0).abs() > 1e-3 && sumP > 0.0) {
-          for (var i = 0; i < a.size; i++) {
-            probsPtr[i] /= sumP;
-          }
-        }
-        native_choice_weighted_without_replacement(
+        native_choice_without_replacement(
           srcPtr,
           srcStride,
           destPtr,
           destStride,
-          probsPtr,
           a.size,
           sampleCount,
           a.dtype.byteWidth,
           seedVal,
         );
       }
-    } finally {
-      ScratchArena.reset(marker);
+    } else {
+      final marker = ScratchArena.marker;
+      try {
+        final nonNullP = p;
+        if (replace) {
+          final cdfPtr = ScratchArena.allocate<ffi.Double>(
+            a.size * ffi.sizeOf<ffi.Double>(),
+          );
+          var runningSum = 0.0;
+          for (var i = 0; i < a.size; i++) {
+            runningSum += nonNullP.getCellFlat(i).value;
+            cdfPtr[i] = runningSum;
+          }
+          if ((sumP - 1.0).abs() > 1e-3) {
+            for (var i = 0; i < a.size; i++) {
+              cdfPtr[i] /= sumP;
+            }
+          }
+          native_choice_weighted(
+            srcPtr,
+            srcStride,
+            destPtr,
+            destStride,
+            cdfPtr,
+            a.size,
+            sampleCount,
+            a.dtype.byteWidth,
+            seedVal,
+          );
+        } else {
+          final probsPtr = ScratchArena.allocate<ffi.Double>(
+            a.size * ffi.sizeOf<ffi.Double>(),
+          );
+          for (var i = 0; i < a.size; i++) {
+            probsPtr[i] = nonNullP.getCellFlat(i).value;
+          }
+          if ((sumP - 1.0).abs() > 1e-3 && sumP > 0.0) {
+            for (var i = 0; i < a.size; i++) {
+              probsPtr[i] /= sumP;
+            }
+          }
+          native_choice_weighted_without_replacement(
+            srcPtr,
+            srcStride,
+            destPtr,
+            destStride,
+            probsPtr,
+            a.size,
+            sampleCount,
+            a.dtype.byteWidth,
+            seedVal,
+          );
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
     }
-  }
 
-  if (out != null) return out;
-  return sampleShape.isEmpty
-      ? result1D.reshape([])
-      : (sampleShape.length == 1 && sampleShape[0] == sampleCount
-            ? result1D
-            : result1D.reshape(sampleShape));
+    if (out != null) {
+      if (useTempOut) {
+        target.copy(out: out);
+      }
+      return out;
+    }
+    return target.detachToParentScope();
+  });
 }
 
 /// Shuffles the array in-place along the first axis.
@@ -1009,9 +1448,7 @@ void shuffle<T extends Object>(NDArray<T> a, {int? seed, bool secure = false}) {
       ? Random.secure().nextInt(4294967296)
       : (seed ?? Random().nextInt(4294967296));
 
-  final ptr = ffi.Pointer<ffi.Void>.fromAddress(
-    a.pointer.address + a.offsetElements * a.dtype.byteWidth,
-  );
+  final ptr = a.pointer.cast<ffi.Uint8>().cast<ffi.Void>();
 
   if (a.shape.length == 1) {
     native_shuffle_1d(
@@ -1072,6 +1509,13 @@ NDArray<T> permutation<T extends Object>(
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
+  }
+  if (out != null && (!out.isContiguous || sharesMemory(a, out))) {
+    return NDArray.scope(() {
+      final temp = a.copy();
+      shuffle(temp, seed: seed, secure: secure);
+      return temp.copy(out: out);
+    });
   }
   final copyArr = a.copy(out: out);
   shuffle(copyArr, seed: seed, secure: secure);

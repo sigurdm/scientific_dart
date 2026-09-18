@@ -751,7 +751,7 @@ void main() {
               [4, 4],
               DType.float64,
             );
-            final res = hessenberg(a);
+            final res = hessenberg<Float64, Float64>(a);
             expect(res.h.shape, [4, 4]);
             expect(res.q.shape, [4, 4]);
 

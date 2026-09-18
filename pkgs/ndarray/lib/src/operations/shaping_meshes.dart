@@ -125,12 +125,9 @@ NDArray<T> asStrided<T>(NDArray<T> x, {List<int>? shape, List<int>? strides}) {
     );
   }
 
-  return NDArray<T>.view(
-    x,
-    shape: targetShape,
-    strides: targetStrides,
-    offsetElements: x.offsetElements,
-  );
+  checkTotalSize(targetShape);
+
+  return NDArray<T>.view(x, shape: targetShape, strides: targetStrides);
 }
 
 /// Returns an open multi-dimensional mesh-grid.

@@ -158,6 +158,8 @@ NDArray<T> broadcastTo<T>(NDArray<T> a, List<int> targetShape) {
     throw StateError('Cannot access a disposed NDArray.');
   }
 
+  checkTotalSize(targetShape);
+
   final shapeA = a.shape;
   final stridesA = a.strides;
 

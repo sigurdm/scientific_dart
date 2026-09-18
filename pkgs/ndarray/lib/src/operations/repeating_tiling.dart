@@ -2,7 +2,7 @@ import '../ndarray.dart';
 import '../ndarray_extensions_bindings.dart';
 import '../scratch_arena.dart';
 
-// Standalone operational relative cross-imports
+import 'helpers.dart';
 
 /// Repeats elements of an array.
 ///
@@ -13,9 +13,9 @@ import '../scratch_arena.dart';
 ///
 /// **Preconditions:**
 /// - If [axis] is specified, it must be within the range `[-rank, rank - 1]`.
-/// - [repeats] must be an `NDArray<int>`.
+/// - [repeats] must be an `int` or `List<int>`.
 /// - Its length must match the size of the
-///   dimension along [axis].
+///   dimension along [axis] (or be 1 / a scalar `int`).
 /// - All values in [repeats] must be non-negative ($\ge 0$).
 /// - If [out] is provided, it must have the correct shape and [DType] to store
 ///   the result.
@@ -39,38 +39,45 @@ import '../scratch_arena.dart';
 /// ```
 NDArray<T> repeat<T>(
   NDArray<T> a,
-  List<int> repeats, {
+  Object repeats, {
   int? axis,
   NDArray<T>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
-
-  NDArray<T> src = a;
-  int normAxis;
-  bool ownsSrc;
-
-  if (axis == null) {
-    src = a.flatten();
-    normAxis = 0;
-    ownsSrc = true;
-  } else {
-    final rank = a.rank;
-    if (axis < -rank || axis >= rank) {
-      throw RangeError.range(axis, -rank, rank - 1, 'axis');
-    }
-    normAxis = axis < 0 ? rank + axis : axis;
-    if (!a.isContiguous) {
-      src = a.copy();
-      ownsSrc = true;
-    } else {
-      ownsSrc = false;
-    }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot access a disposed out NDArray.');
   }
 
-  try {
-    List<int> repsList = repeats;
+  final List<int> rawRepeats;
+  if (repeats is int) {
+    rawRepeats = [repeats];
+  } else if (repeats is List<int>) {
+    rawRepeats = repeats;
+  } else {
+    throw ArgumentError('repeats must be an int or a List<int>');
+  }
+
+  return NDArray.scope(() {
+    NDArray<T> src = a;
+    int normAxis;
+
+    if (axis == null) {
+      src = a.flatten();
+      normAxis = 0;
+    } else {
+      final rank = a.rank;
+      if (axis < -rank || axis >= rank) {
+        throw RangeError.range(axis, -rank, rank - 1, 'axis');
+      }
+      normAxis = axis < 0 ? rank + axis : axis;
+      if (!a.isContiguous) {
+        src = a.copy();
+      }
+    }
+
+    List<int> repsList = rawRepeats;
     if (repsList.length == 1) {
       repsList = List<int>.filled(src.shape[normAxis], repsList[0]);
     }
@@ -90,11 +97,7 @@ NDArray<T> repeat<T>(
     final newDimSize = repsList.isEmpty ? 0 : repsList.reduce((x, y) => x + y);
     outputShape[normAxis] = newDimSize;
 
-    final NDArray<T> result;
     if (out != null) {
-      if (out.isDisposed) {
-        throw StateError('Cannot access a disposed out NDArray.');
-      }
       if (out.dtype != src.dtype) {
         throw ArgumentError('out buffer must have the same dtype as input');
       }
@@ -106,20 +109,26 @@ NDArray<T> repeat<T>(
           throw ArgumentError('out buffer shape must match output shape');
         }
       }
-      result = out;
-    } else {
-      result = NDArray<T>.create(outputShape, src.dtype);
     }
 
-    if (result.size == 0) {
-      return result;
+    final bool useTempOut =
+        out != null && (!out.isContiguous || sharesMemory(a, out));
+    final NDArray<T> target = (out != null && !useTempOut)
+        ? out
+        : NDArray<T>.create(outputShape, src.dtype);
+
+    if (target.size == 0) {
+      if (out != null) {
+        return out;
+      }
+      return target.detachToParentScope();
     }
 
-    final outer = src.shape.sublist(0, normAxis).fold<int>(1, (a, b) => a * b);
+    final outer = src.shape.sublist(0, normAxis).fold<int>(1, (x, y) => x * y);
     final dim = src.shape[normAxis];
-    final inner = src.shape.sublist(normAxis + 1).fold<int>(1, (a, b) => a * b);
+    final inner = src.shape.sublist(normAxis + 1).fold<int>(1, (x, y) => x * y);
 
-    final destDim = result.shape[normAxis];
+    final destDim = target.shape[normAxis];
 
     var destOffset = 0;
     for (var i = 0; i < dim; i++) {
@@ -138,7 +147,7 @@ NDArray<T> repeat<T>(
         );
 
         final destView = NDArray<T>.view(
-          result,
+          target,
           shape: [rep, inner],
           strides: [inner, 1],
           offsetElements: destStart,
@@ -149,12 +158,14 @@ NDArray<T> repeat<T>(
       destOffset += rep;
     }
 
-    return result;
-  } finally {
-    if (ownsSrc && !identical(src, a)) {
-      src.dispose();
+    if (out != null) {
+      if (useTempOut) {
+        target.copy(out: out);
+      }
+      return out;
     }
-  }
+    return target.detachToParentScope();
+  });
 }
 
 /// Constructs an array by repeating [a] the number of times given by [reps].
@@ -195,16 +206,17 @@ NDArray<T> tile<T extends Object>(
     throw StateError('Cannot access a disposed NDArray.');
   }
 
-  final bool hasNegative = reps.any((x) => x < 0);
+  final List<int> rawReps = reps;
+
+  final bool hasNegative = rawReps.any((x) => x < 0);
   if (hasNegative) {
     throw ArgumentError('reps values must be non-negative');
   }
 
-  NDArray<T> src = a;
-  bool ownsSrc = false;
-  List<int> tileReps = List<int>.from(reps);
+  return NDArray.scope(() {
+    NDArray<T> src = a;
+    List<int> tileReps = List<int>.from(rawReps);
 
-  try {
     // Align dimensions
     if (src.rank < tileReps.length) {
       final newShape = [
@@ -212,7 +224,6 @@ NDArray<T> tile<T extends Object>(
         ...src.shape,
       ];
       src = src.reshape(newShape);
-      ownsSrc = !identical(src, a);
     } else if (src.rank > tileReps.length) {
       tileReps = [
         ...List<int>.filled(src.rank - tileReps.length, 1),
@@ -225,7 +236,6 @@ NDArray<T> tile<T extends Object>(
       outputShape[i] = src.shape[i] * tileReps[i];
     }
 
-    final NDArray<T> result;
     if (out != null) {
       if (out.dtype != src.dtype) {
         throw ArgumentError('out buffer must have the same dtype as input');
@@ -238,13 +248,19 @@ NDArray<T> tile<T extends Object>(
           throw ArgumentError('out buffer shape must match output shape');
         }
       }
-      result = out;
-    } else {
-      result = NDArray<T>.create(outputShape, src.dtype);
     }
 
-    if (result.size == 0) {
-      return result;
+    final bool useTempOut =
+        out != null && (!out.isContiguous || sharesMemory(a, out));
+    final NDArray<T> target = (out != null && !useTempOut)
+        ? out
+        : NDArray<T>.create(outputShape, src.dtype);
+
+    if (target.size == 0) {
+      if (out != null) {
+        return out;
+      }
+      return target.detachToParentScope();
     }
 
     final rank = src.rank;
@@ -259,14 +275,20 @@ NDArray<T> tile<T extends Object>(
           src.pointer.cast(),
           cSrcShape,
           cReps,
-          result.pointer.cast(),
+          target.pointer.cast(),
           cOutShape,
           0,
         );
       } finally {
         ScratchArena.reset(marker);
       }
-      return result;
+      if (out != null) {
+        if (useTempOut) {
+          target.copy(out: out);
+        }
+        return out;
+      }
+      return target.detachToParentScope();
     }
 
     final marker = ScratchArena.marker;
@@ -275,41 +297,37 @@ NDArray<T> tile<T extends Object>(
       final cReps = ScratchArena.copyInt64s(tileReps);
       final cOutShape = ScratchArena.copyInt64s(outputShape);
 
-      if (src.isContiguous && result.isContiguous) {
+      if (src.isContiguous && target.isContiguous) {
         native_tile_contiguous(
           src.dtype.index,
           src.pointer.cast(),
           cSrcShape,
           cReps,
-          result.pointer.cast(),
+          target.pointer.cast(),
           cOutShape,
           rank,
         );
-      } else if (result.isContiguous) {
+      } else if (target.isContiguous) {
         final contigSrc = src.copy();
-        try {
-          native_tile_contiguous(
-            contigSrc.dtype.index,
-            contigSrc.pointer.cast(),
-            cSrcShape,
-            cReps,
-            result.pointer.cast(),
-            cOutShape,
-            rank,
-          );
-        } finally {
-          contigSrc.dispose();
-        }
+        native_tile_contiguous(
+          contigSrc.dtype.index,
+          contigSrc.pointer.cast(),
+          cSrcShape,
+          cReps,
+          target.pointer.cast(),
+          cOutShape,
+          rank,
+        );
       } else {
         final cSrcStrides = ScratchArena.copyInt64s(src.strides);
-        final cOutStrides = ScratchArena.copyInt64s(result.strides);
+        final cOutStrides = ScratchArena.copyInt64s(target.strides);
         native_tile_strided(
           src.dtype.index,
           src.pointer.cast(),
           cSrcShape,
           cSrcStrides,
           cReps,
-          result.pointer.cast(),
+          target.pointer.cast(),
           cOutShape,
           cOutStrides,
           rank,
@@ -319,10 +337,12 @@ NDArray<T> tile<T extends Object>(
       ScratchArena.reset(marker);
     }
 
-    return result;
-  } finally {
-    if (ownsSrc && !identical(src, a)) {
-      src.dispose();
+    if (out != null) {
+      if (useTempOut) {
+        target.copy(out: out);
+      }
+      return out;
     }
-  }
+    return target.detachToParentScope();
+  });
 }

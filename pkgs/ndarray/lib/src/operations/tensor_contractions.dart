@@ -9,14 +9,128 @@ import "linalg.dart";
 import "stats.dart";
 import "helpers.dart";
 
+NDArray _createRootArray(List<int> shape, DType dtype) => switch (dtype) {
+  DType.float64 => NDArray<Float64>.create(shape, DType.float64),
+  DType.float32 => NDArray<Float32>.create(shape, DType.float32),
+  DType.float16 => NDArray<Float16>.create(shape, DType.float16),
+  DType.bfloat16 => NDArray<BFloat16>.create(shape, DType.bfloat16),
+  DType.int64 => NDArray<Int64>.create(shape, DType.int64),
+  DType.int32 => NDArray<Int32>.create(shape, DType.int32),
+  DType.int16 => NDArray<Int16>.create(shape, DType.int16),
+  DType.int8 => NDArray<Int8>.create(shape, DType.int8),
+  DType.uint64 => NDArray<Uint64>.create(shape, DType.uint64),
+  DType.uint32 => NDArray<Uint32>.create(shape, DType.uint32),
+  DType.uint16 => NDArray<Uint16>.create(shape, DType.uint16),
+  DType.uint8 => NDArray<Uint8>.create(shape, DType.uint8),
+  DType.complex128 => NDArray<Complex128>.create(shape, DType.complex128),
+  DType.complex64 => NDArray<Complex64>.create(shape, DType.complex64),
+  DType.boolean => NDArray<bool>.create(shape, DType.boolean),
+};
+
+NDArray _createView(
+  NDArray parent,
+  List<int> shape,
+  List<int> strides,
+) => switch (parent.dtype) {
+  DType.float64 => NDArray<Float64>.view(
+    parent,
+    shape: shape,
+    strides: strides,
+  ),
+  DType.float32 => NDArray<Float32>.view(
+    parent,
+    shape: shape,
+    strides: strides,
+  ),
+  DType.float16 => NDArray<Float16>.view(
+    parent,
+    shape: shape,
+    strides: strides,
+  ),
+  DType.bfloat16 => NDArray<BFloat16>.view(
+    parent,
+    shape: shape,
+    strides: strides,
+  ),
+  DType.int64 => NDArray<Int64>.view(parent, shape: shape, strides: strides),
+  DType.int32 => NDArray<Int32>.view(parent, shape: shape, strides: strides),
+  DType.int16 => NDArray<Int16>.view(parent, shape: shape, strides: strides),
+  DType.int8 => NDArray<Int8>.view(parent, shape: shape, strides: strides),
+  DType.uint64 => NDArray<Uint64>.view(parent, shape: shape, strides: strides),
+  DType.uint32 => NDArray<Uint32>.view(parent, shape: shape, strides: strides),
+  DType.uint16 => NDArray<Uint16>.view(parent, shape: shape, strides: strides),
+  DType.uint8 => NDArray<Uint8>.view(parent, shape: shape, strides: strides),
+  DType.complex128 => NDArray<Complex128>.view(
+    parent,
+    shape: shape,
+    strides: strides,
+  ),
+  DType.complex64 => NDArray<Complex64>.view(
+    parent,
+    shape: shape,
+    strides: strides,
+  ),
+  DType.boolean => NDArray<bool>.view(parent, shape: shape, strides: strides),
+};
+
 NDArray<R> _asTyped<R>(NDArray arr) {
   if (arr is NDArray<R>) return arr;
-  return NDArray<R>.view(
-    arr as dynamic,
-    shape: arr.shape,
-    strides: arr.strides,
-    offsetElements: arr.offsetElements,
-  );
+  return _createView(arr, arr.shape, arr.strides) as NDArray<R>;
+}
+
+(int, int) _physicalByteSpan(NDArray x) {
+  if (x.size == 0) {
+    return (x.pointer.address, x.pointer.address);
+  }
+  var minElemOffset = 0;
+  var maxElemOffset = 0;
+  for (var d = 0; d < x.shape.length; d++) {
+    final stride = x.strides[d];
+    final size = x.shape[d];
+    if (stride > 0) {
+      maxElemOffset += (size - 1) * stride;
+    } else if (stride < 0) {
+      minElemOffset += (size - 1) * stride;
+    }
+  }
+  final byteWidth = x.dtype.byteWidth;
+  final startAddr = x.pointer.address + minElemOffset * byteWidth;
+  final endAddr = x.pointer.address + (maxElemOffset + 1) * byteWidth;
+  return (startAddr, endAddr);
+}
+
+bool _arraysOverlap(NDArray x, NDArray y) {
+  if (identical(x, y) || x.pointer.address == y.pointer.address) return true;
+  if (x.size == 0 || y.size == 0) return false;
+  final (startX, endX) = _physicalByteSpan(x);
+  final (startY, endY) = _physicalByteSpan(y);
+  return startX < endY && startY < endX;
+}
+
+NDArray<R> _returnFromScope<R>(
+  NDArray res,
+  List<NDArray> callerInputs, {
+  NDArray<R>? out,
+}) {
+  if (out != null) {
+    if (!identical(res, out)) {
+      res.copy(out: out);
+    }
+    return out;
+  }
+  final isCallerView = callerInputs.any((input) => _arraysOverlap(res, input));
+  if (isCallerView) {
+    if (res is NDArray<R> && res.isView) {
+      return res;
+    }
+    return _createView(res, res.shape, res.strides) as NDArray<R>;
+  }
+  if (!res.isView && res is NDArray<R>) {
+    return res.detachToParentScope();
+  }
+  final rootCopy = _createRootArray(res.shape, res.dtype) as NDArray<R>;
+  res.copy(out: rootCopy);
+  return rootCopy.detachToParentScope();
 }
 
 NDArray<T> _diagonalView<T>(NDArray<T> arr, int ax1, int ax2) {
@@ -252,10 +366,7 @@ NDArray<R> tensordot<Ta, Tb, R>(
         bView as NDArray<Object>,
         out: out,
       );
-      if (out == null) {
-        res.detachToParentScope();
-      }
-      return _asTyped<R>(res);
+      return _returnFromScope<R>(res, [a, b], out: out);
     });
   }
 
@@ -282,18 +393,18 @@ NDArray<R> tensordot<Ta, Tb, R>(
     }
   }
 
-  if (freeA.isEmpty && freeB.isEmpty) {
-    bool isSeq(List<int> axes) {
-      for (var i = 0; i < axes.length; i++) {
-        if (axes[i] != i) return false;
+  return NDArray.scope(() {
+    if (freeA.isEmpty && freeB.isEmpty) {
+      bool isSeq(List<int> axes) {
+        for (var i = 0; i < axes.length; i++) {
+          if (axes[i] != i) return false;
+        }
+        return true;
       }
-      return true;
-    }
 
-    final aToUse = a.dtype == targetDType ? a : castNDArray(a, targetDType);
-    final bToUse = b.dtype == targetDType ? b : castNDArray(b, targetDType);
+      final aToUse = a.dtype == targetDType ? a : castNDArray(a, targetDType);
+      final bToUse = b.dtype == targetDType ? b : castNDArray(b, targetDType);
 
-    try {
       if (aToUse.isContiguous &&
           bToUse.isContiguous &&
           isSeq(normAxesA) &&
@@ -307,11 +418,11 @@ NDArray<R> tensordot<Ta, Tb, R>(
             bToUse.pointer.cast<ffi.Double>(),
             1,
           );
-          if (out != null) {
-            out.pointer.cast<ffi.Double>()[0] = val;
-            return out;
-          }
-          return NDArray.scalar(val, dtype: DType.float64) as NDArray<R>;
+          return _returnFromScope<R>(
+            NDArray.scalar(val, dtype: DType.float64),
+            [a, b],
+            out: out,
+          );
         } else if (targetDType == DType.float32) {
           final val = cblas_sdot(
             n,
@@ -320,20 +431,15 @@ NDArray<R> tensordot<Ta, Tb, R>(
             bToUse.pointer.cast<ffi.Float>(),
             1,
           );
-          if (out != null) {
-            out.pointer.cast<ffi.Float>()[0] = val;
-            return out;
-          }
-          return NDArray.scalar(val, dtype: DType.float32) as NDArray<R>;
+          return _returnFromScope<R>(
+            NDArray.scalar(val, dtype: DType.float32),
+            [a, b],
+            out: out,
+          );
         }
       }
-    } finally {
-      if (aToUse != a) aToUse.dispose();
-      if (bToUse != b) bToUse.dispose();
     }
-  }
 
-  return NDArray.scope(() {
     final aPerm = a.transpose([...freeA, ...normAxesA]);
     final bPerm = b.transpose([...normAxesB, ...freeB]);
 
@@ -348,14 +454,11 @@ NDArray<R> tensordot<Ta, Tb, R>(
       a2D as NDArray<Object>,
       b2D as NDArray<Object>,
     );
-    final res = res2D.reshape(targetShape);
+    final res = listEquals(res2D.shape, targetShape)
+        ? res2D
+        : res2D.reshape(targetShape);
 
-    if (out != null) {
-      res.copy(out: out);
-      return out;
-    }
-    final resCopy = res.copy();
-    return _asTyped<R>(resCopy.detachToParentScope());
+    return _returnFromScope<R>(res, [a, b], out: out);
   });
 }
 
@@ -772,10 +875,8 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             "Provided out buffer has incompatible shape or dtype (expected shape ${res.shape} and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
           );
         }
-        res.copy(out: out);
-        return out;
       }
-      return _asTyped<R>(res.detachToParentScope());
+      return _returnFromScope<R>(res, operands, out: out);
     }
 
     if (operands.length == 2) {
@@ -800,88 +901,12 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             subA[1] == subB[0] &&
             subA[0] == finalOutSub[0] &&
             subB[1] == finalOutSub[1]) {
-          final opA = operands[0];
-          final opB = operands[1];
-          if (opA.isContiguous && opB.isContiguous) {
-            final m = opA.shape[0];
-            final k = opA.shape[1];
-            final n = opB.shape[1];
-            final targetDType = resolveDType(opA.dtype, opB.dtype);
-            if (opA.dtype == targetDType && opB.dtype == targetDType) {
-              if (targetDType == DType.float64) {
-                final NDArray<R> res;
-                if (out != null) {
-                  if (!listEquals(out.shape, [m, n]) ||
-                      out.dtype != targetDType ||
-                      !out.isContiguous) {
-                    throw ArgumentError(
-                      "Provided out buffer has incompatible shape, dtype, or is not contiguous.",
-                    );
-                  }
-                  res = out;
-                } else {
-                  res = NDArray<R>.create([m, n], DType.float64 as DType<R>);
-                }
-                cblas_dgemm(
-                  101,
-                  111,
-                  111,
-                  m,
-                  n,
-                  k,
-                  1.0,
-                  opA.pointer.cast<ffi.Double>(),
-                  k,
-                  opB.pointer.cast<ffi.Double>(),
-                  n,
-                  0.0,
-                  res.pointer.cast<ffi.Double>(),
-                  n,
-                );
-                if (out != null) return out;
-                return _asTyped<R>(res.detachToParentScope());
-              } else if (targetDType == DType.float32) {
-                final NDArray<R> res;
-                if (out != null) {
-                  if (!listEquals(out.shape, [m, n]) ||
-                      out.dtype != targetDType ||
-                      !out.isContiguous) {
-                    throw ArgumentError(
-                      "Provided out buffer has incompatible shape, dtype, or is not contiguous.",
-                    );
-                  }
-                  res = out;
-                } else {
-                  res = NDArray<R>.create([m, n], DType.float32 as DType<R>);
-                }
-                cblas_sgemm(
-                  101,
-                  111,
-                  111,
-                  m,
-                  n,
-                  k,
-                  1.0,
-                  opA.pointer.cast<ffi.Float>(),
-                  k,
-                  opB.pointer.cast<ffi.Float>(),
-                  n,
-                  0.0,
-                  res.pointer.cast<ffi.Float>(),
-                  n,
-                );
-                if (out != null) return out;
-                return _asTyped<R>(res.detachToParentScope());
-              }
-            }
-          }
           final res = matmul<Object, Object, R>(
             operands[0] as NDArray<Object>,
             operands[1] as NDArray<Object>,
             out: out,
           );
-          if (out != null) return out;
-          return _asTyped<R>(res.detachToParentScope());
+          return _returnFromScope<R>(res, operands, out: out);
         }
 
         if (subA.length == 3 &&
@@ -892,153 +917,24 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             subA[2] == subB[1] &&
             subA[1] == finalOutSub[1] &&
             subB[2] == finalOutSub[2]) {
-          final opA = operands[0];
-          final opB = operands[1];
-          if (opA.isContiguous && opB.isContiguous) {
-            final bCount = opA.shape[0];
-            final m = opA.shape[1];
-            final k = opA.shape[2];
-            final n = opB.shape[2];
-            final targetDType = resolveDType(opA.dtype, opB.dtype);
-            if (targetDType == DType.float64) {
-              final NDArray<R> res;
-              if (out != null) {
-                if (!listEquals(out.shape, [bCount, m, n]) ||
-                    out.dtype != targetDType ||
-                    !out.isContiguous) {
-                  throw ArgumentError(
-                    "Provided out buffer has incompatible shape, dtype, or is not contiguous.",
-                  );
-                }
-                res = out;
-              } else {
-                res = NDArray<R>.create([
-                  bCount,
-                  m,
-                  n,
-                ], DType.float64 as DType<R>);
-              }
-              final ptrA = opA.pointer.cast<ffi.Double>();
-              final ptrB = opB.pointer.cast<ffi.Double>();
-              final ptrRes = res.pointer.cast<ffi.Double>();
-              final strideA = m * k;
-              final strideB = k * n;
-              final strideRes = m * n;
-
-              for (var b = 0; b < bCount; b++) {
-                cblas_dgemm(
-                  101,
-                  111,
-                  111,
-                  m,
-                  n,
-                  k,
-                  1.0,
-                  ptrA + b * strideA,
-                  k,
-                  ptrB + b * strideB,
-                  n,
-                  0.0,
-                  ptrRes + b * strideRes,
-                  n,
-                );
-              }
-              if (out != null) return out;
-              return _asTyped<R>(res.detachToParentScope());
-            } else if (targetDType == DType.float32) {
-              final NDArray<R> res;
-              if (out != null) {
-                if (!listEquals(out.shape, [bCount, m, n]) ||
-                    out.dtype != targetDType ||
-                    !out.isContiguous) {
-                  throw ArgumentError(
-                    "Provided out buffer has incompatible shape, dtype, or is not contiguous.",
-                  );
-                }
-                res = out;
-              } else {
-                res = NDArray<R>.create([
-                  bCount,
-                  m,
-                  n,
-                ], DType.float32 as DType<R>);
-              }
-              final ptrA = opA.pointer.cast<ffi.Float>();
-              final ptrB = opB.pointer.cast<ffi.Float>();
-              final ptrRes = res.pointer.cast<ffi.Float>();
-              final strideA = m * k;
-              final strideB = k * n;
-              final strideRes = m * n;
-
-              for (var bIdx = 0; bIdx < bCount; bIdx++) {
-                cblas_sgemm(
-                  101,
-                  111,
-                  111,
-                  m,
-                  n,
-                  k,
-                  1.0,
-                  ptrA + bIdx * strideA,
-                  k,
-                  ptrB + bIdx * strideB,
-                  n,
-                  0.0,
-                  ptrRes + bIdx * strideRes,
-                  n,
-                );
-              }
-              if (out != null) return out;
-              return _asTyped<R>(res.detachToParentScope());
-            }
-          }
+          final res = matmul<Object, Object, R>(
+            operands[0] as NDArray<Object>,
+            operands[1] as NDArray<Object>,
+            out: out,
+          );
+          return _returnFromScope<R>(res, operands, out: out);
         }
 
         if (subA.length == 1 &&
             subB.length == 1 &&
             finalOutSub.isEmpty &&
             subA[0] == subB[0]) {
-          final opA = operands[0];
-          final opB = operands[1];
-          if (opA.isContiguous && opB.isContiguous) {
-            final len = opA.shape[0];
-            final targetDType = resolveDType(opA.dtype, opB.dtype);
-            if (targetDType == DType.float64) {
-              final NDArray<R> res;
-              if (out != null) {
-                res = out;
-              } else {
-                res = NDArray<R>.create([], DType.float64 as DType<R>);
-              }
-              final val = cblas_ddot(
-                len,
-                opA.pointer.cast<ffi.Double>(),
-                1,
-                opB.pointer.cast<ffi.Double>(),
-                1,
-              );
-              res.pointer.cast<ffi.Double>()[0] = val;
-              if (out != null) return out;
-              return _asTyped<R>(res.detachToParentScope());
-            } else if (targetDType == DType.float32) {
-              final NDArray<R> res;
-              if (out != null) {
-                res = out;
-              } else {
-                res = NDArray<R>.create([], DType.float32 as DType<R>);
-              }
-              final val = cblas_sdot(
-                len,
-                opA.pointer.cast<ffi.Float>(),
-                1,
-                opB.pointer.cast<ffi.Float>(),
-                1,
-              );
-              res.pointer.cast<ffi.Float>()[0] = val;
-              if (out != null) return out;
-              return _asTyped<R>(res.detachToParentScope());
-            }
-          }
+          final res = matmul<Object, Object, R>(
+            operands[0] as NDArray<Object>,
+            operands[1] as NDArray<Object>,
+            out: out,
+          );
+          return _returnFromScope<R>(res, operands, out: out);
         }
 
         if (subA.length == 1 &&
@@ -1053,8 +949,7 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             bRow as NDArray<Object>,
             out: out,
           );
-          if (out != null) return out;
-          return _asTyped<R>(res.detachToParentScope());
+          return _returnFromScope<R>(res, operands, out: out);
         }
 
         if (subA.length >= 3 &&
@@ -1072,93 +967,12 @@ NDArray<R> einsum<T extends Object, R extends Object>(
               subA[kBatch + 1] == subB[kBatch] &&
               subA[kBatch] == finalOutSub[kBatch] &&
               subB[kBatch + 1] == finalOutSub[kBatch + 1]) {
-            final opA = operands[0];
-            final opB = operands[1];
-            if (opA.isContiguous && opB.isContiguous) {
-              final batchShape = opA.shape.sublist(0, kBatch);
-              final bCount = batchShape.fold(1, (x, y) => x * y);
-              final m = opA.shape[kBatch];
-              final k = opA.shape[kBatch + 1];
-              final n = opB.shape[kBatch + 1];
-              final targetDType = resolveDType(opA.dtype, opB.dtype);
-              if (targetDType == DType.float64) {
-                final NDArray<R> res;
-                if (out != null) {
-                  res = out;
-                } else {
-                  res = NDArray<R>.create([
-                    ...batchShape,
-                    m,
-                    n,
-                  ], DType.float64 as DType<R>);
-                }
-                final ptrA = opA.pointer.cast<ffi.Double>();
-                final ptrB = opB.pointer.cast<ffi.Double>();
-                final ptrRes = res.pointer.cast<ffi.Double>();
-                final strideA = m * k;
-                final strideB = k * n;
-                final strideRes = m * n;
-
-                for (var bIdx = 0; bIdx < bCount; bIdx++) {
-                  cblas_dgemm(
-                    101,
-                    111,
-                    111,
-                    m,
-                    n,
-                    k,
-                    1.0,
-                    ptrA + bIdx * strideA,
-                    k,
-                    ptrB + bIdx * strideB,
-                    n,
-                    0.0,
-                    ptrRes + bIdx * strideRes,
-                    n,
-                  );
-                }
-                if (out != null) return out;
-                return _asTyped<R>(res.detachToParentScope());
-              } else if (targetDType == DType.float32) {
-                final NDArray<R> res;
-                if (out != null) {
-                  res = out;
-                } else {
-                  res = NDArray<R>.create([
-                    ...batchShape,
-                    m,
-                    n,
-                  ], DType.float32 as DType<R>);
-                }
-                final ptrA = opA.pointer.cast<ffi.Float>();
-                final ptrB = opB.pointer.cast<ffi.Float>();
-                final ptrRes = res.pointer.cast<ffi.Float>();
-                final strideA = m * k;
-                final strideB = k * n;
-                final strideRes = m * n;
-
-                for (var bIdx = 0; bIdx < bCount; bIdx++) {
-                  cblas_sgemm(
-                    101,
-                    111,
-                    111,
-                    m,
-                    n,
-                    k,
-                    1.0,
-                    ptrA + bIdx * strideA,
-                    k,
-                    ptrB + bIdx * strideB,
-                    n,
-                    0.0,
-                    ptrRes + bIdx * strideRes,
-                    n,
-                  );
-                }
-                if (out != null) return out;
-                return _asTyped<R>(res.detachToParentScope());
-              }
-            }
+            final res = matmul<Object, Object, R>(
+              operands[0] as NDArray<Object>,
+              operands[1] as NDArray<Object>,
+              out: out,
+            );
+            return _returnFromScope<R>(res, operands, out: out);
           }
         }
 
@@ -1234,99 +1048,22 @@ NDArray<R> einsum<T extends Object, R extends Object>(
 
             final NDArray a3D;
             if (isIdentityA && operands[0].isContiguous) {
-              a3D = operands[0];
+              a3D = operands[0].reshape([numBatch, m, k]);
             } else {
               a3D = operands[0].transpose(permA).reshape([numBatch, m, k]);
             }
 
             final NDArray b3D;
             if (isIdentityB && operands[1].isContiguous) {
-              b3D = operands[1];
+              b3D = operands[1].reshape([numBatch, k, n]);
             } else {
               b3D = operands[1].transpose(permB).reshape([numBatch, k, n]);
             }
 
-            final targetDType = resolveDType(
-              operands[0].dtype,
-              operands[1].dtype,
+            final res3D = matmul<Object, Object, R>(
+              a3D as NDArray<Object>,
+              b3D as NDArray<Object>,
             );
-            final res3D = NDArray<R>.create([
-              numBatch,
-              m,
-              n,
-            ], targetDType as DType<R>);
-
-            if (a3D.isContiguous &&
-                b3D.isContiguous &&
-                res3D.isContiguous &&
-                targetDType == DType.float64) {
-              final ptrA = a3D.pointer.cast<ffi.Double>();
-              final ptrB = b3D.pointer.cast<ffi.Double>();
-              final ptrRes = res3D.pointer.cast<ffi.Double>();
-              final strideA = m * k;
-              final strideB = k * n;
-              final strideRes = m * n;
-
-              for (var bIdx = 0; bIdx < numBatch; bIdx++) {
-                cblas_dgemm(
-                  101,
-                  111,
-                  111,
-                  m,
-                  n,
-                  k,
-                  1.0,
-                  ptrA + bIdx * strideA,
-                  k,
-                  ptrB + bIdx * strideB,
-                  n,
-                  0.0,
-                  ptrRes + bIdx * strideRes,
-                  n,
-                );
-              }
-            } else if (a3D.isContiguous &&
-                b3D.isContiguous &&
-                res3D.isContiguous &&
-                targetDType == DType.float32) {
-              final ptrA = a3D.pointer.cast<ffi.Float>();
-              final ptrB = b3D.pointer.cast<ffi.Float>();
-              final ptrRes = res3D.pointer.cast<ffi.Float>();
-              final strideA = m * k;
-              final strideB = k * n;
-              final strideRes = m * n;
-
-              for (var bIdx = 0; bIdx < numBatch; bIdx++) {
-                cblas_sgemm(
-                  101,
-                  111,
-                  111,
-                  m,
-                  n,
-                  k,
-                  1.0,
-                  ptrA + bIdx * strideA,
-                  k,
-                  ptrB + bIdx * strideB,
-                  n,
-                  0.0,
-                  ptrRes + bIdx * strideRes,
-                  n,
-                );
-              }
-            } else {
-              for (var bIdx = 0; bIdx < numBatch; bIdx++) {
-                final aSlice = a3D.slice([Index(bIdx)]);
-                final bSlice = b3D.slice([Index(bIdx)]);
-                final resSlice = res3D.slice([Index(bIdx)]);
-
-                matmul<dynamic, dynamic, dynamic>(
-                  aSlice,
-                  bSlice,
-                  out: resSlice,
-                );
-              }
-            }
 
             final freeAShapes = freeA.map((id) => labelSizes[id]!);
             final freeBShapes = freeB.map((id) => labelSizes[id]!);
@@ -1335,7 +1072,9 @@ NDArray<R> einsum<T extends Object, R extends Object>(
               ...freeAShapes,
               ...freeBShapes,
             ];
-            final resBatch = res3D.reshape(targetUnpermutedShape);
+            final resBatch = listEquals(res3D.shape, targetUnpermutedShape)
+                ? res3D
+                : res3D.reshape(targetUnpermutedShape);
 
             fast2OpResIds = [...batch, ...freeA, ...freeB];
             fast2OpRes = resBatch;
@@ -1359,11 +1098,8 @@ NDArray<R> einsum<T extends Object, R extends Object>(
                 "Provided out buffer has incompatible shape or dtype (expected shape ${finalRes.shape} and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
               );
             }
-            finalRes.copy(out: out);
-            return out;
           }
-          final resCopy = finalRes.copy();
-          return _asTyped<R>(resCopy.detachToParentScope());
+          return _returnFromScope<R>(finalRes, operands, out: out);
         }
       }
     }
@@ -1454,8 +1190,7 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             currentOps[0] as NDArray<Object>,
             currentOps[1] as NDArray<Object>,
           ], out: out);
-          if (out != null) return out;
-          return _asTyped<R>(finalRes.detachToParentScope());
+          return _returnFromScope<R>(finalRes, operands, out: out);
         }
       } finally {
         for (final temp in toDispose) {
@@ -1536,10 +1271,8 @@ NDArray<R> einsum<T extends Object, R extends Object>(
           "Provided out buffer has incompatible shape or dtype (expected shape ${combined.shape} and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
         );
       }
-      combined.copy(out: out);
-      return out;
     }
-    return _asTyped<R>(combined.detachToParentScope());
+    return _returnFromScope<R>(combined, operands, out: out);
   });
 }
 
@@ -1550,24 +1283,23 @@ NDArray<R> einsum<T extends Object, R extends Object>(
 ///
 /// **Preconditions:**
 /// - Neither [a] nor [b] may be disposed.
-/// - If both [a] and [b] have rank $\\ge 1$, the size of their last dimension must match: `a.shape.last == b.shape.last`.
+/// - If both [a] and [b] have rank $\ge 1$, the size of their last dimension must match: `a.shape.last == b.shape.last`.
 /// - If [out] is provided, it must not be disposed, and its shape and dtype must match the expected result.
 ///
 /// **Throws:**
 /// - [StateError] if [a], [b], or [out] is disposed.
-/// - [ArgumentError] if the last dimensions of [a] and [b] do not match (for rank $\\ge 1$).
+/// - [ArgumentError] if the last dimensions of [a] and [b] do not match (for rank $\ge 1$).
 /// - [ArgumentError] if [out] has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
-/// - When [a] and [b] are 1-D vectors, delegates to BLAS dot product ($O(N)$ flops).
-/// - When [a] and [b] are 2-D or higher tensors, delegates to [tensordot] contracting over the last axes ($O(N^3)$ flops).
+/// - Internally delegates to [matmul] with reshaped/transposed views.
 ///
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-/// final b = NDArray.fromList([4.0, 5.0, 6.0], [3], DType.float64);
+/// final b = NDArray.fromList([0.0, 1.0, 0.0], [3], DType.float64);
 /// final res = inner(a, b);
-/// print(res.scalar); // 32.0
+/// print(res.scalar); // 2.0
 /// ```
 ///
 /// Reference: [NumPy inner](https://numpy.org/doc/stable/reference/generated/numpy.inner.html)
@@ -1580,43 +1312,57 @@ NDArray<R> inner<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   }
 
   if (a.rank == 0 || b.rank == 0) {
-    return multiply<Ta, Tb, R>(a, b, out: out);
+    return NDArray.scope(() {
+      final res = multiply<Object, Object, R>(
+        a as NDArray<Object>,
+        b as NDArray<Object>,
+        out: out,
+      );
+      return _returnFromScope<R>(res, [a, b], out: out);
+    });
   }
 
   if (a.shape.last != b.shape.last) {
     throw ArgumentError(
-      "Cannot compute inner: last dimension of operand A (${a.shape.last}) "
-      "does not match last dimension of operand B (${b.shape.last}). Shapes: ${a.shape} and ${b.shape}",
+      "Dimension mismatch for inner: last dimension of a (${a.shape.last}) != last dimension of b (${b.shape.last}).",
     );
   }
 
   return tensordot<Ta, Tb, R>(
     a,
     b,
-    axes: TensordotAxes.explicit([a.rank - 1], [b.rank - 1]),
+    axes: TensordotAxes.pair(a.rank - 1, b.rank - 1),
     out: out,
   );
 }
 
-/// Computes the dot product of two vectors (handling complex conjugates).
+/// Return the dot product of two vectors, flattening higher-dimensional arrays.
 ///
-/// The [vdot] function flattens multidimensional array arguments to 1-D vectors first.
-/// If the first argument [a] is complex, its complex conjugate is used for the dot product ($\\sum_i \\bar{a}_i b_i$).
+/// The [vdot] function handles complex numbers differently than `dot`: if the first argument
+/// [a] is complex, it is replaced by its complex conjugate before the dot product is computed.
+/// Higher-dimensional arrays are flattened to 1-D vectors before computing the dot product.
 ///
 /// **Preconditions:**
-/// - It is an error if [a], [b], or [out] is disposed.
-/// - It is an error if operands [a] and [b] do not have the exact same total number of elements (`a.size != b.size`).
-/// - It is an error if [out] has incompatible shape or dtype (must be 0-D `[]` with matching dtype).
+/// - Neither [a] nor [b] may be disposed.
+/// - The total number of elements in [a] and [b] (`a.size` and `b.size`) must be equal.
+/// - If [out] is provided, it must not be disposed, and its shape must be `[]` (0-D scalar) with matching dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a], [b], or [out] is disposed.
+/// - [ArgumentError] if `a.size != b.size`.
+/// - [ArgumentError] if [out] has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
-/// - Flattens without memory copying via [reshape].
-/// - Evaluates with high-performance BLAS level 1 dot product routines ($O(N)$ flops).
+/// - Flattening is zero-copy when operands are contiguous.
+/// - Delegates to BLAS dot product kernels via [matmul].
 ///
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([Complex(1, 2), Complex(3, 4)], [2], DType.complex128);
-/// final b = NDArray.fromList([Complex(1, -2), Complex(3, -4)], [2], DType.complex128);
+/// final b = NDArray.fromList([Complex(5, 6), Complex(7, 8)], [2], DType.complex128);
 /// final res = vdot(a, b);
+/// // (1 - 2i)*(5 + 6i) + (3 - 4i)*(7 + 8i) = (17 - 4i) + (53 - 4i) = 70 - 8i
+/// print(res.scalar); // 70.0 - 8.0i
 /// ```
 ///
 /// Reference: [NumPy vdot](https://numpy.org/doc/stable/reference/generated/numpy.vdot.html)
@@ -1642,10 +1388,7 @@ NDArray<R> vdot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       flatB as NDArray<Object>,
       out: out,
     );
-    if (out == null) {
-      res.detachToParentScope();
-    }
-    return res;
+    return _returnFromScope<R>(res, [a, b], out: out);
   });
 }
 
@@ -1680,17 +1423,13 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   final maxRank = math.max(rankA, rankB);
 
   final paddedShapeA = List<int>.filled(maxRank, 1);
-  final paddedStridesA = List<int>.filled(maxRank, 0);
   for (var i = 0; i < rankA; i++) {
     paddedShapeA[maxRank - rankA + i] = a.shape[i];
-    paddedStridesA[maxRank - rankA + i] = a.strides[i];
   }
 
   final paddedShapeB = List<int>.filled(maxRank, 1);
-  final paddedStridesB = List<int>.filled(maxRank, 0);
   for (var i = 0; i < rankB; i++) {
     paddedShapeB[maxRank - rankB + i] = b.shape[i];
-    paddedStridesB[maxRank - rankB + i] = b.strides[i];
   }
 
   final expectedShape = List<int>.filled(maxRank, 0);
@@ -1706,13 +1445,38 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     );
   }
 
-  final result =
-      out ?? NDArray<R>.create(expectedShape, targetDType as DType<R>);
+  return NDArray.scope(() {
+    var aCast = a.dtype == targetDType ? a : castNDArray(a, targetDType);
+    if (aCast.strides.any((s) => s < 0)) {
+      aCast = aCast.copy();
+    }
 
-  final aCast = castNDArray(a, targetDType);
-  final bCast = castNDArray(b, targetDType);
+    var bCast = b.dtype == targetDType ? b : castNDArray(b, targetDType);
+    if (bCast.strides.any((s) => s < 0)) {
+      bCast = bCast.copy();
+    }
 
-  try {
+    final paddedStridesA = List<int>.filled(maxRank, 0);
+    for (var i = 0; i < rankA; i++) {
+      paddedStridesA[maxRank - rankA + i] = aCast.strides[i];
+    }
+
+    final paddedStridesB = List<int>.filled(maxRank, 0);
+    for (var i = 0; i < rankB; i++) {
+      paddedStridesB[maxRank - rankB + i] = bCast.strides[i];
+    }
+
+    final bool needTempOut =
+        out != null &&
+        (out.strides.any((s) => s < 0) ||
+            _arraysOverlap(out, a) ||
+            _arraysOverlap(out, b) ||
+            _arraysOverlap(out, aCast) ||
+            _arraysOverlap(out, bCast));
+    final result = (out == null || needTempOut)
+        ? _createRootArray(expectedShape, targetDType) as NDArray<R>
+        : out;
+
     if (maxRank <= 2) {
       final m = maxRank >= 2 ? paddedShapeA[0] : 1;
       final n = maxRank >= 1 ? paddedShapeA[maxRank - 1] : 1;
@@ -1745,35 +1509,35 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       );
     } else {
       final marker = ScratchArena.marker;
-      final cStridesA = ScratchArena.allocate<ffi.Int>(
-        maxRank * ffi.sizeOf<ffi.Int>(),
-      );
-      final cShapeA = ScratchArena.allocate<ffi.Int>(
-        maxRank * ffi.sizeOf<ffi.Int>(),
-      );
-      final cStridesB = ScratchArena.allocate<ffi.Int>(
-        maxRank * ffi.sizeOf<ffi.Int>(),
-      );
-      final cShapeB = ScratchArena.allocate<ffi.Int>(
-        maxRank * ffi.sizeOf<ffi.Int>(),
-      );
-      final cStridesRes = ScratchArena.allocate<ffi.Int>(
-        maxRank * ffi.sizeOf<ffi.Int>(),
-      );
-      final cShapeRes = ScratchArena.allocate<ffi.Int>(
-        maxRank * ffi.sizeOf<ffi.Int>(),
-      );
-
-      for (var i = 0; i < maxRank; i++) {
-        cStridesA[i] = paddedStridesA[i];
-        cShapeA[i] = paddedShapeA[i];
-        cStridesB[i] = paddedStridesB[i];
-        cShapeB[i] = paddedShapeB[i];
-        cStridesRes[i] = result.strides[i];
-        cShapeRes[i] = result.shape[i];
-      }
-
       try {
+        final cStridesA = ScratchArena.allocate<ffi.Int>(
+          maxRank * ffi.sizeOf<ffi.Int>(),
+        );
+        final cShapeA = ScratchArena.allocate<ffi.Int>(
+          maxRank * ffi.sizeOf<ffi.Int>(),
+        );
+        final cStridesB = ScratchArena.allocate<ffi.Int>(
+          maxRank * ffi.sizeOf<ffi.Int>(),
+        );
+        final cShapeB = ScratchArena.allocate<ffi.Int>(
+          maxRank * ffi.sizeOf<ffi.Int>(),
+        );
+        final cStridesRes = ScratchArena.allocate<ffi.Int>(
+          maxRank * ffi.sizeOf<ffi.Int>(),
+        );
+        final cShapeRes = ScratchArena.allocate<ffi.Int>(
+          maxRank * ffi.sizeOf<ffi.Int>(),
+        );
+
+        for (var i = 0; i < maxRank; i++) {
+          cStridesA[i] = paddedStridesA[i];
+          cShapeA[i] = paddedShapeA[i];
+          cStridesB[i] = paddedStridesB[i];
+          cShapeB[i] = paddedShapeB[i];
+          cStridesRes[i] = result.strides[i];
+          cShapeRes[i] = result.shape[i];
+        }
+
         native_kron_nd(
           encodeDType(targetDType),
           aCast.pointer.cast(),
@@ -1791,10 +1555,15 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         ScratchArena.reset(marker);
       }
     }
-  } finally {
-    if (aCast != a) aCast.dispose();
-    if (bCast != b) bCast.dispose();
-  }
 
-  return result;
+    if (needTempOut) {
+      result.copy(out: out);
+      return out;
+    }
+
+    if (out == null) {
+      result.detachToParentScope();
+    }
+    return result;
+  });
 }

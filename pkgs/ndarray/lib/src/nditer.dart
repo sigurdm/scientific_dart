@@ -201,6 +201,11 @@ final class NDIter {
     List<int> strides,
     List<int> targetShape,
   ) {
+    if (shape.length > targetShape.length) {
+      throw ArgumentError(
+        'Cannot broadcast shape $shape to targetShape $targetShape',
+      );
+    }
     final newStrides = List<int>.filled(targetShape.length, 0);
     for (var i = 0; i < shape.length; i++) {
       final targetDimIdx = targetShape.length - 1 - i;

@@ -25,6 +25,29 @@ void _dcopy(int n, ffi.Pointer<ffi.Double> src, ffi.Pointer<ffi.Double> dest) {
   }
 }
 
+void _copyArrayToPointer(
+  int n,
+  NDArray<Float64> arr,
+  ffi.Pointer<ffi.Double> dest,
+) {
+  if (arr.isContiguous) {
+    _dcopy(n, arr.pointer.cast<ffi.Double>(), dest);
+  } else if (arr.rank == 1) {
+    final stride = arr.strides[0];
+    final ptr = arr.pointer.cast<ffi.Double>();
+    for (var i = 0; i < n; i++) {
+      dest[i] = ptr[i * stride];
+    }
+  } else {
+    final contig = arr.copy();
+    try {
+      _dcopy(n, contig.pointer.cast<ffi.Double>(), dest);
+    } finally {
+      contig.dispose();
+    }
+  }
+}
+
 double _ddot(int n, ffi.Pointer<ffi.Double> x, ffi.Pointer<ffi.Double> y) {
   var sum = 0.0;
   for (var i = 0; i < n; i++) {
@@ -157,7 +180,7 @@ RootScalarResult brentq(
     );
   }
 
-  if (fa.isNaN || fb.isNaN || fa * fb > 0) {
+  if (fa.isNaN || fb.isNaN || (fa > 0.0) == (fb > 0.0)) {
     throw ArgumentError(
       'f(a) and f(b) must have different signs. Got f(a)=$fa, f(b)=$fb.',
     );
@@ -179,7 +202,7 @@ RootScalarResult brentq(
       );
     }
 
-    if ((fb > 0 && fc > 0) || (fb < 0 && fc < 0)) {
+    if ((fb > 0.0) == (fc > 0.0)) {
       c = a;
       fc = fa;
       d = b - a;
@@ -424,7 +447,13 @@ RootScalarResult root_scalar(
       if (x0 == null) {
         throw ArgumentError('$method requires initial guess x0.');
       }
-      return newton(f, x0, fprime: fprime, tol: tol, maxiter: maxiter);
+      return newton(
+        f,
+        x0,
+        fprime: method == RootMethod.newton ? fprime : null,
+        tol: tol,
+        maxiter: maxiter,
+      );
   }
 }
 
@@ -486,8 +515,7 @@ OptimizeResult nelder_mead(
       final pXE = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
       final pXC = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
 
-      final x0Ptr = x0.pointer.cast<ffi.Double>();
-      _dcopy(n, x0Ptr, pSim[0]);
+      _copyArrayToPointer(n, x0, pSim[0]);
 
       for (int i = 0; i < n; i++) {
         _dcopy(n, pSim[0], pSim[i + 1]);
@@ -694,7 +722,6 @@ OptimizeResult lbfgs(
     final n = x0.shape[0];
     final doubleBytes = ffi.sizeOf<ffi.Double>();
     final arenaMarker = ScratchArena.marker;
-
     try {
       final pXCurr = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
       final pGCurr = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
@@ -724,13 +751,13 @@ OptimizeResult lbfgs(
         if (funAndGrad != null) {
           final (fVal, gArr) = funAndGrad(xArr);
           nfev++;
-          _dcopy(n, gArr.pointer.cast<ffi.Double>(), pGOut);
+          _copyArrayToPointer(n, gArr, pGOut);
           return (fVal, pGOut);
         } else if (jac != null) {
           final fVal = fun(xArr);
           nfev++;
           final gArr = jac(xArr);
-          _dcopy(n, gArr.pointer.cast<ffi.Double>(), pGOut);
+          _copyArrayToPointer(n, gArr, pGOut);
           return (fVal, pGOut);
         } else {
           final fVal = fun(xArr);
@@ -753,7 +780,7 @@ OptimizeResult lbfgs(
         }
       }
 
-      _dcopy(n, x0.pointer.cast<ffi.Double>(), pXCurr);
+      _copyArrayToPointer(n, x0, pXCurr);
       var (fCurr, _) = evalFunAndGrad(pXCurr, pGCurr);
 
       final pSHist = <ffi.Pointer<ffi.Double>>[];

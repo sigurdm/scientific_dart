@@ -902,7 +902,9 @@ void main() {
 
           final nNuc = norm(m, ord: 'nuc');
           final svdRes = svd(m);
-          final expectedNuc = svdRes.s.toList().reduce((a, b) => a + b);
+          final expectedNuc = svdRes.s.toList().reduce(
+            (a, b) => Float64(a + b),
+          );
           expect(nNuc.scalar, closeTo(expectedNuc, 1e-5));
           svdRes.dispose();
 

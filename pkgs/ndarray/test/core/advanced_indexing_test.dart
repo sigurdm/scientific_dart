@@ -187,11 +187,13 @@ void main() {
         );
 
         test(
-          'Integer array mask of same shape for operator[] throws ArgumentError',
+          'Integer array selector of same shape for operator[] performs fancy indexing',
           () => NDArray.scope(() {
-            final a = NDArray.fromList([1, 2], [2], DType.int32);
-            final mask = NDArray.fromList([1, 0], [2], DType.int32);
-            expect(() => a[mask], throwsArgumentError);
+            final a = NDArray.fromList([10, 20], [2], DType.int32);
+            final indices = NDArray.fromList([1, 0], [2], DType.int32);
+            final res = a[indices];
+            expect(res.shape, [2]);
+            expect(res.toList(), [20, 10]);
           }),
         );
 
@@ -277,11 +279,12 @@ void main() {
         );
 
         test(
-          'Integer array mask of same shape for operator[]= throws ArgumentError',
+          'Integer array selector of same shape for operator[]= performs fancy index assignment',
           () => NDArray.scope(() {
             final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-            final mask = NDArray.fromList([1, 0], [2], DType.int32);
-            expect(() => a[mask] = 99.0, throwsArgumentError);
+            final indices = NDArray.fromList([1, 0], [2], DType.int32);
+            a[indices] = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+            expect(a.toList(), [20.0, 10.0]);
           }),
         );
 
@@ -384,6 +387,42 @@ void main() {
           () => parent.setIndices(indices, insufficientValues, axis: 0),
           throwsArgumentError,
         );
+      }),
+    );
+
+    test(
+      'flatten disposed check, INT32_MAX view checks, and asStrided root physical bounds',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+        final sliceView = a.slice([
+          Slice(start: 1, stop: 3),
+        ]); // length 2 view into length 4 root
+
+        // asStrided on sliceView can access up to root physical bounds (offset 1 + 2 = 3 < 4)
+        final strided = asStrided(sliceView, shape: [3], strides: [1]);
+        expect(strided.toList(), [2.0, 3.0, 4.0]);
+
+        // Exceeding root physical bounds throws RangeError
+        expect(
+          () => asStrided(sliceView, shape: [4], strides: [1]),
+          throwsRangeError,
+        );
+
+        // INT32_MAX overflow checks
+        expect(
+          () => NDArray.view(a, shape: [65536, 65536], strides: [0, 0]),
+          throwsUnsupportedError,
+        );
+        expect(() => broadcastTo(a, [65536, 65536]), throwsUnsupportedError);
+        expect(
+          () => asStrided(a, shape: [65536, 65536], strides: [0, 0]),
+          throwsUnsupportedError,
+        );
+
+        // flatten on disposed array throws StateError
+        final temp = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        temp.dispose();
+        expect(() => temp.flatten(), throwsStateError);
       }),
     );
   });

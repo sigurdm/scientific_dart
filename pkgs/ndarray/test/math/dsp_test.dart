@@ -100,10 +100,26 @@ void main() {
       });
     });
 
-    test('invalid type', () {
+    test('invalid type and real/integer support', () {
       NDArray.scope(() {
-        final a = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
-        expect(() => angle(a as dynamic), throwsArgumentError);
+        final boolArray = NDArray<bool>.fromList(
+          [true, false],
+          [2],
+          DType.boolean,
+        );
+        expect(() => angle(boolArray as dynamic), throwsArgumentError);
+
+        final f64 = NDArray<Float64>.fromList([1.0, -2.0], [2], DType.float64);
+        final resF64 = angle(f64);
+        expect(resF64.dtype, DType.float64);
+        expect(resF64.getCell([0]), closeTo(0.0, 1e-9));
+        expect(resF64.getCell([1]), closeTo(math.pi, 1e-9));
+
+        final i32 = NDArray<Int32>.fromList([1, -1], [2], DType.int32);
+        final resI32 = angle(i32);
+        expect(resI32.dtype, DType.float64);
+        expect(resI32.getCell([0]), closeTo(0.0, 1e-9));
+        expect(resI32.getCell([1]), closeTo(math.pi, 1e-9));
       });
     });
   });

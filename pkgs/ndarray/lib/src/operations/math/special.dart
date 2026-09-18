@@ -47,13 +47,11 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   // Handle integer and boolean types by promoting to float64 (double)
   if (a.dtype.isInteger || a.dtype == DType.boolean) {
     final promoted = promoteToDouble(a);
-    final res = i0<double, double>(
-      promoted,
-      where: where,
-      out: out as NDArray<double>?,
-    );
-    promoted.dispose();
-    return res as NDArray<R>;
+    try {
+      return i0<Float64, R>(promoted, where: where, out: out);
+    } finally {
+      promoted.dispose();
+    }
   }
 
   final DType<R> targetDType = switch (a.dtype) {
@@ -62,20 +60,19 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
     _ => DType.float64 as DType<R>,
   };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for i0.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType);
   }
 
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
   try {
+    final NDArray<R> result =
+        out ?? NDArray.create(a.shape, targetDType, zeroInit: where != null);
+
     void dispatchContiguous(NDArray src, NDArray dest) {
       switch (src.dtype) {
         case DType.float64:
@@ -120,10 +117,10 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
     void dispatchStrided(NDArray src, NDArray dest) {
       final rank = src.shape.length;
       final marker = ScratchArena.marker;
-      final cShape = ScratchArena.copyInts(src.shape);
-      final cStridesSrc = ScratchArena.copyInts(src.strides);
-      final cStridesDest = ScratchArena.copyInts(dest.strides);
       try {
+        final cShape = ScratchArena.copyInts(src.shape);
+        final cStridesSrc = ScratchArena.copyInts(src.strides);
+        final cStridesDest = ScratchArena.copyInts(dest.strides);
         switch (src.dtype) {
           case DType.float64:
             s_i0_double(
@@ -183,22 +180,30 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       dispatchContiguous(a, result);
     } else {
       final rank = a.shape.length;
-      if (rank <= 8) {
+      if (rank <= 32) {
         dispatchStrided(a, result);
       } else {
         final tempA = a.isContiguous ? a : a.copy();
-        final tempResult = result.isContiguous
-            ? result
-            : NDArray.create(result.shape, result.dtype);
-
-        dispatchContiguous(tempA, tempResult);
-
-        if (!identical(tempResult, result)) {
-          tempResult.copy(out: result);
-          tempResult.dispose();
-        }
-        if (!identical(tempA, a)) {
-          tempA.dispose();
+        try {
+          final tempResult = result.isContiguous
+              ? result
+              : (where != null
+                    ? result.copy()
+                    : NDArray.create(result.shape, result.dtype));
+          try {
+            dispatchContiguous(tempA, tempResult);
+            if (!identical(tempResult, result)) {
+              tempResult.copy(out: result);
+            }
+          } finally {
+            if (!identical(tempResult, result)) {
+              tempResult.dispose();
+            }
+          }
+        } finally {
+          if (!identical(tempA, a)) {
+            tempA.dispose();
+          }
         }
       }
     }
@@ -245,31 +250,30 @@ NDArray<R> gamma<T, R>(
 
   if (a.dtype.isInteger || a.dtype == DType.boolean) {
     final promoted = promoteToDouble(a);
-    final res = gamma<double, double>(
-      promoted,
-      where: where,
-      out: out as NDArray<double>?,
-    );
-    promoted.dispose();
-    return res as NDArray<R>;
+    try {
+      return gamma<Float64, R>(promoted, where: where, out: out);
+    } finally {
+      promoted.dispose();
+    }
   }
 
-  final targetDType =
-      (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
-  final NDArray<R> result;
+  final DType<R> targetDType = switch (a.dtype) {
+    DType.float32 => DType.float32 as DType<R>,
+    _ => DType.float64 as DType<R>,
+  };
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype for gamma.",
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType);
   }
 
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
   try {
+    final NDArray<R> result =
+        out ?? NDArray.create(a.shape, targetDType, zeroInit: where != null);
+
     void dispatchContiguous(NDArray src, NDArray dest) {
       switch (src.dtype) {
         case DType.float64:
@@ -294,10 +298,10 @@ NDArray<R> gamma<T, R>(
     void dispatchStrided(NDArray src, NDArray dest) {
       final rank = src.shape.length;
       final marker = ScratchArena.marker;
-      final cShape = ScratchArena.copyInts(src.shape);
-      final cStridesSrc = ScratchArena.copyInts(src.strides);
-      final cStridesDest = ScratchArena.copyInts(dest.strides);
       try {
+        final cShape = ScratchArena.copyInts(src.shape);
+        final cStridesSrc = ScratchArena.copyInts(src.strides);
+        final cStridesDest = ScratchArena.copyInts(dest.strides);
         switch (src.dtype) {
           case DType.float64:
             s_gamma_double(
@@ -331,22 +335,30 @@ NDArray<R> gamma<T, R>(
       dispatchContiguous(a, result);
     } else {
       final rank = a.shape.length;
-      if (rank <= 8) {
+      if (rank <= 32) {
         dispatchStrided(a, result);
       } else {
         final tempA = a.isContiguous ? a : a.copy();
-        final tempResult = result.isContiguous
-            ? result
-            : NDArray.create(result.shape, result.dtype);
-
-        dispatchContiguous(tempA, tempResult);
-
-        if (!identical(tempResult, result)) {
-          tempResult.copy(out: result);
-          tempResult.dispose();
-        }
-        if (!identical(tempA, a)) {
-          tempA.dispose();
+        try {
+          final tempResult = result.isContiguous
+              ? result
+              : (where != null
+                    ? result.copy()
+                    : NDArray.create(result.shape, result.dtype));
+          try {
+            dispatchContiguous(tempA, tempResult);
+            if (!identical(tempResult, result)) {
+              tempResult.copy(out: result);
+            }
+          } finally {
+            if (!identical(tempResult, result)) {
+              tempResult.dispose();
+            }
+          }
+        } finally {
+          if (!identical(tempA, a)) {
+            tempA.dispose();
+          }
         }
       }
     }
@@ -389,31 +401,30 @@ NDArray<R> erf<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
 
   if (a.dtype.isInteger || a.dtype == DType.boolean) {
     final promoted = promoteToDouble(a);
-    final res = erf<double, double>(
-      promoted,
-      where: where,
-      out: out as NDArray<double>?,
-    );
-    promoted.dispose();
-    return res as NDArray<R>;
+    try {
+      return erf<Float64, R>(promoted, where: where, out: out);
+    } finally {
+      promoted.dispose();
+    }
   }
 
-  final targetDType =
-      (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
-  final NDArray<R> result;
+  final DType<R> targetDType = switch (a.dtype) {
+    DType.float32 => DType.float32 as DType<R>,
+    _ => DType.float64 as DType<R>,
+  };
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype for erf.",
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType);
   }
 
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
   try {
+    final NDArray<R> result =
+        out ?? NDArray.create(a.shape, targetDType, zeroInit: where != null);
+
     void dispatchContiguous(NDArray src, NDArray dest) {
       switch (src.dtype) {
         case DType.float64:
@@ -438,10 +449,10 @@ NDArray<R> erf<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
     void dispatchStrided(NDArray src, NDArray dest) {
       final rank = src.shape.length;
       final marker = ScratchArena.marker;
-      final cShape = ScratchArena.copyInts(src.shape);
-      final cStridesSrc = ScratchArena.copyInts(src.strides);
-      final cStridesDest = ScratchArena.copyInts(dest.strides);
       try {
+        final cShape = ScratchArena.copyInts(src.shape);
+        final cStridesSrc = ScratchArena.copyInts(src.strides);
+        final cStridesDest = ScratchArena.copyInts(dest.strides);
         switch (src.dtype) {
           case DType.float64:
             s_erf_double(
@@ -475,22 +486,30 @@ NDArray<R> erf<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       dispatchContiguous(a, result);
     } else {
       final rank = a.shape.length;
-      if (rank <= 8) {
+      if (rank <= 32) {
         dispatchStrided(a, result);
       } else {
         final tempA = a.isContiguous ? a : a.copy();
-        final tempResult = result.isContiguous
-            ? result
-            : NDArray.create(result.shape, result.dtype);
-
-        dispatchContiguous(tempA, tempResult);
-
-        if (!identical(tempResult, result)) {
-          tempResult.copy(out: result);
-          tempResult.dispose();
-        }
-        if (!identical(tempA, a)) {
-          tempA.dispose();
+        try {
+          final tempResult = result.isContiguous
+              ? result
+              : (where != null
+                    ? result.copy()
+                    : NDArray.create(result.shape, result.dtype));
+          try {
+            dispatchContiguous(tempA, tempResult);
+            if (!identical(tempResult, result)) {
+              tempResult.copy(out: result);
+            }
+          } finally {
+            if (!identical(tempResult, result)) {
+              tempResult.dispose();
+            }
+          }
+        } finally {
+          if (!identical(tempA, a)) {
+            tempA.dispose();
+          }
         }
       }
     }

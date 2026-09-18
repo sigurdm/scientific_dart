@@ -43,27 +43,26 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for sin.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -168,16 +167,16 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    unaryOp<double, double>(
-      result as NDArray<double>,
-      a as NDArray<double>,
+    unaryOp<Float64, Float64>(
+      result as NDArray<Float64>,
+      a as NDArray<Float64>,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.sin(x),
+      (x) => Float64(math.sin(x)),
       maskHolder.pointer,
     );
     return result;
@@ -222,131 +221,138 @@ NDArray<R> sinc<T, R>(
     }
   }
 
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for sinc.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray<R>.create(a.shape, targetDType as DType<R>);
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_sinc_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
+  try {
+    final NDArray<R> result =
+        out ??
+        NDArray<R>.create(
+          a.shape,
+          targetDType as DType<R>,
+          zeroInit: where != null,
         );
-        return result;
-      case DType.float32:
-        v_sinc_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_sinc_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_sinc_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    try {
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesRes = cBuffer + (rank * 2);
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = a.shape[i];
-        cStridesA[i] = a.strides[i];
-        cStridesRes[i] = result.strides[i];
-      }
 
+    if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
-          s_sinc_double(
+          v_sinc_double(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.float32:
-          s_sinc_float(
+          v_sinc_float(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.complex128:
-          s_sinc_complex128(
+          v_sinc_complex128(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.complex64:
-          s_sinc_complex64(
+          v_sinc_complex64(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         default:
           break;
       }
-    } finally {
-      ScratchArena.reset(marker);
-    }
-  }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  throw ArgumentError('Unsupported DType for sinc: ${a.dtype}');
+        switch (a.dtype) {
+          case DType.float64:
+            s_sinc_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_sinc_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_sinc_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_sinc_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    throw ArgumentError('Unsupported DType for sinc: ${a.dtype}');
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the element-wise cosine of the array.
@@ -384,27 +390,26 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for cos.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -509,16 +514,16 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    unaryOp<double, double>(
-      result as NDArray<double>,
-      a as NDArray<double>,
+    unaryOp<Float64, Float64>(
+      result as NDArray<Float64>,
+      a as NDArray<Float64>,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.cos(x),
+      (x) => Float64(math.cos(x)),
       maskHolder.pointer,
     );
     return result;
@@ -549,27 +554,26 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for tan.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -674,16 +678,16 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    unaryOp<double, double>(
-      result as NDArray<double>,
-      a as NDArray<double>,
+    unaryOp<Float64, Float64>(
+      result as NDArray<Float64>,
+      a as NDArray<Float64>,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.tan(x),
+      (x) => Float64(math.tan(x)),
       maskHolder.pointer,
     );
     return result;
@@ -727,27 +731,26 @@ NDArray<R> asin<T, R>(
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for asin.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -852,16 +855,16 @@ NDArray<R> asin<T, R>(
       }
     }
 
-    unaryOp<double, double>(
-      result as NDArray<double>,
-      a as NDArray<double>,
+    unaryOp<Float64, Float64>(
+      result as NDArray<Float64>,
+      a as NDArray<Float64>,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.asin(x),
+      (x) => Float64(math.asin(x)),
       maskHolder.pointer,
     );
     return result;
@@ -905,27 +908,26 @@ NDArray<R> acos<T, R>(
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for acos.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -1030,16 +1032,16 @@ NDArray<R> acos<T, R>(
       }
     }
 
-    unaryOp<double, double>(
-      result as NDArray<double>,
-      a as NDArray<double>,
+    unaryOp<Float64, Float64>(
+      result as NDArray<Float64>,
+      a as NDArray<Float64>,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.acos(x),
+      (x) => Float64(math.acos(x)),
       maskHolder.pointer,
     );
     return result;
@@ -1083,27 +1085,26 @@ NDArray<R> atan<T, R>(
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for atan.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -1208,16 +1209,16 @@ NDArray<R> atan<T, R>(
       }
     }
 
-    unaryOp<double, double>(
-      result as NDArray<double>,
-      a as NDArray<double>,
+    unaryOp<Float64, Float64>(
+      result as NDArray<Float64>,
+      a as NDArray<Float64>,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.atan(x),
+      (x) => Float64(math.atan(x)),
       maskHolder.pointer,
     );
     return result;
@@ -1259,27 +1260,26 @@ NDArray<R> sinh<T, R>(
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for sinh.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -1438,27 +1438,26 @@ NDArray<R> cosh<T, R>(
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for cosh.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -1617,27 +1616,26 @@ NDArray<R> tanh<T, R>(
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for tanh.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -1797,27 +1795,26 @@ NDArray<R> asinh<T, R>(
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for asinh.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -1976,27 +1973,26 @@ NDArray<R> acosh<T, R>(
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for acosh.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -2155,27 +2151,26 @@ NDArray<R> atanh<T, R>(
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype;
-  } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  }
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype,
+    DType.float32 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for atanh.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
 
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -2305,11 +2300,11 @@ NDArray<R> atanh<T, R>(
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<double> atan2<Ty, Tx>(
+NDArray<Float64> atan2<Ty, Tx>(
   NDArray<Ty> y,
   NDArray<Tx> x, {
   NDArray<dynamic>? where,
-  NDArray<double>? out,
+  NDArray<Float64>? out,
 }) {
   if (y.isDisposed ||
       x.isDisposed ||
@@ -2348,25 +2343,28 @@ NDArray<double> atan2<Ty, Tx>(
   }
   final broadcastResult = broadcast(y, x);
   final shape = broadcastResult.shape;
-  final DType<double> targetDType =
+  final DType targetDType =
       (y.dtype == DType.float32 && x.dtype == DType.float32)
       ? DType.float32
       : DType.float64;
 
-  final NDArray<double> result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for atan2.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray<double>.create(shape, targetDType);
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, shape);
 
   try {
+    final NDArray<Float64> result =
+        out ??
+        NDArray<Float64>.create(
+          shape,
+          targetDType as DType<Float64>,
+          zeroInit: where != null,
+        );
     // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
     if (y.isContiguous &&
         x.isContiguous &&
@@ -2401,11 +2399,11 @@ NDArray<double> atan2<Ty, Tx>(
     // 0C. General Multidimensional Strided Broadcasting Engine in C (Rank <= 8)
     if (shape.length <= 8) {
       final marker = ScratchArena.marker;
-      final cShape = ScratchArena.copyInts(shape);
-      final cStridesY = ScratchArena.copyInts(stridesY);
-      final cStridesX = ScratchArena.copyInts(stridesX);
-      final cStridesRes = ScratchArena.copyInts(result.strides);
       try {
+        final cShape = ScratchArena.copyInts(shape);
+        final cStridesY = ScratchArena.copyInts(stridesY);
+        final cStridesX = ScratchArena.copyInts(stridesX);
+        final cStridesRes = ScratchArena.copyInts(result.strides);
         switch ((targetDType, y.dtype, x.dtype)) {
           case (DType.float64, DType.float64, DType.float64):
             s_atan2_double(
@@ -2441,7 +2439,7 @@ NDArray<double> atan2<Ty, Tx>(
       }
     }
 
-    elementWiseOp<dynamic, dynamic, double>(
+    elementWiseOp<dynamic, dynamic, dynamic>(
       result,
       y,
       x,
@@ -2500,91 +2498,86 @@ NDArray<R> hypot<Ta, Tb, R>(
         (resType == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
   }
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for hypot.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray<R>.create(shape, targetDType);
   }
-  final maskHolder = prepareMask(where, result.shape);
-  NDArray<Complex>? aCpx;
-  NDArray<Complex>? bCpx;
-
+  final maskHolder = prepareMask(where, shape);
   try {
+    final NDArray<R> result =
+        out ?? NDArray<R>.create(shape, targetDType, zeroInit: where != null);
     if (isCpx) {
       final cpxDType = is64BitComplex ? DType.complex128 : DType.complex64;
-      aCpx = castNDArray<Complex>(a, cpxDType);
-      bCpx = castNDArray<Complex>(b, cpxDType);
-      final aNonNullCpx = aCpx;
-      final bNonNullCpx = bCpx;
-      final cpxBroadcast = broadcast(aNonNullCpx, bNonNullCpx);
-      if (listEquals(a.shape, b.shape) &&
-          a.isContiguous &&
-          b.isContiguous &&
-          result.isContiguous) {
-        if (cpxDType == DType.complex128) {
-          v_hypot_complex128(
-            aNonNullCpx.pointer.cast(),
-            bNonNullCpx.pointer.cast(),
-            result.pointer.cast(),
-            aNonNullCpx.size,
-            maskHolder.pointer,
-          );
+      return NDArray.scope(() {
+        final aCpx = castNDArray<Complex>(a, cpxDType);
+        final bCpx = castNDArray<Complex>(b, cpxDType);
+        final cpxBroadcast = broadcast(aCpx, bCpx);
+        if (listEquals(a.shape, b.shape) &&
+            a.isContiguous &&
+            b.isContiguous &&
+            result.isContiguous) {
+          switch (cpxDType) {
+            case DType.complex128:
+              v_hypot_complex128(
+                aCpx.pointer.cast(),
+                bCpx.pointer.cast(),
+                result.pointer.cast(),
+                aCpx.size,
+                maskHolder.pointer,
+              );
+            default:
+              v_hypot_complex64(
+                aCpx.pointer.cast(),
+                bCpx.pointer.cast(),
+                result.pointer.cast(),
+                aCpx.size,
+                maskHolder.pointer,
+              );
+          }
           return result;
         } else {
-          v_hypot_complex64(
-            aNonNullCpx.pointer.cast(),
-            bNonNullCpx.pointer.cast(),
-            result.pointer.cast(),
-            aNonNullCpx.size,
-            maskHolder.pointer,
-          );
-          return result;
-        }
-      } else {
-        final rank = shape.length;
-        final marker = ScratchArena.marker;
-        final cShape = ScratchArena.copyInts(shape);
-        final cStridesA = ScratchArena.copyInts(cpxBroadcast.stridesA);
-        final cStridesB = ScratchArena.copyInts(cpxBroadcast.stridesB);
-        final cStridesRes = ScratchArena.copyInts(result.strides);
-        try {
-          if (cpxDType == DType.complex128) {
-            s_hypot_complex128(
-              aNonNullCpx.pointer.cast(),
-              cStridesA,
-              bNonNullCpx.pointer.cast(),
-              cStridesB,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              maskHolder.pointer,
-            );
+          final rank = shape.length;
+          final marker = ScratchArena.marker;
+          try {
+            final cShape = ScratchArena.copyInts(shape);
+            final cStridesA = ScratchArena.copyInts(cpxBroadcast.stridesA);
+            final cStridesB = ScratchArena.copyInts(cpxBroadcast.stridesB);
+            final cStridesRes = ScratchArena.copyInts(result.strides);
+            switch (cpxDType) {
+              case DType.complex128:
+                s_hypot_complex128(
+                  aCpx.pointer.cast(),
+                  cStridesA,
+                  bCpx.pointer.cast(),
+                  cStridesB,
+                  result.pointer.cast(),
+                  cStridesRes,
+                  cShape,
+                  rank,
+                  maskHolder.pointer,
+                );
+              default:
+                s_hypot_complex64(
+                  aCpx.pointer.cast(),
+                  cStridesA,
+                  bCpx.pointer.cast(),
+                  cStridesB,
+                  result.pointer.cast(),
+                  cStridesRes,
+                  cShape,
+                  rank,
+                  maskHolder.pointer,
+                );
+            }
             return result;
-          } else {
-            s_hypot_complex64(
-              aNonNullCpx.pointer.cast(),
-              cStridesA,
-              bNonNullCpx.pointer.cast(),
-              cStridesB,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              maskHolder.pointer,
-            );
-            return result;
+          } finally {
+            ScratchArena.reset(marker);
           }
-        } finally {
-          ScratchArena.reset(marker);
         }
-      }
+      });
     }
 
     double hypotOp(double x, double y) {
@@ -2623,8 +2616,6 @@ NDArray<R> hypot<Ta, Tb, R>(
 
     return result;
   } finally {
-    if (aCpx != null && !identical(aCpx, a)) aCpx.dispose();
-    if (bCpx != null && !identical(bCpx, b)) bCpx.dispose();
     maskHolder.dispose();
   }
 }

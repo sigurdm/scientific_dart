@@ -142,7 +142,9 @@ void main() {
           expect(() => trapz(valid, out: dispOut), throwsStateError);
 
           final intArr = NDArray.fromList([1, 2, 3], [3], DType.int64);
-          expect(() => trapz(intArr), throwsArgumentError);
+          final intRes = trapz(intArr);
+          expect(intRes.dtype, DType.float64);
+          expect((intRes.scalar as num).toDouble(), closeTo(4.0, 1e-12));
 
           final boolArr = NDArray.fromList([true, false], [2], DType.boolean);
           expect(() => trapz(boolArr), throwsArgumentError);

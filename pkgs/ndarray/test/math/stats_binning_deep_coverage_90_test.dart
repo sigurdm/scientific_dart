@@ -1360,7 +1360,9 @@ void main() {
         test('trapz validation errors', () {
           NDArray.scope(() {
             final yInt = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-            expect(() => trapz(yInt), throwsArgumentError);
+            final intRes = trapz(yInt);
+            expect(intRes.dtype, DType.float64);
+            expect((intRes.scalar as num).toDouble(), closeTo(4.0, 1e-12));
 
             final yF64 = NDArray<Float64>.fromList(
               [1.0, 2.0, 3.0],
@@ -2291,7 +2293,14 @@ void main() {
           expect(() => gradient(fValid, edgeOrder: 3), throwsArgumentError);
 
           final intArr = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-          expect(() => gradient(intArr), throwsArgumentError);
+          expect(gradient(intArr).toList(), equals([1.0, 1.0, 1.0]));
+
+          final boolArr = NDArray<bool>.fromList(
+            [true, false, true],
+            [3],
+            DType.boolean,
+          );
+          expect(() => gradient(boolArr), throwsArgumentError);
 
           expect(
             () => gradient(fValid, spacing: Spacing.step(Complex(1, 0))),
@@ -2316,7 +2325,7 @@ void main() {
 
           // gradientArray errors
           expect(() => gradientArray(fDisp), throwsStateError);
-          expect(() => gradientArray(intArr), throwsArgumentError);
+          expect(() => gradientArray(boolArr), throwsArgumentError);
           expect(
             () => gradientArray(shortArr, edgeOrder: 2),
             throwsArgumentError,

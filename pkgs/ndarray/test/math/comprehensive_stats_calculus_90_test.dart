@@ -1191,10 +1191,23 @@ void main() {
               expect(() => gradient(disp), throwsStateError);
               expect(() => gradientArray(disp), throwsStateError);
 
-              // Integer arrays not supported
-              final intArr = NDArray.fromList([1, 2, 3], [3], DType.int32);
-              expect(() => gradient(intArr), throwsArgumentError);
-              expect(() => gradientArray(intArr), throwsArgumentError);
+              // Boolean arrays not supported
+              final boolArr = NDArray.fromList(
+                [true, false, true],
+                [3],
+                DType.boolean,
+              );
+              expect(() => gradient(boolArr), throwsArgumentError);
+              expect(() => gradientArray(boolArr), throwsArgumentError);
+
+              // Integer arrays promoted to float64
+              final intArr = NDArray.fromList([1, 2, 4], [3], DType.int32);
+              final gradInt = gradient(intArr);
+              expect(gradInt.dtype, DType.float64);
+              expect(gradInt.toList(), equals([1.0, 1.5, 2.0]));
+              final gradArrInt = gradientArray(intArr);
+              expect(gradArrInt[0].dtype, DType.float64);
+              expect(gradArrInt[0].toList(), equals([1.0, 1.5, 2.0]));
 
               // edgeOrder must be 1 or 2
               expect(() => gradient(f, edgeOrder: 3), throwsArgumentError);
@@ -1473,11 +1486,23 @@ void main() {
 
           test('angle & unwrap error handling', () {
             NDArray.scope(() {
+              final boolArr = NDArray.fromList(
+                [true, false],
+                [2],
+                DType.boolean,
+              );
+              expect(() => angle(boolArr as dynamic), throwsArgumentError);
+              expect(() => unwrap(boolArr as dynamic), throwsArgumentError);
+
               final realArr = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-              expect(() => angle(realArr as dynamic), throwsArgumentError);
+              final angleRes = angle(realArr);
+              expect(angleRes.shape, [2]);
+              expect(angleRes.dtype, DType.float64);
 
               final intArr = NDArray.fromList([1, 2], [2], DType.int32);
-              expect(() => unwrap(intArr as dynamic), throwsArgumentError);
+              final unwrapRes = unwrap(intArr);
+              expect(unwrapRes.shape, [2]);
+              expect(unwrapRes.dtype, DType.float64);
 
               expect(() => unwrap(realArr, axis: 5), throwsArgumentError);
             });

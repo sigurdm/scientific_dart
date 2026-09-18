@@ -108,9 +108,19 @@ void main() {
           throwsArgumentError,
         );
 
-        // Fail on integers
-        final yInt = NDArray<int>.fromList([1, 2], [2], DType.int64);
-        expect(() => trapz(yInt), throwsArgumentError);
+        // Fail on booleans, succeed on integers
+        final boolArr = NDArray<bool>.fromList(
+          [true, false],
+          [2],
+          DType.boolean,
+        );
+        expect(() => trapz(boolArr as dynamic), throwsArgumentError);
+
+        final intArr = NDArray<int>.fromList([1, 2], [2], DType.int64);
+        final intRes = trapz(intArr);
+        expect(intRes, isA<NDArray<Float64>>());
+        expect(intRes.dtype, DType.float64);
+        expect(intRes.scalar, closeTo(1.5, 1e-9));
 
         y.dispose();
         expect(() => trapz(y), throwsStateError);
@@ -291,6 +301,17 @@ void main() {
           () => gradient(f, spacing: Spacing.step(1.0), edgeOrder: 3),
           throwsArgumentError,
         );
+        final boolArr = NDArray<bool>.fromList(
+          [true, false],
+          [2],
+          DType.boolean,
+        );
+        expect(() => gradient(boolArr), throwsArgumentError);
+        expect(() => gradientArray(boolArr), throwsArgumentError);
+        final intArr = NDArray<int>.fromList([1, 3, 6], [3], DType.int64);
+        final intGrad = gradient(intArr);
+        expect(intGrad.dtype, DType.float64);
+        expect(intGrad.toList(), equals([2.0, 2.5, 3.0]));
       }),
     );
   });

@@ -143,8 +143,10 @@ final class ResourceScope {
     if (scope._isClosed) {
       throw StateError('Cannot promote a ScopedResource from a closed scope.');
     }
-    scope._untrack(resource);
-    scope._parentScope?._track(resource);
+    final wasTracked = scope._untrack(resource);
+    if (wasTracked) {
+      scope._parentScope?._track(resource);
+    }
   }
 }
 
@@ -182,25 +184,29 @@ final class _ResourceScopeInstance {
     }
   }
 
-  void _untrack(ScopedResource resource) {
-    if (_isClosed) return;
+  bool _untrack(ScopedResource resource) {
+    if (_isClosed) return false;
 
     if (_set != null) {
-      _set!.remove(resource);
-      return;
+      return _set!.remove(resource);
     }
 
-    // O(1) swap-and-pop removal for flat list
-    final len = _list.length;
-    for (var i = 0; i < len; i++) {
+    // O(1) swap-and-pop removal of all occurrences in flat list
+    var removed = false;
+    var i = 0;
+    while (i < _list.length) {
       if (identical(_list[i], resource)) {
-        if (i < len - 1) {
-          _list[i] = _list.last;
+        final lastIdx = _list.length - 1;
+        if (i < lastIdx) {
+          _list[i] = _list[lastIdx];
         }
         _list.removeLast();
-        break;
+        removed = true;
+      } else {
+        i++;
       }
     }
+    return removed;
   }
 
   void dispose() {

@@ -59,6 +59,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
       final size = aCast.size;
       switch (result.dtype) {
         case DType.int32:
+        case DType.uint32:
           v_bitwise_and_int32(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -67,6 +68,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.int64:
+        case DType.uint64:
           v_bitwise_and_int64(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -75,6 +77,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.uint8:
+        case DType.int8:
           v_bitwise_and_uint8(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -83,6 +86,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.int16:
+        case DType.uint16:
           v_bitwise_and_int16(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -112,6 +116,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
 
         switch (result.dtype) {
           case DType.int32:
+          case DType.uint32:
             s_bitwise_and_int32(
               aCast.pointer.cast(),
               cStridesA,
@@ -124,6 +129,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.int64:
+          case DType.uint64:
             s_bitwise_and_int64(
               aCast.pointer.cast(),
               cStridesA,
@@ -136,6 +142,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.uint8:
+          case DType.int8:
             s_bitwise_and_uint8(
               aCast.pointer.cast(),
               cStridesA,
@@ -148,6 +155,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.int16:
+          case DType.uint16:
             s_bitwise_and_int16(
               aCast.pointer.cast(),
               cStridesA,
@@ -234,6 +242,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
       final size = aCast.size;
       switch (result.dtype) {
         case DType.int32:
+        case DType.uint32:
           v_bitwise_or_int32(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -242,6 +251,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.int64:
+        case DType.uint64:
           v_bitwise_or_int64(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -250,6 +260,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.uint8:
+        case DType.int8:
           v_bitwise_or_uint8(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -258,6 +269,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.int16:
+        case DType.uint16:
           v_bitwise_or_int16(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -287,6 +299,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
 
         switch (result.dtype) {
           case DType.int32:
+          case DType.uint32:
             s_bitwise_or_int32(
               aCast.pointer.cast(),
               cStridesA,
@@ -299,6 +312,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.int64:
+          case DType.uint64:
             s_bitwise_or_int64(
               aCast.pointer.cast(),
               cStridesA,
@@ -311,6 +325,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.uint8:
+          case DType.int8:
             s_bitwise_or_uint8(
               aCast.pointer.cast(),
               cStridesA,
@@ -323,6 +338,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.int16:
+          case DType.uint16:
             s_bitwise_or_int16(
               aCast.pointer.cast(),
               cStridesA,
@@ -409,6 +425,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
       final size = aCast.size;
       switch (result.dtype) {
         case DType.int32:
+        case DType.uint32:
           v_bitwise_xor_int32(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -417,6 +434,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.int64:
+        case DType.uint64:
           v_bitwise_xor_int64(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -425,6 +443,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.uint8:
+        case DType.int8:
           v_bitwise_xor_uint8(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -433,6 +452,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.int16:
+        case DType.uint16:
           v_bitwise_xor_int16(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -462,6 +482,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
 
         switch (result.dtype) {
           case DType.int32:
+          case DType.uint32:
             s_bitwise_xor_int32(
               aCast.pointer.cast(),
               cStridesA,
@@ -474,6 +495,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.int64:
+          case DType.uint64:
             s_bitwise_xor_int64(
               aCast.pointer.cast(),
               cStridesA,
@@ -486,6 +508,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.uint8:
+          case DType.int8:
             s_bitwise_xor_uint8(
               aCast.pointer.cast(),
               cStridesA,
@@ -498,6 +521,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.int16:
+          case DType.uint16:
             s_bitwise_xor_int16(
               aCast.pointer.cast(),
               cStridesA,
@@ -584,6 +608,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
       final size = aCast.size;
       switch (result.dtype) {
         case DType.int32:
+        case DType.uint32:
           v_left_shift_int32(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -592,6 +617,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.int64:
+        case DType.uint64:
           v_left_shift_int64(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -600,6 +626,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.uint8:
+        case DType.int8:
           v_left_shift_uint8(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -608,6 +635,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             maskHolder.pointer,
           );
         case DType.int16:
+        case DType.uint16:
           v_left_shift_int16(
             aCast.pointer.cast(),
             bCast.pointer.cast(),
@@ -637,6 +665,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
 
         switch (result.dtype) {
           case DType.int32:
+          case DType.uint32:
             s_left_shift_int32(
               aCast.pointer.cast(),
               cStridesA,
@@ -649,6 +678,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.int64:
+          case DType.uint64:
             s_left_shift_int64(
               aCast.pointer.cast(),
               cStridesA,
@@ -661,6 +691,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.uint8:
+          case DType.int8:
             s_left_shift_uint8(
               aCast.pointer.cast(),
               cStridesA,
@@ -673,6 +704,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           case DType.int16:
+          case DType.uint16:
             s_left_shift_int16(
               aCast.pointer.cast(),
               cStridesA,
@@ -704,6 +736,25 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
   }
 
   return result;
+}
+
+int _rightShiftScalar(int a, int b, DType dtype) {
+  switch (dtype) {
+    case DType.int8:
+      if (b < 0 || b >= 8) return 0;
+      return a >> b;
+    case DType.uint16:
+      if (b < 0 || b >= 16) return 0;
+      return (a & 0xFFFF) >>> b;
+    case DType.uint32:
+      if (b < 0 || b >= 32) return 0;
+      return (a & 0xFFFFFFFF) >>> b;
+    case DType.uint64:
+      if (b < 0 || b >= 64) return 0;
+      return a >>> b;
+    default:
+      throw UnsupportedError('Unsupported integer DType: $dtype');
+  }
 }
 
 /// Shift the bits of an integer to the right, element-wise.
@@ -790,6 +841,25 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
             size,
             maskHolder.pointer,
           );
+        case DType.int8:
+        case DType.uint16:
+        case DType.uint32:
+        case DType.uint64:
+          elementWiseOp<dynamic, dynamic, dynamic>(
+            result,
+            aCast,
+            bCast,
+            prep.commonShape,
+            prep.stridesA,
+            prep.stridesB,
+            result.strides,
+            0,
+            aCast.offsetElements,
+            bCast.offsetElements,
+            result.offsetElements,
+            (va, vb) => _rightShiftScalar(va as int, vb as int, result.dtype),
+            maskHolder.pointer,
+          );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
       }
@@ -859,6 +929,25 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
               rank,
               maskHolder.pointer,
             );
+          case DType.int8:
+          case DType.uint16:
+          case DType.uint32:
+          case DType.uint64:
+            elementWiseOp<dynamic, dynamic, dynamic>(
+              result,
+              aCast,
+              bCast,
+              prep.commonShape,
+              prep.stridesA,
+              prep.stridesB,
+              result.strides,
+              0,
+              aCast.offsetElements,
+              bCast.offsetElements,
+              result.offsetElements,
+              (va, vb) => _rightShiftScalar(va as int, vb as int, result.dtype),
+              maskHolder.pointer,
+            );
           default:
             throw UnsupportedError(
               'Unsupported integer DType: ${result.dtype}',
@@ -920,23 +1009,28 @@ NDArray<Tr> invert<Ta, Tr>(
     );
   }
 
-  final NDArray<Tr> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for invert.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray<Tr>.create(a.shape, a.dtype as DType<Tr>);
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
+  final NDArray<Tr> result;
   try {
+    result =
+        out ??
+        NDArray<Tr>.create(
+          a.shape,
+          a.dtype as DType<Tr>,
+          zeroInit: where != null,
+        );
     if (a.isContiguous && result.isContiguous) {
       final size = a.size;
       switch (a.dtype) {
         case DType.int32:
+        case DType.uint32:
           v_invert_int32(
             a.pointer.cast(),
             result.pointer.cast(),
@@ -944,6 +1038,7 @@ NDArray<Tr> invert<Ta, Tr>(
             maskHolder.pointer,
           );
         case DType.int64:
+        case DType.uint64:
           v_invert_int64(
             a.pointer.cast(),
             result.pointer.cast(),
@@ -951,6 +1046,7 @@ NDArray<Tr> invert<Ta, Tr>(
             maskHolder.pointer,
           );
         case DType.uint8:
+        case DType.int8:
           v_invert_uint8(
             a.pointer.cast(),
             result.pointer.cast(),
@@ -958,6 +1054,7 @@ NDArray<Tr> invert<Ta, Tr>(
             maskHolder.pointer,
           );
         case DType.int16:
+        case DType.uint16:
           v_invert_int16(
             a.pointer.cast(),
             result.pointer.cast(),
@@ -984,6 +1081,7 @@ NDArray<Tr> invert<Ta, Tr>(
 
         switch (a.dtype) {
           case DType.int32:
+          case DType.uint32:
             s_invert_int32(
               a.pointer.cast(),
               cStridesSrc,
@@ -994,6 +1092,7 @@ NDArray<Tr> invert<Ta, Tr>(
               maskHolder.pointer,
             );
           case DType.int64:
+          case DType.uint64:
             s_invert_int64(
               a.pointer.cast(),
               cStridesSrc,
@@ -1004,6 +1103,7 @@ NDArray<Tr> invert<Ta, Tr>(
               maskHolder.pointer,
             );
           case DType.uint8:
+          case DType.int8:
             s_invert_uint8(
               a.pointer.cast(),
               cStridesSrc,
@@ -1014,6 +1114,7 @@ NDArray<Tr> invert<Ta, Tr>(
               maskHolder.pointer,
             );
           case DType.int16:
+          case DType.uint16:
             s_invert_int16(
               a.pointer.cast(),
               cStridesSrc,
@@ -1065,47 +1166,57 @@ _prepareBinaryBitwise<Ta, Tb, Tr>(
   }
 
   final DType targetDType = resolveDType(a.dtype, b.dtype);
+  final preBroadcast = broadcast(a, b);
+  final commonShape = preBroadcast.shape;
 
-  // Upcast inputs if they do not match the resolved target integer type
-  final NDArray aCast = a.dtype != targetDType
-      ? castNDArray(a, targetDType)
-      : a;
-  final NDArray bCast = b.dtype != targetDType
-      ? castNDArray(b, targetDType)
-      : b;
-
-  final broadcastResult = broadcast(aCast, bCast);
-  final commonShape = broadcastResult.shape;
-  final stridesA = broadcastResult.stridesA;
-  final stridesB = broadcastResult.stridesB;
-
-  final NDArray<Tr> result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for $opName.',
       );
     }
-    result = out;
-  } else {
-    result = NDArray<Tr>.create(commonShape, targetDType as DType<Tr>);
   }
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, commonShape);
 
-  final isContig =
-      aCast.isContiguous &&
-      bCast.isContiguous &&
-      result.isContiguous &&
-      listEquals(aCast.shape, bCast.shape);
+  try {
+    // Upcast inputs if they do not match the resolved target integer type
+    final NDArray aCast = a.dtype != targetDType
+        ? castNDArray(a, targetDType)
+        : a;
+    final NDArray bCast = b.dtype != targetDType
+        ? castNDArray(b, targetDType)
+        : b;
 
-  return (
-    aCast: aCast,
-    bCast: bCast,
-    result: result,
-    commonShape: commonShape,
-    stridesA: stridesA,
-    stridesB: stridesB,
-    isContig: isContig,
-    maskHolder: maskHolder,
-  );
+    final broadcastResult = broadcast(aCast, bCast);
+    final stridesA = broadcastResult.stridesA;
+    final stridesB = broadcastResult.stridesB;
+
+    final NDArray<Tr> result =
+        out ??
+        NDArray<Tr>.create(
+          commonShape,
+          targetDType as DType<Tr>,
+          zeroInit: where != null,
+        );
+
+    final isContig =
+        aCast.isContiguous &&
+        bCast.isContiguous &&
+        result.isContiguous &&
+        listEquals(aCast.shape, bCast.shape);
+
+    return (
+      aCast: aCast,
+      bCast: bCast,
+      result: result,
+      commonShape: commonShape,
+      stridesA: stridesA,
+      stridesB: stridesB,
+      isContig: isContig,
+      maskHolder: maskHolder,
+    );
+  } catch (_) {
+    maskHolder.dispose();
+    rethrow;
+  }
 }

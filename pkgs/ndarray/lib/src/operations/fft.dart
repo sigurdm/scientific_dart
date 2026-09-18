@@ -9,6 +9,24 @@ import 'padding.dart';
 // Standalone operational relative cross-imports
 import 'manipulation.dart';
 
+NDArray _createZeros(List<int> shape, DType dtype) => switch (dtype) {
+  DType.float64 => NDArray<Float64>.zeros(shape, DType.float64),
+  DType.float32 => NDArray<Float32>.zeros(shape, DType.float32),
+  DType.float16 => NDArray<Float16>.zeros(shape, DType.float16),
+  DType.bfloat16 => NDArray<BFloat16>.zeros(shape, DType.bfloat16),
+  DType.int64 => NDArray<Int64>.zeros(shape, DType.int64),
+  DType.int32 => NDArray<Int32>.zeros(shape, DType.int32),
+  DType.int16 => NDArray<Int16>.zeros(shape, DType.int16),
+  DType.int8 => NDArray<Int8>.zeros(shape, DType.int8),
+  DType.uint64 => NDArray<Uint64>.zeros(shape, DType.uint64),
+  DType.uint32 => NDArray<Uint32>.zeros(shape, DType.uint32),
+  DType.uint16 => NDArray<Uint16>.zeros(shape, DType.uint16),
+  DType.uint8 => NDArray<Uint8>.zeros(shape, DType.uint8),
+  DType.complex128 => NDArray<Complex128>.zeros(shape, DType.complex128),
+  DType.complex64 => NDArray<Complex64>.zeros(shape, DType.complex64),
+  DType.boolean => NDArray<bool>.zeros(shape, DType.boolean),
+};
+
 /// Helper to allocate a KissFFT plan configuration on the ScratchArena stack.
 
 void _loadSignalToKissInput<T>(
@@ -76,7 +94,7 @@ void _loadSignalToKissInput<T>(
     case DType.uint64:
       final inPtr = inputA.pointer.cast<ffi.Uint64>() + srcStart;
       for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
+        pin[i].r = BigInt.from(inPtr[i]).toUnsigned(64).toDouble();
         pin[i].i = 0.0;
       }
     case DType.uint32:
@@ -123,18 +141,21 @@ void _storeKissOutputToResult<R>(
   ffi.Pointer<kiss_fft_cpx> pout, {
   double scale = 1.0,
 }) {
-  if (result.dtype == DType.complex128) {
-    final outPtr = result.pointer.cast<kiss_fft_cpx>() + destStart;
-    for (var i = 0; i < targetLen; i++) {
-      outPtr[i].r = pout[i].r * scale;
-      outPtr[i].i = pout[i].i * scale;
-    }
-  } else if (result.dtype == DType.complex64) {
-    final outPtr = result.pointer.cast<ffi.Float>() + (destStart * 2);
-    for (var i = 0; i < targetLen; i++) {
-      outPtr[2 * i] = (pout[i].r * scale);
-      outPtr[2 * i + 1] = (pout[i].i * scale);
-    }
+  switch (result.dtype) {
+    case DType.complex128:
+      final outPtr = result.pointer.cast<kiss_fft_cpx>() + destStart;
+      for (var i = 0; i < targetLen; i++) {
+        outPtr[i].r = pout[i].r * scale;
+        outPtr[i].i = pout[i].i * scale;
+      }
+    case DType.complex64:
+      final outPtr = result.pointer.cast<ffi.Float>() + (destStart * 2);
+      for (var i = 0; i < targetLen; i++) {
+        outPtr[2 * i] = (pout[i].r * scale);
+        outPtr[2 * i + 1] = (pout[i].i * scale);
+      }
+    default:
+      break;
   }
 }
 
@@ -161,7 +182,7 @@ kiss_fft_cfg _getKissFFTPlan(int nfft, int inverse_fft) {
 /// - It is an error if the input array [a] shape is empty (scalar 0D, rank < 1).
 /// - It is an error if the specified [axis] is out of bounds `[-a.rank, a.rank - 1]`.
 /// - It is an error if target length [n] is provided but is less than or equal to 0.
-/// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
+/// - It is an error if [out] has incompatible shape or dtype.
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
@@ -232,9 +253,26 @@ NDArray<R> fft<T, R extends Complex>(
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
-    if (!out.isContiguous) {
-      throw ArgumentError('Provided out buffer must be contiguous.');
+    if (!out.isContiguous || sharesMemory(a, out)) {
+      return NDArray.scope(() {
+        final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
+        fft<T, R>(a, n: n, axis: axis, out: temp);
+        temp.copy(out: out);
+        return out;
+      });
     }
+  }
+
+  if (a.size == 0 || lastAxisDim == 0) {
+    return NDArray.scope(() {
+      final zeroOut = _createZeros(outShape, targetDType) as NDArray<R>;
+      if (out != null) {
+        zeroOut.copy(out: out);
+        return out;
+      }
+      zeroOut.detachToParentScope();
+      return zeroOut;
+    });
   }
 
   if (normAxis != rank - 1) {
@@ -242,102 +280,87 @@ NDArray<R> fft<T, R extends Complex>(
     axes[normAxis] = rank - 1;
     axes[rank - 1] = normAxis;
 
-    final transposedInput = a.transpose(axes);
-    if (out != null) {
+    return NDArray.scope(() {
+      final transposedInput = a.transpose(axes);
       final transposedResult = fft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
-      finalResult.copy(out: out);
-      transposedResult.dispose();
-      finalResult.dispose();
-      transposedInput.dispose();
-      return out;
-    } else {
-      final transposedResult = fft<T, R>(transposedInput, n: n);
-      final finalResult = transposedResult.transpose(axes);
-      final resCopy = finalResult.copy();
-      finalResult.dispose();
-      transposedResult.dispose();
-      transposedInput.dispose();
-      return resCopy;
+      if (out != null) {
+        finalResult.copy(out: out);
+        return out;
+      } else {
+        final resCopy = finalResult.copy();
+        resCopy.detachToParentScope();
+        return resCopy;
+      }
+    });
+  }
+
+  return NDArray.scope(() {
+    final NDArray<T> inputA = a.isContiguous ? a : a.copy();
+    final result = out ?? _createZeros(outShape, targetDType) as NDArray<R>;
+
+    // Count how many 1D row sub-signals exist to execute strided walks
+    final totalElements = inputA.shape.reduce((x, y) => x * y);
+    final signalsCount = totalElements ~/ lastAxisDim;
+
+    final isZeroCopyFastPath =
+        inputA.dtype == DType.complex128 &&
+        targetLen == lastAxisDim &&
+        inputA.isContiguous;
+
+    kiss_fft_cfg cfg = ffi.nullptr.cast();
+
+    if (isZeroCopyFastPath) {
+      final marker = ScratchArena.marker;
+      try {
+        cfg = _getKissFFTPlan(targetLen, 0);
+
+        for (var s = 0; s < signalsCount; s++) {
+          final rowPin = inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
+          final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * targetLen;
+          kiss_fft(cfg, rowPin, rowPout);
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+      if (out == null) {
+        result.detachToParentScope();
+      }
+      return result;
     }
-  }
 
-  final NDArray<T> inputA;
-  final bool wasCopied;
-  if (!a.isContiguous) {
-    inputA = a.copy();
-    wasCopied = true;
-  } else {
-    inputA = a;
-    wasCopied = false;
-  }
-
-  final result = out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
-
-  // Count how many 1D row sub-signals exist to execute strided walks
-  final totalElements = inputA.shape.reduce((x, y) => x * y);
-  final signalsCount = totalElements ~/ lastAxisDim;
-
-  final isZeroCopyFastPath =
-      inputA.dtype == DType.complex128 &&
-      targetLen == lastAxisDim &&
-      inputA.isContiguous;
-
-  kiss_fft_cfg cfg = ffi.nullptr.cast();
-
-  if (isZeroCopyFastPath) {
     final marker = ScratchArena.marker;
     try {
       cfg = _getKissFFTPlan(targetLen, 0);
+      final pin = ScratchArena.allocate<kiss_fft_cpx>(
+        targetLen * ffi.sizeOf<kiss_fft_cpx>(),
+      );
+      final pout = ScratchArena.allocate<kiss_fft_cpx>(
+        targetLen * ffi.sizeOf<kiss_fft_cpx>(),
+      );
 
+      final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
       for (var s = 0; s < signalsCount; s++) {
-        final rowPin = inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
-        final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * targetLen;
-        kiss_fft(cfg, rowPin, rowPout);
+        final srcStart = s * lastAxisDim;
+        final destStart = s * targetLen;
+
+        _loadSignalToKissInput(inputA, srcStart, copyLen, targetLen, pin);
+
+        // 3. Fire high-speed native FFT on the C heap components
+        kiss_fft(cfg, pin, pout);
+
+        // 4. Collect results from pout back into result array
+        _storeKissOutputToResult(result, destStart, targetLen, pout);
       }
     } finally {
       ScratchArena.reset(marker);
-      if (wasCopied) {
-        inputA.dispose();
-      }
+    }
+
+    if (out == null) {
+      result.detachToParentScope();
     }
     return result;
-  }
-
-  final marker = ScratchArena.marker;
-  ffi.Pointer<kiss_fft_cpx> pin = ffi.nullptr.cast();
-  ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
-
-  try {
-    cfg = _getKissFFTPlan(targetLen, 0);
-    pin = ScratchArena.allocate<kiss_fft_cpx>(
-      targetLen * ffi.sizeOf<kiss_fft_cpx>(),
-    );
-    pout = ScratchArena.allocate<kiss_fft_cpx>(
-      targetLen * ffi.sizeOf<kiss_fft_cpx>(),
-    );
-
-    final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
-    for (var s = 0; s < signalsCount; s++) {
-      final srcStart = s * lastAxisDim;
-      final destStart = s * targetLen;
-
-      _loadSignalToKissInput(inputA, srcStart, copyLen, targetLen, pin);
-
-      // 3. Fire high-speed native FFT on the C heap components
-      kiss_fft(cfg, pin, pout);
-
-      // 4. Collect results from pout back into result array
-      _storeKissOutputToResult(result, destStart, targetLen, pout);
-    }
-  } finally {
-    ScratchArena.reset(marker);
-    if (wasCopied) {
-      inputA.dispose();
-    }
-  }
-
-  return result;
+  });
 }
 
 /// Computes the 1D inverse discrete Fourier Transform (IFFT) along the specified [axis].
@@ -356,7 +379,7 @@ NDArray<R> fft<T, R extends Complex>(
 /// - It is an error if the input array [a] shape is empty (scalar 0D, rank < 1).
 /// - It is an error if the specified [axis] is out of bounds `[-a.rank, a.rank - 1]`.
 /// - It is an error if target length [n] is provided but is less than or equal to 0.
-/// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
+/// - It is an error if [out] has incompatible shape or dtype.
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
@@ -425,9 +448,26 @@ NDArray<R> ifft<T, R extends Complex>(
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
-    if (!out.isContiguous) {
-      throw ArgumentError('Provided out buffer must be contiguous.');
+    if (!out.isContiguous || sharesMemory(a, out)) {
+      return NDArray.scope(() {
+        final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
+        ifft<T, R>(a, n: n, axis: axis, out: temp);
+        temp.copy(out: out);
+        return out;
+      });
     }
+  }
+
+  if (a.size == 0 || lastAxisDim == 0) {
+    return NDArray.scope(() {
+      final zeroOut = _createZeros(outShape, targetDType) as NDArray<R>;
+      if (out != null) {
+        zeroOut.copy(out: out);
+        return out;
+      }
+      zeroOut.detachToParentScope();
+      return zeroOut;
+    });
   }
 
   if (normAxis != rank - 1) {
@@ -435,115 +475,100 @@ NDArray<R> ifft<T, R extends Complex>(
     axes[normAxis] = rank - 1;
     axes[rank - 1] = normAxis;
 
-    final transposedInput = a.transpose(axes);
-    if (out != null) {
+    return NDArray.scope(() {
+      final transposedInput = a.transpose(axes);
       final transposedResult = ifft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
-      finalResult.copy(out: out);
-      transposedResult.dispose();
-      finalResult.dispose();
-      transposedInput.dispose();
-      return out;
-    } else {
-      final transposedResult = ifft<T, R>(transposedInput, n: n);
-      final finalResult = transposedResult.transpose(axes);
-      final resCopy = finalResult.copy();
-      finalResult.dispose();
-      transposedResult.dispose();
-      transposedInput.dispose();
-      return resCopy;
+      if (out != null) {
+        finalResult.copy(out: out);
+        return out;
+      } else {
+        final resCopy = finalResult.copy();
+        resCopy.detachToParentScope();
+        return resCopy;
+      }
+    });
+  }
+
+  return NDArray.scope(() {
+    final NDArray<T> inputA = a.isContiguous ? a : a.copy();
+    final result = out ?? _createZeros(outShape, targetDType) as NDArray<R>;
+
+    final totalElements = inputA.shape.reduce((x, y) => x * y);
+    final signalsCount = totalElements ~/ lastAxisDim;
+
+    final isZeroCopyFastPath =
+        inputA.dtype == DType.complex128 &&
+        targetLen == lastAxisDim &&
+        inputA.isContiguous;
+
+    kiss_fft_cfg cfg = ffi.nullptr.cast();
+
+    if (isZeroCopyFastPath) {
+      final marker = ScratchArena.marker;
+      try {
+        cfg = _getKissFFTPlan(targetLen, 1);
+
+        final scaleFactor = 1.0 / targetLen;
+        for (var s = 0; s < signalsCount; s++) {
+          final rowPin = inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
+          final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * targetLen;
+          kiss_fft(cfg, rowPin, rowPout);
+
+          final pDoubles = rowPout.cast<ffi.Double>();
+          final count = targetLen * 2;
+          for (var i = 0; i < count; i++) {
+            pDoubles[i] *= scaleFactor;
+          }
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+      if (out == null) {
+        result.detachToParentScope();
+      }
+      return result;
     }
-  }
 
-  final NDArray<T> inputA;
-  final bool wasCopied;
-  if (!a.isContiguous) {
-    inputA = a.copy();
-    wasCopied = true;
-  } else {
-    inputA = a;
-    wasCopied = false;
-  }
-
-  final result = out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
-
-  final totalElements = inputA.shape.reduce((x, y) => x * y);
-  final signalsCount = totalElements ~/ lastAxisDim;
-
-  final isZeroCopyFastPath =
-      inputA.dtype == DType.complex128 &&
-      targetLen == lastAxisDim &&
-      inputA.isContiguous;
-
-  kiss_fft_cfg cfg = ffi.nullptr.cast();
-
-  if (isZeroCopyFastPath) {
     final marker = ScratchArena.marker;
     try {
       cfg = _getKissFFTPlan(targetLen, 1);
+      final pin = ScratchArena.allocate<kiss_fft_cpx>(
+        targetLen * ffi.sizeOf<kiss_fft_cpx>(),
+      );
+      final pout = ScratchArena.allocate<kiss_fft_cpx>(
+        targetLen * ffi.sizeOf<kiss_fft_cpx>(),
+      );
 
+      final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
       final scaleFactor = 1.0 / targetLen;
       for (var s = 0; s < signalsCount; s++) {
-        final rowPin = inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
-        final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * targetLen;
-        kiss_fft(cfg, rowPin, rowPout);
+        final srcStart = s * lastAxisDim;
+        final destStart = s * targetLen;
 
-        final pDoubles = rowPout.cast<ffi.Double>();
-        final count = targetLen * 2;
-        for (var i = 0; i < count; i++) {
-          pDoubles[i] *= scaleFactor;
-        }
+        _loadSignalToKissInput(inputA, srcStart, copyLen, targetLen, pin);
+
+        // 2. Fire high-speed native inverse transform
+        kiss_fft(cfg, pin, pout);
+
+        // 3. Apply standard 1/N scaling factor normalization (KissFFT leaves it unscaled)
+        _storeKissOutputToResult(
+          result,
+          destStart,
+          targetLen,
+          pout,
+          scale: scaleFactor,
+        );
       }
     } finally {
       ScratchArena.reset(marker);
-      if (wasCopied) {
-        inputA.dispose();
-      }
+    }
+
+    if (out == null) {
+      result.detachToParentScope();
     }
     return result;
-  }
-
-  final marker = ScratchArena.marker;
-  ffi.Pointer<kiss_fft_cpx> pin = ffi.nullptr.cast();
-  ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
-
-  try {
-    cfg = _getKissFFTPlan(targetLen, 1);
-    pin = ScratchArena.allocate<kiss_fft_cpx>(
-      targetLen * ffi.sizeOf<kiss_fft_cpx>(),
-    );
-    pout = ScratchArena.allocate<kiss_fft_cpx>(
-      targetLen * ffi.sizeOf<kiss_fft_cpx>(),
-    );
-
-    final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
-    final scaleFactor = 1.0 / targetLen;
-    for (var s = 0; s < signalsCount; s++) {
-      final srcStart = s * lastAxisDim;
-      final destStart = s * targetLen;
-
-      _loadSignalToKissInput(inputA, srcStart, copyLen, targetLen, pin);
-
-      // 2. Fire high-speed native inverse transform
-      kiss_fft(cfg, pin, pout);
-
-      // 3. Apply standard 1/N scaling factor normalization (KissFFT leaves it unscaled)
-      _storeKissOutputToResult(
-        result,
-        destStart,
-        targetLen,
-        pout,
-        scale: scaleFactor,
-      );
-    }
-  } finally {
-    ScratchArena.reset(marker);
-    if (wasCopied) {
-      inputA.dispose();
-    }
-  }
-
-  return result;
+  });
 }
 
 /// Shifts the zero-frequency component to the center of the spectrum.
@@ -758,10 +783,45 @@ void _copyRealToDouble(
       for (var i = 0; i < count; i++) {
         dest[i] = pIn[i].toDouble();
       }
+    case DType.int8:
+      final pIn = a.pointer.cast<ffi.Int8>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i] = pIn[i].toDouble();
+      }
+    case DType.uint64:
+      final pIn = a.pointer.cast<ffi.Uint64>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i] = BigInt.from(pIn[i]).toUnsigned(64).toDouble();
+      }
+    case DType.uint32:
+      final pIn = a.pointer.cast<ffi.Uint32>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i] = pIn[i].toDouble();
+      }
+    case DType.uint16:
+      final pIn = a.pointer.cast<ffi.Uint16>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i] = pIn[i].toDouble();
+      }
     case DType.uint8:
       final pIn = a.pointer.cast<ffi.Uint8>() + offset;
       for (var i = 0; i < count; i++) {
         dest[i] = pIn[i].toDouble();
+      }
+    case DType.float16:
+      final pIn = a.pointer.cast<ffi.Uint16>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i] = Float16Utils.decodeFloat16(pIn[i]);
+      }
+    case DType.bfloat16:
+      final pIn = a.pointer.cast<ffi.Uint16>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i] = Float16Utils.decodeBFloat16(pIn[i]);
+      }
+    case DType.boolean:
+      final pIn = a.pointer.cast<ffi.Uint8>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i] = pIn[i] != 0 ? 1.0 : 0.0;
       }
     default:
       throw UnsupportedError(
@@ -819,78 +879,54 @@ void _copyComplexToDoubleCpx(
         dest[i].r = pIn[i].toDouble();
         dest[i].i = 0.0;
       }
+    case DType.int8:
+      final pIn = a.pointer.cast<ffi.Int8>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i].r = pIn[i].toDouble();
+        dest[i].i = 0.0;
+      }
+    case DType.uint64:
+      final pIn = a.pointer.cast<ffi.Uint64>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i].r = BigInt.from(pIn[i]).toUnsigned(64).toDouble();
+        dest[i].i = 0.0;
+      }
+    case DType.uint32:
+      final pIn = a.pointer.cast<ffi.Uint32>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i].r = pIn[i].toDouble();
+        dest[i].i = 0.0;
+      }
+    case DType.uint16:
+      final pIn = a.pointer.cast<ffi.Uint16>() + offset;
+      for (var i = 0; i < count; i++) {
+        dest[i].r = pIn[i].toDouble();
+        dest[i].i = 0.0;
+      }
     case DType.uint8:
       final pIn = a.pointer.cast<ffi.Uint8>() + offset;
       for (var i = 0; i < count; i++) {
         dest[i].r = pIn[i].toDouble();
         dest[i].i = 0.0;
       }
-    default:
-      throw UnsupportedError(
-        'Unsupported dtype for irfft input copy: ${a.dtype}',
-      );
-  }
-}
-
-void _copyIntToDoubleCpx(NDArray a, int count, ffi.Pointer<kiss_fft_cpx> dest) {
-  switch (a.dtype) {
-    case DType.int64:
-      final pIn = a.pointer.cast<ffi.Int64>();
+    case DType.float16:
+      final pIn = a.pointer.cast<ffi.Uint16>() + offset;
       for (var i = 0; i < count; i++) {
-        dest[i].r = pIn[i].toDouble();
+        dest[i].r = Float16Utils.decodeFloat16(pIn[i]);
         dest[i].i = 0.0;
       }
-    case DType.int32:
-      final pIn = a.pointer.cast<ffi.Int32>();
+    case DType.bfloat16:
+      final pIn = a.pointer.cast<ffi.Uint16>() + offset;
       for (var i = 0; i < count; i++) {
-        dest[i].r = pIn[i].toDouble();
+        dest[i].r = Float16Utils.decodeBFloat16(pIn[i]);
         dest[i].i = 0.0;
       }
-    case DType.int16:
-      final pIn = a.pointer.cast<ffi.Int16>();
+    case DType.boolean:
+      final pIn = a.pointer.cast<ffi.Uint8>() + offset;
       for (var i = 0; i < count; i++) {
-        dest[i].r = pIn[i].toDouble();
+        dest[i].r = pIn[i] != 0 ? 1.0 : 0.0;
         dest[i].i = 0.0;
       }
-    case DType.uint8:
-      final pIn = a.pointer.cast<ffi.Uint8>();
-      for (var i = 0; i < count; i++) {
-        dest[i].r = pIn[i].toDouble();
-        dest[i].i = 0.0;
-      }
-    default:
-      throw UnsupportedError('Expected integer dtype, got ${a.dtype}');
-  }
-}
-
-void _copyIntToFloatCpx(NDArray a, int count, ffi.Pointer<ffi.Float> dest) {
-  switch (a.dtype) {
-    case DType.int64:
-      final pIn = a.pointer.cast<ffi.Int64>();
-      for (var i = 0; i < count; i++) {
-        dest[2 * i] = pIn[i].toDouble();
-        dest[2 * i + 1] = 0.0;
-      }
-    case DType.int32:
-      final pIn = a.pointer.cast<ffi.Int32>();
-      for (var i = 0; i < count; i++) {
-        dest[2 * i] = pIn[i].toDouble();
-        dest[2 * i + 1] = 0.0;
-      }
-    case DType.int16:
-      final pIn = a.pointer.cast<ffi.Int16>();
-      for (var i = 0; i < count; i++) {
-        dest[2 * i] = pIn[i].toDouble();
-        dest[2 * i + 1] = 0.0;
-      }
-    case DType.uint8:
-      final pIn = a.pointer.cast<ffi.Uint8>();
-      for (var i = 0; i < count; i++) {
-        dest[2 * i] = pIn[i].toDouble();
-        dest[2 * i + 1] = 0.0;
-      }
-    default:
-      throw UnsupportedError('Expected integer dtype, got ${a.dtype}');
   }
 }
 
@@ -898,86 +934,18 @@ NDArray<R> _promoteToComplex<T, R extends Complex>(
   NDArray<T> a,
   DType<R> targetDType,
 ) {
-  final result = NDArray<R>.zeros(a.shape, targetDType);
-  final numElements = a.size;
-  final contiguousA = a.isContiguous ? a : a.copy();
-
-  if (targetDType == DType.complex128) {
-    final pOut = result.pointer.cast<kiss_fft_cpx>();
-    final pOutD = pOut.cast<ffi.Double>();
-    switch (contiguousA.dtype) {
-      case DType.complex128:
-        final pInD = contiguousA.pointer.cast<ffi.Double>();
-        final count = numElements * 2;
-        for (var i = 0; i < count; i++) {
-          pOutD[i] = pInD[i];
-        }
-        break;
-      case DType.complex64:
-        final pInF = contiguousA.pointer.cast<ffi.Float>();
-        for (var i = 0; i < numElements; i++) {
-          pOutD[2 * i] = pInF[2 * i];
-          pOutD[2 * i + 1] = pInF[2 * i + 1];
-        }
-        break;
-      case DType.float64:
-        final pInD = contiguousA.pointer.cast<ffi.Double>();
-        for (var i = 0; i < numElements; i++) {
-          pOutD[2 * i] = pInD[i];
-          pOutD[2 * i + 1] = 0.0;
-        }
-        break;
-      case DType.float32:
-        final pInF = contiguousA.pointer.cast<ffi.Float>();
-        for (var i = 0; i < numElements; i++) {
-          pOutD[2 * i] = pInF[i];
-          pOutD[2 * i + 1] = 0.0;
-        }
-        break;
-      default:
-        _copyIntToDoubleCpx(contiguousA, numElements, pOut);
+  if (a.dtype == targetDType) {
+    if (a is NDArray<R>) {
+      return (a as NDArray<R>).copy();
     }
-  } else {
-    // complex64
-    final pOut = result.pointer.cast<ffi.Float>();
-    switch (contiguousA.dtype) {
-      case DType.complex128:
-        final pInD = contiguousA.pointer.cast<ffi.Double>();
-        for (var i = 0; i < numElements; i++) {
-          pOut[2 * i] = pInD[2 * i];
-          pOut[2 * i + 1] = pInD[2 * i + 1];
-        }
-        break;
-      case DType.complex64:
-        final pInF = contiguousA.pointer.cast<ffi.Float>();
-        final count = numElements * 2;
-        for (var i = 0; i < count; i++) {
-          pOut[i] = pInF[i];
-        }
-        break;
-      case DType.float64:
-        final pInD = contiguousA.pointer.cast<ffi.Double>();
-        for (var i = 0; i < numElements; i++) {
-          pOut[2 * i] = pInD[i];
-          pOut[2 * i + 1] = 0.0;
-        }
-        break;
-      case DType.float32:
-        final pInF = contiguousA.pointer.cast<ffi.Float>();
-        for (var i = 0; i < numElements; i++) {
-          pOut[2 * i] = pInF[i];
-          pOut[2 * i + 1] = 0.0;
-        }
-        break;
-      default:
-        _copyIntToFloatCpx(contiguousA, numElements, pOut);
+    final view = NDArray<R>.view(a, shape: a.shape, strides: a.strides);
+    try {
+      return view.copy();
+    } finally {
+      view.dispose();
     }
   }
-
-  if (!a.isContiguous) {
-    contiguousA.dispose();
-  }
-  return result;
+  return castNDArray(a, targetDType);
 }
 
 NDArray<R> _padOrTruncate<T, R extends Complex>(
@@ -994,11 +962,16 @@ NDArray<R> _padOrTruncate<T, R extends Complex>(
     }
   }
 
-  if (!needsSliceOrPad &&
-      arr.dtype == targetDType &&
-      arr.isContiguous &&
-      arr is NDArray<R>) {
-    return (arr as NDArray<R>).copy();
+  if (!needsSliceOrPad && arr.dtype == targetDType && arr.isContiguous) {
+    if (arr is NDArray<R>) {
+      return (arr as NDArray<R>).copy();
+    }
+    final view = NDArray<R>.view(arr, shape: arr.shape, strides: arr.strides);
+    try {
+      return view.copy();
+    } finally {
+      view.dispose();
+    }
   }
 
   return NDArray.scope(() {
@@ -1125,7 +1098,7 @@ NDArray<Float64> rfftfreq(int n, {double d = 1.0}) {
 /// - It is an error if the input array [a] shape is empty (scalar 0D, rank < 1).
 /// - It is an error if the specified [axis] is out of bounds `[-a.rank, a.rank - 1]`.
 /// - It is an error if target length [n] is provided but is less than or equal to 0.
-/// - It is an error if [out] is provided and has incompatible shape (`(n ?? a.shape[axis]) // 2 + 1` along [axis]), incompatible dtype (`complex64` if input is `float32`, `complex128` otherwise), or is not contiguous.
+/// - It is an error if [out] is provided and has incompatible shape (`(n ?? a.shape[axis]) // 2 + 1` along [axis]) or incompatible dtype (`complex64` if input is `float32`, `complex128` otherwise).
 ///
 /// **Throws:**
 /// - [ArgumentError] if the input array shape is empty (scalar 0D).
@@ -1194,9 +1167,26 @@ NDArray<R> rfft<T, R extends Complex>(
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
-    if (!out.isContiguous) {
-      throw ArgumentError('Provided out buffer must be contiguous.');
+    if (!out.isContiguous || sharesMemory(a, out)) {
+      return NDArray.scope(() {
+        final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
+        rfft<T, R>(a, n: n, axis: axis, out: temp);
+        temp.copy(out: out);
+        return out;
+      });
     }
+  }
+
+  if (a.size == 0 || lastAxisDim == 0) {
+    return NDArray.scope(() {
+      final zeroOut = _createZeros(outShape, targetDType) as NDArray<R>;
+      if (out != null) {
+        zeroOut.copy(out: out);
+        return out;
+      }
+      zeroOut.detachToParentScope();
+      return zeroOut;
+    });
   }
 
   if (targetLen % 2 == 0) {
@@ -1206,103 +1196,102 @@ NDArray<R> rfft<T, R extends Complex>(
       axes[normAxis] = rank - 1;
       axes[rank - 1] = normAxis;
 
-      final transposedInput = a.transpose(axes);
-      if (out != null) {
+      return NDArray.scope(() {
+        final transposedInput = a.transpose(axes);
         final transposedResult = rfft<T, R>(transposedInput, n: n);
         final finalResult = transposedResult.transpose(axes);
-        finalResult.copy(out: out);
-        transposedResult.dispose();
-        finalResult.dispose();
-        transposedInput.dispose();
-        return out;
-      } else {
-        final transposedResult = rfft<T, R>(transposedInput, n: n);
-        final finalResult = transposedResult.transpose(axes);
-        final resCopy = finalResult.copy();
-        finalResult.dispose();
-        transposedResult.dispose();
-        transposedInput.dispose();
-        return resCopy;
-      }
+        if (out != null) {
+          finalResult.copy(out: out);
+          return out;
+        } else {
+          final resCopy = finalResult.copy();
+          resCopy.detachToParentScope();
+          return resCopy;
+        }
+      });
     }
 
-    final NDArray<T> inputA = a.isContiguous ? a : a.copy();
-    final bool wasCopied = !a.isContiguous;
+    return NDArray.scope(() {
+      final NDArray<T> inputA = a.isContiguous ? a : a.copy();
+      final result = out ?? _createZeros(outShape, targetDType) as NDArray<R>;
 
-    final result = out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
+      final totalElements = inputA.shape.reduce((x, y) => x * y);
+      final signalsCount = totalElements ~/ lastAxisDim;
 
-    final totalElements = inputA.shape.reduce((x, y) => x * y);
-    final signalsCount = totalElements ~/ lastAxisDim;
+      final isZeroCopyFastPath =
+          inputA.dtype == DType.float64 &&
+          targetLen == lastAxisDim &&
+          inputA.isContiguous &&
+          result.dtype == DType.complex128;
 
-    final isZeroCopyFastPath =
-        inputA.dtype == DType.float64 &&
-        targetLen == lastAxisDim &&
-        inputA.isContiguous &&
-        result.dtype == DType.complex128;
+      kiss_fftr_cfg cfg = ffi.nullptr.cast();
 
-    kiss_fftr_cfg cfg = ffi.nullptr.cast();
+      if (isZeroCopyFastPath) {
+        final marker = ScratchArena.marker;
+        try {
+          cfg = _getKissFFTRPlan(targetLen, 0);
+          final outLen = targetLen ~/ 2 + 1;
+          for (var s = 0; s < signalsCount; s++) {
+            final rowPin = inputA.pointer.cast<ffi.Double>() + s * lastAxisDim;
+            final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * outLen;
+            kiss_fftr(cfg, rowPin, rowPout);
+          }
+        } finally {
+          ScratchArena.reset(marker);
+        }
+        if (out == null) {
+          result.detachToParentScope();
+        }
+        return result;
+      }
 
-    if (isZeroCopyFastPath) {
       final marker = ScratchArena.marker;
       try {
         cfg = _getKissFFTRPlan(targetLen, 0);
+        final pin = ScratchArena.allocate<ffi.Double>(
+          targetLen * ffi.sizeOf<ffi.Double>(),
+        );
         final outLen = targetLen ~/ 2 + 1;
+        final pout = ScratchArena.allocate<kiss_fft_cpx>(
+          outLen * ffi.sizeOf<kiss_fft_cpx>(),
+        );
+
+        final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
+
         for (var s = 0; s < signalsCount; s++) {
-          final rowPin = inputA.pointer.cast<ffi.Double>() + s * lastAxisDim;
-          final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * outLen;
-          kiss_fftr(cfg, rowPin, rowPout);
+          final srcStart = s * lastAxisDim;
+          final destStart = s * outLen;
+
+          _copyRealToDouble(inputA, srcStart, copyLen, pin);
+          for (var i = copyLen; i < targetLen; i++) {
+            pin[i] = 0.0;
+          }
+
+          kiss_fftr(cfg, pin, pout);
+
+          if (result.dtype == DType.complex128) {
+            final pOut = result.pointer.cast<ffi.Double>() + destStart * 2;
+            final pPoutD = pout.cast<ffi.Double>();
+            final numDoubles = outLen * 2;
+            for (var i = 0; i < numDoubles; i++) {
+              pOut[i] = pPoutD[i];
+            }
+          } else {
+            final pOut = result.pointer.cast<ffi.Float>() + destStart * 2;
+            for (var i = 0; i < outLen; i++) {
+              pOut[2 * i] = pout[i].r;
+              pOut[2 * i + 1] = pout[i].i;
+            }
+          }
         }
       } finally {
         ScratchArena.reset(marker);
-        if (wasCopied) inputA.dispose();
+      }
+      if (out == null) {
+        result.detachToParentScope();
       }
       return result;
-    }
-
-    final marker = ScratchArena.marker;
-    try {
-      cfg = _getKissFFTRPlan(targetLen, 0);
-      final pin = ScratchArena.allocate<ffi.Double>(
-        targetLen * ffi.sizeOf<ffi.Double>(),
-      );
-      final outLen = targetLen ~/ 2 + 1;
-      final pout = ScratchArena.allocate<kiss_fft_cpx>(
-        outLen * ffi.sizeOf<kiss_fft_cpx>(),
-      );
-
-      final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
-
-      for (var s = 0; s < signalsCount; s++) {
-        final srcStart = s * lastAxisDim;
-        final destStart = s * outLen;
-
-        _copyRealToDouble(inputA, srcStart, copyLen, pin);
-        for (var i = copyLen; i < targetLen; i++) {
-          pin[i] = 0.0;
-        }
-
-        kiss_fftr(cfg, pin, pout);
-
-        if (result.dtype == DType.complex128) {
-          final pOut = result.pointer.cast<ffi.Double>() + destStart * 2;
-          final pPoutD = pout.cast<ffi.Double>();
-          final numDoubles = outLen * 2;
-          for (var i = 0; i < numDoubles; i++) {
-            pOut[i] = pPoutD[i];
-          }
-        } else {
-          final pOut = result.pointer.cast<ffi.Float>() + destStart * 2;
-          for (var i = 0; i < outLen; i++) {
-            pOut[2 * i] = pout[i].r;
-            pOut[2 * i + 1] = pout[i].i;
-          }
-        }
-      }
-    } finally {
-      ScratchArena.reset(marker);
-      if (wasCopied) inputA.dispose();
-    }
-    return result;
+    });
   } else {
     // Odd targetLen: Fallback Path
     return NDArray.scope(() {
@@ -1315,7 +1304,7 @@ NDArray<R> rfft<T, R extends Complex>(
       });
       final sliced = complexFFT.slice(slices);
       final finalResult =
-          out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
+          out ?? _createZeros(outShape, targetDType) as NDArray<R>;
       sliced.copy(out: finalResult);
       if (out == null) {
         finalResult.detachToParentScope();
@@ -1339,7 +1328,7 @@ NDArray<R> rfft<T, R extends Complex>(
 /// - It is an error if the input array [a] shape is empty (scalar 0D, rank < 1).
 /// - It is an error if the specified [axis] is out of bounds `[-a.rank, a.rank - 1]`.
 /// - It is an error if target length [n] is provided but is less than or equal to 0.
-/// - It is an error if [out] is provided and has incompatible shape ([n] along [axis]), incompatible dtype (`float32` if input is `complex64` or `float32`, `float64` otherwise), or is not contiguous.
+/// - It is an error if [out] is provided and has incompatible shape ([n] along [axis]) or incompatible dtype (`float32` if input is `complex64` or `float32`, `float64` otherwise).
 ///
 /// **Throws:**
 /// - [ArgumentError] if the input array shape is empty (scalar 0D).
@@ -1408,9 +1397,26 @@ NDArray<R> irfft<T, R extends double>(
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
-    if (!out.isContiguous) {
-      throw ArgumentError('Provided out buffer must be contiguous.');
+    if (!out.isContiguous || sharesMemory(a, out)) {
+      return NDArray.scope(() {
+        final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
+        irfft<T, R>(a, n: n, axis: axis, out: temp);
+        temp.copy(out: out);
+        return out;
+      });
     }
+  }
+
+  if (a.size == 0 || lastAxisDim == 0) {
+    return NDArray.scope(() {
+      final zeroOut = _createZeros(outShape, targetDType) as NDArray<R>;
+      if (out != null) {
+        zeroOut.copy(out: out);
+        return out;
+      }
+      zeroOut.detachToParentScope();
+      return zeroOut;
+    });
   }
 
   if (targetLen % 2 == 0) {
@@ -1422,106 +1428,106 @@ NDArray<R> irfft<T, R extends double>(
       axes[normAxis] = rank - 1;
       axes[rank - 1] = normAxis;
 
-      final transposedInput = a.transpose(axes);
-      if (out != null) {
+      return NDArray.scope(() {
+        final transposedInput = a.transpose(axes);
         final transposedResult = irfft<T, R>(transposedInput, n: n);
         final finalResult = transposedResult.transpose(axes);
-        finalResult.copy(out: out);
-        transposedResult.dispose();
-        finalResult.dispose();
-        transposedInput.dispose();
-        return out;
-      } else {
-        final transposedResult = irfft<T, R>(transposedInput, n: n);
-        final finalResult = transposedResult.transpose(axes);
-        final resCopy = finalResult.copy();
-        finalResult.dispose();
-        transposedResult.dispose();
-        transposedInput.dispose();
-        return resCopy;
-      }
+        if (out != null) {
+          finalResult.copy(out: out);
+          return out;
+        } else {
+          final resCopy = finalResult.copy();
+          resCopy.detachToParentScope();
+          return resCopy;
+        }
+      });
     }
 
-    final NDArray<T> inputA = a.isContiguous ? a : a.copy();
-    final bool wasCopied = !a.isContiguous;
+    return NDArray.scope(() {
+      final NDArray<T> inputA = a.isContiguous ? a : a.copy();
+      final result = out ?? _createZeros(outShape, targetDType) as NDArray<R>;
 
-    final result = out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
+      final totalElements = inputA.shape.reduce((x, y) => x * y);
+      final signalsCount = totalElements ~/ lastAxisDim;
 
-    final totalElements = inputA.shape.reduce((x, y) => x * y);
-    final signalsCount = totalElements ~/ lastAxisDim;
+      final isZeroCopyFastPath =
+          inputA.dtype == DType.complex128 &&
+          targetInputLen == lastAxisDim &&
+          inputA.isContiguous &&
+          result.dtype == DType.float64;
 
-    final isZeroCopyFastPath =
-        inputA.dtype == DType.complex128 &&
-        targetInputLen == lastAxisDim &&
-        inputA.isContiguous &&
-        result.dtype == DType.float64;
+      kiss_fftr_cfg cfg = ffi.nullptr.cast();
 
-    kiss_fftr_cfg cfg = ffi.nullptr.cast();
+      if (isZeroCopyFastPath) {
+        final marker = ScratchArena.marker;
+        try {
+          cfg = _getKissFFTRPlan(targetLen, 1);
+          final scaleFactor = 1.0 / targetLen;
+          for (var s = 0; s < signalsCount; s++) {
+            final rowPin =
+                inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
+            final rowPout = result.pointer.cast<ffi.Double>() + s * targetLen;
+            kiss_fftri(cfg, rowPin, rowPout);
+            for (var i = 0; i < targetLen; i++) {
+              rowPout[i] *= scaleFactor;
+            }
+          }
+        } finally {
+          ScratchArena.reset(marker);
+        }
+        if (out == null) {
+          result.detachToParentScope();
+        }
+        return result;
+      }
 
-    if (isZeroCopyFastPath) {
       final marker = ScratchArena.marker;
       try {
         cfg = _getKissFFTRPlan(targetLen, 1);
+        final pin = ScratchArena.allocate<kiss_fft_cpx>(
+          targetInputLen * ffi.sizeOf<kiss_fft_cpx>(),
+        );
+        final pout = ScratchArena.allocate<ffi.Double>(
+          targetLen * ffi.sizeOf<ffi.Double>(),
+        );
+
+        final copyLen = targetInputLen < lastAxisDim
+            ? targetInputLen
+            : lastAxisDim;
         final scaleFactor = 1.0 / targetLen;
+
         for (var s = 0; s < signalsCount; s++) {
-          final rowPin = inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
-          final rowPout = result.pointer.cast<ffi.Double>() + s * targetLen;
-          kiss_fftri(cfg, rowPin, rowPout);
-          for (var i = 0; i < targetLen; i++) {
-            rowPout[i] *= scaleFactor;
+          final srcStart = s * lastAxisDim;
+          final destStart = s * targetLen;
+
+          _copyComplexToDoubleCpx(inputA, srcStart, copyLen, pin);
+          for (var i = copyLen; i < targetInputLen; i++) {
+            pin[i].r = 0.0;
+            pin[i].i = 0.0;
+          }
+
+          kiss_fftri(cfg, pin, pout);
+
+          if (result.dtype == DType.float64) {
+            final pOut = result.pointer.cast<ffi.Double>() + destStart;
+            for (var i = 0; i < targetLen; i++) {
+              pOut[i] = pout[i] * scaleFactor;
+            }
+          } else {
+            final pOut = result.pointer.cast<ffi.Float>() + destStart;
+            for (var i = 0; i < targetLen; i++) {
+              pOut[i] = pout[i] * scaleFactor;
+            }
           }
         }
       } finally {
         ScratchArena.reset(marker);
-        if (wasCopied) inputA.dispose();
+      }
+      if (out == null) {
+        result.detachToParentScope();
       }
       return result;
-    }
-
-    final marker = ScratchArena.marker;
-    try {
-      cfg = _getKissFFTRPlan(targetLen, 1);
-      final pin = ScratchArena.allocate<kiss_fft_cpx>(
-        targetInputLen * ffi.sizeOf<kiss_fft_cpx>(),
-      );
-      final pout = ScratchArena.allocate<ffi.Double>(
-        targetLen * ffi.sizeOf<ffi.Double>(),
-      );
-
-      final copyLen = targetInputLen < lastAxisDim
-          ? targetInputLen
-          : lastAxisDim;
-      final scaleFactor = 1.0 / targetLen;
-
-      for (var s = 0; s < signalsCount; s++) {
-        final srcStart = s * lastAxisDim;
-        final destStart = s * targetLen;
-
-        _copyComplexToDoubleCpx(inputA, srcStart, copyLen, pin);
-        for (var i = copyLen; i < targetInputLen; i++) {
-          pin[i].r = 0.0;
-          pin[i].i = 0.0;
-        }
-
-        kiss_fftri(cfg, pin, pout);
-
-        if (result.dtype == DType.float64) {
-          final pOut = result.pointer.cast<ffi.Double>() + destStart;
-          for (var i = 0; i < targetLen; i++) {
-            pOut[i] = pout[i] * scaleFactor;
-          }
-        } else {
-          final pOut = result.pointer.cast<ffi.Float>() + destStart;
-          for (var i = 0; i < targetLen; i++) {
-            pOut[i] = pout[i] * scaleFactor;
-          }
-        }
-      }
-    } finally {
-      ScratchArena.reset(marker);
-      if (wasCopied) inputA.dispose();
-    }
-    return result;
+    });
   } else {
     // Odd targetLen: Fallback Path
     return NDArray.scope(() {
@@ -1541,58 +1547,77 @@ NDArray<R> irfft<T, R extends double>(
       }
 
       final transposedInput = a.transpose(resolvedAxes);
-      final contiguousInput = transposedInput.isContiguous
-          ? transposedInput
-          : transposedInput.copy();
+      final NDArray contiguousInput;
+      final bool shouldDisposeInput;
+      if (transposedInput.dtype == reconDType && transposedInput.isContiguous) {
+        contiguousInput = transposedInput;
+        shouldDisposeInput = false;
+      } else {
+        contiguousInput = _promoteToComplex(transposedInput, reconDType);
+        shouldDisposeInput = true;
+      }
 
       final transposedReconShape = List<int>.from(transposedInput.shape);
       transposedReconShape[rank - 1] = targetLen;
 
       final contiguousRecon = NDArray.zeros(transposedReconShape, reconDType);
-      final M = lastAxisDim;
-      final totalElements = contiguousInput.size;
-      final signalsCount = totalElements ~/ M;
+      try {
+        final M = lastAxisDim;
+        final totalElements = contiguousInput.size;
+        final signalsCount = M == 0 ? 0 : totalElements ~/ M;
+        final int copyLimit = M < targetLen ? M : targetLen;
 
-      if (reconDType == DType.complex128) {
-        final pIn = contiguousInput.pointer.cast<kiss_fft_cpx>();
-        final pOut = contiguousRecon.pointer.cast<kiss_fft_cpx>();
+        if (reconDType == DType.complex128) {
+          final pIn = contiguousInput.pointer.cast<kiss_fft_cpx>();
+          final pOut = contiguousRecon.pointer.cast<kiss_fft_cpx>();
 
-        for (var s = 0; s < signalsCount; s++) {
-          final inOffset = s * M;
-          final outOffset = s * targetLen;
+          for (var s = 0; s < signalsCount; s++) {
+            final inOffset = s * M;
+            final outOffset = s * targetLen;
 
-          for (var i = 0; i < M; i++) {
-            pOut[outOffset + i].r = pIn[inOffset + i].r;
-            pOut[outOffset + i].i = pIn[inOffset + i].i;
+            for (var i = 0; i < copyLimit; i++) {
+              pOut[outOffset + i].r = pIn[inOffset + i].r;
+              pOut[outOffset + i].i = pIn[inOffset + i].i;
+            }
+            for (var i = copyLimit; i < targetLen; i++) {
+              final srcIdx = targetLen - i;
+              if (srcIdx < M) {
+                pOut[outOffset + i].r = pIn[inOffset + srcIdx].r;
+                pOut[outOffset + i].i = -pIn[inOffset + srcIdx].i;
+              } else {
+                pOut[outOffset + i].r = 0.0;
+                pOut[outOffset + i].i = 0.0;
+              }
+            }
           }
-          for (var i = M; i < targetLen; i++) {
-            final srcIdx = targetLen - i;
-            pOut[outOffset + i].r = pIn[inOffset + srcIdx].r;
-            pOut[outOffset + i].i = -pIn[inOffset + srcIdx].i;
+        } else {
+          final pIn = contiguousInput.pointer.cast<ffi.Float>();
+          final pOut = contiguousRecon.pointer.cast<ffi.Float>();
+
+          for (var s = 0; s < signalsCount; s++) {
+            final inOffset = s * M * 2;
+            final outOffset = s * targetLen * 2;
+
+            for (var i = 0; i < copyLimit; i++) {
+              pOut[outOffset + 2 * i] = pIn[inOffset + 2 * i];
+              pOut[outOffset + 2 * i + 1] = pIn[inOffset + 2 * i + 1];
+            }
+            for (var i = copyLimit; i < targetLen; i++) {
+              final srcIdx = targetLen - i;
+              if (srcIdx < M) {
+                pOut[outOffset + 2 * i] = pIn[inOffset + 2 * srcIdx];
+                pOut[outOffset + 2 * i + 1] = -pIn[inOffset + 2 * srcIdx + 1];
+              } else {
+                pOut[outOffset + 2 * i] = 0.0;
+                pOut[outOffset + 2 * i + 1] = 0.0;
+              }
+            }
           }
         }
-      } else {
-        final pIn = contiguousInput.pointer.cast<ffi.Float>();
-        final pOut = contiguousRecon.pointer.cast<ffi.Float>();
-
-        for (var s = 0; s < signalsCount; s++) {
-          final inOffset = s * M * 2;
-          final outOffset = s * targetLen * 2;
-
-          for (var i = 0; i < M; i++) {
-            pOut[outOffset + 2 * i] = pIn[inOffset + 2 * i];
-            pOut[outOffset + 2 * i + 1] = pIn[inOffset + 2 * i + 1];
-          }
-          for (var i = M; i < targetLen; i++) {
-            final srcIdx = targetLen - i;
-            pOut[outOffset + 2 * i] = pIn[inOffset + 2 * srcIdx];
-            pOut[outOffset + 2 * i + 1] = -pIn[inOffset + 2 * srcIdx + 1];
-          }
+      } finally {
+        if (shouldDisposeInput) {
+          contiguousInput.dispose();
         }
-      }
-
-      if (!transposedInput.isContiguous) {
-        contiguousInput.dispose();
       }
 
       final complexIFFTTransposed = ifft(contiguousRecon);
@@ -1602,7 +1627,7 @@ NDArray<R> irfft<T, R extends double>(
       outShape[normAxis] = targetLen;
 
       final finalResult =
-          out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
+          out ?? _createZeros(outShape, targetDType) as NDArray<R>;
       final numElements = finalResult.size;
       final contiguousIFFT = complexIFFT.isContiguous
           ? complexIFFT
@@ -1729,9 +1754,24 @@ NDArray<R> _fftnND<T, R extends Complex>(
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
-    if (!out.isContiguous) {
-      throw ArgumentError('Provided out buffer must be contiguous.');
+    if (!out.isContiguous || sharesMemory(a, out)) {
+      return NDArray.scope(() {
+        final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
+        _fftnND<T, R>(a, s: s, axes: axes, inverse: inverse, out: temp);
+        temp.copy(out: out);
+        return out;
+      });
     }
+  }
+
+  if (a.size == 0 || outShape.contains(0)) {
+    final zeroOut = _createZeros(outShape, targetDType) as NDArray<R>;
+    if (out != null) {
+      zeroOut.copy(out: out);
+      zeroOut.dispose();
+      return out;
+    }
+    return zeroOut;
   }
 
   return NDArray.scope(() {
@@ -1754,10 +1794,8 @@ NDArray<R> _fftnND<T, R extends Complex>(
         ? transposed
         : transposed.copy();
 
-    final resultTransposed = NDArray<R>.zeros(
-      contiguousTransposed.shape,
-      targetDType,
-    );
+    final resultTransposed =
+        _createZeros(contiguousTransposed.shape, targetDType) as NDArray<R>;
 
     final signalSize = sResolved.reduce((x, y) => x * y);
     final totalElements = contiguousTransposed.size;
@@ -1822,9 +1860,7 @@ NDArray<R> _fftnND<T, R extends Complex>(
       result.copy(out: out);
       return out;
     } else {
-      return result.isContiguous
-          ? result.detachToParentScope()
-          : result.copy().detachToParentScope();
+      return result.copy().detachToParentScope();
     }
   });
 }
@@ -1840,7 +1876,7 @@ NDArray<R> _fftnND<T, R extends Complex>(
 /// - It is an error if [axes] and [s] length mismatch.
 /// - It is an error if any axis index in [axes] is out of bounds `[-a.rank, a.rank - 1]` or contains duplicates.
 /// - It is an error if any dimension in [s] is $\le 0$.
-/// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
+/// - It is an error if [out] has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
 /// - Uses `kiss_fftnd` plan which is optimized for multi-dimensional transforms.

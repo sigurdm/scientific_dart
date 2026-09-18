@@ -1,16 +1,18 @@
 import 'package:ndarray/ndarray.dart';
 
 void main() {
-  print('===========================================================');
-  print('      NumPy to package:ndarray Quickstart Tutorial         ');
-  print('===========================================================\n');
+  NDArray.scope(() {
+    print('===========================================================');
+    print('      NumPy to package:ndarray Quickstart Tutorial         ');
+    print('===========================================================\n');
 
-  runModule1CreationAndScope();
-  runModule2IndexingAndSlicing();
-  runModule3MathAndUfuncs();
-  runModule4ViewsVsCopies();
-  runModule5StackingAndSplitting();
-  runModule6ReductionsAndLinAlg();
+    runModule1CreationAndScope();
+    runModule2IndexingAndSlicing();
+    runModule3MathAndUfuncs();
+    runModule4ViewsVsCopies();
+    runModule5StackingAndSplitting();
+    runModule6ReductionsAndLinAlg();
+  });
 }
 
 void runModule1CreationAndScope() {

@@ -548,7 +548,11 @@ void main() {
         () {
           final res = ResourceScope.returning(() {
             final v = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-            final m = NDArray.fromList([3.0, 4.0, 5.0, 6.0], [2, 2], DType.float64);
+            final m = NDArray.fromList(
+              [3.0, 4.0, 5.0, 6.0],
+              [2, 2],
+              DType.float64,
+            );
             return matmul(v, m);
           });
 
@@ -562,14 +566,21 @@ void main() {
         },
       );
 
-      test('nanstd with axis: null and keepdims: true returns 1D/scalar array', () {
-        final a = NDArray.fromList([1.0, 2.0, double.nan, 3.0], [4], DType.float64);
-        final s = nanstd(a, keepdims: true);
-        expect(s.shape, [1]);
-        expect(s.getCellFlat(0), closeTo(0.816496, 1e-4));
-        a.dispose();
-        s.dispose();
-      });
+      test(
+        'nanstd with axis: null and keepdims: true returns 1D/scalar array',
+        () {
+          final a = NDArray.fromList(
+            [1.0, 2.0, double.nan, 3.0],
+            [4],
+            DType.float64,
+          );
+          final s = nanstd(a, keepdims: true);
+          expect(s.shape, [1]);
+          expect(s.getCellFlat(0), closeTo(0.816496, 1e-4));
+          a.dispose();
+          s.dispose();
+        },
+      );
 
       test('argsort with int64 out buffer on fallback dtype', () {
         final a = NDArray.fromList([10, -5, 20], [3], DType.int8);
@@ -628,12 +639,15 @@ void main() {
         res.dispose();
       });
 
-      test('shape with dim > 2^31 throws UnsupportedError regardless of zero dimension', () {
-        expect(
-          () => NDArray<Float64>.create([0, 2147483648], DType.float64),
-          throwsUnsupportedError,
-        );
-      });
+      test(
+        'shape with dim > 2^31 throws UnsupportedError regardless of zero dimension',
+        () {
+          expect(
+            () => NDArray<Float64>.create([0, 2147483648], DType.float64),
+            throwsUnsupportedError,
+          );
+        },
+      );
     });
   });
 }

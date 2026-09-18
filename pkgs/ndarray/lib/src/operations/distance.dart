@@ -2,7 +2,7 @@ import 'dart:ffi' as ffi;
 import '../ndarray.dart';
 import '../ndarray_bindings.dart' as bindings;
 import '../scratch_arena.dart';
-import 'helpers.dart' show encodeDType;
+import 'helpers.dart' show encodeDType, sharesMemory;
 import 'math.dart';
 import 'stats.dart';
 import 'linalg.dart';
@@ -57,7 +57,6 @@ NDArray<Float64> _promoteToFloat64(NDArray a) {
   final res = NDArray<Float64>.create(a.shape, DType.float64);
   final ndim = a.shape.length;
   final marker = ScratchArena.marker;
-
   try {
     final cBuffer = ScratchArena.getStridedBuffer(ndim);
     final cShape = cBuffer;
@@ -148,15 +147,24 @@ NDArray<Float64> pdist<T extends Object>(
     }
   }
 
+  final bool useTempOut =
+      out != null && (!out.isContiguous || sharesMemory(x, out));
+
   return NDArray.scope(() {
-    final result = out ?? NDArray<Float64>.create([outSize], DType.float64);
+    final target = (out != null && !useTempOut)
+        ? out
+        : NDArray<Float64>.create([outSize], DType.float64);
 
     if (metric == DistanceMetric.cosine) {
-      _pdistCosine(x, out: result);
+      _pdistCosine(x, out: target);
+      if (useTempOut) {
+        target.copy(out: out);
+        return out;
+      }
       if (out != null) {
-        return result;
+        return target;
       } else {
-        return result.detachToParentScope();
+        return target.detachToParentScope();
       }
     }
 
@@ -170,14 +178,18 @@ NDArray<Float64> pdist<T extends Object>(
       x.strides[0],
       x.strides[1],
       metricVal,
-      result.pointer.cast(),
-      result.strides[0],
+      target.pointer.cast(),
+      target.strides[0],
     );
 
+    if (useTempOut) {
+      target.copy(out: out);
+      return out;
+    }
     if (out != null) {
-      return result;
+      return target;
     } else {
-      return result.detachToParentScope();
+      return target.detachToParentScope();
     }
   });
 }
@@ -244,23 +256,33 @@ NDArray<Float64> cdist<Ta extends Object, Tb extends Object>(
     }
   }
 
+  final bool useTempOut =
+      out != null &&
+      (!out.isContiguous || sharesMemory(xa, out) || sharesMemory(xb, out));
+
   return NDArray.scope(() {
-    final result = out ?? NDArray<Float64>.create(outShape, DType.float64);
+    final target = (out != null && !useTempOut)
+        ? out
+        : NDArray<Float64>.create(outShape, DType.float64);
 
     if (m == 0 || k == 0) {
       if (out != null) {
-        return result;
+        return out;
       } else {
-        return result.detachToParentScope();
+        return target.detachToParentScope();
       }
     }
 
     if (metric == DistanceMetric.cosine) {
-      _cdistCosine(xa, xb, out: result);
+      _cdistCosine(xa, xb, out: target);
+      if (useTempOut) {
+        target.copy(out: out);
+        return out;
+      }
       if (out != null) {
-        return result;
+        return target;
       } else {
-        return result.detachToParentScope();
+        return target.detachToParentScope();
       }
     }
 
@@ -285,15 +307,19 @@ NDArray<Float64> cdist<Ta extends Object, Tb extends Object>(
       xbReal.strides[0],
       xbReal.strides[1],
       metricVal,
-      result.pointer.cast(),
-      result.strides[0],
-      result.strides[1],
+      target.pointer.cast(),
+      target.strides[0],
+      target.strides[1],
     );
 
+    if (useTempOut) {
+      target.copy(out: out);
+      return out;
+    }
     if (out != null) {
-      return result;
+      return target;
     } else {
-      return result.detachToParentScope();
+      return target.detachToParentScope();
     }
   });
 }
@@ -306,9 +332,13 @@ NDArray<Float64> _pdistCosine<T extends Object>(
 }) {
   final m = x.shape[0];
   final outSize = m * (m - 1) ~/ 2;
+  final bool useTempOut =
+      out != null && (!out.isContiguous || sharesMemory(x, out));
 
   return NDArray.scope(() {
-    final result = out ?? NDArray<Float64>.create([outSize], DType.float64);
+    final target = (out != null && !useTempOut)
+        ? out
+        : NDArray<Float64>.create([outSize], DType.float64);
 
     final xDouble = _promoteToFloat64(x);
 
@@ -333,7 +363,7 @@ NDArray<Float64> _pdistCosine<T extends Object>(
     final NDArray<Float64> cosDistMatrix = subtract(one, div);
 
     final flatPtr = cosDistMatrix.pointer.cast<ffi.Double>();
-    final resPtr = result.pointer.cast<ffi.Double>();
+    final resPtr = target.pointer.cast<ffi.Double>();
     var idx = 0;
     for (var i = 0; i < m; i++) {
       final rowOffset = i * m;
@@ -342,10 +372,14 @@ NDArray<Float64> _pdistCosine<T extends Object>(
       }
     }
 
+    if (useTempOut) {
+      target.copy(out: out);
+      return out;
+    }
     if (out != null) {
-      return result;
+      return target;
     } else {
-      return result.detachToParentScope();
+      return target.detachToParentScope();
     }
   });
 }

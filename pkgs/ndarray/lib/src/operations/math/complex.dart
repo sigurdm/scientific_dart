@@ -5,6 +5,33 @@ import "../../ndarray_bindings.dart";
 import "../../scratch_arena.dart";
 import "../helpers.dart";
 
+NDArray<dynamic> _complexPartView(
+  NDArray<dynamic> a,
+  DType<dynamic> floatDType, {
+  required bool isImag,
+}) {
+  final floatStrides = a.strides.map((s) => s * 2).toList();
+  var minRelativeOffset = 0;
+  if (!a.shape.contains(0)) {
+    for (var d = 0; d < a.shape.length; d++) {
+      final s = floatStrides[d];
+      if (s < 0) {
+        minRelativeOffset += (a.shape[d] - 1) * s;
+      }
+    }
+  }
+  final elementOffset = (isImag ? 1 : 0) + minRelativeOffset;
+  final ffi.Pointer<ffi.Void> basePtr = floatDType == DType.float64
+      ? (a.pointer.cast<ffi.Double>() + elementOffset).cast<ffi.Void>()
+      : (a.pointer.cast<ffi.Float>() + elementOffset).cast<ffi.Void>();
+  return NDArray<dynamic>.fromPointer(
+    basePtr,
+    a.shape,
+    floatDType,
+    strides: floatStrides,
+  );
+}
+
 /// Returns the real part of a complex array element-wise.
 ///
 /// If the input array [a] is already real (integer or float), returns a zero-copy
@@ -45,26 +72,55 @@ NDArray<R> real<T, R>(
       targetDType = a.dtype;
   }
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype for real.",
       );
     }
-    result = out;
-  } else {
-    if (where == null &&
-        a.dtype != DType.complex128 &&
-        a.dtype != DType.complex64) {
-      return NDArray.view(a, shape: a.shape, strides: a.strides)
-          as NDArray<R>; // Zero-copy view for already real arrays!
+    if (sharesMemory(a, out)) {
+      return NDArray.scope(() {
+        final temp = where != null
+            ? out.copy()
+            : ((targetDType == DType.float32
+                      ? NDArray<Float32>.create(a.shape, DType.float32)
+                      : NDArray<Float64>.create(a.shape, DType.float64))
+                  as NDArray<R>);
+        real<T, R>(a, where: where, out: temp);
+        temp.copy(out: out);
+        return out;
+      });
     }
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
+  } else if (where == null &&
+      a.dtype != DType.complex128 &&
+      a.dtype != DType.complex64) {
+    return NDArray.view(a, shape: a.shape, strides: a.strides)
+        as NDArray<R>; // Zero-copy view for already real arrays!
   }
 
-  final maskHolder = prepareMask(where, result.shape);
+  if (where == null &&
+      (a.dtype == DType.complex128 || a.dtype == DType.complex64)) {
+    final NDArray<R> result =
+        out ??
+        ((targetDType == DType.float32
+                ? NDArray<Float32>.create(a.shape, DType.float32)
+                : NDArray<Float64>.create(a.shape, DType.float64))
+            as NDArray<R>);
+    final view = _complexPartView(a, targetDType, isImag: false);
+    try {
+      view.copy(out: result);
+    } finally {
+      view.dispose();
+    }
+    return result;
+  }
+
+  final maskHolder = prepareMask(where, a.shape);
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     switch (a.dtype) {
       case DType.complex128:
       case DType.complex64:
@@ -141,24 +197,55 @@ NDArray<R> imag<T, R>(
     throw StateError("Cannot execute imag() on a disposed array.");
   }
 
-  final DType<dynamic> targetDType = a.dtype == DType.complex64
-      ? DType.float32
-      : DType.float64;
+  final DType<dynamic> targetDType = switch (a.dtype) {
+    DType.complex64 => DType.float32,
+    _ => DType.float64,
+  };
 
-  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype for imag.",
       );
     }
-    result = out;
-  } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
+    if (sharesMemory(a, out)) {
+      return NDArray.scope(() {
+        final temp = where != null
+            ? out.copy()
+            : ((targetDType == DType.float32
+                      ? NDArray<Float32>.create(a.shape, DType.float32)
+                      : NDArray<Float64>.create(a.shape, DType.float64))
+                  as NDArray<R>);
+        imag<T, R>(a, where: where, out: temp);
+        temp.copy(out: out);
+        return out;
+      });
+    }
   }
 
-  final maskHolder = prepareMask(where, result.shape);
+  if (where == null &&
+      (a.dtype == DType.complex128 || a.dtype == DType.complex64)) {
+    final NDArray<R> result =
+        out ??
+        ((targetDType == DType.float32
+                ? NDArray<Float32>.create(a.shape, DType.float32)
+                : NDArray<Float64>.create(a.shape, DType.float64))
+            as NDArray<R>);
+    final view = _complexPartView(a, targetDType, isImag: true);
+    try {
+      view.copy(out: result);
+    } finally {
+      view.dispose();
+    }
+    return result;
+  }
+
+  final maskHolder = prepareMask(where, a.shape);
   try {
+    final NDArray<R> result =
+        out ??
+        (NDArray.create(a.shape, targetDType, zeroInit: where != null)
+            as NDArray<R>);
     if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
       if (where == null) {
         result.fill(0.0 as R);
@@ -224,17 +311,32 @@ NDArray<T> conj<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
     throw StateError("Cannot execute conj() on a disposed array.");
   }
   final targetDType = a.dtype;
-  final result = out ?? NDArray<T>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype for conj.",
       );
     }
+    if (sharesMemory(a, out) &&
+        (!a.isContiguous ||
+            !out.isContiguous ||
+            a.offsetElements != out.offsetElements ||
+            !listEquals(a.strides, out.strides))) {
+      return NDArray.scope(() {
+        final temp = where != null
+            ? out.copy()
+            : NDArray<T>.create(a.shape, targetDType);
+        conj<T>(a, where: where, out: temp);
+        temp.copy(out: out);
+        return out;
+      });
+    }
   }
 
-  final maskHolder = prepareMask(where, result.shape);
+  final maskHolder = prepareMask(where, a.shape);
   try {
+    final result =
+        out ?? NDArray<T>.create(a.shape, targetDType, zeroInit: where != null);
     switch (targetDType) {
       case DType.complex128:
         if (a.isContiguous && result.isContiguous) {
@@ -248,10 +350,10 @@ NDArray<T> conj<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
         } else {
           final rank = a.shape.length;
           final marker = ScratchArena.marker;
-          final cShape = ScratchArena.copyInts(a.shape);
-          final cStridesA = ScratchArena.copyInts(a.strides);
-          final cStridesRes = ScratchArena.copyInts(result.strides);
           try {
+            final cShape = ScratchArena.copyInts(a.shape);
+            final cStridesA = ScratchArena.copyInts(a.strides);
+            final cStridesRes = ScratchArena.copyInts(result.strides);
             s_conj_complex128(
               a.pointer.cast(),
               cStridesA,
@@ -278,10 +380,10 @@ NDArray<T> conj<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
         } else {
           final rank = a.shape.length;
           final marker = ScratchArena.marker;
-          final cShape = ScratchArena.copyInts(a.shape);
-          final cStridesA = ScratchArena.copyInts(a.strides);
-          final cStridesRes = ScratchArena.copyInts(result.strides);
           try {
+            final cShape = ScratchArena.copyInts(a.shape);
+            final cStridesA = ScratchArena.copyInts(a.strides);
+            final cStridesRes = ScratchArena.copyInts(result.strides);
             s_conj_complex64(
               a.pointer.cast(),
               cStridesA,

@@ -647,8 +647,19 @@ NDARRAY_EXPORT void* npz_open_reader(const char* filepath, int64_t* out_num_entr
                 e->header_status = -8;
                 continue;
             }
-            uint16_t hlen = read_u16_le(npy + 8);
-            size_t total_header_len = 10 + hlen;
+            uint8_t major = npy[6];
+            size_t total_header_len;
+            if (major >= 2) {
+                if (e->uncomp_size < 12) {
+                    e->header_status = -7;
+                    continue;
+                }
+                uint32_t hlen = read_u32_le(npy + 8);
+                total_header_len = 12 + (size_t)hlen;
+            } else {
+                uint16_t hlen = read_u16_le(npy + 8);
+                total_header_len = 10 + (size_t)hlen;
+            }
             if (total_header_len > e->uncomp_size) {
                 e->header_status = -11;
                 continue;
@@ -689,20 +700,20 @@ NDARRAY_EXPORT int npz_reader_get_entry_info(
     }
 
     if (e->comp_method == 0) {
-        size_t total_header_len = e->header_len;
+        size_t total_header_len = (size_t)e->header_len;
+        if (out_header_len) *out_header_len = total_header_len;
+        if (out_data_len) *out_data_len = (size_t)(e->uncomp_size - total_header_len);
         if (header_buf_len < total_header_len) {
             return -9;
         }
         if (reader->mmap_data) {
             memcpy(header_buf, reader->mmap_data + e->data_offset, total_header_len);
         } else {
-            fseek(reader->fp, e->data_offset, SEEK_SET);
+            fseek(reader->fp, (long)e->data_offset, SEEK_SET);
             if (fread(header_buf, 1, total_header_len, reader->fp) != total_header_len) {
                 return -10;
             }
         }
-        if (out_header_len) *out_header_len = total_header_len;
-        if (out_data_len) *out_data_len = (size_t)(e->uncomp_size - total_header_len);
         return 0;
     } else {
         if (!reader->zip_initialized) {
@@ -730,32 +741,59 @@ NDARRAY_EXPORT int npz_reader_get_entry_info(
             return -6;
         }
 
-        size_t n = mz_zip_reader_extract_iter_read(iter, header_buf, 10);
+        uint8_t npy_prefix[12];
+        size_t n = mz_zip_reader_extract_iter_read(iter, npy_prefix, 10);
         if (n < 10) {
             mz_zip_reader_extract_iter_free(iter);
             return -7;
         }
 
-        if (header_buf[0] != 0x93 || header_buf[1] != 'N' || header_buf[2] != 'U' ||
-            header_buf[3] != 'M' || header_buf[4] != 'P' || header_buf[5] != 'Y') {
+        if (npy_prefix[0] != 0x93 || npy_prefix[1] != 'N' || npy_prefix[2] != 'U' ||
+            npy_prefix[3] != 'M' || npy_prefix[4] != 'P' || npy_prefix[5] != 'Y') {
             mz_zip_reader_extract_iter_free(iter);
             return -8;
         }
 
-        uint16_t hlen = (uint16_t)header_buf[8] | ((uint16_t)header_buf[9] << 8);
-        size_t total_header_len = 10 + hlen;
+        uint8_t major = npy_prefix[6];
+        size_t prefix_len;
+        size_t total_header_len;
+        if (major >= 2) {
+            if (mz_zip_reader_extract_iter_read(iter, npy_prefix + 10, 2) != 2) {
+                mz_zip_reader_extract_iter_free(iter);
+                return -7;
+            }
+            uint32_t hlen = read_u32_le(npy_prefix + 8);
+            prefix_len = 12;
+            total_header_len = 12 + (size_t)hlen;
+        } else {
+            uint16_t hlen = read_u16_le(npy_prefix + 8);
+            prefix_len = 10;
+            total_header_len = 10 + (size_t)hlen;
+        }
+
+        if (total_header_len > e->uncomp_size) {
+            mz_zip_reader_extract_iter_free(iter);
+            return -11;
+        }
+
+        if (out_header_len) *out_header_len = total_header_len;
+        if (out_data_len) *out_data_len = (size_t)(e->uncomp_size - total_header_len);
+
         if (total_header_len > header_buf_len) {
             mz_zip_reader_extract_iter_free(iter);
             return -9;
         }
 
-        n = mz_zip_reader_extract_iter_read(iter, header_buf + 10, hlen);
+        memcpy(header_buf, npy_prefix, prefix_len);
+        size_t rem = total_header_len - prefix_len;
+        if (rem > 0) {
+            n = mz_zip_reader_extract_iter_read(iter, header_buf + prefix_len, rem);
+            if (n != rem) {
+                mz_zip_reader_extract_iter_free(iter);
+                return -10;
+            }
+        }
         mz_zip_reader_extract_iter_free(iter);
-        if (n != hlen) return -10;
-
-        if (out_header_len) *out_header_len = total_header_len;
-        if (e->uncomp_size < total_header_len) return -11;
-        if (out_data_len) *out_data_len = (size_t)(e->uncomp_size - total_header_len);
 
         return 0;
     }

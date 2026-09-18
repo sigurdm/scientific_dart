@@ -159,5 +159,42 @@ void main() {
 
       unmanagedRes.dispose();
     });
+
+    test(
+      'detachToParentScope on outer-scope resource inside inner scope does not double-track',
+      () {
+        DummyResource? outerRes;
+        ResourceScope.scope(() {
+          outerRes = DummyResource(100);
+          ResourceScope.scope(() {
+            outerRes!.detachToParentScope();
+          });
+          expect(outerRes!.isDisposed, isFalse);
+          // Detaching from outer scope should remove the single tracking entry.
+          outerRes!.detachFromScope();
+        });
+
+        expect(outerRes!.isDisposed, isFalse);
+        outerRes!.dispose();
+        expect(outerRes!.isDisposed, isTrue);
+      },
+    );
+
+    test(
+      'detachToParentScope on unmanaged resource inside nested scopes does not hijack into outer scope',
+      () {
+        final unmanagedRes = DummyResource(200);
+        ResourceScope.scope(() {
+          ResourceScope.scope(() {
+            unmanagedRes.detachToParentScope();
+          });
+          expect(unmanagedRes.isDisposed, isFalse);
+        });
+
+        expect(unmanagedRes.isDisposed, isFalse);
+        unmanagedRes.dispose();
+        expect(unmanagedRes.isDisposed, isTrue);
+      },
+    );
   });
 }

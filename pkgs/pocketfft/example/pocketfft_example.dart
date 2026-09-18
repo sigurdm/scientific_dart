@@ -33,7 +33,9 @@ void main() {
 
     print('\nFFT Frequency Spectrum Output:');
     for (var i = 0; i < nfft; i++) {
-      print('  X[$i] = ${fout[i].r.toStringAsFixed(2)} + ${fout[i].i.toStringAsFixed(2)}i');
+      print(
+        '  X[$i] = ${fout[i].r.toStringAsFixed(2)} + ${fout[i].i.toStringAsFixed(2)}i',
+      );
     }
   } finally {
     // 5. Clean up allocated native memory

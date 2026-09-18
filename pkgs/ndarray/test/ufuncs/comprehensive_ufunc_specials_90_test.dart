@@ -1036,6 +1036,10 @@ void main() {
               DType.int64,
               DType.int32,
               DType.int16,
+              DType.int8,
+              DType.uint64,
+              DType.uint32,
+              DType.uint16,
               DType.uint8,
             ];
 
@@ -1068,31 +1072,6 @@ void main() {
               final resRShift = right_shift(a, shifts);
               expect(resRShift.toList(), equals([6, 2, 3]));
             }
-
-            // Unsupported integer dtypes throw UnsupportedError
-            final unsuppArr = NDArray.fromList([1, 2], [2], DType.int8);
-            final unsuppB = NDArray.fromList([1, 2], [2], DType.int8);
-            expect(
-              () => bitwise_and(unsuppArr, unsuppB),
-              throwsUnsupportedError,
-            );
-            expect(
-              () => bitwise_or(unsuppArr, unsuppB),
-              throwsUnsupportedError,
-            );
-            expect(
-              () => bitwise_xor(unsuppArr, unsuppB),
-              throwsUnsupportedError,
-            );
-            expect(() => invert(unsuppArr), throwsUnsupportedError);
-            expect(
-              () => left_shift(unsuppArr, unsuppB),
-              throwsUnsupportedError,
-            );
-            expect(
-              () => right_shift(unsuppArr, unsuppB),
-              throwsUnsupportedError,
-            );
           });
         },
       );

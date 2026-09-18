@@ -10,11 +10,14 @@ void main(List<String> args) async {
 
     final packageName = input.packageName;
     final os = input.config.code.targetOS;
+    final arch = input.config.code.targetArchitecture;
     final cCompiler = input.config.code.cCompiler;
 
     final libName = os == OS.windows
         ? 'libndarray.dll'
-        : (os == OS.macOS ? 'libndarray.dylib' : 'libndarray.so');
+        : ((os == OS.macOS || os == OS.iOS)
+              ? 'libndarray.dylib'
+              : 'libndarray.so');
 
     final outputDir = Directory.fromUri(input.outputDirectory);
     if (!outputDir.existsSync()) {
@@ -30,7 +33,23 @@ void main(List<String> args) async {
         compilerLower.contains('clang') ||
         compilerLower.contains('g++');
     final isMSVC = os == OS.windows && !isGNU;
-    final msvcEnv = isMSVC ? await getMSVCEnvironment() : <String, String>{};
+    final msvcEnv = isMSVC
+        ? await getMSVCEnvironment(arch)
+        : <String, String>{};
+
+    var cppCompilerPath = compilerPath;
+    if (compilerPath.endsWith('gcc')) {
+      cppCompilerPath =
+          '${compilerPath.substring(0, compilerPath.length - 3)}g++';
+    } else if (compilerPath.endsWith('clang')) {
+      cppCompilerPath = '$compilerPath++';
+    } else if (compilerPath.endsWith('cc')) {
+      cppCompilerPath = 'c++';
+    } else if (compilerPath.contains('gcc-')) {
+      cppCompilerPath = compilerPath.replaceAll('gcc-', 'g++-');
+    } else if (compilerPath.contains('clang-')) {
+      cppCompilerPath = compilerPath.replaceAll('clang-', 'clang++-');
+    }
 
     // Compile highway if needed
     final highwayDir = input.packageRoot.resolve('third_party/highway/');
@@ -74,6 +93,12 @@ void main(List<String> args) async {
           '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
           '-DHWY_ENABLE_TESTS=OFF',
           '-DHWY_ENABLE_EXAMPLES=OFF',
+          if (cCompiler != null) ...[
+            '-DCMAKE_C_COMPILER=$compilerPath',
+            '-DCMAKE_CXX_COMPILER=$cppCompilerPath',
+          ],
+          if (os == OS.macOS || os == OS.iOS)
+            '-DCMAKE_OSX_ARCHITECTURES=${arch == Architecture.arm64 ? 'arm64' : 'x86_64'}',
           highwayDir.toFilePath(),
         ],
         workingDirectory: highwayBuildDir.path,
@@ -114,20 +139,6 @@ void main(List<String> args) async {
       print('Highway compiled successfully.');
     }
 
-    var cppCompilerPath = compilerPath;
-    if (compilerPath.endsWith('gcc')) {
-      cppCompilerPath =
-          '${compilerPath.substring(0, compilerPath.length - 3)}g++';
-    } else if (compilerPath.endsWith('clang')) {
-      cppCompilerPath = '$compilerPath++';
-    } else if (compilerPath.endsWith('cc')) {
-      cppCompilerPath = 'c++';
-    } else if (compilerPath.contains('gcc-')) {
-      cppCompilerPath = compilerPath.replaceAll('gcc-', 'g++-');
-    } else if (compilerPath.contains('clang-')) {
-      cppCompilerPath = compilerPath.replaceAll('clang-', 'clang++-');
-    }
-
     print(
       'Compiling ndarray custom C++ extensions using compiler: $cppCompilerPath',
     );
@@ -148,6 +159,7 @@ void main(List<String> args) async {
         '/O2',
         '/MD',
         '/EHsc',
+        if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
         '/I${input.packageRoot.toFilePath()}',
         input.packageRoot.resolve('hook/custom_ufuncs.cpp').toFilePath(),
@@ -166,6 +178,7 @@ void main(List<String> args) async {
         '/O2',
         '/MD',
         '/EHsc',
+        if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
         '/I${input.packageRoot.toFilePath()}',
         '/I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
@@ -185,6 +198,7 @@ void main(List<String> args) async {
         '/O2',
         '/MD',
         '/EHsc',
+        if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
         '/I${input.packageRoot.toFilePath()}',
         input.packageRoot.resolve('hook/custom_indexing.cpp').toFilePath(),
@@ -294,6 +308,7 @@ void main(List<String> args) async {
           'hook/custom_indexing.h',
           'hook/custom_sorting.h',
           'hook/custom_ufuncs.h',
+          'hook/build.dart',
         ]) {
           final hF = File(input.packageRoot.resolve(header).toFilePath());
           if (hF.existsSync() && hF.lastModifiedSync().isAfter(objTime)) {
@@ -309,9 +324,14 @@ void main(List<String> args) async {
       if (needsCompile(ufuncsSrc, ufuncsObj)) {
         print('Compiling custom_ufuncs.cpp...');
         final res = await Process.run(cppCompilerPath, [
+          if (os == OS.macOS || os == OS.iOS) ...[
+            '-arch',
+            arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+          ],
           '-c',
           '-fPIC',
           '-O3',
+          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
           '-fno-math-errno',
           '-I${input.packageRoot.toFilePath()}',
           ufuncsSrc,
@@ -329,9 +349,14 @@ void main(List<String> args) async {
       if (needsCompile(sortingSrc, sortingObj)) {
         print('Compiling custom_sorting.cpp...');
         final res = await Process.run(cppCompilerPath, [
+          if (os == OS.macOS || os == OS.iOS) ...[
+            '-arch',
+            arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+          ],
           '-c',
           '-fPIC',
           '-O3',
+          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
           '-fno-math-errno',
           '-I${input.packageRoot.toFilePath()}',
           '-I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
@@ -350,9 +375,14 @@ void main(List<String> args) async {
       if (needsCompile(indexingSrc, indexingObj)) {
         print('Compiling custom_indexing.cpp...');
         final res = await Process.run(cppCompilerPath, [
+          if (os == OS.macOS || os == OS.iOS) ...[
+            '-arch',
+            arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+          ],
           '-c',
           '-fPIC',
           '-O3',
+          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
           '-fno-math-errno',
           '-I${input.packageRoot.toFilePath()}',
           indexingSrc,
@@ -373,6 +403,10 @@ void main(List<String> args) async {
       if (needsCompile(minizSrc, minizObj) || needsCompile(minizH, minizObj)) {
         print('Compiling miniz.c...');
         final res = await Process.run(compilerPath, [
+          if (os == OS.macOS || os == OS.iOS) ...[
+            '-arch',
+            arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+          ],
           '-c',
           '-fPIC',
           '-O3',
@@ -392,6 +426,10 @@ void main(List<String> args) async {
       if (needsCompile(npzIoSrc, npzIoObj) || needsCompile(minizH, npzIoObj)) {
         print('Compiling npz_io.cpp...');
         final res = await Process.run(cppCompilerPath, [
+          if (os == OS.macOS || os == OS.iOS) ...[
+            '-arch',
+            arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+          ],
           '-c',
           '-fPIC',
           '-O3',
@@ -417,8 +455,13 @@ void main(List<String> args) async {
       if (needsLink) {
         print('Linking shared library...');
         final res = await Process.run(cppCompilerPath, [
+          if (os == OS.macOS || os == OS.iOS) ...[
+            '-arch',
+            arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+          ],
           '-shared',
           '-fPIC',
+          if (os == OS.android) '-Wl,-z,max-page-size=16384',
           ufuncsObj,
           sortingObj,
           indexingObj,
@@ -506,7 +549,7 @@ List<String> extractExportsFromBindings(String bindingsPath) {
   return exports;
 }
 
-Future<Map<String, String>> getMSVCEnvironment() async {
+Future<Map<String, String>> getMSVCEnvironment(Architecture targetArch) async {
   if (!Platform.isWindows) return {};
 
   String vswherePath = 'vswhere.exe';
@@ -541,13 +584,17 @@ Future<Map<String, String>> getMSVCEnvironment() async {
       return {};
     }
 
+    final vcvarsArch = targetArch == Architecture.arm64
+        ? 'arm64'
+        : (targetArch == Architecture.ia32 ? 'x86' : 'amd64');
+
     final tempDir = Directory.systemTemp;
     final tempFile = File(
       '${tempDir.path}\\get_msvc_env_${DateTime.now().millisecondsSinceEpoch}.bat',
     );
     try {
       await tempFile.writeAsString(
-        '@echo off\ncall "$vcvarsPath" amd64\nset\n',
+        '@echo off\ncall "$vcvarsPath" $vcvarsArch\nset\n',
       );
     } catch (e) {
       print('Failed to write temporary batch file: $e');

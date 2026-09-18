@@ -8,7 +8,7 @@ import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports
 import 'helpers.dart';
-export 'helpers.dart' show castNDArray;
+export 'helpers.dart' show castNDArray, sharesMemory;
 
 /// Concatenates a list of arrays along a specified axis.
 ///
@@ -91,64 +91,74 @@ NDArray<T> concatenate<T>(
     }
   }
 
-  final targetResult = out ?? NDArray<T>.create(targetShape, dtype);
-  if (targetResult.size == 0) {
-    return targetResult;
-  }
+  return NDArray.scope(() {
+    final bool useTempOut =
+        out != null &&
+        (!out.isContiguous || arrays.any((arr) => sharesMemory(arr, out)));
+    final result = (out != null && !useTempOut)
+        ? out
+        : NDArray<T>.create(targetShape, dtype);
+    if (result.size == 0) {
+      if (out != null) {
+        return out;
+      }
+      return result.detachToParentScope();
+    }
 
-  final isDestContiguous = targetResult.isContiguous;
-  final result = isDestContiguous
-      ? targetResult
-      : NDArray<T>.create(targetShape, dtype);
+    final outer = first.shape
+        .sublist(0, normAxis)
+        .fold<int>(1, (a, b) => a * b);
+    final inner = first.shape
+        .sublist(normAxis + 1)
+        .fold<int>(1, (a, b) => a * b);
+    final byteWidth = dtype.byteWidth;
+    final destStrideBytes = totalAxisSize * inner * byteWidth;
+    final destPtr = result.pointer.cast<ffi.Uint8>();
 
-  final outer = first.shape.sublist(0, normAxis).fold<int>(1, (a, b) => a * b);
-  final inner = first.shape.sublist(normAxis + 1).fold<int>(1, (a, b) => a * b);
-  final byteWidth = dtype.byteWidth;
-  final destStrideBytes = totalAxisSize * inner * byteWidth;
-  final destPtr = result.pointer.cast<ffi.Uint8>();
+    var axisOffset = 0;
+    for (var r = 0; r < arrays.length; r++) {
+      final arr = arrays[r];
+      final sizeAlongAxis = arr.shape[normAxis];
+      if (sizeAlongAxis == 0) continue;
 
-  var axisOffset = 0;
-  for (var r = 0; r < arrays.length; r++) {
-    final arr = arrays[r];
-    final sizeAlongAxis = arr.shape[normAxis];
-    if (sizeAlongAxis == 0) continue;
+      final blockBytes = sizeAlongAxis * inner * byteWidth;
+      final srcStrideBytes = sizeAlongAxis * inner * byteWidth;
+      final destInitialOffsetBytes = axisOffset * inner * byteWidth;
 
-    final blockBytes = sizeAlongAxis * inner * byteWidth;
-    final srcStrideBytes = sizeAlongAxis * inner * byteWidth;
-    final destInitialOffsetBytes = axisOffset * inner * byteWidth;
-
-    final srcContiguous = arr.isContiguous ? arr : arr.copy();
-    try {
-      final srcPtr = srcContiguous.pointer.cast<ffi.Uint8>();
-      if (outer == 1) {
-        custom_memcpy(
-          (destPtr + destInitialOffsetBytes).cast(),
-          srcPtr.cast(),
-          blockBytes,
-        );
-      } else {
-        for (var o = 0; o < outer; o++) {
+      final srcContiguous = arr.isContiguous ? arr : arr.copy();
+      try {
+        final srcPtr = srcContiguous.pointer.cast<ffi.Uint8>();
+        if (outer == 1) {
           custom_memcpy(
-            (destPtr + (o * destStrideBytes + destInitialOffsetBytes)).cast(),
-            (srcPtr + (o * srcStrideBytes)).cast(),
+            (destPtr + destInitialOffsetBytes).cast(),
+            srcPtr.cast(),
             blockBytes,
           );
+        } else {
+          for (var o = 0; o < outer; o++) {
+            custom_memcpy(
+              (destPtr + (o * destStrideBytes + destInitialOffsetBytes)).cast(),
+              (srcPtr + (o * srcStrideBytes)).cast(),
+              blockBytes,
+            );
+          }
+        }
+      } finally {
+        if (!identical(srcContiguous, arr)) {
+          srcContiguous.dispose();
         }
       }
-    } finally {
-      if (!identical(srcContiguous, arr)) {
-        srcContiguous.dispose();
-      }
+      axisOffset += sizeAlongAxis;
     }
-    axisOffset += sizeAlongAxis;
-  }
 
-  if (!identical(result, targetResult)) {
-    result.copy(out: targetResult);
-    result.dispose();
-  }
-
-  return targetResult;
+    if (out != null) {
+      if (useTempOut) {
+        result.copy(out: out);
+      }
+      return out;
+    }
+    return result.detachToParentScope();
+  });
 }
 
 /// Join a sequence of arrays along a new axis.
@@ -229,63 +239,69 @@ NDArray<T> stack<T extends Object>(
     }
   }
 
-  final targetResult = out ?? NDArray<T>.create(stackedShape, dtype);
-  if (targetResult.size == 0) {
-    return targetResult;
-  }
+  return NDArray.scope(() {
+    final bool useTempOut =
+        out != null &&
+        (!out.isContiguous || arrays.any((arr) => sharesMemory(arr, out)));
+    final result = (out != null && !useTempOut)
+        ? out
+        : NDArray<T>.create(stackedShape, dtype);
+    if (result.size == 0) {
+      if (out != null) {
+        return out;
+      }
+      return result.detachToParentScope();
+    }
 
-  final isDestContiguous = targetResult.isContiguous;
-  final result = isDestContiguous
-      ? targetResult
-      : NDArray<T>.create(stackedShape, dtype);
+    final numArrays = arrays.length;
+    final outer = first.shape
+        .sublist(0, targetAxis)
+        .fold<int>(1, (a, b) => a * b);
+    final inner = first.shape.sublist(targetAxis).fold<int>(1, (a, b) => a * b);
+    final byteWidth = dtype.byteWidth;
+    final blockBytes = inner * byteWidth;
+    final destStrideBytes = numArrays * inner * byteWidth;
+    final srcStrideBytes = inner * byteWidth;
 
-  final numArrays = arrays.length;
-  final outer = first.shape
-      .sublist(0, targetAxis)
-      .fold<int>(1, (a, b) => a * b);
-  final inner = first.shape.sublist(targetAxis).fold<int>(1, (a, b) => a * b);
-  final byteWidth = dtype.byteWidth;
-  final blockBytes = inner * byteWidth;
-  final destStrideBytes = numArrays * inner * byteWidth;
-  final srcStrideBytes = inner * byteWidth;
+    final destPtr = result.pointer.cast<ffi.Uint8>();
 
-  final destPtr = result.pointer.cast<ffi.Uint8>();
+    for (var r = 0; r < numArrays; r++) {
+      final arr = arrays[r];
+      final srcContiguous = arr.isContiguous ? arr : arr.copy();
+      try {
+        final srcPtr = srcContiguous.pointer.cast<ffi.Uint8>();
+        final destInitialOffsetBytes = r * inner * byteWidth;
 
-  for (var r = 0; r < numArrays; r++) {
-    final arr = arrays[r];
-    final srcContiguous = arr.isContiguous ? arr : arr.copy();
-    try {
-      final srcPtr = srcContiguous.pointer.cast<ffi.Uint8>();
-      final destInitialOffsetBytes = r * inner * byteWidth;
-
-      if (outer == 1) {
-        custom_memcpy(
-          (destPtr + destInitialOffsetBytes).cast(),
-          srcPtr.cast(),
-          blockBytes,
-        );
-      } else {
-        for (var o = 0; o < outer; o++) {
+        if (outer == 1) {
           custom_memcpy(
-            (destPtr + (o * destStrideBytes + destInitialOffsetBytes)).cast(),
-            (srcPtr + (o * srcStrideBytes)).cast(),
+            (destPtr + destInitialOffsetBytes).cast(),
+            srcPtr.cast(),
             blockBytes,
           );
+        } else {
+          for (var o = 0; o < outer; o++) {
+            custom_memcpy(
+              (destPtr + (o * destStrideBytes + destInitialOffsetBytes)).cast(),
+              (srcPtr + (o * srcStrideBytes)).cast(),
+              blockBytes,
+            );
+          }
+        }
+      } finally {
+        if (!identical(srcContiguous, arr)) {
+          srcContiguous.dispose();
         }
       }
-    } finally {
-      if (!identical(srcContiguous, arr)) {
-        srcContiguous.dispose();
-      }
     }
-  }
 
-  if (!identical(result, targetResult)) {
-    result.copy(out: targetResult);
-    result.dispose();
-  }
-
-  return targetResult;
+    if (out != null) {
+      if (useTempOut) {
+        result.copy(out: out);
+      }
+      return out;
+    }
+    return result.detachToParentScope();
+  });
 }
 
 /// Expand the shape of an array by inserting a new axis of size 1.
@@ -575,7 +591,9 @@ NDArray<T> flip<T extends Object>(NDArray<T> a, {dynamic axis}) {
 
   for (final ax in axesToFlip) {
     newStrides[ax] = a.strides[ax] * -1;
-    offset += (a.shape[ax] - 1) * a.strides[ax];
+    if (a.shape[ax] > 0) {
+      offset += (a.shape[ax] - 1) * a.strides[ax];
+    }
   }
 
   return NDArray.view(
@@ -790,17 +808,11 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
     if (k >= 0) {
       startRow = 0;
       startCol = k;
-      if (startCol >= n) {
-        return NDArray<T>.create([0], v.dtype);
-      }
-      len = math.min(m, n - k);
+      len = math.max(0, math.min(m, n - k));
     } else {
       startRow = -k;
       startCol = 0;
-      if (startRow >= m) {
-        return NDArray<T>.create([0], v.dtype);
-      }
-      len = math.min(m + k, n);
+      len = math.max(0, math.min(m + k, n));
     }
 
     if (len <= 0) {
@@ -810,6 +822,7 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
             'Provided out buffer has incompatible shape or dtype.',
           );
         }
+        out.fill(castValue(0, v.dtype) as T);
         return out;
       }
       return NDArray<T>.create([0], v.dtype);
@@ -835,37 +848,50 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
     final size = n + k.abs();
     final targetShape = [size, size];
 
-    final result = out ?? NDArray<T>.zeros(targetShape, v.dtype);
     if (out != null) {
       if (!listEquals(out.shape, targetShape) || out.dtype != v.dtype) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
       }
-      result.fill(castValue(0, v.dtype) as T);
     }
 
-    int startRow;
-    int startCol;
+    return NDArray.scope(() {
+      final bool useTempOut = out != null && sharesMemory(v, out);
+      final result = (out != null && !useTempOut)
+          ? out
+          : NDArray<T>.zeros(targetShape, v.dtype);
+      if (out != null && !useTempOut) {
+        result.fill(castValue(0, v.dtype) as T);
+      }
 
-    if (k >= 0) {
-      startRow = 0;
-      startCol = k;
-    } else {
-      startRow = -k;
-      startCol = 0;
-    }
+      int startRow;
+      int startCol;
 
-    final resStride0 = result.strides[0];
-    final resStride1 = result.strides[1];
-    for (var i = 0; i < n; i++) {
-      result.setCellFlat(
-        (startRow + i) * resStride0 + (startCol + i) * resStride1,
-        v.getCellFlat(i),
-      );
-    }
+      if (k >= 0) {
+        startRow = 0;
+        startCol = k;
+      } else {
+        startRow = -k;
+        startCol = 0;
+      }
 
-    return result;
+      final resStride0 = result.strides[0];
+      final resStride1 = result.strides[1];
+      for (var i = 0; i < n; i++) {
+        final flatOffset =
+            (startRow + i) * resStride0 + (startCol + i) * resStride1;
+        result.setCellRaw(result.offsetElements + flatOffset, v.getCellFlat(i));
+      }
+
+      if (out != null) {
+        if (useTempOut) {
+          result.copy(out: out);
+        }
+        return out;
+      }
+      return result.detachToParentScope();
+    });
   } else {
     throw ArgumentError('Input array must be 1- or 2-dimensional.');
   }
@@ -889,7 +915,6 @@ NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   if (a.shape.length < 2) {
     throw ArgumentError('Input array must have rank >= 2.');
   }
-  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -898,69 +923,86 @@ NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
     }
   }
 
-  final rank = a.shape.length;
-  final rows = a.shape[rank - 2];
-  final cols = a.shape[rank - 1];
+  return NDArray.scope(() {
+    final bool useTempOut = out != null && sharesMemory(a, out);
+    final result = (out != null && !useTempOut)
+        ? out
+        : NDArray<T>.create(a.shape, a.dtype);
 
-  final batchCount = a.shape.isEmpty
-      ? 1
-      : a.shape.sublist(0, rank - 2).isEmpty
-      ? 1
-      : a.shape.sublist(0, rank - 2).reduce((x, y) => x * y);
+    final rank = a.shape.length;
+    final rows = a.shape[rank - 2];
+    final cols = a.shape[rank - 1];
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_tril_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          batchCount,
-          rows,
-          cols,
-          k,
-        );
-        return result;
-      case DType.float32:
-        v_tril_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          batchCount,
-          rows,
-          cols,
-          k,
-        );
-        return result;
-      default:
-        break;
+    final batchCount = a.shape.isEmpty
+        ? 1
+        : a.shape.sublist(0, rank - 2).isEmpty
+        ? 1
+        : a.shape.sublist(0, rank - 2).reduce((x, y) => x * y);
+
+    bool handledByFastKernel = false;
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_tril_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            batchCount,
+            rows,
+            cols,
+            k,
+          );
+          handledByFastKernel = true;
+        case DType.float32:
+          v_tril_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            batchCount,
+            rows,
+            cols,
+            k,
+          );
+          handledByFastKernel = true;
+        default:
+          break;
+      }
     }
-  }
 
-  final zeroVal = castValue(0, a.dtype) as T;
-  final coords = List<int>.filled(rank, 0);
+    if (!handledByFastKernel) {
+      final zeroVal = castValue(0, a.dtype) as T;
+      final coords = List<int>.filled(rank, 0);
 
-  void walk(int dim) {
-    if (dim == rank - 2) {
-      for (var r = 0; r < rows; r++) {
-        coords[rank - 2] = r;
-        for (var c = 0; c < cols; c++) {
-          coords[rank - 1] = c;
-          if (c <= r + k) {
-            result.setCell(coords, a.getCell(coords));
-          } else {
-            result.setCell(coords, zeroVal);
+      void walk(int dim) {
+        if (dim == rank - 2) {
+          for (var r = 0; r < rows; r++) {
+            coords[rank - 2] = r;
+            for (var c = 0; c < cols; c++) {
+              coords[rank - 1] = c;
+              if (c <= r + k) {
+                result.setCell(coords, a.getCell(coords));
+              } else {
+                result.setCell(coords, zeroVal);
+              }
+            }
           }
+          return;
+        }
+        for (var i = 0; i < a.shape[dim]; i++) {
+          coords[dim] = i;
+          walk(dim + 1);
         }
       }
-      return;
-    }
-    for (var i = 0; i < a.shape[dim]; i++) {
-      coords[dim] = i;
-      walk(dim + 1);
-    }
-  }
 
-  walk(0);
-  return result;
+      walk(0);
+    }
+
+    if (out != null) {
+      if (useTempOut) {
+        result.copy(out: out);
+      }
+      return out;
+    }
+    return result.detachToParentScope();
+  });
 }
 
 /// Extract an upper triangular matrix (on and above the k-th diagonal) element-wise.
@@ -981,7 +1023,6 @@ NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   if (a.shape.length < 2) {
     throw ArgumentError('Input array must have rank >= 2.');
   }
-  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -990,69 +1031,86 @@ NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
     }
   }
 
-  final rank = a.shape.length;
-  final rows = a.shape[rank - 2];
-  final cols = a.shape[rank - 1];
+  return NDArray.scope(() {
+    final bool useTempOut = out != null && sharesMemory(a, out);
+    final result = (out != null && !useTempOut)
+        ? out
+        : NDArray<T>.create(a.shape, a.dtype);
 
-  final batchCount = a.shape.isEmpty
-      ? 1
-      : a.shape.sublist(0, rank - 2).isEmpty
-      ? 1
-      : a.shape.sublist(0, rank - 2).reduce((x, y) => x * y);
+    final rank = a.shape.length;
+    final rows = a.shape[rank - 2];
+    final cols = a.shape[rank - 1];
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_triu_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          batchCount,
-          rows,
-          cols,
-          k,
-        );
-        return result;
-      case DType.float32:
-        v_triu_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          batchCount,
-          rows,
-          cols,
-          k,
-        );
-        return result;
-      default:
-        break;
+    final batchCount = a.shape.isEmpty
+        ? 1
+        : a.shape.sublist(0, rank - 2).isEmpty
+        ? 1
+        : a.shape.sublist(0, rank - 2).reduce((x, y) => x * y);
+
+    bool handledByFastKernel = false;
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_triu_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            batchCount,
+            rows,
+            cols,
+            k,
+          );
+          handledByFastKernel = true;
+        case DType.float32:
+          v_triu_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            batchCount,
+            rows,
+            cols,
+            k,
+          );
+          handledByFastKernel = true;
+        default:
+          break;
+      }
     }
-  }
 
-  final zeroVal = castValue(0, a.dtype) as T;
-  final coords = List<int>.filled(rank, 0);
+    if (!handledByFastKernel) {
+      final zeroVal = castValue(0, a.dtype) as T;
+      final coords = List<int>.filled(rank, 0);
 
-  void walk(int dim) {
-    if (dim == rank - 2) {
-      for (var r = 0; r < rows; r++) {
-        coords[rank - 2] = r;
-        for (var c = 0; c < cols; c++) {
-          coords[rank - 1] = c;
-          if (c >= r + k) {
-            result.setCell(coords, a.getCell(coords));
-          } else {
-            result.setCell(coords, zeroVal);
+      void walk(int dim) {
+        if (dim == rank - 2) {
+          for (var r = 0; r < rows; r++) {
+            coords[rank - 2] = r;
+            for (var c = 0; c < cols; c++) {
+              coords[rank - 1] = c;
+              if (c >= r + k) {
+                result.setCell(coords, a.getCell(coords));
+              } else {
+                result.setCell(coords, zeroVal);
+              }
+            }
           }
+          return;
+        }
+        for (var i = 0; i < a.shape[dim]; i++) {
+          coords[dim] = i;
+          walk(dim + 1);
         }
       }
-      return;
-    }
-    for (var i = 0; i < a.shape[dim]; i++) {
-      coords[dim] = i;
-      walk(dim + 1);
-    }
-  }
 
-  walk(0);
-  return result;
+      walk(0);
+    }
+
+    if (out != null) {
+      if (useTempOut) {
+        result.copy(out: out);
+      }
+      return out;
+    }
+    return result.detachToParentScope();
+  });
 }
 
 /// Calculates the n-th discrete difference along the given axis.
@@ -1101,17 +1159,9 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
     return NDArray<T>.create(emptyShape, a.dtype);
   }
 
-  if (n > 1) {
-    final step = diff(a, n: n - 1, axis: targetAxis);
-    final result = diff(step, n: 1, axis: targetAxis, out: out);
-    step.dispose();
-    return result;
-  }
-
   final targetShape = List<int>.from(a.shape);
-  targetShape[targetAxis] = a.shape[targetAxis] - 1;
+  targetShape[targetAxis] = a.shape[targetAxis] - n;
 
-  final result = out ?? NDArray<T>.create(targetShape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1120,109 +1170,127 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
     }
   }
 
-  final rank = a.shape.length;
-  final marker = ScratchArena.marker;
-  final cShape = ScratchArena.copyInts(a.shape);
-  final cStridesA = ScratchArena.copyInts(a.strides);
-  final cStridesRes = ScratchArena.copyInts(result.strides);
-  try {
-    final dtype = a.dtype;
-    switch (dtype) {
-      case DType.float64:
-        s_diff_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          targetAxis,
-        );
-      case DType.float32:
-        s_diff_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          targetAxis,
-        );
-      case DType.int64:
-        s_diff_int64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          targetAxis,
-        );
-      case DType.int32:
-        s_diff_int32(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          targetAxis,
-        );
-      case DType.complex128:
-        s_diff_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          targetAxis,
-        );
-      case DType.complex64:
-        s_diff_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          targetAxis,
-        );
-      case DType.float16:
-      case DType.bfloat16:
-      case DType.int8:
-      case DType.uint64:
-      case DType.uint32:
-      case DType.uint16:
-      case DType.uint8:
-      case DType.int16:
-      case DType.boolean:
-        final intA = castNDArray(a, DType.float64);
-        final intRes = NDArray<Float64>.create(targetShape, DType.float64);
-        final cStridesIntA = ScratchArena.copyInts(intA.strides);
-        final cStridesIntRes = ScratchArena.copyInts(intRes.strides);
+  return NDArray.scope(() {
+    final bool useTempOut = out != null && sharesMemory(a, out);
+    final result = (out != null && !useTempOut)
+        ? out
+        : NDArray<T>.create(targetShape, a.dtype);
 
-        s_diff_double(
-          intA.pointer.cast(),
-          cStridesIntA,
-          intRes.pointer.cast(),
-          cStridesIntRes,
-          cShape,
-          rank,
-          targetAxis,
-        );
+    if (n > 1) {
+      final step = diff(a, n: n - 1, axis: targetAxis);
+      diff(step, n: 1, axis: targetAxis, out: result);
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cShape = ScratchArena.copyInts(a.shape);
+        final cStridesA = ScratchArena.copyInts(a.strides);
+        final cStridesRes = ScratchArena.copyInts(result.strides);
+        final dtype = a.dtype;
+        switch (dtype) {
+          case DType.float64:
+            s_diff_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              targetAxis,
+            );
+          case DType.float32:
+            s_diff_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              targetAxis,
+            );
+          case DType.int64:
+            s_diff_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              targetAxis,
+            );
+          case DType.int32:
+            s_diff_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              targetAxis,
+            );
+          case DType.complex128:
+            s_diff_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              targetAxis,
+            );
+          case DType.complex64:
+            s_diff_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              targetAxis,
+            );
+          case DType.float16:
+          case DType.bfloat16:
+          case DType.int8:
+          case DType.uint64:
+          case DType.uint32:
+          case DType.uint16:
+          case DType.uint8:
+          case DType.int16:
+          case DType.boolean:
+            final intA = castNDArray(a, DType.float64);
+            final intRes = NDArray<Float64>.create(targetShape, DType.float64);
+            final cStridesIntA = ScratchArena.copyInts(intA.strides);
+            final cStridesIntRes = ScratchArena.copyInts(intRes.strides);
 
-        final castedRes = castNDArray(intRes, a.dtype);
-        castedRes.copy(out: result);
-        castedRes.dispose();
-        intA.dispose();
-        intRes.dispose();
+            s_diff_double(
+              intA.pointer.cast(),
+              cStridesIntA,
+              intRes.pointer.cast(),
+              cStridesIntRes,
+              cShape,
+              rank,
+              targetAxis,
+            );
+
+            final castedRes = castNDArray(intRes, a.dtype);
+            castedRes.copy(out: result);
+            castedRes.dispose();
+            intA.dispose();
+            intRes.dispose();
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
     }
-  } finally {
-    ScratchArena.reset(marker);
-  }
 
-  return result;
+    if (out != null) {
+      if (useTempOut) {
+        result.copy(out: out);
+      }
+      return out;
+    }
+    return result.detachToParentScope();
+  });
 }
 
 /// Roll array elements along a given axis.
@@ -1324,6 +1392,16 @@ NDArray<T> roll<T extends Object>(
     }
   }
 
+  if (out != null && sharesMemory(a, out)) {
+    final temp = roll<T>(a, shift, axis: axis);
+    try {
+      temp.copy(out: out);
+      return out;
+    } finally {
+      temp.dispose();
+    }
+  }
+
   if (a.rank == 0 || a.size == 0) {
     return a.copy(out: out);
   }
@@ -1394,6 +1472,9 @@ NDArray<T> roll<T extends Object>(
   }
 
   final nonNullAxes = axes;
+  if (nonNullAxes.isEmpty) {
+    return a.copy(out: out);
+  }
   if (nonNullAxes.length == 1) {
     return _rollSingleND(a, shifts[0], nonNullAxes[0], out: out);
   }
@@ -1423,7 +1504,7 @@ NDArray<T> roll<T extends Object>(
       );
       current = next;
     }
-    return current.detachToParentScope();
+    return out != null ? current : current.detachToParentScope();
   });
 }
 

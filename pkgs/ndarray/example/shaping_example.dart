@@ -1,10 +1,12 @@
 import 'package:ndarray/ndarray.dart';
 
 void main() {
-  print('=== NDArray Shaping & Meshes Examples ===\n');
-  runAsStridedExamples();
-  runMGridExamples();
-  runOGridExamples();
+  NDArray.scope(() {
+    print('=== NDArray Shaping & Meshes Examples ===\n');
+    runAsStridedExamples();
+    runMGridExamples();
+    runOGridExamples();
+  });
 }
 
 void runAsStridedExamples() {

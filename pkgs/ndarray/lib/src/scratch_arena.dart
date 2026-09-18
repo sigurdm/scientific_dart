@@ -339,6 +339,7 @@ final class ScratchArena {
     if (ndim < 0 || segments < 0) {
       throw ArgumentError('ndim and segments must be non-negative.');
     }
+    if (segments < 4) segments = 4;
     final count = ndim * segments;
     final requiredSize = count > 0 ? count : 1;
     return allocate<ffi.Int>(requiredSize * ffi.sizeOf<ffi.Int>());

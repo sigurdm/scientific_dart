@@ -91,6 +91,9 @@ int _computeCheckedTotalSize(List<int> shape) {
   return totalSize;
 }
 
+@internal
+int checkTotalSize(List<int> shape) => _computeCheckedTotalSize(shape);
+
 enum DType<T> {
   float64<Float64>('float64', 8, '<f8'),
   float32<Float32>('float32', 4, '<f4'),
@@ -193,8 +196,11 @@ enum DType<T> {
 /// a.dispose();
 /// ```
 final class NDArray<T> implements ffi.Finalizable, ScopedResource {
-  /// Pointer to the raw C memory allocated for this array.
+  /// Pointer to the raw C memory allocated for this array (logical origin).
   final ffi.Pointer<ffi.Void> _pointer;
+
+  /// Pointer to the physical start of the memory allocation (for root arrays).
+  final ffi.Pointer<ffi.Void>? _allocPointer;
 
   /// A Dart list view of the raw C memory.
   ///
@@ -325,8 +331,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       ResourceScope.unmanaged(callback);
 
   static bool _checkContiguous(List<int> shape, List<int> strides) {
+    if (strides.length != shape.length) return false;
+    if (shape.contains(0)) return true;
     final cStrides = computeCStrides(shape);
-    if (strides.length != cStrides.length) return false;
     for (var i = 0; i < strides.length; i++) {
       if (shape[i] > 1 && strides[i] != cStrides[i]) return false;
     }
@@ -342,10 +349,12 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     required List<int> strides,
     required this.dtype,
     this.offsetElements = 0,
+    ffi.Pointer<ffi.Void>? allocPointer,
     bool isExternallyOwned = false,
     ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>?
     customNativeFinalizer,
-  }) : _isExternallyOwned = isExternallyOwned,
+  }) : _allocPointer = allocPointer,
+       _isExternallyOwned = isExternallyOwned,
        _customNativeFinalizer = customNativeFinalizer,
        _customFinalizerInstance =
            (_parent == null &&
@@ -383,10 +392,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       'Supported types: Float64, Float32, Float16, BFloat16, Int64, Int32, Int16, Int8, Uint64, Uint32, Uint16, Uint8, Complex128, Complex64, double, int, Complex, bool.',
     );
     if (_parent == null) {
+      final ptrToFree = _allocPointer ?? _pointer;
       if (!_isExternallyOwned) {
-        _finalizer.attach(this, _pointer, detach: this);
+        _finalizer.attach(this, ptrToFree, detach: this);
       } else if (_customFinalizerInstance != null) {
-        _customFinalizerInstance.attach(this, _pointer, detach: this);
+        _customFinalizerInstance.attach(this, ptrToFree, detach: this);
       }
       ResourceScope.track(this);
     }
@@ -456,6 +466,31 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   }) {
     final totalSize = _computeCheckedTotalSize(shape);
     final finalStrides = strides ?? computeCStrides(shape);
+    final bool isEmpty = shape.contains(0);
+    var minRelativeOffset = 0;
+    var maxRelativeOffset = 0;
+    if (!isEmpty && strides != null) {
+      if (strides.length != shape.length) {
+        throw ArgumentError(
+          'Strides length (${strides.length}) must match shape length (${shape.length}).',
+        );
+      }
+      for (var d = 0; d < shape.length; d++) {
+        final stride = strides[d];
+        final size = shape[d];
+        if (stride > 0) {
+          maxRelativeOffset += (size - 1) * stride;
+        } else if (stride < 0) {
+          minRelativeOffset += (size - 1) * stride;
+        }
+      }
+    }
+    final int allocSize = strides == null
+        ? totalSize
+        : (isEmpty ? 0 : (maxRelativeOffset - minRelativeOffset + 1));
+    final int initialOffsetElements = (strides == null || isEmpty)
+        ? 0
+        : -minRelativeOffset;
 
     final allocator = zeroInit ? calloc : malloc;
     ffi.Pointer<ffi.Void> pointer;
@@ -463,77 +498,83 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
     switch (dtype) {
       case DType.float64:
-        final p = allocator<ffi.Double>(totalSize);
+        final p = allocator<ffi.Double>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(totalSize) as List<T>;
+        data = p.asTypedList(allocSize) as List<T>;
       case DType.float32:
-        final p = allocator<ffi.Float>(totalSize);
+        final p = allocator<ffi.Float>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(totalSize) as List<T>;
+        data = p.asTypedList(allocSize) as List<T>;
       case DType.float16:
-        final p = allocator<ffi.Uint16>(totalSize);
+        final p = allocator<ffi.Uint16>(allocSize);
         pointer = p.cast();
-        data = Float16List(p.asTypedList(totalSize)) as List<T>;
+        data = Float16List(p.asTypedList(allocSize)) as List<T>;
       case DType.bfloat16:
-        final p = allocator<ffi.Uint16>(totalSize);
+        final p = allocator<ffi.Uint16>(allocSize);
         pointer = p.cast();
-        data = BFloat16List(p.asTypedList(totalSize)) as List<T>;
+        data = BFloat16List(p.asTypedList(allocSize)) as List<T>;
       case DType.int64:
-        final p = allocator<ffi.Int64>(totalSize);
+        final p = allocator<ffi.Int64>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(totalSize) as List<T>;
+        data = p.asTypedList(allocSize) as List<T>;
       case DType.int32:
-        final p = allocator<ffi.Int32>(totalSize);
+        final p = allocator<ffi.Int32>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(totalSize) as List<T>;
+        data = p.asTypedList(allocSize) as List<T>;
       case DType.int16:
-        final p = allocator<ffi.Int16>(totalSize);
+        final p = allocator<ffi.Int16>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(totalSize) as List<T>;
+        data = p.asTypedList(allocSize) as List<T>;
       case DType.int8:
-        final p = allocator<ffi.Int8>(totalSize);
+        final p = allocator<ffi.Int8>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(totalSize) as List<T>;
+        data = p.asTypedList(allocSize) as List<T>;
       case DType.uint64:
-        final p = allocator<ffi.Uint64>(totalSize);
+        final p = allocator<ffi.Uint64>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(totalSize) as List<T>;
+        data = p.asTypedList(allocSize) as List<T>;
       case DType.uint32:
-        final p = allocator<ffi.Uint32>(totalSize);
+        final p = allocator<ffi.Uint32>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(totalSize) as List<T>;
+        data = p.asTypedList(allocSize) as List<T>;
       case DType.uint16:
-        final p = allocator<ffi.Uint16>(totalSize);
+        final p = allocator<ffi.Uint16>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(totalSize) as List<T>;
+        data = p.asTypedList(allocSize) as List<T>;
       case DType.uint8:
-        final p = allocator<ffi.Uint8>(totalSize);
+        final p = allocator<ffi.Uint8>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(totalSize) as List<T>;
+        data = p.asTypedList(allocSize) as List<T>;
       case DType.complex128:
-        final p = allocator<ffi.Double>(totalSize * 2);
+        final p = allocator<ffi.Double>(allocSize * 2);
         pointer = p.cast();
-        final doubleList = p.asTypedList(totalSize * 2);
+        final doubleList = p.asTypedList(allocSize * 2);
         data = ComplexList<Complex128>(doubleList) as List<T>;
       case DType.complex64:
-        final p = allocator<ffi.Float>(totalSize * 2);
+        final p = allocator<ffi.Float>(allocSize * 2);
         pointer = p.cast();
-        final floatList = p.asTypedList(totalSize * 2);
+        final floatList = p.asTypedList(allocSize * 2);
         data = ComplexList<Complex64>(floatList) as List<T>;
       case DType.boolean:
-        final p = allocator<ffi.Uint8>(totalSize);
+        final p = allocator<ffi.Uint8>(allocSize);
         pointer = p.cast();
-        final uint8List = p.asTypedList(totalSize);
+        final uint8List = p.asTypedList(allocSize);
         data = BoolList(uint8List) as List<T>;
     }
 
+    final logicalPointer = initialOffsetElements == 0
+        ? pointer
+        : _offsetPointer(pointer, initialOffsetElements, dtype);
+
     return NDArray._(
-      pointer,
+      logicalPointer,
       data,
       null,
       shape: shape,
       strides: finalStrides,
       dtype: dtype,
+      offsetElements: initialOffsetElements,
+      allocPointer: pointer,
     );
   }
 
@@ -549,7 +590,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// ```
   factory NDArray.fromList(List list, List<int> shape, DType<T> dtype) {
-    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    final totalSize = _computeCheckedTotalSize(shape);
     if (totalSize != list.length) {
       throw ArgumentError(
         'Total size of shape $shape ($totalSize) must match list length (${list.length})',
@@ -777,20 +818,24 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     required List<int> strides,
     int offsetElements = 0,
   }) {
-    if (shape.any((dim) => dim < 0)) {
-      throw ArgumentError('Shape dimensions cannot be negative: $shape');
+    if (parent.isDisposed) {
+      throw StateError('Cannot create a view of a disposed NDArray.');
     }
+    if (shape.length != strides.length) {
+      throw ArgumentError(
+        'shape length (${shape.length}) must match strides length (${strides.length}).',
+      );
+    }
+    _computeCheckedTotalSize(shape);
     final root = parent._rootParent;
-    final childLogicalPointer = _offsetPointer(
-      parent.pointer,
-      offsetElements,
-      parent.dtype,
-    );
-    final cumulativeOffset =
-        (childLogicalPointer.address - root._pointer.address) ~/
-        parent.dtype.byteWidth;
-
+    final rootPhysicalStart = root._allocPointer ?? root._pointer;
     final bool isEmpty = shape.contains(0);
+    final childLogicalPointer = isEmpty
+        ? rootPhysicalStart
+        : _offsetPointer(parent.pointer, offsetElements, parent.dtype);
+    final cumulativeOffset =
+        (childLogicalPointer.address - rootPhysicalStart.address) ~/
+        parent.dtype.byteWidth;
 
     // Calculate min and max relative offsets
     var minRelativeOffset = 0;
@@ -810,8 +855,16 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     final minPhysicalOffset = cumulativeOffset + minRelativeOffset;
     final maxPhysicalOffset = cumulativeOffset + maxRelativeOffset;
 
+    if (!isEmpty) {
+      if (minPhysicalOffset < 0 || maxPhysicalOffset >= root._data.length) {
+        throw RangeError(
+          'View physical offsets [$minPhysicalOffset..$maxPhysicalOffset] exceed root buffer bounds [0..${root._data.length - 1}].',
+        );
+      }
+    }
+
     final physicalPointer = _offsetPointer(
-      root._pointer,
+      rootPhysicalStart,
       minPhysicalOffset,
       parent.dtype,
     );
@@ -865,7 +918,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
             physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize) as List<T>;
       case DType.complex128:
         final p = _offsetPointer(
-          root._pointer,
+          rootPhysicalStart,
           minPhysicalOffset * 2,
           DType.float64,
         );
@@ -873,7 +926,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         data = ComplexList<Complex128>(doubleList) as List<T>;
       case DType.complex64:
         final p = _offsetPointer(
-          root._pointer,
+          rootPhysicalStart,
           minPhysicalOffset * 2,
           DType.float32,
         );
@@ -933,62 +986,93 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   }) {
     final totalSize = _computeCheckedTotalSize(shape);
     final finalStrides = strides ?? computeCStrides(shape);
+    final bool isEmpty = shape.contains(0);
+    var minRelativeOffset = 0;
+    var maxRelativeOffset = 0;
+    if (!isEmpty && strides != null) {
+      if (strides.length != shape.length) {
+        throw ArgumentError(
+          'Strides length (${strides.length}) must match shape length (${shape.length}).',
+        );
+      }
+      for (var d = 0; d < shape.length; d++) {
+        final stride = strides[d];
+        final size = shape[d];
+        if (stride > 0) {
+          maxRelativeOffset += (size - 1) * stride;
+        } else if (stride < 0) {
+          minRelativeOffset += (size - 1) * stride;
+        }
+      }
+    }
+    final int allocSize = strides == null
+        ? totalSize
+        : (isEmpty ? 0 : (maxRelativeOffset - minRelativeOffset + 1));
+    final int initialOffsetElements = (strides == null || isEmpty)
+        ? 0
+        : -minRelativeOffset;
 
     List<T> data;
     switch (dtype) {
       case DType.float64:
-        data = pointer.cast<ffi.Double>().asTypedList(totalSize) as List<T>;
+        data = pointer.cast<ffi.Double>().asTypedList(allocSize) as List<T>;
       case DType.float32:
-        data = pointer.cast<ffi.Float>().asTypedList(totalSize) as List<T>;
+        data = pointer.cast<ffi.Float>().asTypedList(allocSize) as List<T>;
       case DType.float16:
         data =
-            Float16List(pointer.cast<ffi.Uint16>().asTypedList(totalSize))
+            Float16List(pointer.cast<ffi.Uint16>().asTypedList(allocSize))
                 as List<T>;
       case DType.bfloat16:
         data =
-            BFloat16List(pointer.cast<ffi.Uint16>().asTypedList(totalSize))
+            BFloat16List(pointer.cast<ffi.Uint16>().asTypedList(allocSize))
                 as List<T>;
       case DType.int64:
-        data = pointer.cast<ffi.Int64>().asTypedList(totalSize) as List<T>;
+        data = pointer.cast<ffi.Int64>().asTypedList(allocSize) as List<T>;
       case DType.int32:
-        data = pointer.cast<ffi.Int32>().asTypedList(totalSize) as List<T>;
+        data = pointer.cast<ffi.Int32>().asTypedList(allocSize) as List<T>;
       case DType.int16:
-        data = pointer.cast<ffi.Int16>().asTypedList(totalSize) as List<T>;
+        data = pointer.cast<ffi.Int16>().asTypedList(allocSize) as List<T>;
       case DType.int8:
-        data = pointer.cast<ffi.Int8>().asTypedList(totalSize) as List<T>;
+        data = pointer.cast<ffi.Int8>().asTypedList(allocSize) as List<T>;
       case DType.uint64:
-        data = pointer.cast<ffi.Uint64>().asTypedList(totalSize) as List<T>;
+        data = pointer.cast<ffi.Uint64>().asTypedList(allocSize) as List<T>;
       case DType.uint32:
-        data = pointer.cast<ffi.Uint32>().asTypedList(totalSize) as List<T>;
+        data = pointer.cast<ffi.Uint32>().asTypedList(allocSize) as List<T>;
       case DType.uint16:
-        data = pointer.cast<ffi.Uint16>().asTypedList(totalSize) as List<T>;
+        data = pointer.cast<ffi.Uint16>().asTypedList(allocSize) as List<T>;
       case DType.uint8:
-        data = pointer.cast<ffi.Uint8>().asTypedList(totalSize) as List<T>;
+        data = pointer.cast<ffi.Uint8>().asTypedList(allocSize) as List<T>;
       case DType.complex128:
         data =
             ComplexList<Complex128>(
-                  pointer.cast<ffi.Double>().asTypedList(totalSize * 2),
+                  pointer.cast<ffi.Double>().asTypedList(allocSize * 2),
                 )
                 as List<T>;
       case DType.complex64:
         data =
             ComplexList<Complex64>(
-                  pointer.cast<ffi.Float>().asTypedList(totalSize * 2),
+                  pointer.cast<ffi.Float>().asTypedList(allocSize * 2),
                 )
                 as List<T>;
       case DType.boolean:
         data =
-            BoolList(pointer.cast<ffi.Uint8>().asTypedList(totalSize))
+            BoolList(pointer.cast<ffi.Uint8>().asTypedList(allocSize))
                 as List<T>;
     }
 
+    final logicalPointer = initialOffsetElements == 0
+        ? pointer
+        : _offsetPointer(pointer, initialOffsetElements, dtype);
+
     return NDArray._(
-      pointer,
+      logicalPointer,
       data,
       null,
       shape: shape,
       strides: finalStrides,
       dtype: dtype,
+      offsetElements: initialOffsetElements,
+      allocPointer: pointer,
       isExternallyOwned: true,
       customNativeFinalizer: nativeFinalizer,
     );
@@ -1077,10 +1161,23 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       );
     }
     final oldSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
-    final newSize = newShape.isEmpty ? 1 : newShape.reduce((a, b) => a * b);
+    final newSize = _computeCheckedTotalSize(newShape);
     if (oldSize != newSize) {
       throw ArgumentError(
         'Total size must not change during reshape (was $oldSize, new is $newSize)',
+      );
+    }
+
+    if (listEquals(newShape, shape)) {
+      return NDArray._(
+        _pointer,
+        data,
+        _parent ?? this,
+        shape: newShape,
+        strides: strides,
+        offsetElements: offsetElements,
+        allocPointer: _allocPointer,
+        dtype: dtype,
       );
     }
 
@@ -1097,6 +1194,8 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       _parent ?? this,
       shape: newShape,
       strides: newStrides,
+      offsetElements: offsetElements,
+      allocPointer: _allocPointer,
       dtype: dtype,
     );
   }
@@ -1116,13 +1215,25 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// print(flat.toList()); // [1.0, 2.0, 3.0, 4.0]
   /// ```
   NDArray<T> flatten() {
+    if (isDisposed) {
+      throw StateError('Cannot flatten a disposed NDArray.');
+    }
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     final result = NDArray<T>.create([totalSize], dtype);
 
-    if (isContiguous) {
-      _copyContiguousNDArray(this, result, totalSize);
-    } else {
-      _copyStridedToContiguous(result);
+    if (totalSize == 0) {
+      return result;
+    }
+
+    try {
+      if (isContiguous) {
+        _copyContiguousNDArray(this, result, totalSize);
+      } else {
+        _copyStridedToContiguous(result);
+      }
+    } catch (_) {
+      result.dispose();
+      rethrow;
     }
     return result;
   }
@@ -1132,13 +1243,17 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// The copy preserves the logical order and values of the elements defined by
   /// this array's shape and strides. However, the physical memory layout of the
   /// returned array is always contiguous (and its strides are reset to standard
-  /// C-contiguous strides).
+  /// C-contiguous row-major strides).
+  ///
+  /// **Preconditions:**
+  /// - This array must not be disposed.
+  /// - If [out] is provided, it must not be disposed and must have the exact
+  ///   same [shape] and [dtype] as this array.
   ///
   /// **Performance considerations:**
-  /// - For C-contiguous layouts, copies elements directly using memmove/memcpy.
-  /// - For strided non-contiguous views, uses native C intrinsics to copy into the contiguous destination array.
-  ///
-  /// It is an error if the array is already disposed.
+  /// - Algorithmic complexity is $O(N)$ time and $O(N)$ space, where $N$ is
+  ///   the total number of elements.
+  /// - Uses fast SIMD/C-level `memcpy` if both source and destination are C-contiguous.
   ///
   /// **Example:**
   /// ```dart
@@ -1167,8 +1282,25 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       result = NDArray<T>.create(shape, dtype);
     }
 
+    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    if (totalSize == 0) {
+      return result;
+    }
+
+    if (out != null && helpers.sharesMemory(this, result)) {
+      if (isContiguous &&
+          result.isContiguous &&
+          pointer == result.pointer &&
+          offsetElements == result.offsetElements) {
+        return result;
+      }
+      return NDArray.scope(() {
+        final temp = copy();
+        return temp.copy(out: result);
+      });
+    }
+
     if (isContiguous && result.isContiguous) {
-      final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
       _copyContiguousNDArray(this, result, totalSize);
     } else if (result.isContiguous) {
       _copyStridedToContiguous(result);
@@ -1227,12 +1359,15 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     if (!listEquals(shape, dest.shape) || dtype != dest.dtype) {
       throw ArgumentError('Mismatched shape or dtype in copyToContiguous.');
     }
+    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    if (totalSize == 0) {
+      return;
+    }
     if (!isContiguous || !dest.isContiguous) {
       throw ArgumentError(
         'Both arrays must be contiguous in copyToContiguous.',
       );
     }
-    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     _copyContiguousNDArray(this, dest, totalSize);
   }
 
@@ -1337,6 +1472,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// print(r.shape); // [4]
   /// ```
   NDArray<T> ravel() {
+    if (isDisposed) throw StateError('Cannot access a disposed NDArray.');
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     if (isContiguous) {
       return NDArray._(
@@ -1345,6 +1481,8 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         _parent ?? this,
         shape: [totalSize],
         strides: [1],
+        offsetElements: offsetElements,
+        allocPointer: _allocPointer,
         dtype: dtype,
       );
     } else {
@@ -1493,6 +1631,8 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       _parent ?? this,
       shape: newShape,
       strides: newStrides,
+      offsetElements: offsetElements,
+      allocPointer: _allocPointer,
       dtype: dtype,
     );
   }
@@ -1531,6 +1671,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// print(a.scalar); // 42
   /// ```
   T get scalar {
+    if (isDisposed) throw StateError('Cannot access a disposed NDArray.');
     if (shape.isNotEmpty) {
       throw StateError(
         'scalar can only be called on 0-dimensional arrays (has shape $shape)',
@@ -1549,6 +1690,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// It is an error if coords.length does not match the array rank, or if any coordinate is out of bounds for its dimension.
   T getCell(List<int> coords) {
+    if (isDisposed) throw StateError('Cannot access a disposed NDArray.');
     if (coords.length != shape.length) {
       throw ArgumentError(
         'Number of coordinates (${coords.length}) must match array rank (${shape.length})',
@@ -1556,10 +1698,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
     var offset = 0;
     for (var i = 0; i < coords.length; i++) {
-      final idx = coords[i];
+      var idx = coords[i];
+      if (idx < 0) idx += shape[i];
       if (idx < 0 || idx >= shape[i]) {
         throw RangeError.range(
-          idx,
+          coords[i],
           0,
           shape[i] - 1,
           'coordinate at dimension $i',
@@ -1586,6 +1729,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// a.setCell([0, 1], 42);
   /// ```
   void setCell(List<int> coords, T value) {
+    if (isDisposed) throw StateError('Cannot access a disposed NDArray.');
     if (coords.length != shape.length) {
       throw ArgumentError(
         'Number of coordinates (${coords.length}) must match array rank (${shape.length})',
@@ -1593,10 +1737,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
     var offset = 0;
     for (var i = 0; i < coords.length; i++) {
-      final idx = coords[i];
+      var idx = coords[i];
+      if (idx < 0) idx += shape[i];
       if (idx < 0 || idx >= shape[i]) {
         throw RangeError.range(
-          idx,
+          coords[i],
           0,
           shape[i] - 1,
           'coordinate at dimension $i',
@@ -1658,7 +1803,10 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// - [mask] must share identical dimensions ([shape]) with this array.
   ///
   /// It is an error if [mask] shape does not match this array's shape, or if [values] has fewer elements than the number of true targets in [mask].
-  void setByMask(NDArray<bool> mask, NDArray<T> values) {
+  void setByMask(NDArray<bool> mask, NDArray values) {
+    if (isDisposed || mask.isDisposed || values.isDisposed) {
+      throw StateError('Cannot access a disposed NDArray.');
+    }
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
         'Mask shape length (${mask.shape.length}) must match array rank (${shape.length})',
@@ -1672,6 +1820,28 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       }
     }
 
+    if (values.shape.isEmpty) {
+      setByMaskScalar(mask, _coerceScalar(values.getCellFlat(0)));
+      return;
+    }
+
+    if (identical(values._rootParent, _rootParent) ||
+        identical(mask._rootParent, _rootParent)) {
+      final tempVal = identical(values._rootParent, _rootParent)
+          ? values.copy()
+          : values;
+      final tempMask = identical(mask._rootParent, _rootParent)
+          ? mask.copy()
+          : mask;
+      try {
+        setByMask(tempMask, tempVal);
+      } finally {
+        if (!identical(tempVal, values)) tempVal.dispose();
+        if (!identical(tempMask, mask)) tempMask.dispose();
+      }
+      return;
+    }
+
     var valueIndex = 0;
 
     void walk(int dim, int currentOffset, int maskOffset) {
@@ -1682,7 +1852,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
               'Source values array contains fewer elements than the mask targets',
             );
           }
-          data[currentOffset] = values.getCellFlat(valueIndex++);
+          data[currentOffset] = _coerceScalar(values.getCellFlat(valueIndex++));
         }
         return;
       }
@@ -1705,6 +1875,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// **Preconditions:**
   /// - [mask] must share identical dimensions ([shape]) with this array.
   void setByMaskScalar(NDArray<bool> mask, T value) {
+    if (isDisposed || mask.isDisposed) {
+      throw StateError('Cannot access a disposed NDArray.');
+    }
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
         'Mask shape length (${mask.shape.length}) must match array rank (${shape.length})',
@@ -1744,6 +1917,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// When [axis] is `0`, equivalent to calling `this[ [indices] ] = value` (advanced row stack scalar mutation).
   ///
   void setIndicesScalar(NDArray<int> indices, T value, {int axis = 0}) {
+    if (isDisposed || indices.isDisposed) {
+      throw StateError('Cannot access a disposed NDArray.');
+    }
     if (axis < 0 || axis >= shape.length) {
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
     }
@@ -1752,10 +1928,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     final sliceStrides = List<int>.from(strides)..removeAt(axis);
 
     for (var idx = 0; idx < indices.size; idx++) {
-      final targetIdx = indices.getCellFlat(idx);
+      var targetIdx = indices.getCellFlat(idx);
+      if (targetIdx < 0) targetIdx += shape[axis];
       if (targetIdx < 0 || targetIdx >= shape[axis]) {
         throw RangeError.range(
-          targetIdx,
+          indices.getCellFlat(idx),
           0,
           shape[axis] - 1,
           'index entry at position $idx',
@@ -1782,8 +1959,37 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// When [axis] is `0`, equivalent to calling `this[ [indices] ] = values` (advanced row stack array assignment).
   ///
   void setIndices(NDArray<int> indices, NDArray values, {int axis = 0}) {
+    if (isDisposed || indices.isDisposed || values.isDisposed) {
+      throw StateError('Cannot access a disposed NDArray.');
+    }
     if (axis < 0 || axis >= shape.length) {
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
+    }
+
+    if (values.shape.isEmpty) {
+      setIndicesScalar(
+        indices,
+        _coerceScalar(values.getCellFlat(0)),
+        axis: axis,
+      );
+      return;
+    }
+
+    if (identical(values._rootParent, _rootParent) ||
+        identical(indices._rootParent, _rootParent)) {
+      final tempVal = identical(values._rootParent, _rootParent)
+          ? values.copy()
+          : values;
+      final tempIdx = identical(indices._rootParent, _rootParent)
+          ? indices.copy()
+          : indices;
+      try {
+        setIndices(tempIdx, tempVal, axis: axis);
+      } finally {
+        if (!identical(tempVal, values)) tempVal.dispose();
+        if (!identical(tempIdx, indices)) tempIdx.dispose();
+      }
+      return;
     }
 
     final sliceShape = List<int>.from(shape)..removeAt(axis);
@@ -1792,10 +1998,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     var valOffset = 0;
 
     for (var idx = 0; idx < indices.size; idx++) {
-      final targetIdx = indices.getCellFlat(idx);
+      var targetIdx = indices.getCellFlat(idx);
+      if (targetIdx < 0) targetIdx += shape[axis];
       if (targetIdx < 0 || targetIdx >= shape[axis]) {
         throw RangeError.range(
-          targetIdx,
+          indices.getCellFlat(idx),
           0,
           shape[axis] - 1,
           'index entry at position $idx',
@@ -1853,7 +2060,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   }
 
   /// Normalizes heterogeneous selection items into standard [Selector] objects.
-  Selector _toSelector(dynamic item) {
+  Selector _toSelector(dynamic item, [List<NDArray>? tempAllocations]) {
     if (item is Selector) return item;
     if (item is int) return Index(item);
     if (item is List) {
@@ -1865,6 +2072,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         final boolArr = NDArray<bool>.fromList(item.cast<bool>(), [
           item.length,
         ], DType.boolean);
+        tempAllocations?.add(boolArr);
         return Mask(BooleanMask(boolArr));
       }
       throw ArgumentError(
@@ -1872,16 +2080,38 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       );
     }
     if (item is NDArray) {
+      if (item.isDisposed) {
+        throw StateError('Cannot access a disposed NDArray.');
+      }
       if (item.dtype == DType.boolean) {
         return Mask(BooleanMask(item as NDArray<bool>));
       }
       if (item.dtype.isInteger) {
-        final intList = item.toList().map((e) => e as int).toList();
+        final intList = <int>[];
+        for (var i = 0; i < item.size; i++) {
+          intList.add((item.getCellFlat(i) as num).toInt());
+        }
         return Indices(intList);
       }
     }
     if (item is BooleanMask) return Mask(item);
     throw ArgumentError("Unsupported selector item type: ${item.runtimeType}");
+  }
+
+  /// Mutates multi-dimensional slices targeted by [selectors] with [value].
+  ///
+  /// **Preconditions:**
+  /// - The array must not be disposed.
+  /// - [selectors] length must not exceed the rank of the array.
+  ///
+  /// It is an error if [selectors] has more elements than the array rank or if [value] cannot be broadcast to the selected slice shape.
+  void sliceAssign(List<Selector> selectors, dynamic value) {
+    if (isDisposed) {
+      throw StateError(
+        "Cannot access an array or view whose memory has been explicitly freed/disposed!",
+      );
+    }
+    _sliceAssign(selectors, value);
   }
 
   /// Mutates multi-dimensional slices targeted by normalized [selectors].
@@ -1892,6 +2122,21 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       );
     }
 
+    NDArray? tempValueCopy;
+    if (value is NDArray &&
+        (identical(value._rootParent, _rootParent) ||
+            helpers.sharesMemory(this, value))) {
+      tempValueCopy = value.copy();
+      value = tempValueCopy;
+    }
+    try {
+      _sliceAssignImpl(selectors, value);
+    } finally {
+      tempValueCopy?.dispose();
+    }
+  }
+
+  void _sliceAssignImpl(List<Selector> selectors, dynamic value) {
     if (value is NDArray && (value.shape.isEmpty || value.size == 1)) {
       value = value.getCellFlat(0);
     }
@@ -1907,8 +2152,8 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
           );
         }
         final size = shape[i];
-        final maskMarker = ScratchArena.marker;
         final List<int> indices;
+        final maskMarker = ScratchArena.marker;
         try {
           final pIndices = ScratchArena.allocate<ffi.Int>(
             size * ffi.sizeOf<ffi.Int>(),
@@ -1927,6 +2172,35 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       }
     }
 
+    for (var i = 0; i < processedSelectors.length; i++) {
+      final sel = processedSelectors[i];
+      if (sel is Index) {
+        final idx = sel.value < 0 ? shape[i] + sel.value : sel.value;
+        if (idx < 0 || idx >= shape[i]) {
+          throw RangeError.range(
+            sel.value,
+            -shape[i],
+            shape[i] - 1,
+            'index',
+            'Index out of bounds for dimension $i with size ${shape[i]}',
+          );
+        }
+      } else if (sel is Indices) {
+        for (final rawIdx in sel.values) {
+          final realIdx = rawIdx < 0 ? shape[i] + rawIdx : rawIdx;
+          if (realIdx < 0 || realIdx >= shape[i]) {
+            throw RangeError.range(
+              rawIdx,
+              -shape[i],
+              shape[i] - 1,
+              'indices',
+              'Index out of bounds for dimension $i with size ${shape[i]}',
+            );
+          }
+        }
+      }
+    }
+
     var isAdvanced = false;
     for (var i = 0; i < shape.length; i++) {
       final sel = i < processedSelectors.length
@@ -1940,16 +2214,48 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
     if (!isAdvanced) {
       final view = slice(processedSelectors);
-      if (value is NDArray) {
-        final NDArray valArr;
-        if (listEquals(value.shape, view.shape)) {
-          valArr = value;
+      try {
+        if (value is NDArray) {
+          NDArray? castedVal;
+          NDArray? broadcastedVal;
+          try {
+            final NDArray typedVal;
+            if (value.dtype != dtype) {
+              castedVal = helpers.castNDArray<T>(value, dtype);
+              typedVal = castedVal;
+            } else {
+              typedVal = value;
+            }
+            final NDArray valArr;
+            if (listEquals(typedVal.shape, view.shape)) {
+              valArr = typedVal;
+            } else {
+              broadcastedVal = ops.broadcastTo(typedVal, view.shape);
+              valArr = broadcastedVal;
+            }
+            if (helpers.sharesMemory(this, valArr)) {
+              final temp = valArr.copy();
+              try {
+                temp.copy(out: view);
+              } finally {
+                temp.dispose();
+              }
+            } else {
+              valArr.copy(out: view);
+            }
+          } finally {
+            if (broadcastedVal != null && !identical(broadcastedVal, value)) {
+              broadcastedVal.dispose();
+            }
+            if (castedVal != null && !identical(castedVal, value)) {
+              castedVal.dispose();
+            }
+          }
         } else {
-          valArr = ops.broadcastTo(value, view.shape);
+          view.fill(_coerceScalar(value));
         }
-        valArr.copy(out: view);
-      } else {
-        view.fill(_coerceScalar(value));
+      } finally {
+        view.dispose();
       }
     } else {
       final targetShape = <int>[];
@@ -2107,7 +2413,14 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         spec is Indices ||
         spec is Mask ||
         spec is BooleanMask) {
-      return slice([_toSelector(spec)]);
+      final temps = <NDArray>[];
+      try {
+        return slice([_toSelector(spec, temps)]);
+      } finally {
+        for (final t in temps) {
+          t.dispose();
+        }
+      }
     } else if (spec is List) {
       if (spec.isNotEmpty && spec.first is List) {
         final subList = spec.first as List;
@@ -2126,23 +2439,24 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         }
         return getCell(spec.cast<int>());
       }
-      final selectors = spec
-          .map((e) => _toSelector(e))
-          .cast<Selector>()
-          .toList();
-      return slice(selectors);
-    } else if (spec is NDArray && spec.dtype == DType.boolean) {
-      final boolMask = spec as NDArray<bool>;
-      var shapesMatch = boolMask.shape.length == shape.length;
-      if (shapesMatch) {
-        for (var i = 0; i < shape.length; i++) {
-          if (boolMask.shape[i] != shape[i]) {
-            shapesMatch = false;
-            break;
-          }
+      final temps = <NDArray>[];
+      try {
+        final selectors = spec
+            .map((e) => _toSelector(e, temps))
+            .cast<Selector>()
+            .toList();
+        return slice(selectors);
+      } finally {
+        for (final t in temps) {
+          t.dispose();
         }
       }
-      if (shapesMatch) {
+    } else if (spec is NDArray && spec.dtype == DType.boolean) {
+      if (spec.isDisposed) {
+        throw StateError('Cannot access a disposed NDArray.');
+      }
+      final boolMask = spec as NDArray<bool>;
+      if (listEquals(boolMask.shape, shape)) {
         return applyMask(boolMask);
       } else if (boolMask.shape.length == 1 && boolMask.shape[0] == shape[0]) {
         return slice([Mask(BooleanMask(boolMask))]);
@@ -2152,23 +2466,36 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         );
       }
     } else if (spec is NDArray && spec.dtype.isInteger) {
-      var shapesMatch = spec.shape.length == shape.length;
-      if (shapesMatch) {
-        for (var i = 0; i < shape.length; i++) {
-          if (spec.shape[i] != shape[i]) {
-            shapesMatch = false;
-            break;
-          }
-        }
+      if (spec.isDisposed) {
+        throw StateError('Cannot access a disposed NDArray.');
       }
-      if (shapesMatch) {
-        throw ArgumentError(
-          "Masking requires an NDArray of DType.boolean, not integers.",
-        );
-      } else {
-        final intList = spec.toList().map((e) => e as int).toList();
-        return take(intList);
+      final intList = <int>[];
+      for (var i = 0; i < spec.size; i++) {
+        intList.add((spec.getCellFlat(i) as num).toInt());
       }
+      final taken = take(intList);
+      if (spec.shape.length == 1) {
+        return taken;
+      }
+      final newShape = <int>[...spec.shape, ...shape.sublist(1)];
+      final newStrides = computeCStrides(newShape);
+      final takenData = taken._data;
+      final takenPointer = taken._pointer;
+      final takenOffset = taken.offsetElements;
+      final takenAlloc = taken._allocPointer;
+      taken._isDisposed = true;
+      ResourceScope.untrack(taken);
+      _finalizer.detach(taken);
+      return NDArray._(
+        takenPointer,
+        takenData,
+        null,
+        shape: newShape,
+        strides: newStrides,
+        dtype: dtype,
+        offsetElements: takenOffset,
+        allocPointer: takenAlloc,
+      );
     } else {
       throw ArgumentError(
         "Unsupported selector type for operator []: ${spec.runtimeType}",
@@ -2206,17 +2533,40 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
     if (spec is int) {
       final indices = NDArray<int>.fromList([spec], [1], DType.int32);
-      if (value is NDArray) {
-        setIndices(indices, value);
-      } else {
-        setIndicesScalar(indices, _coerceScalar(value));
+      NDArray? broadcastedVal;
+      try {
+        if (value is NDArray) {
+          final targetShape = <int>[1, ...shape.sublist(1)];
+          final NDArray valArr;
+          if (listEquals(value.shape, targetShape)) {
+            valArr = value;
+          } else {
+            broadcastedVal = ops.broadcastTo(value, targetShape);
+            valArr = broadcastedVal;
+          }
+          setIndices(indices, valArr);
+        } else {
+          setIndicesScalar(indices, _coerceScalar(value));
+        }
+      } finally {
+        indices.dispose();
+        if (broadcastedVal != null && !identical(broadcastedVal, value)) {
+          broadcastedVal.dispose();
+        }
       }
     } else if (spec is Slice ||
         spec is Index ||
         spec is Indices ||
         spec is Mask ||
         spec is BooleanMask) {
-      _sliceAssign([_toSelector(spec)], value);
+      final temps = <NDArray>[];
+      try {
+        _sliceAssign([_toSelector(spec, temps)], value);
+      } finally {
+        for (final t in temps) {
+          t.dispose();
+        }
+      }
     } else if (spec is List) {
       if (spec.isNotEmpty && spec.first is List) {
         final subList = spec.first as List;
@@ -2225,24 +2575,57 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
           final indices = NDArray<int>.fromList(intIndices, [
             intIndices.length,
           ], DType.int32);
-          if (value is NDArray) {
-            setIndices(indices, value);
-          } else {
-            setIndicesScalar(indices, _coerceScalar(value));
+          NDArray? broadcastedVal;
+          try {
+            if (value is NDArray) {
+              final targetShape = <int>[intIndices.length, ...shape.sublist(1)];
+              final NDArray valArr;
+              if (listEquals(value.shape, targetShape)) {
+                valArr = value;
+              } else {
+                broadcastedVal = ops.broadcastTo(value, targetShape);
+                valArr = broadcastedVal;
+              }
+              setIndices(indices, valArr);
+            } else {
+              setIndicesScalar(indices, _coerceScalar(value));
+            }
+          } finally {
+            indices.dispose();
+            if (broadcastedVal != null && !identical(broadcastedVal, value)) {
+              broadcastedVal.dispose();
+            }
           }
           return;
         }
       }
       if (spec.every((e) => e is int)) {
-        if (shape.length == 1 && spec.length > 1) {
+        if ((shape.length == 1 && spec.length > 1) ||
+            (value is NDArray && value.size > 1)) {
           final intIndices = spec.cast<int>();
           final indices = NDArray<int>.fromList(intIndices, [
             intIndices.length,
           ], DType.int32);
-          if (value is NDArray) {
-            setIndices(indices, value);
-          } else {
-            setIndicesScalar(indices, _coerceScalar(value));
+          NDArray? broadcastedVal;
+          try {
+            if (value is NDArray) {
+              final targetShape = <int>[intIndices.length, ...shape.sublist(1)];
+              final NDArray valArr;
+              if (listEquals(value.shape, targetShape)) {
+                valArr = value;
+              } else {
+                broadcastedVal = ops.broadcastTo(value, targetShape);
+                valArr = broadcastedVal;
+              }
+              setIndices(indices, valArr);
+            } else {
+              setIndicesScalar(indices, _coerceScalar(value));
+            }
+          } finally {
+            indices.dispose();
+            if (broadcastedVal != null && !identical(broadcastedVal, value)) {
+              broadcastedVal.dispose();
+            }
           }
           return;
         }
@@ -2255,25 +2638,26 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         setCell(intCoords, _coerceScalar(value));
         return;
       } else {
-        final selectors = spec
-            .map((e) => _toSelector(e))
-            .cast<Selector>()
-            .toList();
-        _sliceAssign(selectors, value);
-      }
-    } else if (spec is NDArray && spec.dtype == DType.boolean) {
-      final boolMask = spec as NDArray<bool>;
-      var shapesMatch = boolMask.shape.length == shape.length;
-      if (shapesMatch) {
-        for (var i = 0; i < shape.length; i++) {
-          if (boolMask.shape[i] != shape[i]) {
-            shapesMatch = false;
-            break;
+        final temps = <NDArray>[];
+        try {
+          final selectors = spec
+              .map((e) => _toSelector(e, temps))
+              .cast<Selector>()
+              .toList();
+          _sliceAssign(selectors, value);
+        } finally {
+          for (final t in temps) {
+            t.dispose();
           }
         }
       }
-      if (shapesMatch) {
-        if (value is NDArray<T>) {
+    } else if (spec is NDArray && spec.dtype == DType.boolean) {
+      if (spec.isDisposed) {
+        throw StateError('Cannot access a disposed NDArray.');
+      }
+      final boolMask = spec as NDArray<bool>;
+      if (listEquals(boolMask.shape, shape)) {
+        if (value is NDArray) {
           setByMask(boolMask, value);
         } else {
           setByMaskScalar(boolMask, _coerceScalar(value));
@@ -2286,34 +2670,81 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         );
       }
     } else if (spec is NDArray && spec.dtype.isInteger) {
-      var shapesMatch = spec.shape.length == shape.length;
-      if (shapesMatch) {
-        for (var i = 0; i < shape.length; i++) {
-          if (spec.shape[i] != shape[i]) {
-            shapesMatch = false;
-            break;
-          }
-        }
+      if (spec.isDisposed) {
+        throw StateError('Cannot access a disposed NDArray.');
       }
-      if (shapesMatch) {
-        throw ArgumentError(
-          "Masking requires an NDArray of DType.boolean, not integers.",
-        );
-      } else {
-        final intList = spec.toList().map((e) => e as int).toList();
-        final indices = NDArray<int>.fromList(intList, [
-          intList.length,
-        ], DType.int32);
+      final intList = <int>[];
+      for (var i = 0; i < spec.size; i++) {
+        intList.add((spec.getCellFlat(i) as num).toInt());
+      }
+      final indices = NDArray<int>.fromList(intList, [
+        intList.length,
+      ], DType.int32);
+      NDArray? broadcastedVal;
+      try {
         if (value is NDArray) {
-          setIndices(indices, value);
+          final targetShape = <int>[...spec.shape, ...shape.sublist(1)];
+          final NDArray valArr;
+          if (listEquals(value.shape, targetShape)) {
+            valArr = value;
+          } else {
+            broadcastedVal = ops.broadcastTo(value, targetShape);
+            valArr = broadcastedVal;
+          }
+          setIndices(indices, valArr);
         } else {
           setIndicesScalar(indices, _coerceScalar(value));
+        }
+      } finally {
+        indices.dispose();
+        if (broadcastedVal != null && !identical(broadcastedVal, value)) {
+          broadcastedVal.dispose();
         }
       }
     } else {
       throw ArgumentError(
         "Unsupported selector type for operator []: ${spec.runtimeType}",
       );
+    }
+  }
+
+  static bool _scalarIntFitsDType(int value, DType dtype) {
+    switch (dtype) {
+      case DType.int8:
+        return value >= -128 && value <= 127;
+      case DType.uint8:
+        return value >= 0 && value <= 255;
+      case DType.int16:
+        return value >= -32768 && value <= 32767;
+      case DType.uint16:
+        return value >= 0 && value <= 65535;
+      case DType.int32:
+        return value >= -2147483648 && value <= 2147483647;
+      case DType.uint32:
+        return value >= 0 && value <= 4294967295;
+      case DType.int64:
+        return true;
+      case DType.uint64:
+        return value >= 0;
+      default:
+        return false;
+    }
+  }
+
+  static bool _scalarDoubleFitsDType(double value, DType dtype) {
+    if (value.isNaN || value.isInfinite) return true;
+    final absVal = value.abs();
+    switch (dtype) {
+      case DType.float16:
+        return absVal <= 65504.0;
+      case DType.bfloat16:
+        return absVal <= 3.38953139e38;
+      case DType.float32:
+        return absVal <= 3.4028234663852886e38;
+      case DType.float64:
+        return true;
+      default:
+        return false;
     }
   }
 
@@ -2326,54 +2757,70 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     if (targetDType != null) {
       if (targetDType.isFloating && value is num) {
         final dVal = value.toDouble();
-        switch (targetDType) {
-          case DType.float64:
-            return NDArray<Float64>.fromList(
-              <double>[dVal],
-              shape1,
-              DType.float64,
-            );
-          case DType.float32:
-            return NDArray<Float32>.fromList(
-              <double>[dVal],
-              shape1,
-              DType.float32,
-            );
-          case DType.float16:
-            return NDArray<Float16>.fromList(
-              <double>[dVal],
-              shape1,
-              DType.float16,
-            );
-          case DType.bfloat16:
-            return NDArray<BFloat16>.fromList(
-              <double>[dVal],
-              shape1,
-              DType.bfloat16,
-            );
-          default:
-            break;
+        if (_scalarDoubleFitsDType(dVal, targetDType)) {
+          switch (targetDType) {
+            case DType.float64:
+              return NDArray<Float64>.fromList(
+                <double>[dVal],
+                shape1,
+                DType.float64,
+              );
+            case DType.float32:
+              return NDArray<Float32>.fromList(
+                <double>[dVal],
+                shape1,
+                DType.float32,
+              );
+            case DType.float16:
+              return NDArray<Float16>.fromList(
+                <double>[dVal],
+                shape1,
+                DType.float16,
+              );
+            case DType.bfloat16:
+              return NDArray<BFloat16>.fromList(
+                <double>[dVal],
+                shape1,
+                DType.bfloat16,
+              );
+            default:
+              break;
+          }
         }
       } else if (targetDType.isInteger && value is int) {
-        switch (targetDType) {
-          case DType.int64:
-            return NDArray<Int64>.fromList(<int>[value], shape1, DType.int64);
-          case DType.int32:
-            return NDArray<Int32>.fromList(<int>[value], shape1, DType.int32);
-          case DType.int16:
-            return NDArray<Int16>.fromList(<int>[value], shape1, DType.int16);
-          case DType.int8:
-            return NDArray<Int8>.fromList(<int>[value], shape1, DType.int8);
-          case DType.uint64:
-            return NDArray<Uint64>.fromList(<int>[value], shape1, DType.uint64);
-          case DType.uint32:
-            return NDArray<Uint32>.fromList(<int>[value], shape1, DType.uint32);
-          case DType.uint16:
-            return NDArray<Uint16>.fromList(<int>[value], shape1, DType.uint16);
-          case DType.uint8:
-            return NDArray<Uint8>.fromList(<int>[value], shape1, DType.uint8);
-          default:
-            break;
+        if (_scalarIntFitsDType(value, targetDType)) {
+          switch (targetDType) {
+            case DType.int64:
+              return NDArray<Int64>.fromList(<int>[value], shape1, DType.int64);
+            case DType.int32:
+              return NDArray<Int32>.fromList(<int>[value], shape1, DType.int32);
+            case DType.int16:
+              return NDArray<Int16>.fromList(<int>[value], shape1, DType.int16);
+            case DType.int8:
+              return NDArray<Int8>.fromList(<int>[value], shape1, DType.int8);
+            case DType.uint64:
+              return NDArray<Uint64>.fromList(
+                <int>[value],
+                shape1,
+                DType.uint64,
+              );
+            case DType.uint32:
+              return NDArray<Uint32>.fromList(
+                <int>[value],
+                shape1,
+                DType.uint32,
+              );
+            case DType.uint16:
+              return NDArray<Uint16>.fromList(
+                <int>[value],
+                shape1,
+                DType.uint16,
+              );
+            case DType.uint8:
+              return NDArray<Uint8>.fromList(<int>[value], shape1, DType.uint8);
+            default:
+              break;
+          }
         }
       } else if (targetDType.isComplex) {
         final cVal = value is Complex
@@ -2419,20 +2866,29 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
   }
 
+  R _withWrappedScalar<R>(dynamic other, R Function(NDArray otherArr) fn) {
+    if (other is NDArray) {
+      return fn(other);
+    }
+    final otherArr = _wrapScalar(other, shape, dtype);
+    try {
+      return fn(otherArr);
+    } finally {
+      otherArr.dispose();
+    }
+  }
+
   /// Element-wise addition with full broadcasting support.
   NDArray operator +(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.add(this, otherArr);
+    return _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr));
   }
 
   /// Element-wise subtraction with full broadcasting support.
   NDArray operator -(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.subtract(this, otherArr);
+    return _withWrappedScalar(
+      other,
+      (otherArr) => ops.subtract(this, otherArr),
+    );
   }
 
   /// Element-wise multiplication with full broadcasting support.
@@ -2441,10 +2897,10 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// - **Integer arrays** (`int32`, `int64`, etc.) overflow silently wrapping around via standard two's complement.
   /// - **Floating-point arrays** (`float32`, `float64`) overflow silently to `double.infinity` or `double.negativeInfinity` per IEEE 754.
   NDArray operator *(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.multiply(this, otherArr);
+    return _withWrappedScalar(
+      other,
+      (otherArr) => ops.multiply(this, otherArr),
+    );
   }
 
   /// Element-wise division with full broadcasting support.
@@ -2457,10 +2913,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// - Dividing zero by zero results in `double.nan`.
   /// No exception is thrown.
   NDArray operator /(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.divide(this, otherArr);
+    return _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr));
   }
 
   /// Element-wise floor division with full broadcasting support.
@@ -2470,10 +2923,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
   /// - **Floating-point arrays**: Returns `double.nan` silently without throwing exceptions.
   NDArray operator ~/(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.floor_divide(this as NDArray<num>, otherArr as NDArray<num>);
+    return _withWrappedScalar(
+      other,
+      (otherArr) =>
+          ops.floor_divide(this as NDArray<num>, otherArr as NDArray<num>),
+    );
   }
 
   /// Element-wise remainder with full broadcasting support.
@@ -2483,10 +2937,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
   /// - **Floating-point divisor**: Returns `double.nan` silently without throwing exceptions.
   NDArray operator %(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.remainder(this as NDArray<num>, otherArr as NDArray<num>);
+    return _withWrappedScalar(
+      other,
+      (otherArr) =>
+          ops.remainder(this as NDArray<num>, otherArr as NDArray<num>),
+    );
   }
 
   /// Numerical negative, element-wise.
@@ -2496,26 +2951,26 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
   /// Element-wise bitwise AND with full broadcasting support.
   NDArray operator &(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.bitwise_and(this, otherArr);
+    return _withWrappedScalar(
+      other,
+      (otherArr) => ops.bitwise_and(this, otherArr),
+    );
   }
 
   /// Element-wise bitwise OR with full broadcasting support.
   NDArray operator |(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.bitwise_or(this, otherArr);
+    return _withWrappedScalar(
+      other,
+      (otherArr) => ops.bitwise_or(this, otherArr),
+    );
   }
 
   /// Element-wise bitwise XOR with full broadcasting support.
   NDArray operator ^(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.bitwise_xor(this, otherArr);
+    return _withWrappedScalar(
+      other,
+      (otherArr) => ops.bitwise_xor(this, otherArr),
+    );
   }
 
   /// Element-wise bitwise NOT.
@@ -2525,18 +2980,18 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
   /// Element-wise left shift with full broadcasting support.
   NDArray operator <<(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.left_shift(this, otherArr);
+    return _withWrappedScalar(
+      other,
+      (otherArr) => ops.left_shift(this, otherArr),
+    );
   }
 
   /// Element-wise right shift with full broadcasting support.
   NDArray operator >>(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.right_shift(this, otherArr);
+    return _withWrappedScalar(
+      other,
+      (otherArr) => ops.right_shift(this, otherArr),
+    );
   }
 
   /// Element-wise greater than comparison (`this > other`) with full broadcasting support.
@@ -2560,10 +3015,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Reference: See NumPy's [greater](https://numpy.org/doc/stable/reference/generated/numpy.greater.html).
   NDArray<bool> operator >(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.greater(this, otherArr);
+    return _withWrappedScalar(other, (otherArr) => ops.greater(this, otherArr));
   }
 
   /// Element-wise less than comparison (`this < other`) with full broadcasting support.
@@ -2586,10 +3038,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Reference: See NumPy's [less](https://numpy.org/doc/stable/reference/generated/numpy.less.html).
   NDArray<bool> operator <(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.less(this, otherArr);
+    return _withWrappedScalar(other, (otherArr) => ops.less(this, otherArr));
   }
 
   /// Element-wise greater-or-equal comparison (`this >= other`) with full broadcasting support.
@@ -2612,10 +3061,10 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Reference: See NumPy's [greater_equal](https://numpy.org/doc/stable/reference/generated/numpy.greater_equal.html).
   NDArray<bool> operator >=(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.greaterEqual(this, otherArr);
+    return _withWrappedScalar(
+      other,
+      (otherArr) => ops.greaterEqual(this, otherArr),
+    );
   }
 
   /// Element-wise less-or-equal comparison (`this <= other`) with full broadcasting support.
@@ -2638,10 +3087,10 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Reference: See NumPy's [less_equal](https://numpy.org/doc/stable/reference/generated/numpy.less_equal.html).
   NDArray<bool> operator <=(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.lessEqual(this, otherArr);
+    return _withWrappedScalar(
+      other,
+      (otherArr) => ops.lessEqual(this, otherArr),
+    );
   }
 
   /// Element-wise equality comparison (`eq(other)`) with full broadcasting support.
@@ -2669,10 +3118,15 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Reference: See NumPy's [equal](https://numpy.org/doc/stable/reference/generated/numpy.equal.html).
   NDArray<bool> eq(dynamic other) {
-    final otherArr = (other is NDArray)
-        ? other
-        : _wrapScalar(other, shape, dtype);
-    return ops.equal(this, otherArr);
+    return _withWrappedScalar(other, (otherArr) => ops.equal(this, otherArr));
+  }
+
+  /// Element-wise inequality comparison (`ne(other)`) with full broadcasting support.
+  NDArray<bool> ne(dynamic other) {
+    return _withWrappedScalar(
+      other,
+      (otherArr) => ops.notEqual(this, otherArr),
+    );
   }
 
   /// Returns a view or copy of the array with elements sliced based on [selectors].
@@ -2706,8 +3160,8 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
           );
         }
         final size = shape[i];
-        final maskMarker = ScratchArena.marker;
         final List<int> indices;
+        final maskMarker = ScratchArena.marker;
         try {
           final pIndices = ScratchArena.allocate<ffi.Int>(
             size * ffi.sizeOf<ffi.Int>(),
@@ -2804,6 +3258,10 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         newShape.add(selector.values.length);
         newStrides.add(0); // Dummy value for now
       }
+    }
+
+    if (newShape.contains(0)) {
+      offsetElements = 0;
     }
 
     if (isAdvanced) {
@@ -2930,6 +3388,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
           pIndicesPtrs,
           pIndicesLens,
         );
+      } catch (_) {
+        result.dispose();
+        rethrow;
       } finally {
         ScratchArena.reset(sliceMarker);
       }
@@ -2973,28 +3434,39 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// It is an error if [mask] shape does not match the target shape.
   NDArray<T> applyMask(NDArray<bool> mask) {
-    if (shape.length == 1 &&
-        mask.shape.length == 1 &&
-        isContiguous &&
-        mask.isContiguous) {
-      if (mask.shape[0] != shape[0]) {
-        throw ArgumentError(
-          'Boolean mask shape ${mask.shape} must match target shape $shape',
+    if (isDisposed || mask.isDisposed) {
+      throw StateError('Cannot access a disposed NDArray.');
+    }
+    if (!listEquals(mask.shape, shape)) {
+      if (mask.shape.length == 1 && mask.shape[0] == shape[0]) {
+        return slice([Mask(BooleanMask(mask))]);
+      }
+      throw ArgumentError(
+        'Boolean mask shape ${mask.shape} must match target shape $shape',
+      );
+    }
+    if (size == 0) {
+      return NDArray<T>.create([0], dtype);
+    }
+    final contigThis = isContiguous ? this : copy();
+    final contigMask = mask.isContiguous ? mask : mask.copy();
+    try {
+      final count = native_count_mask(contigMask.pointer.cast(), size);
+      final result = NDArray<T>.create([count], dtype);
+      if (count > 0) {
+        native_apply_mask(
+          dtype.index,
+          contigThis.pointer.cast(),
+          contigMask.pointer.cast(),
+          result.pointer.cast(),
+          size,
         );
       }
-      final size = shape[0];
-      final count = native_count_mask(mask.pointer.cast(), size);
-      final result = NDArray<T>.create([count], dtype);
-      native_apply_mask(
-        dtype.index,
-        pointer.cast(),
-        mask.pointer.cast(),
-        result.pointer.cast(),
-        size,
-      );
       return result;
+    } finally {
+      if (!identical(contigThis, this)) contigThis.dispose();
+      if (!identical(contigMask, mask)) contigMask.dispose();
     }
-    return slice([Mask(BooleanMask(mask))]);
   }
 
   /// Returns a flat Dart list containing a copy of the elements in this array,
@@ -3044,6 +3516,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// **Example:**
   /// {@example /example/shape_examples.dart lang=dart}
   NDArray<T> expandDims(int axis) {
+    if (isDisposed) throw StateError('Cannot access a disposed NDArray.');
     final rank = shape.length;
     if (axis < -rank - 1 || axis > rank) {
       throw RangeError.range(
@@ -3088,6 +3561,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// **Example:**
   /// {@example /example/shape_examples.dart lang=dart}
   NDArray<T> squeeze({dynamic axis}) {
+    if (isDisposed) throw StateError('Cannot access a disposed NDArray.');
     final rank = shape.length;
     final axesToRemove = <int>{};
 
@@ -3282,9 +3756,10 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
     ResourceScope.untrack(this);
 
+    final ptrToFree = _allocPointer ?? _pointer;
     if (!_isExternallyOwned) {
       _finalizer.detach(this);
-      malloc.free(_pointer);
+      malloc.free(ptrToFree);
     } else {
       if (_customFinalizerInstance != null) {
         _customFinalizerInstance.detach(this);
@@ -3292,7 +3767,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       if (_customNativeFinalizer != null) {
         final freeFunc = _customNativeFinalizer
             .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-        freeFunc(_pointer);
+        freeFunc(ptrToFree);
       }
     }
   }
@@ -3305,14 +3780,17 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     if (!listEquals(shape, other.shape)) return false;
 
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    if (totalSize == 0) return true;
 
-    // 1. High-speed direct C memcmp block byte check for C-contiguous same-layout arrays
-    if (isContiguous && other.isContiguous) {
+    // 1. High-speed direct C memcmp block byte check for C-contiguous integer/boolean arrays
+    if (isContiguous &&
+        other.isContiguous &&
+        (dtype.isInteger || dtype == DType.boolean)) {
       final byteSize = totalSize * dtype.byteWidth;
       return custom_memcmp(pointer, other.pointer, byteSize) == 0;
     }
 
-    // 2. Zero-allocation strided C comparison
+    // 2. Zero-allocation strided C comparison (also used for float/complex contiguous to preserve IEEE 754 +0.0 == -0.0 and NaN != NaN semantics)
     final marker = ScratchArena.marker;
     try {
       final cShape = shape.isEmpty ? ffi.nullptr : ScratchArena.copyInts(shape);
@@ -3347,7 +3825,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       final cShape = ScratchArena.copyInts(shape);
       final cStrides = ScratchArena.copyInts(strides);
       switch (dtype) {
-        case DType.float64 || DType.int64 || DType.uint64:
+        case DType.float64:
           elementsHash = s_hash_double(
             pointer.cast(),
             cStrides,
@@ -3355,7 +3833,15 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
             shape.length,
             isContiguous ? 1 : 0,
           );
-        case DType.float32 || DType.int32 || DType.uint32:
+        case DType.int64 || DType.uint64:
+          elementsHash = s_hash_int64(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
+        case DType.float32:
           elementsHash = s_hash_float(
             pointer.cast(),
             cStrides,
@@ -3363,7 +3849,55 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
             shape.length,
             isContiguous ? 1 : 0,
           );
-        case DType.float16 || DType.bfloat16 || DType.int16 || DType.uint16:
+        case DType.int32 || DType.uint32:
+          elementsHash = s_hash_int32(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
+        case DType.float16 || DType.bfloat16:
+          var h = 2166136261;
+          final rawBuffer = pointer.cast<ffi.Uint16>();
+          final isF16 = dtype == DType.float16;
+          void hashBits(int bits) {
+            if (bits == 0x8000) {
+              bits = 0;
+            } else if (isF16 && (bits & 0x7FFF) > 0x7C00) {
+              bits = 0x7E00;
+            } else if (!isF16 && (bits & 0x7FFF) > 0x7F80) {
+              bits = 0x7FC0;
+            }
+            h = ((h ^ (bits & 0xFF)) * 16777619) & 0xFFFFFFFF;
+            h = ((h ^ ((bits >> 8) & 0xFF)) * 16777619) & 0xFFFFFFFF;
+          }
+          final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+          if (isContiguous) {
+            for (var i = 0; i < totalSize; i++) {
+              hashBits(rawBuffer[i]);
+            }
+          } else if (shape.isEmpty) {
+            hashBits(rawBuffer[0]);
+          } else if (totalSize > 0) {
+            final rank = shape.length;
+            final coord = List<int>.filled(rank, 0);
+            var offset = 0;
+            for (var el = 0; el < totalSize; el++) {
+              hashBits(rawBuffer[offset]);
+              for (var d = rank - 1; d >= 0; d--) {
+                coord[d]++;
+                if (coord[d] < shape[d]) {
+                  offset += strides[d];
+                  break;
+                }
+                coord[d] = 0;
+                offset -= (shape[d] - 1) * strides[d];
+              }
+            }
+          }
+          elementsHash = h;
+        case DType.int16 || DType.uint16:
           elementsHash = s_hash_int16(
             pointer.cast(),
             cStrides,
@@ -3916,6 +4450,7 @@ final class Mask extends Selector {
 }
 
 void _copyContiguousNDArray(NDArray src, NDArray dest, int size) {
+  if (size <= 0) return;
   custom_memcpy(dest._pointer, src._pointer, size * src.dtype.byteWidth);
 }
 

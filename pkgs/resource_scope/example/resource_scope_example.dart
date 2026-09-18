@@ -53,7 +53,9 @@ void main() {
     final result = ResourceScope.returning(() {
       final intermediate = SimpleNativeBuffer('intermediate_computation');
       final output = SimpleNativeBuffer('final_promoted_result');
-      print('Inside returning: created ${intermediate.name} and ${output.name}');
+      print(
+        'Inside returning: created ${intermediate.name} and ${output.name}',
+      );
       return output;
     });
 
@@ -64,4 +66,5 @@ void main() {
   print('Outer scope completed. Final disposed status: ${retained.isDisposed}');
 }
 
-String retainedResult(SimpleNativeBuffer buf) => '${buf.name} (disposed: ${buf.isDisposed})';
+String retainedResult(SimpleNativeBuffer buf) =>
+    '${buf.name} (disposed: ${buf.isDisposed})';

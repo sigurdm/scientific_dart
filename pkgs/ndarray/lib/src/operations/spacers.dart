@@ -171,7 +171,7 @@ NDArray<T> linspaceGrid<T>(
   if (start.isDisposed || stop.isDisposed) {
     throw StateError('Cannot execute linspaceGrid() on a disposed array.');
   }
-  return _linspaceGridInternal<T>(
+  final res = _linspaceGridInternal<T>(
     start,
     stop,
     numSamples,
@@ -179,7 +179,9 @@ NDArray<T> linspaceGrid<T>(
     axis: axis,
     dtype: dtype,
     out: out,
-  ).samples;
+  );
+  res.step.dispose();
+  return res.samples;
 }
 
 /// Similar to [linspaceGrid], but also returns the calculated step size as an [NDArray].
@@ -265,12 +267,13 @@ NDArray<T> linspaceGrid<T>(
     if (numSamples == 0) {
       final res = out ?? NDArray<T>.create(resultShape, resolvedDType);
       final step = NDArray<T>.create(commonShape, resolvedDType);
-      final nanVal = normalizeScalar(double.nan, resolvedDType) as T;
+      final nanVal = (resolvedDType.isInteger || resolvedDType == DType.boolean)
+          ? normalizeScalar(0, resolvedDType) as T
+          : normalizeScalar(double.nan, resolvedDType) as T;
       step.fill(nanVal);
-      return (
-        samples: res.detachToParentScope(),
-        step: step.detachToParentScope(),
-      );
+      if (out == null) res.detachToParentScope();
+      step.detachToParentScope();
+      return (samples: res, step: step);
     }
 
     final startBroadcasted = broadcastTo(startArr, commonShape);
@@ -282,7 +285,11 @@ NDArray<T> linspaceGrid<T>(
     final stridesStop = List<int>.from(stopBroadcasted.strides);
     stridesStop.insert(actualAxis, 0);
 
-    final res = out ?? NDArray<T>.create(resultShape, resolvedDType);
+    final bool useTempOut =
+        out != null && (sharesMemory(start, out) || sharesMemory(stop, out));
+    final res = (out != null && !useTempOut)
+        ? out
+        : NDArray<T>.create(resultShape, resolvedDType);
     final stridesRes = res.strides;
 
     final step = NDArray<T>.create(commonShape, resolvedDType);
@@ -291,26 +298,23 @@ NDArray<T> linspaceGrid<T>(
 
     final rank = resultShape.length;
     final marker = ScratchArena.marker;
-
-    final cShape = ScratchArena.copyInts(resultShape);
-    final cStridesStart = ScratchArena.copyInts(stridesStart);
-    final cStridesStop = ScratchArena.copyInts(stridesStop);
-    final cStridesRes = ScratchArena.copyInts(stridesRes);
-    final cStridesStep = ScratchArena.copyInts(stridesStepOdo);
-
     try {
+      final cShape = ScratchArena.copyInts(resultShape);
+      final cStridesStart = ScratchArena.copyInts(stridesStart);
+      final cStridesStop = ScratchArena.copyInts(stridesStop);
+      final cStridesRes = ScratchArena.copyInts(stridesRes);
+      final cStridesStep = ScratchArena.copyInts(stridesStepOdo);
+
       switch (resolvedDType) {
         case DType.float64:
           s_linspace_grid_double(
-            (startBroadcasted.pointer.cast<ffi.Double>() +
-                startBroadcasted.offsetElements),
+            startBroadcasted.pointer.cast<ffi.Double>(),
             cStridesStart,
-            (stopBroadcasted.pointer.cast<ffi.Double>() +
-                stopBroadcasted.offsetElements),
+            stopBroadcasted.pointer.cast<ffi.Double>(),
             cStridesStop,
-            (res.pointer.cast<ffi.Double>() + res.offsetElements),
+            res.pointer.cast<ffi.Double>(),
             cStridesRes,
-            (step.pointer.cast<ffi.Double>() + step.offsetElements),
+            step.pointer.cast<ffi.Double>(),
             cStridesStep,
             cShape,
             rank,
@@ -320,15 +324,13 @@ NDArray<T> linspaceGrid<T>(
           );
         case DType.float32:
           s_linspace_grid_float(
-            (startBroadcasted.pointer.cast<ffi.Float>() +
-                startBroadcasted.offsetElements),
+            startBroadcasted.pointer.cast<ffi.Float>(),
             cStridesStart,
-            (stopBroadcasted.pointer.cast<ffi.Float>() +
-                stopBroadcasted.offsetElements),
+            stopBroadcasted.pointer.cast<ffi.Float>(),
             cStridesStop,
-            (res.pointer.cast<ffi.Float>() + res.offsetElements),
+            res.pointer.cast<ffi.Float>(),
             cStridesRes,
-            (step.pointer.cast<ffi.Float>() + step.offsetElements),
+            step.pointer.cast<ffi.Float>(),
             cStridesStep,
             cShape,
             rank,
@@ -338,15 +340,13 @@ NDArray<T> linspaceGrid<T>(
           );
         case DType.complex128:
           s_linspace_grid_complex128(
-            (startBroadcasted.pointer.cast<cpx_t>() +
-                startBroadcasted.offsetElements),
+            startBroadcasted.pointer.cast<cpx_t>(),
             cStridesStart,
-            (stopBroadcasted.pointer.cast<cpx_t>() +
-                stopBroadcasted.offsetElements),
+            stopBroadcasted.pointer.cast<cpx_t>(),
             cStridesStop,
-            (res.pointer.cast<cpx_t>() + res.offsetElements),
+            res.pointer.cast<cpx_t>(),
             cStridesRes,
-            (step.pointer.cast<cpx_t>() + step.offsetElements),
+            step.pointer.cast<cpx_t>(),
             cStridesStep,
             cShape,
             rank,
@@ -356,15 +356,13 @@ NDArray<T> linspaceGrid<T>(
           );
         case DType.complex64:
           s_linspace_grid_complex64(
-            (startBroadcasted.pointer.cast<cpx_f_t>() +
-                startBroadcasted.offsetElements),
+            startBroadcasted.pointer.cast<cpx_f_t>(),
             cStridesStart,
-            (stopBroadcasted.pointer.cast<cpx_f_t>() +
-                stopBroadcasted.offsetElements),
+            stopBroadcasted.pointer.cast<cpx_f_t>(),
             cStridesStop,
-            (res.pointer.cast<cpx_f_t>() + res.offsetElements),
+            res.pointer.cast<cpx_f_t>(),
             cStridesRes,
-            (step.pointer.cast<cpx_f_t>() + step.offsetElements),
+            step.pointer.cast<cpx_f_t>(),
             cStridesStep,
             cShape,
             rank,
@@ -374,15 +372,13 @@ NDArray<T> linspaceGrid<T>(
           );
         case DType.int64:
           s_linspace_grid_int64(
-            (startBroadcasted.pointer.cast<ffi.Int64>() +
-                startBroadcasted.offsetElements),
+            startBroadcasted.pointer.cast<ffi.Int64>(),
             cStridesStart,
-            (stopBroadcasted.pointer.cast<ffi.Int64>() +
-                stopBroadcasted.offsetElements),
+            stopBroadcasted.pointer.cast<ffi.Int64>(),
             cStridesStop,
-            (res.pointer.cast<ffi.Int64>() + res.offsetElements),
+            res.pointer.cast<ffi.Int64>(),
             cStridesRes,
-            (step.pointer.cast<ffi.Int64>() + step.offsetElements),
+            step.pointer.cast<ffi.Int64>(),
             cStridesStep,
             cShape,
             rank,
@@ -392,15 +388,13 @@ NDArray<T> linspaceGrid<T>(
           );
         case DType.int32:
           s_linspace_grid_int32(
-            (startBroadcasted.pointer.cast<ffi.Int32>() +
-                startBroadcasted.offsetElements),
+            startBroadcasted.pointer.cast<ffi.Int32>(),
             cStridesStart,
-            (stopBroadcasted.pointer.cast<ffi.Int32>() +
-                stopBroadcasted.offsetElements),
+            stopBroadcasted.pointer.cast<ffi.Int32>(),
             cStridesStop,
-            (res.pointer.cast<ffi.Int32>() + res.offsetElements),
+            res.pointer.cast<ffi.Int32>(),
             cStridesRes,
-            (step.pointer.cast<ffi.Int32>() + step.offsetElements),
+            step.pointer.cast<ffi.Int32>(),
             cStridesStep,
             cShape,
             rank,
@@ -410,15 +404,13 @@ NDArray<T> linspaceGrid<T>(
           );
         case DType.int16:
           s_linspace_grid_int16(
-            (startBroadcasted.pointer.cast<ffi.Int16>() +
-                startBroadcasted.offsetElements),
+            startBroadcasted.pointer.cast<ffi.Int16>(),
             cStridesStart,
-            (stopBroadcasted.pointer.cast<ffi.Int16>() +
-                stopBroadcasted.offsetElements),
+            stopBroadcasted.pointer.cast<ffi.Int16>(),
             cStridesStop,
-            (res.pointer.cast<ffi.Int16>() + res.offsetElements),
+            res.pointer.cast<ffi.Int16>(),
             cStridesRes,
-            (step.pointer.cast<ffi.Int16>() + step.offsetElements),
+            step.pointer.cast<ffi.Int16>(),
             cStridesStep,
             cShape,
             rank,
@@ -428,15 +420,13 @@ NDArray<T> linspaceGrid<T>(
           );
         case DType.uint8:
           s_linspace_grid_uint8(
-            (startBroadcasted.pointer.cast<ffi.Uint8>() +
-                startBroadcasted.offsetElements),
+            startBroadcasted.pointer.cast<ffi.Uint8>(),
             cStridesStart,
-            (stopBroadcasted.pointer.cast<ffi.Uint8>() +
-                stopBroadcasted.offsetElements),
+            stopBroadcasted.pointer.cast<ffi.Uint8>(),
             cStridesStop,
-            (res.pointer.cast<ffi.Uint8>() + res.offsetElements),
+            res.pointer.cast<ffi.Uint8>(),
             cStridesRes,
-            (step.pointer.cast<ffi.Uint8>() + step.offsetElements),
+            step.pointer.cast<ffi.Uint8>(),
             cStridesStep,
             cShape,
             rank,
@@ -457,6 +447,12 @@ NDArray<T> linspaceGrid<T>(
       }
     } finally {
       ScratchArena.reset(marker);
+    }
+
+    if (useTempOut) {
+      res.copy(out: out);
+      step.detachToParentScope();
+      return (samples: out, step: step);
     }
 
     if (out == null) res.detachToParentScope();
@@ -490,6 +486,11 @@ NDArray<T> logspace<T>(
   }
   final resolvedDType = dtype ?? defaultDType<T>();
   if (out != null) {
+    if (out.isDisposed) {
+      throw StateError(
+        'Cannot write logspace result to a disposed output array.',
+      );
+    }
     if (!listEquals(out.shape, [numSamples]) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
@@ -498,65 +499,78 @@ NDArray<T> logspace<T>(
     return out ?? NDArray<T>.create([0], resolvedDType);
   }
 
-  final arr = out ?? NDArray<T>.create([numSamples], resolvedDType);
+  final bool useTempOut = out != null && !out.isContiguous;
   final div = endpoint ? (numSamples - 1) : numSamples;
 
-  switch (resolvedDType) {
-    case DType.float64:
-      final s = (start as num).toDouble();
-      final e = (stop as num).toDouble();
-      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
-      v_logspace_double(arr.pointer.cast(), s, stp, base, numSamples);
-      return arr;
-    case DType.float32:
-      final s = (start as num).toDouble();
-      final e = (stop as num).toDouble();
-      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
-      v_logspace_float(arr.pointer.cast(), s, stp, base, numSamples);
-      return arr;
-    case DType.complex128:
-      final s = normalizeScalar(start as Object, DType.complex128) as Complex;
-      final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
-      final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
-      v_logspace_complex128(
-        arr.pointer.cast(),
-        s.real,
-        s.imag,
-        stp.real,
-        stp.imag,
-        base,
-        0.0,
-        numSamples,
-      );
-      return arr;
-    case DType.complex64:
-      final s = normalizeScalar(start as Object, DType.complex128) as Complex;
-      final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
-      final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
-      v_logspace_complex64(
-        arr.pointer.cast(),
-        s.real,
-        s.imag,
-        stp.real,
-        stp.imag,
-        base,
-        0.0,
-        numSamples,
-      );
-      return arr;
-    case DType.float16:
-    case DType.bfloat16:
-    case DType.int8:
-    case DType.uint64:
-    case DType.uint32:
-    case DType.uint16:
-    case DType.int64:
-    case DType.int32:
-    case DType.int16:
-    case DType.uint8:
-    case DType.boolean:
-      throw UnsupportedError('logspace not supported for type $resolvedDType');
-  }
+  return NDArray.scope(() {
+    final arr = (out != null && !useTempOut)
+        ? out
+        : NDArray<T>.create([numSamples], resolvedDType);
+
+    switch (resolvedDType) {
+      case DType.float64:
+        final s = (start as num).toDouble();
+        final e = (stop as num).toDouble();
+        final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+        v_logspace_double(arr.pointer.cast(), s, stp, base, numSamples);
+      case DType.float32:
+        final s = (start as num).toDouble();
+        final e = (stop as num).toDouble();
+        final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+        v_logspace_float(arr.pointer.cast(), s, stp, base, numSamples);
+      case DType.complex128:
+        final s = normalizeScalar(start as Object, DType.complex128) as Complex;
+        final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
+        final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
+        v_logspace_complex128(
+          arr.pointer.cast(),
+          s.real,
+          s.imag,
+          stp.real,
+          stp.imag,
+          base,
+          0.0,
+          numSamples,
+        );
+      case DType.complex64:
+        final s = normalizeScalar(start as Object, DType.complex128) as Complex;
+        final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
+        final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
+        v_logspace_complex64(
+          arr.pointer.cast(),
+          s.real,
+          s.imag,
+          stp.real,
+          stp.imag,
+          base,
+          0.0,
+          numSamples,
+        );
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
+      case DType.int64:
+      case DType.int32:
+      case DType.int16:
+      case DType.uint8:
+      case DType.boolean:
+        throw UnsupportedError(
+          'logspace not supported for type $resolvedDType',
+        );
+    }
+
+    if (useTempOut) {
+      arr.copy(out: out);
+      return out;
+    }
+    if (out == null) {
+      arr.detachToParentScope();
+    }
+    return arr;
+  });
 }
 
 /// Generalized [logspace] that supports broadcasting.
@@ -602,21 +616,46 @@ NDArray<T> logspaceGrid<T extends Object>(
     );
   }
   final resolvedDType = dtype ?? defaultDType<T>();
-  final NDArray<T> actualBase = base != null
-      ? toNDArray<T>(base, resolvedDType)
-      : toNDArray<T>(10.0, resolvedDType);
 
   return NDArray.scope(() {
+    final startArr = toNDArray<T>(start, resolvedDType);
+    final stopArr = toNDArray<T>(stop, resolvedDType);
+    final actualBase = base != null
+        ? toNDArray<T>(base, resolvedDType)
+        : toNDArray<T>(10.0, resolvedDType);
+
+    final commonShape = broadcastShapes(
+      broadcastShapes(startArr.shape, stopArr.shape),
+      actualBase.shape,
+    );
+    final actualAxis = axis < 0 ? commonShape.length + 1 + axis : axis;
+    if (actualAxis < 0 || actualAxis > commonShape.length) {
+      throw ArgumentError(
+        'Axis $axis out of bounds for rank ${commonShape.length}',
+      );
+    }
+
+    final startBroad = broadcastTo(startArr, commonShape);
+    final stopBroad = broadcastTo(stopArr, commonShape);
+    final baseBroad = broadcastTo(actualBase, commonShape);
+
     final y = linspaceGrid<T>(
-      start,
-      stop,
+      startBroad,
+      stopBroad,
       numSamples,
       endpoint: endpoint,
-      axis: axis,
+      axis: actualAxis,
       dtype: resolvedDType,
     );
-    final res = power<T>(actualBase, y);
+
+    final expandedBaseShape = List<int>.from(commonShape)
+      ..insert(actualAxis, 1);
+    final baseExpanded = baseBroad.reshape(expandedBaseShape);
+    final res = power<T>(baseExpanded, y);
     if (out != null) {
+      if (!listEquals(out.shape, res.shape) || out.dtype != resolvedDType) {
+        throw ArgumentError('Incompatible out buffer shape or dtype.');
+      }
       res.copy(out: out);
       return out;
     }
@@ -652,6 +691,11 @@ NDArray<T> geomspace<T>(
   }
   final resolvedDType = dtype ?? defaultDType<T>();
   if (out != null) {
+    if (out.isDisposed) {
+      throw StateError(
+        'Cannot write geomspace result to a disposed output array.',
+      );
+    }
     if (!listEquals(out.shape, [numSamples]) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
@@ -660,82 +704,118 @@ NDArray<T> geomspace<T>(
     return out ?? NDArray<T>.create([0], resolvedDType);
   }
 
-  switch (resolvedDType) {
-    case DType.float64:
-    case DType.float32:
-      final s = (start as num).toDouble();
-      final e = (stop as num).toDouble();
-      if (s == 0.0 || e == 0.0) {
-        throw ArgumentError('Geometric sequence cannot include zero.');
-      }
-      if (s * e <= 0.0) {
-        throw ArgumentError(
-          'Geometric sequence start and stop must have same sign.',
+  final bool useTempOut = out != null && !out.isContiguous;
+
+  return NDArray.scope(() {
+    switch (resolvedDType) {
+      case DType.float64:
+      case DType.float32:
+        final s = (start as num).toDouble();
+        final e = (stop as num).toDouble();
+        if (s == 0.0 || e == 0.0) {
+          throw ArgumentError('Geometric sequence cannot include zero.');
+        }
+        if ((s > 0.0) != (e > 0.0)) {
+          throw ArgumentError(
+            'Geometric sequence start and stop must have same sign.',
+          );
+        }
+
+        final sign = s > 0.0 ? 1.0 : -1.0;
+        final logStart = math.log(s.abs()) / math.ln10;
+        final logStop = math.log(e.abs()) / math.ln10;
+        final div = endpoint ? (numSamples - 1) : numSamples;
+        final stp = numSamples <= 1 ? 0.0 : (logStop - logStart) / div;
+
+        final arr = (out != null && !useTempOut)
+            ? out
+            : NDArray<T>.create([numSamples], resolvedDType);
+        if (resolvedDType == DType.float64) {
+          v_geomspace_double(
+            arr.pointer.cast(),
+            logStart,
+            stp,
+            sign,
+            numSamples,
+          );
+        } else {
+          v_geomspace_float(
+            arr.pointer.cast(),
+            logStart,
+            stp,
+            sign,
+            numSamples,
+          );
+        }
+        if (useTempOut) {
+          arr.copy(out: out);
+          return out;
+        }
+        if (out == null) {
+          arr.detachToParentScope();
+        }
+        return arr;
+      case DType.complex128:
+      case DType.complex64:
+        final s = normalizeScalar(start as Object, DType.complex128) as Complex;
+        final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
+        if (s.abs == 0.0 || e.abs == 0.0) {
+          throw ArgumentError('Geometric sequence cannot include zero.');
+        }
+
+        final logStart = s.log() / math.ln10;
+        final logStop = e.log() / math.ln10;
+        final div = endpoint ? (numSamples - 1) : numSamples;
+        final stp = numSamples <= 1
+            ? Complex(0.0, 0.0)
+            : (logStop - logStart) / div;
+
+        final arr = (out != null && !useTempOut)
+            ? out
+            : NDArray<T>.create([numSamples], resolvedDType);
+        if (resolvedDType == DType.complex128) {
+          v_geomspace_complex128(
+            arr.pointer.cast(),
+            logStart.real,
+            logStart.imag,
+            stp.real,
+            stp.imag,
+            numSamples,
+          );
+        } else {
+          v_geomspace_complex64(
+            arr.pointer.cast(),
+            logStart.real,
+            logStart.imag,
+            stp.real,
+            stp.imag,
+            numSamples,
+          );
+        }
+        if (useTempOut) {
+          arr.copy(out: out);
+          return out;
+        }
+        if (out == null) {
+          arr.detachToParentScope();
+        }
+        return arr;
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
+      case DType.int64:
+      case DType.int32:
+      case DType.int16:
+      case DType.uint8:
+      case DType.boolean:
+        throw UnsupportedError(
+          'geomspace not supported for type $resolvedDType',
         );
-      }
-
-      final sign = s > 0.0 ? 1.0 : -1.0;
-      final logStart = math.log(s.abs()) / math.ln10;
-      final logStop = math.log(e.abs()) / math.ln10;
-      final div = endpoint ? (numSamples - 1) : numSamples;
-      final stp = numSamples <= 1 ? 0.0 : (logStop - logStart) / div;
-
-      final arr = out ?? NDArray<T>.create([numSamples], resolvedDType);
-      if (resolvedDType == DType.float64) {
-        v_geomspace_double(arr.pointer.cast(), logStart, stp, sign, numSamples);
-      } else {
-        v_geomspace_float(arr.pointer.cast(), logStart, stp, sign, numSamples);
-      }
-      return arr;
-    case DType.complex128:
-    case DType.complex64:
-      final s = normalizeScalar(start as Object, DType.complex128) as Complex;
-      final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
-      if (s.abs == 0.0 || e.abs == 0.0) {
-        throw ArgumentError('Geometric sequence cannot include zero.');
-      }
-
-      final logStart = s.log() / math.ln10;
-      final logStop = e.log() / math.ln10;
-      final div = endpoint ? (numSamples - 1) : numSamples;
-      final stp = numSamples <= 1
-          ? Complex(0.0, 0.0)
-          : (logStop - logStart) / div;
-
-      final arr = out ?? NDArray<T>.create([numSamples], resolvedDType);
-      if (resolvedDType == DType.complex128) {
-        v_geomspace_complex128(
-          arr.pointer.cast(),
-          logStart.real,
-          logStart.imag,
-          stp.real,
-          stp.imag,
-          numSamples,
-        );
-      } else {
-        v_geomspace_complex64(
-          arr.pointer.cast(),
-          logStart.real,
-          logStart.imag,
-          stp.real,
-          stp.imag,
-          numSamples,
-        );
-      }
-      return arr;
-    case DType.float16:
-    case DType.bfloat16:
-    case DType.int8:
-    case DType.uint64:
-    case DType.uint32:
-    case DType.uint16:
-    case DType.int64:
-    case DType.int32:
-    case DType.int16:
-    case DType.uint8:
-    case DType.boolean:
-      throw UnsupportedError('geomspace not supported for type $resolvedDType');
-  }
+    }
+  });
 }
 
 /// Generalized [geomspace] that supports broadcasting.
@@ -793,21 +873,68 @@ NDArray<T> geomspaceGrid<T extends Object>(
     }
 
     if (resolvedDType.isFloating) {
-      final prod = multiply(startArr, stopArr);
-      final signZeroOrNeg = lessEqual(prod, zero);
-      if (any(signZeroOrNeg).scalar) {
+      final startNeg = less(startArr, zero);
+      final stopNeg = less(stopArr, zero);
+      final diffSign = notEqual(startNeg, stopNeg);
+      if (any(diffSign).scalar) {
         throw ArgumentError(
           'Geometric sequence start and stop must have same sign.',
         );
       }
     }
 
+    final commonShape = broadcastShapes(startArr.shape, stopArr.shape);
+    final actualAxis = axis < 0 ? commonShape.length + 1 + axis : axis;
+    if (actualAxis < 0 || actualAxis > commonShape.length) {
+      throw ArgumentError(
+        'Axis $axis out of bounds for rank ${commonShape.length}',
+      );
+    }
+    final startBroad = broadcastTo(startArr, commonShape);
+    final stopBroad = broadcastTo(stopArr, commonShape);
+
+    if (resolvedDType.isFloating) {
+      final signs = sign<T>(startBroad);
+      final absStart = abs<T, T>(startBroad);
+      final absStop = abs<T, T>(stopBroad);
+      final logStart = divide<T, T, T>(
+        log<T, T>(absStart),
+        toNDArray<T>(math.ln10, resolvedDType),
+      );
+      final logStop = divide<T, T, T>(
+        log<T, T>(absStop),
+        toNDArray<T>(math.ln10, resolvedDType),
+      );
+      final y = linspaceGrid<T>(
+        logStart,
+        logStop,
+        numSamples,
+        endpoint: endpoint,
+        axis: actualAxis,
+        dtype: resolvedDType,
+      );
+      final powRes = power<T>(toNDArray<T>(10.0, resolvedDType), y);
+      final expandedSignShape = List<int>.from(commonShape)
+        ..insert(actualAxis, 1);
+      final signsExpanded = signs.reshape(expandedSignShape);
+      final res = multiply<T, T, T>(signsExpanded, powRes);
+      if (out != null) {
+        if (!listEquals(out.shape, res.shape) || out.dtype != resolvedDType) {
+          throw ArgumentError('Incompatible out buffer shape or dtype.');
+        }
+        res.copy(out: out);
+        return out;
+      }
+      res.detachToParentScope();
+      return res;
+    }
+
     final logStart = divide<T, T, T>(
-      log<T, T>(startArr),
+      log<T, T>(startBroad),
       toNDArray<T>(math.ln10, resolvedDType),
     );
     final logStop = divide<T, T, T>(
-      log<T, T>(stopArr),
+      log<T, T>(stopBroad),
       toNDArray<T>(math.ln10, resolvedDType),
     );
 
@@ -816,11 +943,14 @@ NDArray<T> geomspaceGrid<T extends Object>(
       logStop,
       numSamples,
       endpoint: endpoint,
-      axis: axis,
+      axis: actualAxis,
       dtype: resolvedDType,
     );
     final res = power<T>(toNDArray<T>(10.0, resolvedDType), y);
     if (out != null) {
+      if (!listEquals(out.shape, res.shape) || out.dtype != resolvedDType) {
+        throw ArgumentError('Incompatible out buffer shape or dtype.');
+      }
       res.copy(out: out);
       return out;
     }

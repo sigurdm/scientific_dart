@@ -22387,6 +22387,45 @@ external void pad_axis_int64(
 
 @ffi.Native<
   ffi.Void Function(
+    ffi.Pointer<ffi.Uint64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Uint64,
+    ffi.Uint64,
+    ffi.Uint64,
+    ffi.Uint64,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void pad_axis_uint64(
+  ffi.Pointer<ffi.Uint64> src,
+  ffi.Pointer<ffi.Int> shapeSrc,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Uint64> dest,
+  ffi.Pointer<ffi.Int> shapeDest,
+  int rank,
+  int axis,
+  int padBefore,
+  int padAfter,
+  int mode,
+  int constantBefore,
+  int constantAfter,
+  int endBefore,
+  int endAfter,
+  int statLengthBefore,
+  int statLengthAfter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int>,

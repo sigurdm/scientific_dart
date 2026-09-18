@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:math' as math;
+
 import 'package:ndarray/ndarray.dart';
 
 /// Helper function to compare two lists of integers.

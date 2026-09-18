@@ -69,7 +69,7 @@ void main() {
             });
           });
 
-          test('supports string, num, and NDArray for when parameter', () {
+          test('supports PaymentDue enum for when parameter', () {
             NDArray.scope(() {
               final rate = NDArray<Float64>.scalar(
                 Float64(0.05),
@@ -88,35 +88,16 @@ void main() {
                 dtype: DType.float64,
               );
 
-              for (final whenStr in ['begin', 'beginning', '1', 'start']) {
-                final res = fv(rate, nper, pmt, pvVal, when: whenStr);
-                expect(res.scalar.value, greaterThan(0.0));
-              }
-
-              for (final whenStr in ['end', '0', 'finish']) {
-                final res = fv(rate, nper, pmt, pvVal, when: whenStr);
-                expect(res.scalar.value, greaterThan(0.0));
-              }
-
-              final resNum0 = fv(rate, nper, pmt, pvVal, when: 0);
-              final resNum1 = fv(rate, nper, pmt, pvVal, when: 1.0);
-              expect(resNum0.scalar.value, lessThan(resNum1.scalar.value));
-
-              final whenArr = NDArray<Float64>.scalar(
-                Float64(1.0),
-                dtype: DType.float64,
+              final resEnd = fv(rate, nper, pmt, pvVal, when: PaymentDue.end);
+              final resBegin = fv(
+                rate,
+                nper,
+                pmt,
+                pvVal,
+                when: PaymentDue.begin,
               );
-              final resArr = fv(rate, nper, pmt, pvVal, when: whenArr);
-              expect(resArr.scalar.value, closeTo(resNum1.scalar.value, 1e-9));
-
-              expect(
-                () => fv(rate, nper, pmt, pvVal, when: 'invalid_when'),
-                throwsArgumentError,
-              );
-              expect(
-                () => fv(rate, nper, pmt, pvVal, when: Object()),
-                throwsArgumentError,
-              );
+              expect(resEnd.scalar.value, greaterThan(0.0));
+              expect(resEnd.scalar.value, lessThan(resBegin.scalar.value));
             });
           });
 
@@ -234,51 +215,37 @@ void main() {
             });
           });
 
-          test(
-            'supports string, num, NDArray for when, out buffer, and handles errors',
-            () {
-              NDArray.scope(() {
-                final rate = NDArray<Float64>.scalar(
-                  Float64(0.05),
-                  dtype: DType.float64,
-                );
-                final nper = NDArray<Float64>.scalar(
-                  Float64(5.0),
-                  dtype: DType.float64,
-                );
-                final pmt = NDArray<Float64>.scalar(
-                  Float64(-50.0),
-                  dtype: DType.float64,
-                );
-                final fvVal = NDArray<Float64>.scalar(
-                  Float64(1000.0),
-                  dtype: DType.float64,
-                );
+          test('supports PaymentDue enum for when and out buffer', () {
+            NDArray.scope(() {
+              final rate = NDArray<Float64>.scalar(
+                Float64(0.05),
+                dtype: DType.float64,
+              );
+              final nper = NDArray<Float64>.scalar(
+                Float64(5.0),
+                dtype: DType.float64,
+              );
+              final pmt = NDArray<Float64>.scalar(
+                Float64(-50.0),
+                dtype: DType.float64,
+              );
+              final fvVal = NDArray<Float64>.scalar(
+                Float64(1000.0),
+                dtype: DType.float64,
+              );
 
-                final out = NDArray<Float64>.zeros([], DType.float64);
-                final res = pv(rate, nper, pmt, fvVal, when: 'start', out: out);
-                expect(identical(res, out), isTrue);
-
-                expect(
-                  () => pv(rate, nper, pmt, fvVal, when: 'unknown'),
-                  throwsArgumentError,
-                );
-                expect(
-                  () => pv(rate, nper, pmt, fvVal, when: Object()),
-                  throwsArgumentError,
-                );
-
-                final wrongWhenDType = NDArray<Float32>.scalar(
-                  Float32(1.0),
-                  dtype: DType.float32,
-                );
-                expect(
-                  () => pv(rate, nper, pmt, fvVal, when: wrongWhenDType),
-                  throwsArgumentError,
-                );
-              });
-            },
-          );
+              final out = NDArray<Float64>.zeros([], DType.float64);
+              final res = pv(
+                rate,
+                nper,
+                pmt,
+                fvVal,
+                when: PaymentDue.begin,
+                out: out,
+              );
+              expect(identical(res, out), isTrue);
+            });
+          });
 
           test('throws on disposed inputs', () {
             final rate = NDArray<Float64>.scalar(

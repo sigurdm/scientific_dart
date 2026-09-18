@@ -27,17 +27,16 @@ void main() {
       });
     });
 
-    test('exponential: non-contiguous out buffer throws ArgumentError', () {
+    test('exponential: non-contiguous out buffer succeeds', () {
       NDArray.scope(() {
         final base = NDArray<double>.zeros([4, 4], DType.float64);
         // Transposed view is non-contiguous
         final nonContig = base.transpose([1, 0]);
         expect(nonContig.isContiguous, isFalse);
 
-        expect(
-          () => exponential(nonContig.shape, scale: 1.0, out: nonContig),
-          throwsArgumentError,
-        );
+        final res = exponential(nonContig.shape, scale: 1.0, out: nonContig);
+        expect(identical(res, nonContig), isTrue);
+        expect(nonContig.getCell([0, 0]), greaterThan(0.0));
       });
     });
 

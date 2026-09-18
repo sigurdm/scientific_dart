@@ -11,14 +11,20 @@ void main(List<String> args) async {
       return;
     }
 
-    final srcDir = Directory.fromUri(input.packageRoot.resolve('hook/src/'));
-    if (!srcDir.existsSync()) {
-      srcDir.createSync(recursive: true);
-    }
+    final packageSrcUri = input.packageRoot.resolve('hook/src/');
+    final usePackageSrc = File.fromUri(
+      packageSrcUri.resolve('kiss_fft_log.h'),
+    ).existsSync();
+    final srcDir = usePackageSrc
+        ? Directory.fromUri(packageSrcUri)
+        : Directory.fromUri(input.outputDirectory.resolve('kissfft_src/'));
 
     // 1. Download and extract KissFFT if not present
     final logHeader = File.fromUri(srcDir.uri.resolve('kiss_fft_log.h'));
     if (!logHeader.existsSync()) {
+      if (!srcDir.existsSync()) {
+        srcDir.createSync(recursive: true);
+      }
       print('Downloading KissFFT source files archive from GitHub...');
       final client = HttpClient();
       try {
@@ -87,11 +93,14 @@ void main(List<String> args) async {
     // 2. Get cross-compiler or host compiler from modern input config
     final packageName = input.packageName;
     final os = input.config.code.targetOS;
+    final arch = input.config.code.targetArchitecture;
     final cCompiler = input.config.code.cCompiler;
 
     final libName = os == OS.windows
         ? 'libpocketfft.dll'
-        : (os == OS.macOS ? 'libpocketfft.dylib' : 'libpocketfft.so');
+        : ((os == OS.macOS || os == OS.iOS)
+              ? 'libpocketfft.dylib'
+              : 'libpocketfft.so');
 
     final outputDir = Directory.fromUri(input.outputDirectory);
     if (!outputDir.existsSync()) {
@@ -132,10 +141,15 @@ void main(List<String> args) async {
             '/EXPORT:kiss_fftnd',
           ]
         : <String>[
+            if (os == OS.macOS || os == OS.iOS) ...[
+              '-arch',
+              arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+            ],
             '-shared',
             '-fPIC',
             '-O3',
             '-ffast-math',
+            if (os == OS.android) '-Wl,-z,max-page-size=16384',
             '-Dkiss_fft_scalar=double',
             '-I',
             srcDir.uri.toFilePath(),
@@ -162,7 +176,7 @@ void main(List<String> args) async {
 
     final runEnv = <String, String>{...Platform.environment};
     if (isMSVC) {
-      final msvcEnv = await getMSVCEnvironment();
+      final msvcEnv = await getMSVCEnvironment(arch);
       for (final key in ['INCLUDE', 'LIB', 'LIBPATH']) {
         final val = msvcEnv[key] ?? msvcEnv[key.toLowerCase()];
         if (val != null) {
@@ -195,14 +209,16 @@ void main(List<String> args) async {
           file: libFile.uri,
         ),
       );
-      output.dependencies.add(srcDir.uri.resolve('kiss_fft.c'));
-      output.dependencies.add(srcDir.uri.resolve('kiss_fftr.c'));
-      output.dependencies.add(srcDir.uri.resolve('kiss_fftnd.c'));
-      output.dependencies.add(srcDir.uri.resolve('kiss_fft.h'));
-      output.dependencies.add(srcDir.uri.resolve('kiss_fft_log.h'));
-      output.dependencies.add(srcDir.uri.resolve('kiss_fftnd.h'));
-      output.dependencies.add(srcDir.uri.resolve('kiss_fftr.h'));
-      output.dependencies.add(srcDir.uri.resolve('_kiss_fft_guts.h'));
+      if (usePackageSrc) {
+        output.dependencies.add(srcDir.uri.resolve('kiss_fft.c'));
+        output.dependencies.add(srcDir.uri.resolve('kiss_fftr.c'));
+        output.dependencies.add(srcDir.uri.resolve('kiss_fftnd.c'));
+        output.dependencies.add(srcDir.uri.resolve('kiss_fft.h'));
+        output.dependencies.add(srcDir.uri.resolve('kiss_fft_log.h'));
+        output.dependencies.add(srcDir.uri.resolve('kiss_fftnd.h'));
+        output.dependencies.add(srcDir.uri.resolve('kiss_fftr.h'));
+        output.dependencies.add(srcDir.uri.resolve('_kiss_fft_guts.h'));
+      }
       print('Registered pocketfft native dynamic code asset successfully.');
     }
   });
@@ -210,7 +226,7 @@ void main(List<String> args) async {
 
 /// Helper function to query Visual Studio to obtain the proper environment variables
 /// (like INCLUDE, LIB, and LIBPATH) for MSVC compilation on Windows.
-Future<Map<String, String>> getMSVCEnvironment() async {
+Future<Map<String, String>> getMSVCEnvironment(Architecture targetArch) async {
   if (!Platform.isWindows) return {};
 
   // Find vswhere.exe
@@ -248,6 +264,10 @@ Future<Map<String, String>> getMSVCEnvironment() async {
       return {};
     }
 
+    final vcvarsArch = targetArch == Architecture.arm64
+        ? 'arm64'
+        : (targetArch == Architecture.ia32 ? 'x86' : 'amd64');
+
     // To avoid Dart process argument escaping issues on Windows, we write a temporary
     // batch file that calls vcvarsall.bat and prints the environment, then run it.
     final tempDir = Directory.systemTemp;
@@ -256,7 +276,7 @@ Future<Map<String, String>> getMSVCEnvironment() async {
     );
     try {
       await tempFile.writeAsString(
-        '@echo off\ncall "$vcvarsPath" amd64\nset\n',
+        '@echo off\ncall "$vcvarsPath" $vcvarsArch\nset\n',
       );
     } catch (e) {
       print('Failed to write temporary batch file: $e');

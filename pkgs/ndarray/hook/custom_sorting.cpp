@@ -1249,7 +1249,7 @@ extern "C" void native_zero_memory(void *ptr, size_t bytes) {
 
 extern "C" void custom_memcpy(void *dest, const void *src, size_t n) {
     if (dest == nullptr || src == nullptr || n <= 0) return;
-    memcpy(dest, src, n);
+    memmove(dest, src, n);
 }
 
 extern "C" void native_collect_nonzero_coords(
@@ -1849,6 +1849,81 @@ static int unique_template(const T *src, T *dest, int size,
     return write_idx + 1;
 }
 
+static inline double decode_fp16_sort(uint16_t bits) {
+    uint16_t sign = (bits >> 15) & 0x1;
+    uint16_t exp16 = (bits >> 10) & 0x1F;
+    uint16_t frac16 = bits & 0x3FF;
+    if (exp16 == 0x1F) {
+        if (frac16 == 0) {
+            return sign ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
+        } else {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+    }
+    if (exp16 == 0) {
+        if (frac16 == 0) return sign ? -0.0 : 0.0;
+        double val = (double)frac16 / 1024.0 * 6.103515625e-5;
+        return sign ? -val : val;
+    }
+    uint64_t exp64 = (uint64_t)(exp16 - 15 + 1023);
+    uint64_t frac64 = (uint64_t)frac16 << 42;
+    uint64_t f64Bits = ((uint64_t)sign << 63) | (exp64 << 52) | frac64;
+    double d;
+    memcpy(&d, &f64Bits, sizeof(double));
+    return d;
+}
+
+static inline double decode_bf16_sort(uint16_t bits) {
+    uint32_t f32Bits = (uint32_t)bits << 16;
+    float f;
+    memcpy(&f, &f32Bits, sizeof(float));
+    return (double)f;
+}
+
+static inline bool comp_fp16_impl(uint16_t a, uint16_t b) {
+    return comp_double_impl(decode_fp16_sort(a), decode_fp16_sort(b));
+}
+
+static inline bool eq_fp16_impl(uint16_t a, uint16_t b) {
+    return eq_double_impl(decode_fp16_sort(a), decode_fp16_sort(b));
+}
+
+static inline bool comp_bf16_impl(uint16_t a, uint16_t b) {
+    return comp_double_impl(decode_bf16_sort(a), decode_bf16_sort(b));
+}
+
+static inline bool eq_bf16_impl(uint16_t a, uint16_t b) {
+    return eq_double_impl(decode_bf16_sort(a), decode_bf16_sort(b));
+}
+
+static int unique_fp16_fast(const uint16_t *src, uint16_t *dest, int size) {
+    if (size <= 0) return 0;
+    memcpy(dest, src, size * sizeof(uint16_t));
+    std::sort(dest, dest + size, comp_fp16_impl);
+    int write_idx = 0;
+    for (int read_idx = 1; read_idx < size; read_idx++) {
+        if (!eq_fp16_impl(dest[read_idx], dest[write_idx])) {
+            write_idx++;
+            dest[write_idx] = dest[read_idx];
+        }
+    }
+    return write_idx + 1;
+}
+
+static int unique_bf16_fast(const uint16_t *src, uint16_t *dest, int size) {
+    if (size <= 0) return 0;
+    memcpy(dest, src, size * sizeof(uint16_t));
+    std::sort(dest, dest + size, comp_bf16_impl);
+    int write_idx = 0;
+    for (int read_idx = 1; read_idx < size; read_idx++) {
+        if (!eq_bf16_impl(dest[read_idx], dest[write_idx])) {
+            write_idx++;
+            dest[write_idx] = dest[read_idx];
+        }
+    }
+    return write_idx + 1;
+}
+
 template<typename T>
 static int unique_scalar_fast(const T *src, T *dest, int size) {
     if (size <= 0) return 0;
@@ -1894,8 +1969,9 @@ int ndarray_unique(const void *src, void *dest, int size, int dtype,
             case DTYPE_BOOLEAN:
                 return unique_scalar_fast<uint8_t>((const uint8_t *)src, (uint8_t *)dest, size);
             case DTYPE_FLOAT16:
+                return unique_fp16_fast((const uint16_t *)src, (uint16_t *)dest, size);
             case DTYPE_BFLOAT16:
-                return unique_scalar_fast<uint16_t>((const uint16_t *)src, (uint16_t *)dest, size);
+                return unique_bf16_fast((const uint16_t *)src, (uint16_t *)dest, size);
             case DTYPE_COMPLEX128:
                 return unique_complex128_fast((const complex128_t *)src, (complex128_t *)dest, size);
             case DTYPE_COMPLEX64:
@@ -1978,11 +2054,16 @@ int ndarray_unique(const void *src, void *dest, int size, int dtype,
                 std::less<uint8_t>(), std::equal_to<uint8_t>()
             );
         case DTYPE_FLOAT16:
+            return unique_template<uint16_t>(
+                (const uint16_t *)src, (uint16_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                comp_fp16_impl, eq_fp16_impl
+            );
         case DTYPE_BFLOAT16:
             return unique_template<uint16_t>(
                 (const uint16_t *)src, (uint16_t *)dest, size,
                 out_index, out_inverse, out_counts,
-                std::less<uint16_t>(), std::equal_to<uint16_t>()
+                comp_bf16_impl, eq_bf16_impl
             );
         case DTYPE_COMPLEX128:
             return unique_template<complex128_t>(

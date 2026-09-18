@@ -1415,6 +1415,17 @@ void pad_axis_int64(
     int statLengthBefore, int statLengthAfter
 );
 
+void pad_axis_uint64(
+    const uint64_t *src, const int *shapeSrc, const int *stridesSrc,
+    uint64_t *dest, const int *shapeDest,
+    int rank, int axis,
+    int padBefore, int padAfter,
+    int mode,
+    uint64_t constantBefore, uint64_t constantAfter,
+    uint64_t endBefore, uint64_t endAfter,
+    int statLengthBefore, int statLengthAfter
+);
+
 void pad_axis_int32(
     const int32_t *src, const int *shapeSrc, const int *stridesSrc,
     int32_t *dest, const int *shapeDest,

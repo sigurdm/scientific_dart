@@ -13,9 +13,111 @@ void main(List<String> args) async {
 
     final openblas = OpenBlasBinary.forBuild(input);
     switch (openblas) {
+      case MacosAccelerateBinary():
+        final packageName = input.packageName;
+        final os = input.config.code.targetOS;
+        final arch = input.config.code.targetArchitecture;
+        final cCompiler = input.config.code.cCompiler;
+        final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
+
+        final outputDir = Directory.fromUri(input.outputDirectory);
+        if (!outputDir.existsSync()) {
+          outputDir.createSync(recursive: true);
+        }
+
+        final stubFile = File.fromUri(
+          outputDir.uri.resolve('accelerate_stub.c'),
+        );
+        await stubFile.writeAsString(
+          'void _openblas_accelerate_stub(void) {}\n',
+        );
+
+        final libFile = File.fromUri(
+          outputDir.uri.resolve('libopenblas.dylib'),
+        );
+        final extLibFile = File.fromUri(
+          outputDir.uri.resolve('libopenblas_extensions.dylib'),
+        );
+        final customExtensionsPath = input.packageRoot
+            .resolve('hook/custom_extensions.c')
+            .toFilePath();
+
+        final stubCompileArgs = [
+          if (os == OS.macOS || os == OS.iOS) ...[
+            '-arch',
+            arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+          ],
+          '-dynamiclib',
+          '-O3',
+          stubFile.path,
+          customExtensionsPath,
+          '-o',
+          libFile.path,
+          '-framework',
+          'Accelerate',
+          '-Wl,-reexport_framework,Accelerate',
+        ];
+        print(
+          'Compiling Accelerate stub with: $compilerPath ${stubCompileArgs.join(' ')}',
+        );
+        final stubRes = await Process.run(compilerPath, stubCompileArgs);
+        if (stubRes.exitCode != 0) {
+          throw StateError(
+            'Failed to compile Accelerate stub (exit ${stubRes.exitCode}):\n'
+            'stdout: ${stubRes.stdout}\n'
+            'stderr: ${stubRes.stderr}',
+          );
+        }
+
+        final extCompileArgs = [
+          if (os == OS.macOS || os == OS.iOS) ...[
+            '-arch',
+            arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+          ],
+          '-dynamiclib',
+          '-O3',
+          customExtensionsPath,
+          '-o',
+          extLibFile.path,
+          '-framework',
+          'Accelerate',
+        ];
+        print(
+          'Compiling custom extensions with: $compilerPath ${extCompileArgs.join(' ')}',
+        );
+        final extRes = await Process.run(compilerPath, extCompileArgs);
+        if (extRes.exitCode != 0) {
+          throw StateError(
+            'Failed to compile custom extensions (exit ${extRes.exitCode}):\n'
+            'stdout: ${extRes.stdout}\n'
+            'stderr: ${extRes.stderr}',
+          );
+        }
+
+        output.assets.code.add(
+          CodeAsset(
+            package: packageName,
+            name: 'openblas',
+            linkMode: DynamicLoadingBundled(),
+            file: libFile.uri,
+          ),
+        );
+        output.assets.code.add(
+          CodeAsset(
+            package: packageName,
+            name: 'openblas_extensions',
+            linkMode: DynamicLoadingBundled(),
+            file: extLibFile.uri,
+          ),
+        );
+        output.dependencies.add(
+          input.packageRoot.resolve('hook/custom_extensions.c'),
+        );
+        break;
       case PrecompiledBinary():
         final packageName = input.packageName;
         final os = input.config.code.targetOS;
+        final arch = input.config.code.targetArchitecture;
         final cCompiler = input.config.code.cCompiler;
         final compilerPath =
             cCompiler?.compiler.toFilePath() ??
@@ -79,8 +181,8 @@ void main(List<String> args) async {
           final extractDirPath = Directory.fromUri(extractDir).path;
           final safeExtractPrefix =
               extractDirPath.endsWith(Platform.pathSeparator)
-                  ? extractDirPath
-                  : '$extractDirPath${Platform.pathSeparator}';
+              ? extractDirPath
+              : '$extractDirPath${Platform.pathSeparator}';
           for (final file in archive) {
             final outPath = extractDir.resolve(file.name).toFilePath();
             if (!outPath.startsWith(safeExtractPrefix)) {
@@ -207,7 +309,7 @@ void main(List<String> args) async {
         );
         final runEnv = <String, String>{...Platform.environment};
         if (isMSVC) {
-          final msvcEnv = await getMSVCEnvironment();
+          final msvcEnv = await getMSVCEnvironment(arch);
           for (final key in ['INCLUDE', 'LIB', 'LIBPATH']) {
             final val = msvcEnv[key] ?? msvcEnv[key.toLowerCase()];
             if (val != null) {
@@ -267,7 +369,9 @@ void main(List<String> args) async {
 
         final libName = os == OS.windows
             ? 'libopenblas.dll'
-            : (os == OS.macOS ? 'libopenblas.dylib' : 'libopenblas.so');
+            : ((os == OS.macOS || os == OS.iOS)
+                  ? 'libopenblas.dylib'
+                  : 'libopenblas.so');
         final libFile = File(
           outputDir.uri.resolve('OpenBLAS-0.3.33/$libName').toFilePath(),
         );
@@ -308,8 +412,8 @@ void main(List<String> args) async {
 
           final safeOutputPrefix =
               outputDir.path.endsWith(Platform.pathSeparator)
-                  ? outputDir.path
-                  : '${outputDir.path}${Platform.pathSeparator}';
+              ? outputDir.path
+              : '${outputDir.path}${Platform.pathSeparator}';
           for (final file in archive) {
             final outPath = outputDir.uri.resolve(file.name).toFilePath();
             if (!outPath.startsWith(safeOutputPrefix)) {
@@ -332,6 +436,8 @@ void main(List<String> args) async {
             'TARGET=$openBlasTarget',
             if (arch == Architecture.x64) 'DYNAMIC_ARCH=1',
             'USE_THREAD=1',
+            if (os != OS.current || arch != Architecture.current)
+              OS.current == OS.macOS ? 'HOSTCC=clang' : 'HOSTCC=gcc',
           ];
 
           if (cCompiler != null) {
@@ -377,7 +483,7 @@ void main(List<String> args) async {
           // Compile custom extensions!
           final extLibName = os == OS.windows
               ? 'libopenblas_extensions.dll'
-              : (os == OS.macOS
+              : ((os == OS.macOS || os == OS.iOS)
                     ? 'libopenblas_extensions.dylib'
                     : 'libopenblas_extensions.so');
           final extLibFile = File(
@@ -386,8 +492,11 @@ void main(List<String> args) async {
           final compilerPath =
               cCompiler?.compiler.toFilePath() ??
               (os == OS.windows ? 'cl' : 'cc');
+          final compilerLower = compilerPath.toLowerCase();
           final isMSVC =
-              os == OS.windows && compilerPath.toLowerCase().contains('cl');
+              os == OS.windows &&
+              (compilerLower.endsWith('cl.exe') || compilerLower == 'cl') &&
+              !compilerLower.contains('clang');
 
           final compileArgs = isMSVC
               ? [
@@ -407,6 +516,7 @@ void main(List<String> args) async {
                   '-shared',
                   '-fPIC',
                   '-O3',
+                  if (os == OS.android) '-Wl,-z,max-page-size=16384',
                   '-I${extractDir}lapack-netlib/LAPACKE/include',
                   input.packageRoot
                       .resolve('hook/custom_extensions.c')
@@ -414,7 +524,7 @@ void main(List<String> args) async {
                   '-o',
                   extLibFile.path,
                   '-L$extractDir',
-                  '-Wl,-rpath,$extractDir',
+                  '-Wl,-rpath,\$ORIGIN',
                   '-lopenblas',
                   '-lm',
                 ];
@@ -454,6 +564,10 @@ sealed class OpenBlasBinary {
   OpenBlasBinary._();
 
   factory OpenBlasBinary.forBuild(BuildInput input) {
+    if (input.config.code.targetOS == OS.macOS ||
+        input.config.code.targetOS == OS.iOS) {
+      return MacosAccelerateBinary();
+    }
     if (input.config.code.targetOS == OS.windows) {
       return PrecompiledBinary();
     }
@@ -461,6 +575,10 @@ sealed class OpenBlasBinary {
       'https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.33/OpenBLAS-0.3.33.tar.gz',
     );
   }
+}
+
+class MacosAccelerateBinary extends OpenBlasBinary {
+  MacosAccelerateBinary() : super._();
 }
 
 class PrecompiledBinary extends OpenBlasBinary {
@@ -478,7 +596,7 @@ class ExternalOpenBlas extends OpenBlasBinary {
 
 /// Helper function to query Visual Studio to obtain the proper environment variables
 /// (like INCLUDE, LIB, and LIBPATH) for MSVC compilation on Windows.
-Future<Map<String, String>> getMSVCEnvironment() async {
+Future<Map<String, String>> getMSVCEnvironment(Architecture targetArch) async {
   if (!Platform.isWindows) return {};
 
   // Find vswhere.exe
@@ -516,6 +634,10 @@ Future<Map<String, String>> getMSVCEnvironment() async {
       return {};
     }
 
+    final vcvarsArch = targetArch == Architecture.arm64
+        ? 'arm64'
+        : (targetArch == Architecture.ia32 ? 'x86' : 'amd64');
+
     // To avoid Dart process argument escaping issues on Windows, we write a temporary
     // batch file that calls vcvarsall.bat and prints the environment, then run it.
     final tempDir = Directory.systemTemp;
@@ -524,7 +646,7 @@ Future<Map<String, String>> getMSVCEnvironment() async {
     );
     try {
       await tempFile.writeAsString(
-        '@echo off\ncall "$vcvarsPath" amd64\nset\n',
+        '@echo off\ncall "$vcvarsPath" $vcvarsArch\nset\n',
       );
     } catch (e) {
       print('Failed to write temporary batch file: $e');

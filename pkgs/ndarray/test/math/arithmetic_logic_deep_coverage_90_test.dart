@@ -863,15 +863,32 @@ void main() {
             expect(rshift3.shape, [2, 3]);
           }
 
-          // Test unsupported integer types throw UnsupportedError
+          // Test other integer types
           for (final dt in otherIntegerDTypes) {
             final arr = makeSampleArray(dt, [2, 3]);
-            expect(() => invert(arr), throwsUnsupportedError);
-            expect(() => bitwise_and(arr, arr), throwsUnsupportedError);
-            expect(() => bitwise_or(arr, arr), throwsUnsupportedError);
-            expect(() => bitwise_xor(arr, arr), throwsUnsupportedError);
-            expect(() => left_shift(arr, arr), throwsUnsupportedError);
-            expect(() => right_shift(arr, arr), throwsUnsupportedError);
+            final inv = invert(arr);
+            expect(inv.shape, [2, 3]);
+            expect(inv.dtype, dt);
+
+            final band = bitwise_and(arr, arr);
+            expect(band.shape, [2, 3]);
+            expect(band.dtype, dt);
+
+            final bor = bitwise_or(arr, arr);
+            expect(bor.shape, [2, 3]);
+            expect(bor.dtype, dt);
+
+            final bxor = bitwise_xor(arr, arr);
+            expect(bxor.shape, [2, 3]);
+            expect(bxor.dtype, dt);
+
+            final lshift = left_shift(arr, arr);
+            expect(lshift.shape, [2, 3]);
+            expect(lshift.dtype, dt);
+
+            final rshift = right_shift(arr, arr);
+            expect(rshift.shape, [2, 3]);
+            expect(rshift.dtype, dt);
           }
         });
       },

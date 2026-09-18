@@ -30,24 +30,18 @@ dynamic unique<T extends Object>(
     throw ArgumentError('Incompatible out buffer dtype.');
   }
 
-  final flat = (ar.rank == 1 && ar.isContiguous) ? ar : ar.flatten();
-  NDArray<T>? dest;
-  NDArray<int>? outIndex;
-  NDArray<int>? outInverse;
-  NDArray<int>? outCounts;
-
-  try {
-    dest = NDArray<T>.create(flat.shape, flat.dtype);
-
-    if (returnIndex) {
-      outIndex = NDArray<int>.create([flat.size], DType.int64);
-    }
-    if (returnInverse) {
-      outInverse = NDArray<int>.create([flat.size], DType.int64);
-    }
-    if (returnCounts) {
-      outCounts = NDArray<int>.create([flat.size], DType.int64);
-    }
+  return NDArray.scope(() {
+    final flat = (ar.rank == 1 && ar.isContiguous) ? ar : ar.flatten();
+    final dest = NDArray<T>.create(flat.shape, flat.dtype);
+    final outIndex = returnIndex
+        ? NDArray<int>.create([flat.size], DType.int64)
+        : null;
+    final outInverse = returnInverse
+        ? NDArray<int>.create([flat.size], DType.int64)
+        : null;
+    final outCounts = returnCounts
+        ? NDArray<int>.create([flat.size], DType.int64)
+        : null;
 
     final pIndex = outIndex != null
         ? outIndex.pointer.cast<ffi.Int64>()
@@ -70,17 +64,24 @@ dynamic unique<T extends Object>(
     );
 
     if (uniqueCount == 0) {
-      final empty = out ?? NDArray<T>.create([0], flat.dtype);
       if (out != null && !listEquals(out.shape, [0])) {
         throw ArgumentError('Incompatible out buffer shape.');
       }
+      final empty =
+          out ?? (NDArray<T>.create([0], flat.dtype)..detachToParentScope());
 
       if (returnIndex || returnInverse || returnCounts) {
         return (
           values: empty,
-          index: returnIndex ? NDArray<int>.create([0], DType.int64) : null,
-          inverse: returnInverse ? NDArray<int>.create([0], DType.int64) : null,
-          counts: returnCounts ? NDArray<int>.create([0], DType.int64) : null,
+          index: returnIndex
+              ? (NDArray<int>.create([0], DType.int64)..detachToParentScope())
+              : null,
+          inverse: returnInverse
+              ? (NDArray<int>.create([0], DType.int64)..detachToParentScope())
+              : null,
+          counts: returnCounts
+              ? (NDArray<int>.create([0], DType.int64)..detachToParentScope())
+              : null,
         );
       }
       return empty;
@@ -90,46 +91,31 @@ dynamic unique<T extends Object>(
       throw ArgumentError('Incompatible out buffer shape.');
     }
 
+    final validView = dest.slice([Slice(start: 0, stop: uniqueCount)]);
     final NDArray<T> result;
     if (out != null) {
-      custom_memcpy(
-        out.pointer.cast(),
-        dest.pointer.cast(),
-        uniqueCount * ar.dtype.byteWidth,
-      );
+      validView.copy(out: out);
       result = out;
     } else {
-      result = NDArray<T>.create([uniqueCount], flat.dtype);
-      custom_memcpy(
-        result.pointer.cast(),
-        dest.pointer.cast(),
-        uniqueCount * ar.dtype.byteWidth,
-      );
+      result = validView.copy()..detachToParentScope();
     }
 
     NDArray<int>? indexResult;
     if (outIndex != null) {
-      indexResult = NDArray<int>.create([uniqueCount], DType.int64);
-      custom_memcpy(
-        indexResult.pointer.cast(),
-        outIndex.pointer.cast(),
-        uniqueCount * 8,
-      );
+      indexResult = outIndex.slice([Slice(start: 0, stop: uniqueCount)]).copy()
+        ..detachToParentScope();
     }
 
     NDArray<int>? inverseResult;
     if (outInverse != null) {
-      inverseResult = outInverse.copy();
+      inverseResult = outInverse.copy()..detachToParentScope();
     }
 
     NDArray<int>? countsResult;
     if (outCounts != null) {
-      countsResult = NDArray<int>.create([uniqueCount], DType.int64);
-      custom_memcpy(
-        countsResult.pointer.cast(),
-        outCounts.pointer.cast(),
-        uniqueCount * 8,
-      );
+      countsResult = outCounts.slice([
+        Slice(start: 0, stop: uniqueCount),
+      ]).copy()..detachToParentScope();
     }
 
     if (returnIndex || returnInverse || returnCounts) {
@@ -142,15 +128,7 @@ dynamic unique<T extends Object>(
     }
 
     return result;
-  } finally {
-    dest?.dispose();
-    outIndex?.dispose();
-    outInverse?.dispose();
-    outCounts?.dispose();
-    if (flat != ar) {
-      flat.dispose();
-    }
-  }
+  });
 }
 
 /// Finds the intersection of two arrays.
@@ -172,25 +150,29 @@ NDArray<T> intersect1d<T extends Object>(
       'Cannot write intersect1d result to a disposed output array.',
     );
   }
-  if (out != null && out.dtype != ar1.dtype) {
+  final DType<T> commonDType =
+      (ar1.dtype == ar2.dtype ? ar1.dtype : resolveDType(ar1.dtype, ar2.dtype))
+          as DType<T>;
+  if (out != null && out.dtype != commonDType) {
     throw ArgumentError('Incompatible out buffer dtype.');
   }
 
-  final flat1 = (ar1.rank == 1 && ar1.isContiguous) ? ar1 : ar1.flatten();
-  final flat2 = (ar2.rank == 1 && ar2.isContiguous) ? ar2 : ar2.flatten();
+  return NDArray.scope(() {
+    final NDArray<T> c1 = ar1.dtype == commonDType
+        ? ar1
+        : castNDArray<T>(ar1, commonDType);
+    final NDArray<T> c2 = ar2.dtype == commonDType
+        ? ar2
+        : castNDArray<T>(ar2, commonDType);
+    final NDArray<T> flat1 = (c1.rank == 1 && c1.isContiguous)
+        ? c1
+        : c1.flatten();
+    final NDArray<T> flat2 = (c2.rank == 1 && c2.isContiguous)
+        ? c2
+        : c2.flatten();
 
-  NDArray<T>? u1;
-  NDArray<T>? u2;
-  NDArray<T>? dest;
-
-  try {
-    if (assumeUnique) {
-      u1 = sort<T>(flat1);
-      u2 = sort<T>(flat2);
-    } else {
-      u1 = unique<T>(flat1) as NDArray<T>;
-      u2 = unique<T>(flat2) as NDArray<T>;
-    }
+    final NDArray u1 = assumeUnique ? sort(flat1) : unique(flat1) as NDArray;
+    final NDArray u2 = assumeUnique ? sort(flat2) : unique(flat2) as NDArray;
 
     final maxDstSize = u1.size < u2.size ? u1.size : u2.size;
 
@@ -198,10 +180,11 @@ NDArray<T> intersect1d<T extends Object>(
       if (out != null && !listEquals(out.shape, [0])) {
         throw ArgumentError('Incompatible out buffer shape.');
       }
-      return out ?? NDArray<T>.create([0], ar1.dtype);
+      return out ??
+          (NDArray<T>.create([0], commonDType)..detachToParentScope());
     }
 
-    dest = NDArray<T>.create([maxDstSize], ar1.dtype);
+    final dest = NDArray<T>.create([maxDstSize], commonDType);
 
     final intersectionCount = ndarray_intersect1d(
       u1.pointer.cast(),
@@ -209,44 +192,29 @@ NDArray<T> intersect1d<T extends Object>(
       u2.pointer.cast(),
       u2.size,
       dest.pointer.cast(),
-      encodeDType(ar1.dtype),
+      encodeDType(commonDType),
     );
 
     if (intersectionCount == 0) {
       if (out != null && !listEquals(out.shape, [0])) {
         throw ArgumentError('Incompatible out buffer shape.');
       }
-      return out ?? NDArray<T>.create([0], ar1.dtype);
+      return out ??
+          (NDArray<T>.create([0], commonDType)..detachToParentScope());
     }
 
     if (out != null && !listEquals(out.shape, [intersectionCount])) {
       throw ArgumentError('Incompatible out buffer shape.');
     }
 
-    final NDArray<T> result;
+    final validView = dest.slice([Slice(start: 0, stop: intersectionCount)]);
     if (out != null) {
-      custom_memcpy(
-        out.pointer.cast(),
-        dest.pointer.cast(),
-        intersectionCount * ar1.dtype.byteWidth,
-      );
-      result = out;
+      validView.copy(out: out);
+      return out;
     } else {
-      result = NDArray<T>.create([intersectionCount], ar1.dtype);
-      custom_memcpy(
-        result.pointer.cast(),
-        dest.pointer.cast(),
-        intersectionCount * ar1.dtype.byteWidth,
-      );
+      return validView.copy()..detachToParentScope();
     }
-    return result;
-  } finally {
-    dest?.dispose();
-    u1?.dispose();
-    u2?.dispose();
-    if (flat1 != ar1) flat1.dispose();
-    if (flat2 != ar2) flat2.dispose();
-  }
+  });
 }
 
 /// Finds the set difference of two arrays.
@@ -268,25 +236,29 @@ NDArray<T> setdiff1d<T extends Object>(
       'Cannot write setdiff1d result to a disposed output array.',
     );
   }
-  if (out != null && out.dtype != ar1.dtype) {
+  final DType<T> commonDType =
+      (ar1.dtype == ar2.dtype ? ar1.dtype : resolveDType(ar1.dtype, ar2.dtype))
+          as DType<T>;
+  if (out != null && out.dtype != commonDType) {
     throw ArgumentError('Incompatible out buffer dtype.');
   }
 
-  final flat1 = (ar1.rank == 1 && ar1.isContiguous) ? ar1 : ar1.flatten();
-  final flat2 = (ar2.rank == 1 && ar2.isContiguous) ? ar2 : ar2.flatten();
+  return NDArray.scope(() {
+    final NDArray<T> c1 = ar1.dtype == commonDType
+        ? ar1
+        : castNDArray<T>(ar1, commonDType);
+    final NDArray<T> c2 = ar2.dtype == commonDType
+        ? ar2
+        : castNDArray<T>(ar2, commonDType);
+    final NDArray<T> flat1 = (c1.rank == 1 && c1.isContiguous)
+        ? c1
+        : c1.flatten();
+    final NDArray<T> flat2 = (c2.rank == 1 && c2.isContiguous)
+        ? c2
+        : c2.flatten();
 
-  NDArray<T>? u1;
-  NDArray<T>? u2;
-  NDArray<T>? dest;
-
-  try {
-    if (assumeUnique) {
-      u1 = sort<T>(flat1);
-      u2 = sort<T>(flat2);
-    } else {
-      u1 = unique<T>(flat1) as NDArray<T>;
-      u2 = unique<T>(flat2) as NDArray<T>;
-    }
+    final NDArray u1 = assumeUnique ? sort(flat1) : unique(flat1) as NDArray;
+    final NDArray u2 = assumeUnique ? sort(flat2) : unique(flat2) as NDArray;
 
     final maxDstSize = u1.size;
 
@@ -294,10 +266,11 @@ NDArray<T> setdiff1d<T extends Object>(
       if (out != null && !listEquals(out.shape, [0])) {
         throw ArgumentError('Incompatible out buffer shape.');
       }
-      return out ?? NDArray<T>.create([0], ar1.dtype);
+      return out ??
+          (NDArray<T>.create([0], commonDType)..detachToParentScope());
     }
 
-    dest = NDArray<T>.create([maxDstSize], ar1.dtype);
+    final dest = NDArray<T>.create([maxDstSize], commonDType);
 
     final diffCount = ndarray_setdiff1d(
       u1.pointer.cast(),
@@ -305,44 +278,29 @@ NDArray<T> setdiff1d<T extends Object>(
       u2.pointer.cast(),
       u2.size,
       dest.pointer.cast(),
-      encodeDType(ar1.dtype),
+      encodeDType(commonDType),
     );
 
     if (diffCount == 0) {
       if (out != null && !listEquals(out.shape, [0])) {
         throw ArgumentError('Incompatible out buffer shape.');
       }
-      return out ?? NDArray<T>.create([0], ar1.dtype);
+      return out ??
+          (NDArray<T>.create([0], commonDType)..detachToParentScope());
     }
 
     if (out != null && !listEquals(out.shape, [diffCount])) {
       throw ArgumentError('Incompatible out buffer shape.');
     }
 
-    final NDArray<T> result;
+    final validView = dest.slice([Slice(start: 0, stop: diffCount)]);
     if (out != null) {
-      custom_memcpy(
-        out.pointer.cast(),
-        dest.pointer.cast(),
-        diffCount * ar1.dtype.byteWidth,
-      );
-      result = out;
+      validView.copy(out: out);
+      return out;
     } else {
-      result = NDArray<T>.create([diffCount], ar1.dtype);
-      custom_memcpy(
-        result.pointer.cast(),
-        dest.pointer.cast(),
-        diffCount * ar1.dtype.byteWidth,
-      );
+      return validView.copy()..detachToParentScope();
     }
-    return result;
-  } finally {
-    dest?.dispose();
-    u1?.dispose();
-    u2?.dispose();
-    if (flat1 != ar1) flat1.dispose();
-    if (flat2 != ar2) flat2.dispose();
-  }
+  });
 }
 
 /// Finds the set exclusive-or of two arrays.
@@ -364,25 +322,29 @@ NDArray<T> setxor1d<T extends Object>(
       'Cannot write setxor1d result to a disposed output array.',
     );
   }
-  if (out != null && out.dtype != ar1.dtype) {
+  final DType<T> commonDType =
+      (ar1.dtype == ar2.dtype ? ar1.dtype : resolveDType(ar1.dtype, ar2.dtype))
+          as DType<T>;
+  if (out != null && out.dtype != commonDType) {
     throw ArgumentError('Incompatible out buffer dtype.');
   }
 
-  final flat1 = (ar1.rank == 1 && ar1.isContiguous) ? ar1 : ar1.flatten();
-  final flat2 = (ar2.rank == 1 && ar2.isContiguous) ? ar2 : ar2.flatten();
+  return NDArray.scope(() {
+    final NDArray<T> c1 = ar1.dtype == commonDType
+        ? ar1
+        : castNDArray<T>(ar1, commonDType);
+    final NDArray<T> c2 = ar2.dtype == commonDType
+        ? ar2
+        : castNDArray<T>(ar2, commonDType);
+    final NDArray<T> flat1 = (c1.rank == 1 && c1.isContiguous)
+        ? c1
+        : c1.flatten();
+    final NDArray<T> flat2 = (c2.rank == 1 && c2.isContiguous)
+        ? c2
+        : c2.flatten();
 
-  NDArray<T>? u1;
-  NDArray<T>? u2;
-  NDArray<T>? dest;
-
-  try {
-    if (assumeUnique) {
-      u1 = sort<T>(flat1);
-      u2 = sort<T>(flat2);
-    } else {
-      u1 = unique<T>(flat1) as NDArray<T>;
-      u2 = unique<T>(flat2) as NDArray<T>;
-    }
+    final NDArray u1 = assumeUnique ? sort(flat1) : unique(flat1) as NDArray;
+    final NDArray u2 = assumeUnique ? sort(flat2) : unique(flat2) as NDArray;
 
     final maxDstSize = u1.size + u2.size;
 
@@ -390,10 +352,11 @@ NDArray<T> setxor1d<T extends Object>(
       if (out != null && !listEquals(out.shape, [0])) {
         throw ArgumentError('Incompatible out buffer shape.');
       }
-      return out ?? NDArray<T>.create([0], ar1.dtype);
+      return out ??
+          (NDArray<T>.create([0], commonDType)..detachToParentScope());
     }
 
-    dest = NDArray<T>.create([maxDstSize], ar1.dtype);
+    final dest = NDArray<T>.create([maxDstSize], commonDType);
 
     final xorCount = ndarray_setxor1d(
       u1.pointer.cast(),
@@ -401,44 +364,29 @@ NDArray<T> setxor1d<T extends Object>(
       u2.pointer.cast(),
       u2.size,
       dest.pointer.cast(),
-      encodeDType(ar1.dtype),
+      encodeDType(commonDType),
     );
 
     if (xorCount == 0) {
       if (out != null && !listEquals(out.shape, [0])) {
         throw ArgumentError('Incompatible out buffer shape.');
       }
-      return out ?? NDArray<T>.create([0], ar1.dtype);
+      return out ??
+          (NDArray<T>.create([0], commonDType)..detachToParentScope());
     }
 
     if (out != null && !listEquals(out.shape, [xorCount])) {
       throw ArgumentError('Incompatible out buffer shape.');
     }
 
-    final NDArray<T> result;
+    final validView = dest.slice([Slice(start: 0, stop: xorCount)]);
     if (out != null) {
-      custom_memcpy(
-        out.pointer.cast(),
-        dest.pointer.cast(),
-        xorCount * ar1.dtype.byteWidth,
-      );
-      result = out;
+      validView.copy(out: out);
+      return out;
     } else {
-      result = NDArray<T>.create([xorCount], ar1.dtype);
-      custom_memcpy(
-        result.pointer.cast(),
-        dest.pointer.cast(),
-        xorCount * ar1.dtype.byteWidth,
-      );
+      return validView.copy()..detachToParentScope();
     }
-    return result;
-  } finally {
-    dest?.dispose();
-    u1?.dispose();
-    u2?.dispose();
-    if (flat1 != ar1) flat1.dispose();
-    if (flat2 != ar2) flat2.dispose();
-  }
+  });
 }
 
 /// Finds the union of two arrays.
@@ -457,20 +405,29 @@ NDArray<T> union1d<T extends Object>(
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write union1d result to a disposed output array.');
   }
-  if (out != null && out.dtype != ar1.dtype) {
+  final DType<T> commonDType =
+      (ar1.dtype == ar2.dtype ? ar1.dtype : resolveDType(ar1.dtype, ar2.dtype))
+          as DType<T>;
+  if (out != null && out.dtype != commonDType) {
     throw ArgumentError('Incompatible out buffer dtype.');
   }
 
-  final flat1 = (ar1.rank == 1 && ar1.isContiguous) ? ar1 : ar1.flatten();
-  final flat2 = (ar2.rank == 1 && ar2.isContiguous) ? ar2 : ar2.flatten();
+  return NDArray.scope(() {
+    final NDArray<T> c1 = ar1.dtype == commonDType
+        ? ar1
+        : castNDArray<T>(ar1, commonDType);
+    final NDArray<T> c2 = ar2.dtype == commonDType
+        ? ar2
+        : castNDArray<T>(ar2, commonDType);
+    final NDArray<T> flat1 = (c1.rank == 1 && c1.isContiguous)
+        ? c1
+        : c1.flatten();
+    final NDArray<T> flat2 = (c2.rank == 1 && c2.isContiguous)
+        ? c2
+        : c2.flatten();
 
-  NDArray<T>? u1;
-  NDArray<T>? u2;
-  NDArray<T>? dest;
-
-  try {
-    u1 = unique<T>(flat1) as NDArray<T>;
-    u2 = unique<T>(flat2) as NDArray<T>;
+    final NDArray u1 = unique(flat1) as NDArray;
+    final NDArray u2 = unique(flat2) as NDArray;
 
     final maxDstSize = u1.size + u2.size;
 
@@ -478,10 +435,11 @@ NDArray<T> union1d<T extends Object>(
       if (out != null && !listEquals(out.shape, [0])) {
         throw ArgumentError('Incompatible out buffer shape.');
       }
-      return out ?? NDArray<T>.create([0], ar1.dtype);
+      return out ??
+          (NDArray<T>.create([0], commonDType)..detachToParentScope());
     }
 
-    dest = NDArray<T>.create([maxDstSize], ar1.dtype);
+    final dest = NDArray<T>.create([maxDstSize], commonDType);
 
     final unionCount = ndarray_union1d(
       u1.pointer.cast(),
@@ -489,44 +447,29 @@ NDArray<T> union1d<T extends Object>(
       u2.pointer.cast(),
       u2.size,
       dest.pointer.cast(),
-      encodeDType(ar1.dtype),
+      encodeDType(commonDType),
     );
 
     if (unionCount == 0) {
       if (out != null && !listEquals(out.shape, [0])) {
         throw ArgumentError('Incompatible out buffer shape.');
       }
-      return out ?? NDArray<T>.create([0], ar1.dtype);
+      return out ??
+          (NDArray<T>.create([0], commonDType)..detachToParentScope());
     }
 
     if (out != null && !listEquals(out.shape, [unionCount])) {
       throw ArgumentError('Incompatible out buffer shape.');
     }
 
-    final NDArray<T> result;
+    final validView = dest.slice([Slice(start: 0, stop: unionCount)]);
     if (out != null) {
-      custom_memcpy(
-        out.pointer.cast(),
-        dest.pointer.cast(),
-        unionCount * ar1.dtype.byteWidth,
-      );
-      result = out;
+      validView.copy(out: out);
+      return out;
     } else {
-      result = NDArray<T>.create([unionCount], ar1.dtype);
-      custom_memcpy(
-        result.pointer.cast(),
-        dest.pointer.cast(),
-        unionCount * ar1.dtype.byteWidth,
-      );
+      return validView.copy()..detachToParentScope();
     }
-    return result;
-  } finally {
-    dest?.dispose();
-    u1?.dispose();
-    u2?.dispose();
-    if (flat1 != ar1) flat1.dispose();
-    if (flat2 != ar2) flat2.dispose();
-  }
+  });
 }
 
 /// Tests whether each element of an array is also present in a second array.
@@ -553,26 +496,39 @@ NDArray<bool> isin<T extends Object>(
     }
   }
 
-  final flatTest = (testElements.rank == 1 && testElements.isContiguous)
-      ? testElements
-      : testElements.flatten();
-  NDArray<T>? uTest;
-  NDArray<T>? contigElement;
+  final DType<T> commonDType =
+      (element.dtype == testElements.dtype
+              ? element.dtype
+              : resolveDType(element.dtype, testElements.dtype))
+          as DType<T>;
 
-  try {
-    if (assumeUnique) {
-      uTest = sort<T>(flatTest);
-    } else {
-      uTest = unique<T>(flatTest) as NDArray<T>;
-    }
+  final bool useTempOut =
+      out != null &&
+      (!out.isContiguous ||
+          sharesMemory(element, out) ||
+          sharesMemory(testElements, out));
 
-    if (element.isContiguous) {
-      contigElement = element;
-    } else {
-      contigElement = element.copy();
-    }
+  return NDArray.scope(() {
+    final NDArray<T> cElement = element.dtype == commonDType
+        ? element
+        : castNDArray<T>(element, commonDType);
+    final NDArray<T> cTest = testElements.dtype == commonDType
+        ? testElements
+        : castNDArray<T>(testElements, commonDType);
 
-    final dest = out ?? NDArray<bool>.create(element.shape, DType.boolean);
+    final NDArray<T> flatTest = (cTest.rank == 1 && cTest.isContiguous)
+        ? cTest
+        : cTest.flatten();
+    final NDArray uTest = assumeUnique
+        ? sort(flatTest)
+        : unique(flatTest) as NDArray;
+    final NDArray<T> contigElement = cElement.isContiguous
+        ? cElement
+        : cElement.copy();
+
+    final dest = (out != null && !useTempOut)
+        ? out
+        : NDArray<bool>.create(element.shape, DType.boolean);
 
     ndarray_isin(
       contigElement.pointer.cast(),
@@ -580,18 +536,17 @@ NDArray<bool> isin<T extends Object>(
       uTest.pointer.cast(),
       uTest.size,
       dest.pointer.cast(),
-      encodeDType(element.dtype),
+      encodeDType(commonDType),
       invert ? 1 : 0,
     );
 
+    if (useTempOut) {
+      dest.copy(out: out);
+      return out;
+    }
+    if (out == null) {
+      dest.detachToParentScope();
+    }
     return dest;
-  } finally {
-    if (contigElement != null && contigElement != element) {
-      contigElement.dispose();
-    }
-    uTest?.dispose();
-    if (flatTest != testElements) {
-      flatTest.dispose();
-    }
-  }
+  });
 }

@@ -1,5 +1,6 @@
 // ignore_for_file: non_constant_identifier_names
 import '../ndarray.dart';
+import 'helpers.dart';
 
 // Standalone operational relative cross-imports
 
@@ -65,27 +66,42 @@ List<NDArray<T>> array_split<T>(
   final rem = L % sections;
   var currentIdx = 0;
 
-  for (var i = 0; i < sections; i++) {
-    final size = i < rem ? S_0 + 1 : S_0;
-    final start = currentIdx;
-    final stop = currentIdx + size;
-    currentIdx = stop;
+  final bool needsCopy =
+      out != null &&
+      out.any((outSub) => !outSub.isDisposed && sharesMemory(a, outSub));
+  final NDArray<T> aSrc = needsCopy ? a.copy() : a;
+  try {
+    for (var i = 0; i < sections; i++) {
+      final size = i < rem ? S_0 + 1 : S_0;
+      final start = currentIdx;
+      final stop = currentIdx + size;
+      currentIdx = stop;
 
-    final sub = _sliceAlongAxis(a, normAxis, start, stop);
-    if (out != null) {
-      final outSub = out[i];
-      if (outSub.isDisposed) {
-        throw StateError('Cannot write to a disposed out array.');
+      final sub = _sliceAlongAxis(aSrc, normAxis, start, stop);
+      if (out != null) {
+        try {
+          final outSub = out[i];
+          if (outSub.isDisposed) {
+            throw StateError('Cannot write to a disposed out array.');
+          }
+          if (!listEquals(outSub.shape, sub.shape) ||
+              outSub.dtype != sub.dtype) {
+            throw ArgumentError(
+              'Incompatible out buffer shape or dtype for split item $i.',
+            );
+          }
+          sub.copy(out: outSub);
+          results.add(outSub);
+        } finally {
+          sub.dispose();
+        }
+      } else {
+        results.add(sub);
       }
-      if (!listEquals(outSub.shape, sub.shape) || outSub.dtype != sub.dtype) {
-        throw ArgumentError(
-          'Incompatible out buffer shape or dtype for split item $i.',
-        );
-      }
-      sub.copy(out: outSub);
-      results.add(outSub);
-    } else {
-      results.add(sub);
+    }
+  } finally {
+    if (needsCopy) {
+      aSrc.dispose();
     }
   }
 
@@ -141,24 +157,39 @@ List<NDArray<T>> array_split_at<T>(
 
   final List<NDArray<T>> results = [];
 
-  for (var i = 0; i < boundaries.length - 1; i++) {
-    final start = boundaries[i];
-    final stop = boundaries[i + 1];
-    final sub = _sliceAlongAxis(a, normAxis, start, stop);
-    if (out != null) {
-      final outSub = out[i];
-      if (outSub.isDisposed) {
-        throw StateError('Cannot write to a disposed out array.');
+  final bool needsCopy =
+      out != null &&
+      out.any((outSub) => !outSub.isDisposed && sharesMemory(a, outSub));
+  final NDArray<T> aSrc = needsCopy ? a.copy() : a;
+  try {
+    for (var i = 0; i < boundaries.length - 1; i++) {
+      final start = boundaries[i];
+      final stop = boundaries[i + 1];
+      final sub = _sliceAlongAxis(aSrc, normAxis, start, stop);
+      if (out != null) {
+        try {
+          final outSub = out[i];
+          if (outSub.isDisposed) {
+            throw StateError('Cannot write to a disposed out array.');
+          }
+          if (!listEquals(outSub.shape, sub.shape) ||
+              outSub.dtype != sub.dtype) {
+            throw ArgumentError(
+              'Incompatible out buffer shape or dtype for split item $i.',
+            );
+          }
+          sub.copy(out: outSub);
+          results.add(outSub);
+        } finally {
+          sub.dispose();
+        }
+      } else {
+        results.add(sub);
       }
-      if (!listEquals(outSub.shape, sub.shape) || outSub.dtype != sub.dtype) {
-        throw ArgumentError(
-          'Incompatible out buffer shape or dtype for split item $i.',
-        );
-      }
-      sub.copy(out: outSub);
-      results.add(outSub);
-    } else {
-      results.add(sub);
+    }
+  } finally {
+    if (needsCopy) {
+      aSrc.dispose();
     }
   }
 

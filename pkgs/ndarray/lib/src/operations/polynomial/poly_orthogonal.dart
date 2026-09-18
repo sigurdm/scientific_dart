@@ -87,6 +87,9 @@ NDArray<R> chebval<T1, T2, R>(
   NDArray<T2> arg2, {
   NDArray<R>? out,
 }) {
+  if (arg1.isDisposed || arg2.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot access a disposed NDArray.');
+  }
   NDArray cArr;
   NDArray xArr;
   if (arg1.shape.length != 1 && arg2.shape.length == 1) {
@@ -110,6 +113,9 @@ NDArray<R> legval<T1, T2, R>(
   NDArray<T2> arg2, {
   NDArray<R>? out,
 }) {
+  if (arg1.isDisposed || arg2.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot access a disposed NDArray.');
+  }
   NDArray cArr;
   NDArray xArr;
   if (arg1.shape.length != 1 && arg2.shape.length == 1) {
@@ -133,6 +139,9 @@ NDArray<R> hermval<T1, T2, R>(
   NDArray<T2> arg2, {
   NDArray<R>? out,
 }) {
+  if (arg1.isDisposed || arg2.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot access a disposed NDArray.');
+  }
   NDArray cArr;
   NDArray xArr;
   if (arg1.shape.length != 1 && arg2.shape.length == 1) {
@@ -156,6 +165,9 @@ NDArray<R> lagval<T1, T2, R>(
   NDArray<T2> arg2, {
   NDArray<R>? out,
 }) {
+  if (arg1.isDisposed || arg2.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot access a disposed NDArray.');
+  }
   NDArray cArr;
   NDArray xArr;
   if (arg1.shape.length != 1 && arg2.shape.length == 1) {
@@ -200,7 +212,11 @@ NDArray<R> _evalClenshaw<Tc, Tx, R>(
   return NDArray.scope(() {
     final cCast = _ensureDType(c, targetDType);
     final xCast = _ensureDType(x, targetDType);
-    final res = out ?? NDArray<R>.zeros(x.shape, targetDType);
+    final aliased =
+        out != null && (sharesMemory(c, out) || sharesMemory(x, out));
+    final res = (out != null && !aliased)
+        ? out
+        : NDArray<R>.zeros(x.shape, targetDType);
 
     final isContiguous =
         cCast.isContiguous && xCast.isContiguous && res.isContiguous;
@@ -603,6 +619,9 @@ NDArray<R> _evalClenshaw<Tc, Tx, R>(
     }
 
     if (out != null) {
+      if (aliased) {
+        res.copy(out: out);
+      }
       return out;
     }
     return res.detachToParentScope();
@@ -641,14 +660,32 @@ NDArray<Complex> _orthoRoots<T>(
     throw ArgumentError("Coefficient array c must be 1-dimensional.");
   }
 
+  final DType<Complex> targetComplexDType = c.dtype == DType.complex64
+      ? DType.complex64
+      : DType.complex128;
+
   return NDArray.scope(() {
     var n = c.shape[0] - 1;
     while (n > 0) {
       if (!_isZeroScalar(c.getCellFlat(n) as Object)) break;
       n--;
     }
+    final deg = n <= 0 ? 0 : n;
+    if (out != null) {
+      if (!listEquals(out.shape, [deg]) || out.dtype != targetComplexDType) {
+        throw ArgumentError(
+          "Incompatible out buffer shape or dtype for roots result (expected shape [$deg] and dtype $targetComplexDType, got shape ${out.shape} and dtype ${out.dtype}).",
+        );
+      }
+      if (!out.isContiguous || sharesMemory(c, out)) {
+        final temp = _orthoRoots<T>(c, kind);
+        _copyInto(temp, out);
+        return out;
+      }
+    }
+
     if (n <= 0) {
-      final res = NDArray<Complex>.zeros([0], DType.complex128);
+      final res = NDArray<Complex>.zeros([0], targetComplexDType);
       if (out != null) {
         _copyInto(res, out);
         return out;
@@ -678,7 +715,7 @@ NDArray<Complex> _orthoRoots<T>(
       final res = NDArray<Complex>.fromList(
         [complexRoot],
         [1],
-        DType.complex128,
+        targetComplexDType,
       );
       if (out != null) {
         _copyInto(res, out);

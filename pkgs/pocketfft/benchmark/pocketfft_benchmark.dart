@@ -21,26 +21,18 @@ void main() async {
             fin[i].i = 0.0;
           }
 
-          c.bench(
-            'kiss_fft forward (1D complex) [$nfft]',
-            () {
-              kiss_fft(cfg, fin, fout);
-              blackhole(fout[0].r);
-            },
-            throughput: Throughput.elements(nfft),
-          );
+          c.bench('kiss_fft forward (1D complex) [$nfft]', () {
+            kiss_fft(cfg, fin, fout);
+            blackhole(fout[0].r);
+          }, throughput: Throughput.elements(nfft));
 
           // Clean up in a finally block after criterion finishes or register benchmark teardown
           // Note: We can also benchmark inverse transform
           final cfgInv = kiss_fft_alloc(nfft, 1, ffi.nullptr, ffi.nullptr);
-          c.bench(
-            'kiss_fft inverse (1D complex) [$nfft]',
-            () {
-              kiss_fft(cfgInv, fout, fin);
-              blackhole(fin[0].r);
-            },
-            throughput: Throughput.elements(nfft),
-          );
+          c.bench('kiss_fft inverse (1D complex) [$nfft]', () {
+            kiss_fft(cfgInv, fout, fin);
+            blackhole(fin[0].r);
+          }, throughput: Throughput.elements(nfft));
         }
       });
 

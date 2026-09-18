@@ -84,7 +84,11 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
   return NDArray.scope(() {
     final cCast = _ensureDType(c, targetDType);
     final xCast = _ensureDType(x, targetDType);
-    final res = out ?? NDArray<R>.zeros(x.shape, targetDType);
+    final bool needsTemp =
+        out != null && (sharesMemory(c, out) || sharesMemory(x, out));
+    final res = needsTemp || out == null
+        ? NDArray<R>.zeros(x.shape, targetDType)
+        : out;
 
     final isContiguous =
         cCast.isContiguous && xCast.isContiguous && res.isContiguous;
@@ -211,6 +215,9 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
     }
 
     if (out != null) {
+      if (needsTemp) {
+        res.copy(out: out);
+      }
       return out;
     }
     return res.detachToParentScope();
@@ -661,6 +668,10 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
     throw ArgumentError("Coefficient array p must be 1-dimensional.");
   }
 
+  final DType<Complex> targetComplexDType = p.dtype == DType.complex64
+      ? DType.complex64
+      : DType.complex128;
+
   return NDArray.scope(() {
     final size = p.shape[0];
     var firstNonZero = -1;
@@ -671,22 +682,31 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
       }
     }
 
-    if (firstNonZero == -1 || (size - firstNonZero) <= 1) {
-      final res = NDArray<Complex>.zeros([0], DType.complex128);
+    final int deg = (firstNonZero == -1 || (size - firstNonZero) <= 1)
+        ? 0
+        : (size - firstNonZero - 1);
+
+    if (out != null) {
+      if (!listEquals(out.shape, [deg]) || out.dtype != targetComplexDType) {
+        throw ArgumentError(
+          "Incompatible out buffer shape or dtype for roots result (expected shape [$deg] and dtype $targetComplexDType, got shape ${out.shape} and dtype ${out.dtype}).",
+        );
+      }
+      if (!out.isContiguous || sharesMemory(p, out)) {
+        final temp = roots<T>(p);
+        _copyInto(temp, out);
+        return out;
+      }
+    }
+
+    if (deg == 0) {
+      final res = NDArray<Complex>.zeros([0], targetComplexDType);
       if (out != null) {
-        if (!listEquals(out.shape, [0]) || out.dtype != DType.complex128) {
-          throw ArgumentError(
-            "Incompatible out buffer for empty roots result.",
-          );
-        }
         _copyInto(res, out);
         return out;
       }
       return res.detachToParentScope();
     }
-
-    final nCoeffs = size - firstNonZero;
-    final deg = nCoeffs - 1;
 
     if (deg == 1) {
       final c0 = p.getCellFlat(firstNonZero) as Object;
@@ -698,12 +718,9 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
       final res = NDArray<Complex>.fromList(
         [complexRoot],
         [1],
-        DType.complex128,
+        targetComplexDType,
       );
       if (out != null) {
-        if (!listEquals(out.shape, [1]) || out.dtype != DType.complex128) {
-          throw ArgumentError("Incompatible out buffer for roots result.");
-        }
         _copyInto(res, out);
         return out;
       }
