@@ -259,11 +259,13 @@ final class SourceMode extends BuildMode {
 
     final highwayDir = _root.resolve('third_party/highway/');
     final legacyHwyDir = Directory.fromUri(outputDir.uri.resolve('hwy_build'));
-    final highwayBuildDir = legacyHwyDir.existsSync()
+    final highwayBuildDir = (!isMSVC && legacyHwyDir.existsSync())
         ? legacyHwyDir
         : Directory.fromUri(
             input.outputDirectoryShared.resolve(
-              'hwy_build-${os.name}-${arch.name}/',
+              isMSVC
+                  ? 'hwy_build_v2-${os.name}-${arch.name}/'
+                  : 'hwy_build-${os.name}-${arch.name}/',
             ),
           );
 
@@ -289,6 +291,12 @@ final class SourceMode extends BuildMode {
         highwayBuildDir.createSync(recursive: true);
       }
 
+      final cmakeCCompiler =
+          (isMSVC && cppCompilerPath.toLowerCase().contains('clang-cl'))
+          ? cppCompilerPath.replaceAll('\\', '/')
+          : compilerPath.replaceAll('\\', '/');
+      final cmakeCxxCompiler = cppCompilerPath.replaceAll('\\', '/');
+
       final cmakeRes = await Process.run(
         'cmake',
         [
@@ -307,9 +315,11 @@ final class SourceMode extends BuildMode {
             isMSVC
                 ? '-DCMAKE_CXX_FLAGS=/DHWY_COMPILE_ONLY_STATIC=1'
                 : '-DCMAKE_CXX_FLAGS=-DHWY_COMPILE_ONLY_STATIC=1',
-          if (cCompiler != null) ...[
-            '-DCMAKE_C_COMPILER=$compilerPath',
-            '-DCMAKE_CXX_COMPILER=$cppCompilerPath',
+          if (cCompiler != null ||
+              (isMSVC &&
+                  cppCompilerPath.toLowerCase().contains('clang-cl'))) ...[
+            '-DCMAKE_C_COMPILER=$cmakeCCompiler',
+            '-DCMAKE_CXX_COMPILER=$cmakeCxxCompiler',
           ],
           if (os == OS.macOS || os == OS.iOS)
             '-DCMAKE_OSX_ARCHITECTURES=${arch == Architecture.arm64 ? 'arm64' : 'x86_64'}',
