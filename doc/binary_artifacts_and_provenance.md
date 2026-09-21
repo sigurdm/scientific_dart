@@ -85,6 +85,21 @@ When `hook/*.cpp`, `hook/*.c`, `hook/*.h`, or native library versions change, yo
    ```bash
    dart tool/regenerate_hashes.dart artifacts-v0.0.3
    ```
-   This downloads all 20 release binaries, runs `gh attestation verify <binary> --repo sigurdm/scientific_dart` on each one, and writes the new `releaseTag` and `fileHashes` into `pkgs/{pocketfft,openblas,ndarray}/lib/src/hook_helpers/hashes.dart`.
+   This downloads all 20 release binaries, runs `gh attestation verify <binary> --repo sigurdm/scientific_dart` on each one, and writes the new `releaseTag`, `nativeSourceHash` (combined SHA-256 of `hook/`), and `fileHashes` into `pkgs/{pocketfft,openblas,ndarray}/lib/src/hook_helpers/hashes.dart`.
 4. **Commit & Publish to `pub.dev`**:
    Commit the updated `hashes.dart` files, push to `main`, and publish the packages (`dart pub publish`).
+
+---
+
+## Automatic Staleness Detection (`nativeSourceHash`)
+
+Each `hashes.dart` file records `nativeSourceHash` — the combined SHA-256 digest of the package's `hook/` native source files (`*.dart`, `*.c`, `*.cpp`, `*.h`, `*.def`) at the time `artifacts-v<version>` was built.
+
+If native sources in `hook/` are modified without rebuilding prebuilt artifacts:
+1. **`FetchMode` guard (`hook/build.dart`)**: Refuses to link stale prebuilt binaries that do not match `hook/` and throws an error instructing the author to rebuild release artifacts or switch to `buildMode: source`.
+2. **`SourceMode` warning (`hook/build.dart`)**: Prints a warning during local builds when `hook/` differs from `nativeSourceHash`.
+3. **CI & Pre-publish check (`tool/check_artifact_hashes.dart`)**:
+   ```bash
+   dart tool/check_artifact_hashes.dart [--strict]
+   ```
+   Emits GitHub Actions `::warning::` annotations on PRs/pushes when `hook/` has diverged from `nativeSourceHash` (and exits with code `1` when `--strict` is passed).

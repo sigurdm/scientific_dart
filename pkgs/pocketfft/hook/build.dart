@@ -22,6 +22,18 @@ void main(List<String> args) async {
     }
     print('pocketfft build options: $buildOptions');
 
+    final currentSourceHash = computeNativeSourceHash(input.packageRoot);
+    if (currentSourceHash != nativeSourceHash &&
+        buildOptions.buildMode == BuildModeEnum.source) {
+      print(
+        'WARNING: Native sources in package:${input.packageName}/hook/ '
+        '(${currentSourceHash.substring(0, 12)}) differ from prebuilt release '
+        '$version (${nativeSourceHash.substring(0, 12)}). '
+        'Remember to build & attest new release artifacts and run '
+        '`dart tool/regenerate_hashes.dart <tag>` before publishing.',
+      );
+    }
+
     final buildMode = switch (buildOptions.buildMode) {
       BuildModeEnum.fetch => FetchMode(input),
       BuildModeEnum.local => LocalMode(input, buildOptions.localPath),
@@ -64,6 +76,18 @@ final class FetchMode extends BuildMode {
 
   @override
   Future<Uri> build() async {
+    final currentSourceHash = computeNativeSourceHash(input.packageRoot);
+    if (currentSourceHash != nativeSourceHash) {
+      throw StateError(
+        'Prebuilt pocketfft binary for release $version is out of date with native sources in hook/!\n'
+        'Pinned nativeSourceHash: $nativeSourceHash\n'
+        'Current hook/ hash:      $currentSourceHash\n'
+        'If you are the package author, build and attest new release artifacts (.github/workflows/artifacts.yml) and run:\n'
+        '  dart tool/regenerate_hashes.dart <new-release-tag>\n'
+        '${BuildOptions.usageError('Switch to `buildMode: source` while developing native code.')}',
+      );
+    }
+
     final os = input.config.code.targetOS;
     final arch = input.config.code.targetArchitecture;
     final artifactName = pocketfftArtifactName(os, arch);
@@ -113,7 +137,9 @@ final class FetchMode extends BuildMode {
   }
 
   @override
-  List<Uri> get dependencies => const [];
+  List<Uri> get dependencies => [
+    for (final file in nativeSourceFiles(input.packageRoot)) file.uri,
+  ];
 }
 
 final class LocalMode extends BuildMode {

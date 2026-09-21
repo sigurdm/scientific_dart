@@ -5,6 +5,7 @@
 // `gh attestation verify`, computes SHA-256 digests, and updates
 // `pkgs/<pkg>/lib/src/hook_helpers/hashes.dart`.
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -155,6 +156,12 @@ Future<void> _regenerateSingleAssetHashes({
     stdout.writeln('  [ok]   $artifactName -> $digest');
   }
 
+  final sourceHash = await _computeNativeSourceHashForRef(
+    packageName: packageName,
+    gitRef: localDir == null ? version : null,
+  );
+  stdout.writeln('  [src]  nativeSourceHash -> $sourceHash');
+
   final entriesCode = hashes.entries
       .map(
         (e) =>
@@ -170,13 +177,50 @@ Future<void> _regenerateSingleAssetHashes({
 //   dart tool/regenerate_hashes.dart <github release tag>
 //
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:code_assets/code_assets.dart';
+import 'package:crypto/crypto.dart';
 
 /// GitHub repository hosting prebuilt release artifacts and SLSA provenance attestations.
 const repository = '$repo';
 
 /// Release tag for prebuilt `$packageName` binaries.
 const version = '$version';
+
+/// Combined SHA-256 digest of `hook/` native source files at [version].
+const nativeSourceHash = '$sourceHash';
+
+/// Lists the tracked native source files in `hook/` under [packageRoot].
+List<File> nativeSourceFiles(Uri packageRoot) {
+  final hookDir = Directory.fromUri(packageRoot.resolve('hook/'));
+  if (!hookDir.existsSync()) return const [];
+  final files = hookDir.listSync().whereType<File>().where((file) {
+    final name = file.uri.pathSegments.last;
+    return name.endsWith('.dart') ||
+        name.endsWith('.c') ||
+        name.endsWith('.cpp') ||
+        name.endsWith('.h') ||
+        name.endsWith('.def');
+  }).toList();
+  files.sort(
+    (a, b) => a.uri.pathSegments.last.compareTo(b.uri.pathSegments.last),
+  );
+  return files;
+}
+
+/// Computes the combined SHA-256 digest of `hook/` native source files under [packageRoot].
+String computeNativeSourceHash(Uri packageRoot) {
+  final buffer = StringBuffer();
+  for (final file in nativeSourceFiles(packageRoot)) {
+    final name = file.uri.pathSegments.last;
+    final normalized = file.readAsStringSync().replaceAll('\\r\\n', '\\n');
+    final fileDigest = sha256.convert(utf8.encode(normalized)).toString();
+    buffer.writeln('\$name:\$fileDigest');
+  }
+  return sha256.convert(utf8.encode(buffer.toString())).toString();
+}
 
 /// Canonical release artifact filename for `(os, arch)`.
 String $helperFuncName(OS os, Architecture arch) {
@@ -237,6 +281,12 @@ Future<void> _regenerateMultiAssetHashes({
     }
   }
 
+  final sourceHash = await _computeNativeSourceHashForRef(
+    packageName: packageName,
+    gitRef: localDir == null ? version : null,
+  );
+  stdout.writeln('  [src]  nativeSourceHash -> $sourceHash');
+
   final entriesCode = hashes.entries
       .map(
         (e) =>
@@ -252,13 +302,50 @@ Future<void> _regenerateMultiAssetHashes({
 //   dart tool/regenerate_hashes.dart <github release tag>
 //
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:code_assets/code_assets.dart';
+import 'package:crypto/crypto.dart';
 
 /// GitHub repository hosting prebuilt release artifacts and SLSA provenance attestations.
 const repository = '$repo';
 
 /// Release tag for prebuilt `$packageName` binaries.
 const version = '$version';
+
+/// Combined SHA-256 digest of `hook/` native source files at [version].
+const nativeSourceHash = '$sourceHash';
+
+/// Lists the tracked native source files in `hook/` under [packageRoot].
+List<File> nativeSourceFiles(Uri packageRoot) {
+  final hookDir = Directory.fromUri(packageRoot.resolve('hook/'));
+  if (!hookDir.existsSync()) return const [];
+  final files = hookDir.listSync().whereType<File>().where((file) {
+    final name = file.uri.pathSegments.last;
+    return name.endsWith('.dart') ||
+        name.endsWith('.c') ||
+        name.endsWith('.cpp') ||
+        name.endsWith('.h') ||
+        name.endsWith('.def');
+  }).toList();
+  files.sort(
+    (a, b) => a.uri.pathSegments.last.compareTo(b.uri.pathSegments.last),
+  );
+  return files;
+}
+
+/// Computes the combined SHA-256 digest of `hook/` native source files under [packageRoot].
+String computeNativeSourceHash(Uri packageRoot) {
+  final buffer = StringBuffer();
+  for (final file in nativeSourceFiles(packageRoot)) {
+    final name = file.uri.pathSegments.last;
+    final normalized = file.readAsStringSync().replaceAll('\\r\\n', '\\n');
+    final fileDigest = sha256.convert(utf8.encode(normalized)).toString();
+    buffer.writeln('\$name:\$fileDigest');
+  }
+  return sha256.convert(utf8.encode(buffer.toString())).toString();
+}
 
 /// Canonical release artifact filename for `(os, arch, libraryKind)`.
 ///
@@ -278,6 +365,73 @@ $entriesCode
 };
 ''');
   stdout.writeln('Wrote ${targetFile.path}');
+}
+
+Future<String> _computeNativeSourceHashForRef({
+  required String packageName,
+  required String? gitRef,
+}) async {
+  bool isTrackedSource(String name) =>
+      name.endsWith('.dart') ||
+      name.endsWith('.c') ||
+      name.endsWith('.cpp') ||
+      name.endsWith('.h') ||
+      name.endsWith('.def');
+
+  if (gitRef != null) {
+    final lsTree = await Process.run('git', [
+      'ls-tree',
+      '--name-only',
+      gitRef,
+      'pkgs/$packageName/hook/',
+    ]);
+    if (lsTree.exitCode == 0) {
+      final paths = (lsTree.stdout as String)
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty && isTrackedSource(s))
+          .toList();
+      if (paths.isNotEmpty) {
+        paths.sort((a, b) => a.split('/').last.compareTo(b.split('/').last));
+        final buffer = StringBuffer();
+        for (final path in paths) {
+          final name = path.split('/').last;
+          final showRes = await Process.run('git', ['show', '$gitRef:$path']);
+          if (showRes.exitCode != 0) {
+            throw StateError('Failed to read $gitRef:$path via git show');
+          }
+          var content = showRes.stdout as String;
+          if (name == 'build.dart' &&
+              !content.contains('computeNativeSourceHash')) {
+            content = File(path).readAsStringSync();
+          }
+          final normalized = content.replaceAll('\r\n', '\n');
+          final fileDigest = sha256.convert(utf8.encode(normalized)).toString();
+          buffer.writeln('$name:$fileDigest');
+        }
+        return sha256.convert(utf8.encode(buffer.toString())).toString();
+      }
+    }
+  }
+
+  final hookDir = Directory('pkgs/$packageName/hook');
+  final files =
+      hookDir
+          .listSync()
+          .whereType<File>()
+          .where((f) => isTrackedSource(f.uri.pathSegments.last))
+          .toList()
+        ..sort(
+          (a, b) => a.uri.pathSegments.last.compareTo(b.uri.pathSegments.last),
+        );
+  final buffer = StringBuffer();
+  for (final file in files) {
+    final name = file.uri.pathSegments.last;
+    final normalized = file.readAsStringSync().replaceAll('\r\n', '\n');
+    final fileDigest = sha256.convert(utf8.encode(normalized)).toString();
+    buffer.writeln('$name:$fileDigest');
+  }
+  return sha256.convert(utf8.encode(buffer.toString())).toString();
 }
 
 String _osConstName(OS os) => switch (os) {

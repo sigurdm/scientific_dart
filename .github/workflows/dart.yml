@@ -61,6 +61,9 @@ jobs:
       - name: Analyze Code
         run: dart analyze .
 
+      - name: Check Prebuilt Artifact Freshness
+        run: dart tool/check_artifact_hashes.dart
+
       - name: Run Tests (pocketfft)
         run: dart test
         working-directory: pkgs/pocketfft

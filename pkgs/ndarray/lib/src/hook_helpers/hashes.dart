@@ -3,13 +3,51 @@
 //   dart tool/regenerate_hashes.dart <github release tag>
 //
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:code_assets/code_assets.dart';
+import 'package:crypto/crypto.dart';
 
 /// GitHub repository hosting prebuilt release artifacts and SLSA provenance attestations.
 const repository = 'sigurdm/scientific_dart';
 
 /// Release tag for prebuilt `ndarray` binaries.
 const version = 'artifacts-v0.0.2';
+
+/// Combined SHA-256 digest of `hook/` native source files at [version].
+const nativeSourceHash =
+    '1e736ab5003778b2866454d0ae2ce2d1edb3af834a82639e3d791702f096aac1';
+
+/// Lists the tracked native source files in `hook/` under [packageRoot].
+List<File> nativeSourceFiles(Uri packageRoot) {
+  final hookDir = Directory.fromUri(packageRoot.resolve('hook/'));
+  if (!hookDir.existsSync()) return const [];
+  final files = hookDir.listSync().whereType<File>().where((file) {
+    final name = file.uri.pathSegments.last;
+    return name.endsWith('.dart') ||
+        name.endsWith('.c') ||
+        name.endsWith('.cpp') ||
+        name.endsWith('.h') ||
+        name.endsWith('.def');
+  }).toList();
+  files.sort(
+    (a, b) => a.uri.pathSegments.last.compareTo(b.uri.pathSegments.last),
+  );
+  return files;
+}
+
+/// Computes the combined SHA-256 digest of `hook/` native source files under [packageRoot].
+String computeNativeSourceHash(Uri packageRoot) {
+  final buffer = StringBuffer();
+  for (final file in nativeSourceFiles(packageRoot)) {
+    final name = file.uri.pathSegments.last;
+    final normalized = file.readAsStringSync().replaceAll('\r\n', '\n');
+    final fileDigest = sha256.convert(utf8.encode(normalized)).toString();
+    buffer.writeln('$name:$fileDigest');
+  }
+  return sha256.convert(utf8.encode(buffer.toString())).toString();
+}
 
 /// Canonical release artifact filename for `(os, arch)`.
 String ndarrayArtifactName(OS os, Architecture arch) {
