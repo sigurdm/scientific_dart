@@ -25,7 +25,7 @@ void main() {
             return NDArray.scope(() {
               setNumThreads(1);
               final workerArr = sendable.materialize();
-              workerArr[0] = Float64(99.0);
+              workerArr[0] = 99.0;
               return (
                 shape: workerArr.shape,
                 dtype: workerArr.dtype,
@@ -59,7 +59,7 @@ void main() {
                 workerArr,
                 NDArray<Float32>.full(
                   [2, 3],
-                  Float32(2.0),
+                  2.0,
                   dtype: DType.float32,
                 ),
               );
@@ -185,7 +185,7 @@ void main() {
 
       test('transfers boolean dtype across Isolate.run', () async {
         await NDArray.scope(() async {
-          final b = NDArray<bool>.fromList(
+          final b = NDArray<Boolean>.fromList(
             [true, false, true],
             [3],
             DType.boolean,
@@ -201,7 +201,7 @@ void main() {
       test('transfers Complex128 dtype across Isolate.run', () async {
         await NDArray.scope(() async {
           final c = NDArray<Complex128>.fromList(
-            [Complex128(1.0, 2.0), Complex128(3.0, 4.0)],
+            [Complex(1.0, 2.0), Complex(3.0, 4.0)],
             [2],
             DType.complex128,
           );
@@ -277,7 +277,7 @@ void main() {
                 setNumThreads(1);
                 final view = sendable.materializeView();
                 for (var i = 0; i < 10; i++) {
-                  view[i] = Float64((i + 1) * 7.0);
+                  view[i] = (i + 1) * 7.0;
                 }
               });
             });
@@ -322,10 +322,10 @@ void main() {
               // Construct non-owning view over the borrowed slice
               final view = sendableSlice.materializeView();
               // Fill the sub-slice with 42.0..45.0
-              view.setCell([0, 0], Float64(42.0));
-              view.setCell([0, 1], Float64(43.0));
-              view.setCell([1, 0], Float64(44.0));
-              view.setCell([1, 1], Float64(45.0));
+              view.setCell([0, 0], 42.0);
+              view.setCell([0, 1], 43.0);
+              view.setCell([1, 0], 44.0);
+              view.setCell([1, 1], 45.0);
             });
           });
 
@@ -371,7 +371,7 @@ void main() {
               NDArray.scope(() {
                 final view = sendableLeft.materializeView();
                 for (var i = 0; i < view.shape[0]; i++) {
-                  view[i] = Int32(1);
+                  view[i] = 1;
                 }
               });
             }),
@@ -379,7 +379,7 @@ void main() {
               NDArray.scope(() {
                 final view = sendableRight.materializeView();
                 for (var i = 0; i < view.shape[0]; i++) {
-                  view[i] = Int32(2);
+                  view[i] = 2;
                 }
               });
             }),
@@ -402,7 +402,7 @@ void main() {
             await Isolate.run(() {
               return NDArray.scope(() {
                 final view = sendable.materialize();
-                view[0] = Float64(99.0);
+                view[0] = 99.0;
               });
             });
 
@@ -471,8 +471,8 @@ void main() {
                   view.getCell([2]),
                   view.getCell([3]),
                 ];
-                view.setCell([0], Float64(400.0));
-                view.setCell([3], Float64(100.0));
+                view.setCell([0], 400.0);
+                view.setCell([3], 100.0);
                 return read;
               });
             });

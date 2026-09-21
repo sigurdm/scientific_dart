@@ -20,7 +20,7 @@ void runContiguousCopyExample() {
 
     // Verify memory decoupling (modifying copy does not affect parent!)
     print('\nModifying index 0 of duplicate to 99.0...');
-    duplicate.setCell([0], Float64(99.0));
+    duplicate.setCell([0], 99.0);
 
     print('Parent array index 0: ${parent.getCell([0])}');
     print('Duplicate array index 0: ${duplicate.getCell([0])}');
@@ -50,7 +50,7 @@ void runStridedViewCopyExample() {
     print('Copied duplicate isContiguous: ${duplicate.isContiguous}');
 
     // Decoupled memory verification
-    duplicate.setCell([0, 0], Float64(99.0));
+    duplicate.setCell([0, 0], 99.0);
     print('\nModifying copy data[0, 0] to 99.0...');
     print('Original parent data[0, 0] (still 1.0): ${parent.getCell([0, 0])}');
     print('🏆 Strided coordinates recursively deep copied successfully!');

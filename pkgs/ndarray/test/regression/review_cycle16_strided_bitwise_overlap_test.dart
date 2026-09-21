@@ -140,12 +140,12 @@ void main() {
       () {
         for (final dt in intDTypes) {
           NDArray.scope(() {
-            final aFull = NDArray<int>.fromList(
+            final aFull = NDArray<AnyInt>.fromList(
               [3, 5, 6, 12, 15, 9, 10, 7],
               [8],
               dt,
             );
-            final bFull = NDArray<int>.fromList(
+            final bFull = NDArray<AnyInt>.fromList(
               [1, 3, 2, 4, 7, 5, 6, 3],
               [8],
               dt,
@@ -309,8 +309,8 @@ void main() {
       () {
         for (final dt in intDTypes) {
           NDArray.scope(() {
-            final a = NDArray<int>.fromList([7, 3, 5, 1], [4], dt);
-            final b = NDArray<int>.fromList([6, 2, 4, 1], [4], dt);
+            final a = NDArray<AnyInt>.fromList([7, 3, 5, 1], [4], dt);
+            final b = NDArray<AnyInt>.fromList([6, 2, 4, 1], [4], dt);
 
             final bAnd = binaryUfunc<int, int>(a, b, op: BinaryOp.bitwiseAnd);
             expect(bAnd.toList(), equals([6, 2, 4, 1]));
@@ -341,7 +341,7 @@ void main() {
             atUfunc(
               target,
               NDArray<Int64>.fromList([0, 3], [2], DType.int64),
-              NDArray<int>.fromList([8, 2], [2], dt),
+              NDArray<AnyInt>.fromList([8, 2], [2], dt),
               op: BinaryOp.bitwiseOr,
             );
             expect(target.toList(), equals([7 | 8, 3, 5, 1 | 2]));
@@ -541,12 +541,12 @@ void main() {
 
       test('where: mask aliasing out: buffer in unary and binary ufuncs', () {
         NDArray.scope(() {
-          final w = NDArray<bool>.fromList(
+          final w = NDArray<Boolean>.fromList(
             [true, false, true, true],
             [2, 2],
             DType.boolean,
           );
-          final src = NDArray<bool>.fromList(
+          final src = NDArray<Boolean>.fromList(
             [false, false, false, false],
             [2, 2],
             DType.boolean,

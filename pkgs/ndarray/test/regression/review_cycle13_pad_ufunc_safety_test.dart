@@ -68,7 +68,7 @@ void main() {
             empty1D,
             PadWidth.all(2, 3),
             mode: PadMode.constant,
-            constantValues: PadValues.all(Float64(7.0), Float64(9.0)),
+            constantValues: PadValues.all(7.0, 9.0),
           );
           expect(res1D.shape, equals([5]));
           expect([
@@ -84,8 +84,8 @@ void main() {
             PadWidth.all(1),
             mode: PadMode.constant,
             constantValues: PadValues.axes([
-              (Float64(10.0), Float64(11.0)),
-              (Float64(20.0), Float64(21.0)),
+              (10.0, 11.0),
+              (20.0, 21.0),
             ]),
           );
           expect(res2D.shape, equals([2, 4]));
@@ -111,9 +111,9 @@ void main() {
             DType.float64,
           );
           final padValues = PadValues<Float64>.axes([
-            (Float64(10.0), Float64(11.0)),
-            (Float64(20.0), Float64(21.0)),
-            (Float64(30.0), Float64(31.0)),
+            (10.0, 11.0),
+            (20.0, 21.0),
+            (30.0, 31.0),
           ]);
 
           final actual = pad<Float64>(
@@ -129,9 +129,9 @@ void main() {
             PadWidth.axes([(1, 1), (0, 0), (0, 0)]),
             mode: PadMode.constant,
             constantValues: PadValues.axes([
-              (Float64(10.0), Float64(11.0)),
-              (Float64(0.0), Float64(0.0)),
-              (Float64(0.0), Float64(0.0)),
+              (10.0, 11.0),
+              (0.0, 0.0),
+              (0.0, 0.0),
             ]),
           );
           final step1 = pad<Float64>(
@@ -139,9 +139,9 @@ void main() {
             PadWidth.axes([(0, 0), (1, 1), (0, 0)]),
             mode: PadMode.constant,
             constantValues: PadValues.axes([
-              (Float64(0.0), Float64(0.0)),
-              (Float64(20.0), Float64(21.0)),
-              (Float64(0.0), Float64(0.0)),
+              (0.0, 0.0),
+              (20.0, 21.0),
+              (0.0, 0.0),
             ]),
           );
           final expected = pad<Float64>(
@@ -149,9 +149,9 @@ void main() {
             PadWidth.axes([(0, 0), (0, 0), (1, 1)]),
             mode: PadMode.constant,
             constantValues: PadValues.axes([
-              (Float64(0.0), Float64(0.0)),
-              (Float64(0.0), Float64(0.0)),
-              (Float64(30.0), Float64(31.0)),
+              (0.0, 0.0),
+              (0.0, 0.0),
+              (30.0, 31.0),
             ]),
           );
 
@@ -184,26 +184,26 @@ void main() {
             src,
             PadWidth.axes([(1, 2), (2, 1), (1, 1)]),
             mode: PadMode.constant,
-            constantValues: PadValues.all(Float64(1.0), Float64(2.0)),
+            constantValues: PadValues.all(1.0, 2.0),
           );
 
           final step0 = pad<Float64>(
             src,
             PadWidth.axes([(1, 2), (0, 0), (0, 0)]),
             mode: PadMode.constant,
-            constantValues: PadValues.all(Float64(1.0), Float64(2.0)),
+            constantValues: PadValues.all(1.0, 2.0),
           );
           final step1 = pad<Float64>(
             step0,
             PadWidth.axes([(0, 0), (2, 1), (0, 0)]),
             mode: PadMode.constant,
-            constantValues: PadValues.all(Float64(1.0), Float64(2.0)),
+            constantValues: PadValues.all(1.0, 2.0),
           );
           final expected = pad<Float64>(
             step1,
             PadWidth.axes([(0, 0), (0, 0), (1, 1)]),
             mode: PadMode.constant,
-            constantValues: PadValues.all(Float64(1.0), Float64(2.0)),
+            constantValues: PadValues.all(1.0, 2.0),
           );
 
           expect(actual.shape, equals(expected.shape));

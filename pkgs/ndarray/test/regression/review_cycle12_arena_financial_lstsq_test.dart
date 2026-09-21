@@ -98,19 +98,19 @@ void main() {
       test('fv, pv, npv, irr with out: outside and inside NDArray.scope', () {
         // Test outside NDArray.scope
         final rate = NDArray<Float64>.scalar(
-          Float64(0.05),
+          0.05,
           dtype: DType.float64,
         );
         final nper = NDArray<Float64>.scalar(
-          Float64(10.0),
+          10.0,
           dtype: DType.float64,
         );
         final pmt = NDArray<Float64>.scalar(
-          Float64(-100.0),
+          -100.0,
           dtype: DType.float64,
         );
         final pvVal = NDArray<Float64>.scalar(
-          Float64(-1000.0),
+          -1000.0,
           dtype: DType.float64,
         );
         final outScalar = NDArray<Float64>.create([], DType.float64);
@@ -186,8 +186,8 @@ void main() {
         'lstsq zero-fills out: buffer when m == 0 and n == 3 and does not leak casts',
         () {
           NDArray.scope(() {
-            final aEmptyRows = NDArray<int>.zeros([0, 3], DType.int32);
-            final bEmptyRows = NDArray<int>.zeros([0], DType.int32);
+            final aEmptyRows = NDArray<AnyInt>.zeros([0, 3], DType.int32);
+            final bEmptyRows = NDArray<AnyInt>.zeros([0], DType.int32);
             final outBuf = NDArray<Float64>.fromList(
               [99.0, -42.0, 123.0],
               [3],
@@ -258,7 +258,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final badIndices = NDArray<int>.fromList([0, 5], [1, 2], DType.int32);
+          final badIndices = NDArray<AnyInt>.fromList([0, 5], [1, 2], DType.int32);
           try {
             expect(
               () => take_along_axis(arr, badIndices, 0),

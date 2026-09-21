@@ -41,7 +41,7 @@ void main() async {
       c.group('2. Cash Flow Discounting & Returns', () {
         const nPeriods = 10000;
         final singleRate = NDArray<Float64>.scalar(
-          Float64(0.05),
+          0.05,
           dtype: DType.float64,
         );
         final cashFlows =

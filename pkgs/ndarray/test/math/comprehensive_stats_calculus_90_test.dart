@@ -1885,7 +1885,7 @@ void main() {
                 );
 
                 // Simple unique
-                final u = unique(a) as NDArray<int>;
+                final u = unique(a) as NDArray<AnyInt>;
                 expect(u.toList(), equals([1, 2, 3, 4]));
 
                 // With all 3 flags
@@ -1941,7 +1941,7 @@ void main() {
                   DType.int64,
                 );
                 expect(
-                  (unique(aI64) as NDArray<int>).toList(),
+                  (unique(aI64) as NDArray<AnyInt>).toList(),
                   equals([10, 20, 30]),
                 );
 
@@ -1951,7 +1951,7 @@ void main() {
                   DType.float32,
                 );
                 expect(
-                  (unique(aF32) as NDArray<double>).toList(),
+                  (unique(aF32) as NDArray<AnyFloat>).toList(),
                   equals([1.0, 2.0, 3.0]),
                 );
 
@@ -1961,7 +1961,7 @@ void main() {
                   DType.uint8,
                 );
                 expect(
-                  (unique(aU8) as NDArray<int>).toList(),
+                  (unique(aU8) as NDArray<AnyInt>).toList(),
                   equals([0, 128, 255]),
                 );
 
@@ -1971,7 +1971,7 @@ void main() {
                   DType.boolean,
                 );
                 expect(
-                  (unique(aBool) as NDArray<bool>).toList(),
+                  (unique(aBool) as NDArray<Boolean>).toList(),
                   equals([false, true]),
                 );
               });
@@ -2114,7 +2114,7 @@ void main() {
               expect(identical(union1d(a, b, out: outUnion), outUnion), isTrue);
               expect(outUnion.toList(), equals([1, 2, 3, 4]));
 
-              final outIsin = NDArray<bool>.create([3], DType.boolean);
+              final outIsin = NDArray<Boolean>.create([3], DType.boolean);
               expect(identical(isin(a, b, out: outIsin), outIsin), isTrue);
               expect(outIsin.toList(), equals([false, true, true]));
 

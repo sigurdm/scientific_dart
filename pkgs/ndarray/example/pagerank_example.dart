@@ -34,7 +34,7 @@ void main() {
         0.5, 1.0, 0.0, 0.5, 1.0, // Row 2 (links to 2 from: 0, 1, 3, 4)
         0.0, 0.0, 0.0, 0.0, 0.0, // Row 3 (links to 3 from: none)
         0.0, 0.0, 0.0, 0.5, 0.0, // Row 4 (links to 4 from: 3)
-      ]).map((e) => Float64(e)).toList(),
+      ]).map((e) => e).toList(),
       [n, n],
       DType.float64,
     );
@@ -49,7 +49,7 @@ void main() {
 
     // 2. Initialize PageRank vector v (uniform distribution).
     var v = NDArray<Float64>.fromList(
-      List<Float64>.generate(n, (_) => Float64(1.0 / n)),
+      List<Float64>.generate(n, (_) => 1.0 / n),
       [n],
       DType.float64,
     );
@@ -71,13 +71,13 @@ void main() {
         final mv = matmul<Float64, Float64, Float64>(m, v);
 
         // Wrap scalar d as a 0D array for broadcasting
-        final dArr = NDArray<Float64>.scalar(Float64(d), dtype: DType.float64);
+        final dArr = NDArray<Float64>.scalar(d, dtype: DType.float64);
         // Apply damping factor (scalar multiplication via broadcasting)
         final damped = multiply<Float64, Float64, Float64>(mv, dArr);
 
         // Wrap scalar teleport as a 0D array for broadcasting
         final teleportArr = NDArray<Float64>.scalar(
-          Float64(teleport),
+          teleport,
           dtype: DType.float64,
         );
         // Add teleportation (scalar addition via broadcasting)

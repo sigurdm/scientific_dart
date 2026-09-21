@@ -91,7 +91,7 @@ void main() {
       test(
         'Complex128 array round-trip',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.fromList(
+          final a = NDArray<AnyComplex>.fromList(
             [Complex(1.0, -2.0), Complex(0.0, 3.5)],
             [2],
             DType.complex128,
@@ -112,7 +112,7 @@ void main() {
       test(
         'Complex64 array round-trip',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.fromList(
+          final a = NDArray<AnyComplex>.fromList(
             [Complex(1.5, -2.5), Complex(0.0, 3.0)],
             [2],
             DType.complex64,
@@ -668,7 +668,7 @@ void main() {
         expect(bLoaded.toList(), [true, true, false, false]);
 
         // 5. complex128
-        final c128 = NDArray<Complex>.fromList(
+        final c128 = NDArray<AnyComplex>.fromList(
           [
             Complex(1.0, 1.0),
             Complex(2.0, 2.0),
@@ -689,7 +689,7 @@ void main() {
         ]);
 
         // 6. complex64
-        final c64 = NDArray<Complex>.fromList(
+        final c64 = NDArray<AnyComplex>.fromList(
           [
             Complex(1.0, 1.0),
             Complex(2.0, 2.0),

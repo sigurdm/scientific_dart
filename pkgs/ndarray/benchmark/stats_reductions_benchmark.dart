@@ -55,7 +55,7 @@ void main() async {
       });
 
       c.group('2. Order Statistics (Median & Quantile)', () {
-        final randVec = NDArray<double>.fromList(
+        final randVec = NDArray<AnyFloat>.fromList(
           List.generate(size, (i) => ((i * 37) % 1000).toDouble()),
           [size],
           DType.float64,

@@ -128,7 +128,7 @@ void main() {
       expect(normalizedAxes, equals([(0, 0), (1, 1)]));
 
       // Padding a 0-sized array
-      final emptyArr = NDArray<double>.zeros([0, 5], DType.float64);
+      final emptyArr = NDArray<AnyFloat>.zeros([0, 5], DType.float64);
       final padded = pad(
         emptyArr,
         PadWidth.all(1),
@@ -209,7 +209,7 @@ void main() {
             final py = x.getCell([1]).toDouble();
             final fVal = (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
             final g = NDArray<Float64>.fromList(
-              [Float64(2.0 * (px - 3.0)), Float64(2.0 * (py + 2.0))],
+              [2.0 * (px - 3.0), 2.0 * (py + 2.0)],
               [2],
               DType.float64,
             );

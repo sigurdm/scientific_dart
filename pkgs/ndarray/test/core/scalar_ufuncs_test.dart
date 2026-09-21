@@ -9,8 +9,8 @@ void main() {
   group("0D Scalar Elementwise Ufuncs Tests", () {
     test("0D scalar arithmetic (+, -, *, /) with out and on strided views", () {
       NDArray.scope(() {
-        final a = NDArray<Float64>.scalar(Float64(6.0), dtype: DType.float64);
-        final b = NDArray<Float64>.scalar(Float64(2.0), dtype: DType.float64);
+        final a = NDArray<Float64>.scalar(6.0, dtype: DType.float64);
+        final b = NDArray<Float64>.scalar(2.0, dtype: DType.float64);
 
         // Standard operator syntax
         final sumOp = a + b;
@@ -281,7 +281,7 @@ void main() {
 
     test("0D scalar castNDArray and low-level strided C ufuncs on rank 0", () {
       NDArray.scope(() {
-        final sU8 = NDArray<Uint8>.scalar(Uint8(200), dtype: DType.uint8);
+        final sU8 = NDArray<Uint8>.scalar(200, dtype: DType.uint8);
         final castedF64 = castNDArray<Float64>(sU8, DType.float64);
         expect(castedF64.rank, 0);
         expect((castedF64.scalar as num).toDouble(), closeTo(200.0, 1e-12));
@@ -300,15 +300,15 @@ void main() {
         final marker = ScratchArena.marker;
         try {
           final aD = NDArray<Float64>.scalar(
-            Float64(9.0),
+            9.0,
             dtype: DType.float64,
           );
           final bD = NDArray<Float64>.scalar(
-            Float64(3.0),
+            3.0,
             dtype: DType.float64,
           );
           final resD = NDArray<Float64>.scalar(
-            Float64(0.0),
+            0.0,
             dtype: DType.float64,
           );
 
@@ -360,7 +360,7 @@ void main() {
           );
           expect((resD.scalar as num).toDouble(), closeTo(3.0, 1e-12));
 
-          final u8Src = NDArray<Uint8>.scalar(Uint8(42), dtype: DType.uint8);
+          final u8Src = NDArray<Uint8>.scalar(42, dtype: DType.uint8);
           bindings.s_cast_uint8_to_double(
             u8Src.pointer.cast(),
             ffi.nullptr,
@@ -371,7 +371,7 @@ void main() {
           );
           expect((resD.scalar as num).toDouble(), closeTo(42.0, 1e-12));
 
-          final i16Dst = NDArray<Int16>.scalar(Int16(0), dtype: DType.int16);
+          final i16Dst = NDArray<Int16>.scalar(0, dtype: DType.int16);
           bindings.s_cast_double_to_int16(
             resD.pointer.cast(),
             ffi.nullptr,

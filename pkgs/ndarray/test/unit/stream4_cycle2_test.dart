@@ -9,17 +9,17 @@ void main() {
         final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 
         // n >= 3 produces empty shape [0]
-        final validOut = NDArray<double>.create([0], DType.float64);
+        final validOut = NDArray<AnyFloat>.create([0], DType.float64);
         final res = diff(a, n: 3, out: validOut);
         expect(res.shape, equals([0]));
         expect(identical(res, validOut), isTrue);
 
         // Mismatched shape throws ArgumentError
-        final invalidShapeOut = NDArray<double>.create([1], DType.float64);
+        final invalidShapeOut = NDArray<AnyFloat>.create([1], DType.float64);
         expect(() => diff(a, n: 3, out: invalidShapeOut), throwsArgumentError);
 
         // Mismatched dtype throws ArgumentError
-        final invalidDtypeOut = NDArray<int>.create([0], DType.int32);
+        final invalidDtypeOut = NDArray<AnyInt>.create([0], DType.int32);
         expect(
           () => diff(a, n: 3, out: invalidDtypeOut as dynamic),
           throwsArgumentError,
@@ -29,7 +29,7 @@ void main() {
 
     test('exponential: non-contiguous out buffer succeeds', () {
       NDArray.scope(() {
-        final base = NDArray<double>.zeros([4, 4], DType.float64);
+        final base = NDArray<AnyFloat>.zeros([4, 4], DType.float64);
         // Transposed view is non-contiguous
         final nonContig = base.transpose([1, 0]);
         expect(nonContig.isContiguous, isFalse);
@@ -42,7 +42,7 @@ void main() {
 
     test('cov: empty array throws ArgumentError', () {
       NDArray.scope(() {
-        final empty = NDArray<double>.create([0], DType.float64);
+        final empty = NDArray<AnyFloat>.create([0], DType.float64);
         expect(() => cov(empty), throwsArgumentError);
       });
     });
@@ -193,7 +193,7 @@ void main() {
         expect(d.getCell([2]).isNaN, isTrue);
 
         // 0-dimensional space N=0
-        final x0 = NDArray<double>.create([2, 0], DType.float64);
+        final x0 = NDArray<AnyFloat>.create([2, 0], DType.float64);
         final d0 = pdist(x0, metric: DistanceMetric.chebyshev);
         expect(d0.getCell([0]), equals(0.0));
       });
@@ -240,7 +240,7 @@ void main() {
           // geomspaceGrid with out
           final start = NDArray.fromList([1.0], [1], DType.float64);
           final stop = NDArray.fromList([100.0], [1], DType.float64);
-          final outGeom = NDArray<double>.create([3, 1], DType.float64);
+          final outGeom = NDArray<AnyFloat>.create([3, 1], DType.float64);
           final resGeom = geomspaceGrid(start, stop, 3, out: outGeom);
           expect(identical(resGeom, outGeom), isTrue);
           expect(resGeom.getCell([0, 0]), closeTo(1.0, 1e-6));
@@ -249,20 +249,20 @@ void main() {
           // vstack / hstack / copy with out
           final a = NDArray.fromList([1.0, 2.0], [1, 2], DType.float64);
           final b = NDArray.fromList([3.0, 4.0], [1, 2], DType.float64);
-          final outVstack = NDArray<double>.create([2, 2], DType.float64);
+          final outVstack = NDArray<AnyFloat>.create([2, 2], DType.float64);
           final resV = vstack([a, b], out: outVstack);
           expect(identical(resV, outVstack), isTrue);
 
-          final outHstack = NDArray<double>.create([1, 4], DType.float64);
+          final outHstack = NDArray<AnyFloat>.create([1, 4], DType.float64);
           final resH = hstack([a, b], out: outHstack);
           expect(identical(resH, outHstack), isTrue);
 
-          final outCopy = NDArray<double>.create([1, 2], DType.float64);
+          final outCopy = NDArray<AnyFloat>.create([1, 2], DType.float64);
           final resCopy = copy(a, out: outCopy);
           expect(identical(resCopy, outCopy), isTrue);
 
           // permutation with out
-          final pOut = NDArray<double>.create([1, 2], DType.float64);
+          final pOut = NDArray<AnyFloat>.create([1, 2], DType.float64);
           final resPerm = permutation(a, out: pOut);
           expect(identical(resPerm, pOut), isTrue);
 

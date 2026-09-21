@@ -149,7 +149,7 @@ void main() {
 
     test('Shape comparison, fill, and invalid shape error checks', () {
       NDArray.scope(() {
-        final a = NDArray<double>.zeros([2, 3], DType.float64);
+        final a = NDArray<AnyFloat>.zeros([2, 3], DType.float64);
         final b = NDArray.ones([2, 3], DType.int32);
         final c = NDArray.zeros([3, 2], DType.float64);
         expect(a.hasSameShape(b), isTrue);
@@ -296,7 +296,7 @@ void main() {
         expect(a[[1, 2]], equals(6));
 
         // Single integer row access
-        final row0 = a[0] as NDArray<int>;
+        final row0 = a[0] as NDArray<AnyInt>;
         expect(row0.shape, equals([3]));
         expect(row0.toList(), equals([1, 2, 3]));
 
@@ -319,7 +319,7 @@ void main() {
           DType.boolean,
         );
 
-        final masked = a[mask] as NDArray<int>;
+        final masked = a[mask] as NDArray<AnyInt>;
         expect(masked.shape, equals([3]));
         expect(masked.toList(), equals([10, 30, 50]));
 
@@ -331,7 +331,7 @@ void main() {
 
     test('expandDims and squeeze', () {
       NDArray.scope(() {
-        final a = NDArray<double>.zeros([2, 3], DType.float64);
+        final a = NDArray<AnyFloat>.zeros([2, 3], DType.float64);
         final exp0 = a.expandDims(0);
         expect(exp0.shape, equals([1, 2, 3]));
 
@@ -393,7 +393,7 @@ void main() {
             DType.float64,
           );
 
-          final out = NDArray<double>.zeros([2, 3], DType.float64);
+          final out = NDArray<AnyFloat>.zeros([2, 3], DType.float64);
           put_along_axis(a, idx, vals, 1, out: out);
           expect(out.toList(), equals([10.0, 99.0, 88.0, 77.0, 66.0, 60.0]));
         });
@@ -481,7 +481,7 @@ void main() {
           expect(res.toList(), equals([1.0, 20.0, 3.0, 40.0]));
 
           // 1-arg nonzero coordinates
-          final coords = where(cond) as List<NDArray<int>>;
+          final coords = where(cond) as List<NDArray<AnyInt>>;
           expect(coords.length, equals(1));
           expect(coords[0].toList(), equals([0, 2]));
         });
@@ -553,7 +553,7 @@ void main() {
     });
 
     test('NDArray.scope, returning, unmanaged, and leak tracking', () {
-      NDArray<double>? escaped;
+      NDArray<AnyFloat>? escaped;
       NDArray.scope(() {
         final inside = NDArray.zeros([4], DType.float64);
         escaped = inside.detachToParentScope();

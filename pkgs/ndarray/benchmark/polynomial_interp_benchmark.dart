@@ -11,7 +11,7 @@ void main() async {
     (c) {
       final rand = math.Random(42);
       final xPoints = linspace<double>(-10.0, 10.0, size, dtype: DType.float64);
-      final coeffs5 = NDArray<double>.fromList(
+      final coeffs5 = NDArray<AnyFloat>.fromList(
         [1.0, -2.5, 0.4, 3.2, -1.1, 0.5],
         [6],
         DType.float64,
@@ -24,7 +24,7 @@ void main() async {
           y.dispose();
         }, throughput: Throughput.elements(size));
 
-        final chebCoeffs = NDArray<double>.fromList(
+        final chebCoeffs = NDArray<AnyFloat>.fromList(
           [0.5, 1.2, -0.8, 2.1, 0.3],
           [5],
           DType.float64,
@@ -41,7 +41,7 @@ void main() async {
       c.group('2. Least-Squares Polynomial Fitting (polyfit)', () {
         const fitN = 10000;
         final xFit = linspace<double>(0.0, 10.0, fitN, dtype: DType.float64);
-        final yFit = NDArray<double>.fromList(
+        final yFit = NDArray<AnyFloat>.fromList(
           List.generate(
             fitN,
             (i) => (i * 0.1) * (i * 0.1) + rand.nextDouble() * 0.5,
@@ -66,7 +66,7 @@ void main() async {
       c.group('3. 1D Piecewise Linear Interpolation', () {
         const numKnots = 1000;
         final xp = linspace<double>(0.0, 100.0, numKnots, dtype: DType.float64);
-        final fp = NDArray<double>.fromList(
+        final fp = NDArray<AnyFloat>.fromList(
           List.generate(numKnots, (i) => math.sin(i * 0.1)),
           [numKnots],
           DType.float64,

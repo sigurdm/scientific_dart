@@ -49,7 +49,7 @@ void main() {
       test(
         'Sort Complex128 array lexicographically',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.fromList(
+          final a = NDArray<AnyComplex>.fromList(
             [
               Complex(2.0, 5.0),
               Complex(1.0, 10.0),
@@ -162,7 +162,7 @@ void main() {
       test(
         'Argsort complex array indirect ranking',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.fromList(
+          final a = NDArray<AnyComplex>.fromList(
             [Complex(5.0, 0.0), Complex(2.0, 3.0), Complex(2.0, 1.0)],
             [3],
             DType.complex128,
@@ -295,7 +295,7 @@ void main() {
             [4],
             DType.boolean,
           );
-          final res = where(cond) as List<NDArray<int>>;
+          final res = where(cond) as List<NDArray<AnyInt>>;
           expect(res.length, 1);
           expect(res[0].toList(), [1, 3]);
         }),
@@ -318,13 +318,13 @@ void main() {
         'where with Complex inputs',
         () => NDArray.scope(() {
           final cond = NDArray.fromList([true, false], [2], DType.boolean);
-          final x = NDArray<Complex>.fromList(
+          final x = NDArray<AnyComplex>.fromList(
             [Complex(1.0, 1.0), Complex(2.0, 2.0)],
             [2],
             DType.complex128,
           );
 
-          final y = NDArray<Complex>.fromList(
+          final y = NDArray<AnyComplex>.fromList(
             [Complex(10.0, 10.0), Complex(20.0, 20.0)],
             [2],
             DType.complex128,
@@ -403,12 +403,12 @@ void main() {
           () => NDArray.scope(() {
             final a = NDArray.fromList([10.0, 50.0, 5.0], [3], DType.float64);
 
-            final outFlat = NDArray<int>.zeros([], DType.int32);
+            final outFlat = NDArray<AnyInt>.zeros([], DType.int32);
             final resFlat = argmin(a, out: outFlat);
             expect(identical(resFlat, outFlat), true);
             expect(outFlat.scalar, 2);
 
-            final outAxis = NDArray<int>.zeros([1], DType.int32);
+            final outAxis = NDArray<AnyInt>.zeros([1], DType.int32);
             final mat = NDArray.fromList(
               [10.0, 50.0, 5.0],
               [1, 3],
@@ -424,7 +424,7 @@ void main() {
           'disposed out array throws StateError',
           () => NDArray.scope(() {
             final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-            final out = NDArray<int>.zeros([], DType.int32);
+            final out = NDArray<AnyInt>.zeros([], DType.int32);
             out.dispose();
 
             expect(() => argmin(a, out: out), throwsStateError);
@@ -438,12 +438,12 @@ void main() {
             final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
 
             // Incompatible shape
-            final outShape = NDArray<int>.zeros([2], DType.int32);
+            final outShape = NDArray<AnyInt>.zeros([2], DType.int32);
             expect(() => argmin(a, out: outShape), throwsArgumentError);
             expect(() => argmax(a, out: outShape), throwsArgumentError);
 
             // Incompatible dtype
-            final outDType = NDArray<double>.zeros([], DType.float64);
+            final outDType = NDArray<AnyFloat>.zeros([], DType.float64);
             expect(
               () => argmin(a, out: outDType as dynamic),
               throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
@@ -713,13 +713,13 @@ void main() {
       test(
         'searchsorted complex and boolean support',
         () => NDArray.scope(() {
-          final aComp = NDArray<Complex>.fromList(
+          final aComp = NDArray<AnyComplex>.fromList(
             [Complex(1.0, 1.0), Complex(2.0, 2.0), Complex(3.0, 3.0)],
             [3],
             DType.complex128,
           );
 
-          final vComp = NDArray<Complex>.fromList(
+          final vComp = NDArray<AnyComplex>.fromList(
             [Complex(1.5, 1.5), Complex(2.0, 2.0)],
             [2],
             DType.complex128,
@@ -904,7 +904,7 @@ void main() {
             throwsArgumentError,
           ); // wrong rank
 
-          final empty = NDArray<double>.create([0], DType.float64);
+          final empty = NDArray<AnyFloat>.create([0], DType.float64);
           expect(findIndex(empty, CompareOp.equal, 1.0), null);
         }),
       );
@@ -1056,7 +1056,7 @@ void main() {
           final resF64 = nonzero(f64);
           expect(resF64[0].toList(), [1]);
 
-          final c128 = NDArray<Complex>.fromList(
+          final c128 = NDArray<AnyComplex>.fromList(
             [Complex(0.0, 0.0), Complex(1.0, 0.0), Complex(0.0, 2.0)],
             [3],
             DType.complex128,
@@ -1087,7 +1087,7 @@ void main() {
       test(
         'partitioning on Complex128 and Complex64 arrays',
         () => NDArray.scope(() {
-          final c128 = NDArray<Complex>.fromList(
+          final c128 = NDArray<AnyComplex>.fromList(
             [
               Complex(3.0, 3.0),
               Complex(1.0, 1.0),
@@ -1103,7 +1103,7 @@ void main() {
           expect(p128List[0].real <= 2.0, true);
           expect(p128List[2].real >= 2.0, true);
 
-          final c64 = NDArray<Complex>.fromList(
+          final c64 = NDArray<AnyComplex>.fromList(
             [
               Complex(3.0, 3.0),
               Complex(1.0, 1.0),
@@ -1175,7 +1175,7 @@ void main() {
           final u8 = NDArray.fromList([3, 1, 2], [3], DType.uint8);
           expect(sort(u8).toList(), [1, 2, 3]);
 
-          final c64 = NDArray<Complex>.fromList(
+          final c64 = NDArray<AnyComplex>.fromList(
             [Complex(3.0, 3.0), Complex(1.0, 1.0), Complex(2.0, 2.0)],
             [3],
             DType.complex64,
@@ -1191,7 +1191,7 @@ void main() {
       test(
         'sorting empty arrays and 0-D scalar arrays',
         () => NDArray.scope(() {
-          final empty = NDArray<double>.create([0], DType.float64);
+          final empty = NDArray<AnyFloat>.create([0], DType.float64);
           expect(sort(empty).toList(), <double>[]);
 
           final scalar = NDArray.scalar(5.0, dtype: DType.float64);
@@ -1207,7 +1207,7 @@ void main() {
           final cond = NDArray.fromList([true, false], [2], DType.boolean);
           final x = NDArray.fromList([1.0, 2.0], [2], DType.float64);
           final y = NDArray.fromList([10.0, 20.0], [2], DType.float64);
-          final out = NDArray<double>.zeros([2], DType.float64);
+          final out = NDArray<AnyFloat>.zeros([2], DType.float64);
 
           final res = where(cond, x, y, out) as NDArray;
           expect(identical(res, out), true);
@@ -1222,7 +1222,7 @@ void main() {
           final x = NDArray.fromList([1.0, 2.0], [2], DType.float64);
           final y = NDArray.fromList([10.0, 20.0], [2], DType.float64);
 
-          final cond9 = NDArray<bool>.zeros([
+          final cond9 = NDArray<Boolean>.zeros([
             1,
             1,
             1,
@@ -1233,7 +1233,7 @@ void main() {
             1,
             2,
           ], DType.boolean);
-          final x9 = NDArray<double>.zeros([
+          final x9 = NDArray<AnyFloat>.zeros([
             1,
             1,
             1,
@@ -1244,7 +1244,7 @@ void main() {
             1,
             2,
           ], DType.float64);
-          final y9 = NDArray<double>.zeros([
+          final y9 = NDArray<AnyFloat>.zeros([
             1,
             1,
             1,
@@ -1257,10 +1257,10 @@ void main() {
           ], DType.float64);
           expect(() => where(cond9, x9, y9), throwsUnsupportedError);
 
-          final outBadShape = NDArray<double>.zeros([3], DType.float64);
+          final outBadShape = NDArray<AnyFloat>.zeros([3], DType.float64);
           expect(() => where(cond, x, y, outBadShape), throwsArgumentError);
 
-          final outBadDType = NDArray<int>.zeros([2], DType.int32);
+          final outBadDType = NDArray<AnyInt>.zeros([2], DType.int32);
           expect(
             () => where(cond, x, y, outBadDType as dynamic),
             throwsArgumentError,
@@ -1286,22 +1286,22 @@ void main() {
         'sort, argsort, partition, argpartition with out parameter',
         () => NDArray.scope(() {
           final a = NDArray.fromList([3.0, 1.0, 2.0], [3], DType.float64);
-          final outSort = NDArray<double>.zeros([3], DType.float64);
+          final outSort = NDArray<AnyFloat>.zeros([3], DType.float64);
           final resSort = sort(a, out: outSort);
           expect(identical(resSort, outSort), isTrue);
           expect(outSort.toList(), [1.0, 2.0, 3.0]);
 
-          final outArgSort = NDArray<int>.zeros([3], DType.int64);
+          final outArgSort = NDArray<AnyInt>.zeros([3], DType.int64);
           final resArgSort = argsort(a, out: outArgSort);
           expect(identical(resArgSort, outArgSort), isTrue);
           expect(outArgSort.toList(), [1, 2, 0]);
 
-          final outPart = NDArray<double>.zeros([3], DType.float64);
+          final outPart = NDArray<AnyFloat>.zeros([3], DType.float64);
           final resPart = partition(a, 1, out: outPart);
           expect(identical(resPart, outPart), isTrue);
           expect(outPart.toList()[1], 2.0);
 
-          final outArgPart = NDArray<int>.zeros([3], DType.int64);
+          final outArgPart = NDArray<AnyInt>.zeros([3], DType.int64);
           final resArgPart = argpartition(a, 1, out: outArgPart);
           expect(identical(resArgPart, outArgPart), isTrue);
         }),
@@ -1316,7 +1316,7 @@ void main() {
             DType.float64,
           );
           final v = NDArray.fromList([2.0, 3.5], [2], DType.float64);
-          final outLeft = NDArray<int>.zeros([2], DType.int64);
+          final outLeft = NDArray<AnyInt>.zeros([2], DType.int64);
           final resLeft = searchsorted(
             a,
             v,
@@ -1326,7 +1326,7 @@ void main() {
           expect(identical(resLeft, outLeft), isTrue);
           expect(outLeft.toList(), [1, 3]);
 
-          final outRight = NDArray<int>.zeros([2], DType.int64);
+          final outRight = NDArray<AnyInt>.zeros([2], DType.int64);
           final resRight = searchsorted(
             a,
             v,
@@ -1367,37 +1367,37 @@ void main() {
           final b = NDArray.fromList([2, 4, 6], [3], DType.int64);
 
           // unique
-          final outU = NDArray<int>.zeros([4], DType.int64);
-          final resU = unique(a, out: outU) as NDArray<int>;
+          final outU = NDArray<AnyInt>.zeros([4], DType.int64);
+          final resU = unique(a, out: outU) as NDArray<AnyInt>;
           expect(identical(resU, outU), isTrue);
           expect(outU.toList(), [1, 2, 3, 4]);
 
           // intersect1d
-          final outInter = NDArray<int>.zeros([2], DType.int64);
+          final outInter = NDArray<AnyInt>.zeros([2], DType.int64);
           final resInter = intersect1d(a, b, out: outInter);
           expect(identical(resInter, outInter), isTrue);
           expect(outInter.toList(), [2, 4]);
 
           // setdiff1d
-          final outDiff = NDArray<int>.zeros([2], DType.int64);
+          final outDiff = NDArray<AnyInt>.zeros([2], DType.int64);
           final resDiff = setdiff1d(a, b, out: outDiff);
           expect(identical(resDiff, outDiff), isTrue);
           expect(outDiff.toList(), [1, 3]);
 
           // setxor1d
-          final outXor = NDArray<int>.zeros([3], DType.int64);
+          final outXor = NDArray<AnyInt>.zeros([3], DType.int64);
           final resXor = setxor1d(a, b, out: outXor);
           expect(identical(resXor, outXor), isTrue);
           expect(outXor.toList(), [1, 3, 6]);
 
           // union1d
-          final outUnion = NDArray<int>.zeros([5], DType.int64);
+          final outUnion = NDArray<AnyInt>.zeros([5], DType.int64);
           final resUnion = union1d(a, b, out: outUnion);
           expect(identical(resUnion, outUnion), isTrue);
           expect(outUnion.toList(), [1, 2, 3, 4, 6]);
 
           // isin
-          final outIsin = NDArray<bool>.zeros([5], DType.boolean);
+          final outIsin = NDArray<Boolean>.zeros([5], DType.boolean);
           final resIsin = isin(a, b, out: outIsin);
           expect(identical(resIsin, outIsin), isTrue);
           expect(outIsin.toList(), [false, true, true, false, true]);

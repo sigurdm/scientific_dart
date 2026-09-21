@@ -67,7 +67,7 @@ void main() {
         shape,
         DType.complex64,
       ),
-      DType.boolean => NDArray<bool>.fromList(list, shape, DType.boolean),
+      DType.boolean => NDArray<Boolean>.fromList(list, shape, DType.boolean),
     };
   }
 

@@ -176,7 +176,7 @@ void main() {
           expect(allClose(a, b), isFalse);
 
           // Also test non-contiguous out buffer with isClose
-          final outFull = NDArray<bool>.zeros([3, 2], DType.boolean);
+          final outFull = NDArray<Boolean>.zeros([3, 2], DType.boolean);
           final outCol = outFull.slice([Slice.all(), Index(1)]);
           expect(outCol.isContiguous, isFalse);
           isClose(a, b, out: outCol);
@@ -229,11 +229,11 @@ void main() {
             DType.float64,
           );
           final pmtVal = NDArray<Float64>.scalar(
-            Float64(-100.0),
+            -100.0,
             dtype: DType.float64,
           );
           final pvVal = NDArray<Float64>.scalar(
-            Float64(-1000.0),
+            -1000.0,
             dtype: DType.float64,
           );
           final out = NDArray<Float64>.zeros([2, 3], DType.float64);
@@ -251,7 +251,7 @@ void main() {
           final cfSliced = cfFull.slice([Slice.all(), Slice.all(), Index(0)]);
           expect(cfSliced.isContiguous, isFalse);
           final scalarRate = NDArray<Float64>.scalar(
-            Float64(0.1),
+            0.1,
             dtype: DType.float64,
           );
           final npvOut = NDArray<Float64>.zeros([1], DType.float64);

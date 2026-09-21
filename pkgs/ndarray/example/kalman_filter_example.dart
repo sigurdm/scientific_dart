@@ -199,7 +199,7 @@ void main() {
         0.0, 1.0, 0.0, dt, //
         0.0, 0.0, 1.0, 0.0, //
         0.0, 0.0, 0.0, 1.0, //
-      ]).map((e) => Float64((e as num).toDouble())).toList(),
+      ]).map((e) => (e as num).toDouble()).toList(),
       [4, 4],
       DType.float64,
     );
@@ -215,7 +215,7 @@ void main() {
         1.0,
         0.0,
         0.0,
-      ]).map((e) => Float64((e as num).toDouble())).toList(),
+      ]).map((e) => (e as num).toDouble()).toList(),
       [2, 4],
       DType.float64,
     );
@@ -227,7 +227,7 @@ void main() {
         0.0, 0.01, 0.0, 0.0, //
         0.0, 0.0, 0.1, 0.0, //
         0.0, 0.0, 0.0, 0.1, //
-      ]).map((e) => Float64((e as num).toDouble())).toList(),
+      ]).map((e) => (e as num).toDouble()).toList(),
       [4, 4],
       DType.float64,
     );
@@ -239,7 +239,7 @@ void main() {
         0.0,
         0.0,
         4.0,
-      ]).map((e) => Float64((e as num).toDouble())).toList(),
+      ]).map((e) => (e as num).toDouble()).toList(),
       [2, 2],
       DType.float64,
     );
@@ -253,7 +253,7 @@ void main() {
         0.0,
         1.0,
         1.0,
-      ]).map((e) => Float64((e as num).toDouble())).toList(),
+      ]).map((e) => (e as num).toDouble()).toList(),
       [4, 1],
       DType.float64,
     );
@@ -265,7 +265,7 @@ void main() {
         -0.5,
         0.0,
         0.0,
-      ]).map((e) => Float64((e as num).toDouble())).toList(),
+      ]).map((e) => (e as num).toDouble()).toList(),
       [4, 1],
       DType.float64,
     );
@@ -275,7 +275,7 @@ void main() {
         0.0, 1.0, 0.0, 0.0, //
         0.0, 0.0, 10.0, 0.0, //
         0.0, 0.0, 0.0, 10.0, //
-      ]).map((e) => Float64((e as num).toDouble())).toList(),
+      ]).map((e) => (e as num).toDouble()).toList(),
       [4, 4],
       DType.float64,
     );

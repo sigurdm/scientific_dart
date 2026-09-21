@@ -10,7 +10,7 @@ void main() async {
     'NDArray Binning, Histograms & Set Operations Benchmark Suite',
     (c) {
       final rand = math.Random(42);
-      final rawData = NDArray<double>.fromList(
+      final rawData = NDArray<AnyFloat>.fromList(
         List.generate(size, (_) => rand.nextDouble() * 100.0),
         [size],
         DType.float64,
@@ -24,7 +24,7 @@ void main() async {
           res.binEdges.dispose();
         }, throughput: Throughput.elements(size));
 
-        final intData = NDArray<int>.fromList(
+        final intData = NDArray<AnyInt>.fromList(
           List.generate(size, (_) => rand.nextInt(500)),
           [size],
           DType.int32,
@@ -45,7 +45,7 @@ void main() async {
       });
 
       c.group('2. Set Operations', () {
-        final repeatedData = NDArray<int>.fromList(
+        final repeatedData = NDArray<AnyInt>.fromList(
           List.generate(size, (_) => rand.nextInt(10000)),
           [size],
           DType.int32,
@@ -57,12 +57,12 @@ void main() async {
           u.dispose();
         }, throughput: Throughput.elements(size));
 
-        final setA = NDArray<int>.fromList(
+        final setA = NDArray<AnyInt>.fromList(
           List.generate(50000, (_) => rand.nextInt(50000)),
           [50000],
           DType.int32,
         );
-        final setB = NDArray<int>.fromList(
+        final setB = NDArray<AnyInt>.fromList(
           List.generate(50000, (_) => rand.nextInt(50000)),
           [50000],
           DType.int32,

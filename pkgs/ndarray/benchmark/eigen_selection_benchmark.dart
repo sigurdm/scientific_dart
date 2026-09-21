@@ -43,14 +43,14 @@ void main() async {
       final innerA = NDArray<Float64>.ones([200, 100], DType.float64);
       final innerB = NDArray<Float64>.ones([200, 100], DType.float64);
       final vdotA = linspace<Float64>(
-        Float64(0.0),
-        Float64(10.0),
+        0.0,
+        10.0,
         size,
         dtype: DType.float64,
       );
       final vdotB = linspace<Float64>(
-        Float64(1.0),
-        Float64(11.0),
+        1.0,
+        11.0,
         size,
         dtype: DType.float64,
       );
@@ -127,8 +127,8 @@ void main() async {
         }, throughput: Throughput.elements(size));
 
         final sortedTarget = linspace<Float64>(
-          Float64(0.0),
-          Float64(1000.0),
+          0.0,
+          1000.0,
           size,
           dtype: DType.float64,
         );

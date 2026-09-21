@@ -180,7 +180,7 @@ void main() {
             DType.float32,
           );
           final out32 = NDArray<Float32>.scalar(
-            Float32(0.0),
+            0.0,
             dtype: DType.float32,
           );
           final res32 = cond(a32, out: out32);

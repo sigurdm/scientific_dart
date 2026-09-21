@@ -14,12 +14,12 @@ void main() {
         for (final length in [1, 8, 9, 17]) {
           NDArray.scope(() {
             final num64 = NDArray<Complex64>.fromList(
-              List.filled(length, Complex64(1.0, 0.0)),
+              List.filled(length, Complex(1.0, 0.0)),
               [length],
               DType.complex64,
             );
             final den64 = NDArray<Complex64>.fromList(
-              List.filled(length, Complex64(1e-25, 0.0)),
+              List.filled(length, Complex(1e-25, 0.0)),
               [length],
               DType.complex64,
             );
@@ -62,12 +62,12 @@ void main() {
             }
 
             final num128 = NDArray<Complex128>.fromList(
-              List.filled(length, Complex128(1.0, 0.0)),
+              List.filled(length, Complex(1.0, 0.0)),
               [length],
               DType.complex128,
             );
             final den128 = NDArray<Complex128>.fromList(
-              List.filled(length, Complex128(1e-200, 0.0)),
+              List.filled(length, Complex(1e-200, 0.0)),
               [length],
               DType.complex128,
             );
@@ -124,7 +124,7 @@ void main() {
           final base128 = NDArray<Complex128>.fromList(
             List.generate(
               17,
-              (i) => Complex128((i + 1).toDouble(), (i + 1) * 2.0),
+              (i) => Complex((i + 1).toDouble(), (i + 1) * 2.0),
             ),
             [17],
             DType.complex128,
@@ -133,7 +133,7 @@ void main() {
           final out128 = base128.slice([const Slice(start: 1, stop: 17)]);
           final expectedAdd128 = List.generate(
             16,
-            (i) => Complex128((i + 1) * 2.0, (i + 1) * 4.0),
+            (i) => Complex((i + 1) * 2.0, (i + 1) * 4.0),
           );
 
           bindings.v_add_complex(
@@ -156,14 +156,14 @@ void main() {
 
           // Complex128 div native overlap
           final baseDiv128 = NDArray<Complex128>.fromList(
-            List.generate(17, (i) => Complex128((i + 2).toDouble(), 0.0)),
+            List.generate(17, (i) => Complex((i + 2).toDouble(), 0.0)),
             [17],
             DType.complex128,
           );
           final aDiv128 = baseDiv128.slice([const Slice(start: 0, stop: 16)]);
           final outDiv128 = baseDiv128.slice([const Slice(start: 1, stop: 17)]);
           final constTwo128 = NDArray<Complex128>.fromList(
-            List.filled(16, Complex128(2.0, 0.0)),
+            List.filled(16, Complex(2.0, 0.0)),
             [16],
             DType.complex128,
           );
@@ -185,7 +185,7 @@ void main() {
           final base64 = NDArray<Complex64>.fromList(
             List.generate(
               17,
-              (i) => Complex64((i + 1).toDouble(), (i + 1).toDouble()),
+              (i) => Complex((i + 1).toDouble(), (i + 1).toDouble()),
             ),
             [17],
             DType.complex64,

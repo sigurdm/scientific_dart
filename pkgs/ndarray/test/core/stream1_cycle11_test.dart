@@ -25,7 +25,7 @@ void main() {
     );
 
     test('detachToParentScope() inside active NDArray scope succeeds', () {
-      NDArray<int>? result;
+      NDArray<AnyInt>? result;
       NDArray.scope(() {
         final arr = NDArray.fromList([10, 20, 30], [3], DType.int32);
         result = arr.detachToParentScope();
@@ -110,7 +110,7 @@ void main() {
         [3],
         DType.float32,
       );
-      final resFloat = NDArray<double>.zeros([3], DType.float32);
+      final resFloat = NDArray<AnyFloat>.zeros([3], DType.float32);
       final mask = NDArray.fromList([true, false, true], [3], DType.boolean);
 
       v_add_float(
@@ -136,7 +136,7 @@ void main() {
         [2],
         DType.complex128,
       );
-      final resCpx = NDArray<Complex>.zeros([2], DType.complex128);
+      final resCpx = NDArray<AnyComplex>.zeros([2], DType.complex128);
       final maskCpx = NDArray.fromList([false, true], [2], DType.boolean);
 
       v_add_complex(

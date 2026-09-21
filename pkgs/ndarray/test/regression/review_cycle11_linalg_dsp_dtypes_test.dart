@@ -7,7 +7,7 @@ void main() {
       group('dtype=${dtype.name}', () {
         test('eig and eigvals promote to float64 / complex128', () {
           NDArray.scope(() {
-            final a = NDArray<double>.fromList(
+            final a = NDArray<AnyFloat>.fromList(
               [2.0, 0.0, 0.0, 3.0],
               [2, 2],
               dtype,
@@ -33,7 +33,7 @@ void main() {
 
         test('cholesky promotes to float64 and decomposes SPD matrix', () {
           NDArray.scope(() {
-            final a = NDArray<double>.fromList(
+            final a = NDArray<AnyFloat>.fromList(
               [4.0, 2.0, 2.0, 5.0],
               [2, 2],
               dtype,
@@ -49,7 +49,7 @@ void main() {
 
         test('qr promotes to float64 and satisfies Q * R == A', () {
           NDArray.scope(() {
-            final a = NDArray<double>.fromList(
+            final a = NDArray<AnyFloat>.fromList(
               [1.0, 2.0, 3.0, 4.0],
               [2, 2],
               dtype,
@@ -67,7 +67,7 @@ void main() {
 
         test('svd promotes to float64 and computes singular values', () {
           NDArray.scope(() {
-            final a = NDArray<double>.fromList(
+            final a = NDArray<AnyFloat>.fromList(
               [3.0, 0.0, 0.0, 4.0],
               [2, 2],
               dtype,
@@ -83,7 +83,7 @@ void main() {
 
         test('eigh and eigvalsh promote to float64 on symmetric matrix', () {
           NDArray.scope(() {
-            final a = NDArray<double>.fromList(
+            final a = NDArray<AnyFloat>.fromList(
               [2.0, 1.0, 1.0, 2.0],
               [2, 2],
               dtype,
@@ -103,7 +103,7 @@ void main() {
 
         test('schur promotes to float64 (real) and complex128 (complex)', () {
           NDArray.scope(() {
-            final a = NDArray<double>.fromList(
+            final a = NDArray<AnyFloat>.fromList(
               [2.0, 1.0, 0.0, 3.0],
               [2, 2],
               dtype,
@@ -125,7 +125,7 @@ void main() {
           'hessenberg promotes to float64 and satisfies Q * H * Q^T == A',
           () {
             NDArray.scope(() {
-              final a = NDArray<double>.fromList(
+              final a = NDArray<AnyFloat>.fromList(
                 [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0],
                 [3, 3],
                 dtype,
@@ -140,12 +140,12 @@ void main() {
 
         test('inv, det, slogdet, solve, pinv, norm, cond, lstsq', () {
           NDArray.scope(() {
-            final a = NDArray<double>.fromList(
+            final a = NDArray<AnyFloat>.fromList(
               [4.0, 1.0, 2.0, 3.0],
               [2, 2],
               dtype,
             );
-            final b = NDArray<double>.fromList([1.0, 2.0], [2], dtype);
+            final b = NDArray<AnyFloat>.fromList([1.0, 2.0], [2], dtype);
 
             final d = det(a);
             expect(d.scalar, closeTo(10.0, 1e-1));
@@ -197,8 +197,8 @@ void main() {
     for (final dtype in intDTypes) {
       test('correlate and convolve support integer dtype=${dtype.name}', () {
         NDArray.scope(() {
-          final a = NDArray<int>.fromList([1, 2, 3, 4], [4], dtype);
-          final v = NDArray<int>.fromList([1, 2], [2], dtype);
+          final a = NDArray<AnyInt>.fromList([1, 2, 3, 4], [4], dtype);
+          final v = NDArray<AnyInt>.fromList([1, 2], [2], dtype);
 
           // correlate valid: [1*1 + 2*2, 2*1 + 3*2, 3*1 + 4*2] = [5, 8, 11]
           final corrValid = correlate<int, int, int>(
@@ -255,8 +255,8 @@ void main() {
     for (final dtype in <DType<double>>[DType.float16, DType.bfloat16]) {
       test('correlate and convolve support half-float dtype=${dtype.name}', () {
         NDArray.scope(() {
-          final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0], [4], dtype);
-          final v = NDArray<double>.fromList([1.0, 2.0], [2], dtype);
+          final a = NDArray<AnyFloat>.fromList([1.0, 2.0, 3.0, 4.0], [4], dtype);
+          final v = NDArray<AnyFloat>.fromList([1.0, 2.0], [2], dtype);
 
           final corrValid = correlate<double, double, double>(
             a,

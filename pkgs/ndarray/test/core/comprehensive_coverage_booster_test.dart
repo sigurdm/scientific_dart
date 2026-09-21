@@ -47,7 +47,7 @@ void main() {
       DType.uint8,
     ];
 
-    NDArray<Object> createArray(
+    NDArray<AnyDType> createArray(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -64,11 +64,11 @@ void main() {
 
       final dtObj = dt as DType<Object>;
       if (strided) {
-        final flatArr = NDArray<Object>.fromList(rawList, [size * 2], dtObj);
+        final flatArr = NDArray<AnyDType>.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<Object>.fromList(rawList, shape, dtObj);
+        return NDArray<AnyDType>.fromList(rawList, shape, dtObj);
       }
     }
 
@@ -80,7 +80,7 @@ void main() {
             for (final isStrided in [false, true]) {
               final a = createArray(dt, [2, 3], strided: isStrided);
               final b = createArray(dt, [2, 3], strided: isStrided);
-              final mask = NDArray<bool>.fromList(
+              final mask = NDArray<Boolean>.fromList(
                 [true, false, true, false, true, false],
                 [2, 3],
                 DType.boolean,
@@ -128,7 +128,7 @@ void main() {
           for (final dt in allDTypes) {
             for (final isStrided in [false, true]) {
               final a = createArray(dt, [2, 3], strided: isStrided);
-              final mask = NDArray<bool>.fromList(
+              final mask = NDArray<Boolean>.fromList(
                 [true, false, true, false, true, false],
                 [2, 3],
                 DType.boolean,
@@ -225,7 +225,7 @@ void main() {
             for (final isStrided in [false, true]) {
               final a = createArray(dt, [2, 2], strided: isStrided);
               final b = createArray(dt, [2, 2], strided: isStrided);
-              final mask = NDArray<bool>.fromList(
+              final mask = NDArray<Boolean>.fromList(
                 [true, false, true, false],
                 [2, 2],
                 DType.boolean,

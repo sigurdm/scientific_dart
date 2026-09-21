@@ -115,7 +115,7 @@ void main() {
         final initialMarker = ScratchArena.marker;
         NDArray.scope(() {
           final shape8 = [2, 1, 1, 1, 1, 1, 1, 2]; // rank 8, size 4
-          final cond8 = NDArray<bool>.fromList(
+          final cond8 = NDArray<Boolean>.fromList(
             [true, false, false, true],
             shape8,
             DType.boolean,
@@ -135,7 +135,7 @@ void main() {
           expect(res8.reshape([4]).toList(), equals([1.0, 20.0, 30.0, 4.0]));
 
           final shape9 = [2, 1, 1, 1, 1, 1, 1, 1, 2]; // rank 9, size 4
-          final cond9 = NDArray<bool>.fromList(
+          final cond9 = NDArray<Boolean>.fromList(
             [true, false, false, true],
             shape9,
             DType.boolean,

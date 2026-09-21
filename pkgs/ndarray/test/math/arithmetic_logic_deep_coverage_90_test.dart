@@ -41,7 +41,7 @@ void main() {
     DType.bfloat16,
   ];
 
-  NDArray<Object> makeSampleArray(
+  NDArray<AnyDType> makeSampleArray(
     DType dt,
     List<int> shape, {
     int seed = 1,
@@ -50,40 +50,40 @@ void main() {
     final size = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     if (dt == DType.boolean) {
       final raw = List<bool>.generate(size, (i) => (i + seed) % 2 == 0);
-      return NDArray<bool>.fromList(raw, shape, DType.boolean);
+      return NDArray<Boolean>.fromList(raw, shape, DType.boolean);
     }
     if (dt == DType.complex128) {
       final raw = List<Complex>.generate(size, (i) {
         final baseVal = nonZero ? ((i + seed) % 5) + 2 : ((i + seed) % 5);
         return Complex(baseVal.toDouble(), 1.0);
       });
-      return NDArray<Complex>.fromList(raw, shape, DType.complex128);
+      return NDArray<AnyComplex>.fromList(raw, shape, DType.complex128);
     }
     if (dt == DType.complex64) {
       final raw = List<Complex>.generate(size, (i) {
         final baseVal = nonZero ? ((i + seed) % 5) + 2 : ((i + seed) % 5);
         return Complex(baseVal.toDouble(), 1.0);
       });
-      return NDArray<Complex>.fromList(raw, shape, DType.complex64);
+      return NDArray<AnyComplex>.fromList(raw, shape, DType.complex64);
     }
     if (floatDTypes.contains(dt)) {
       final raw = List<double>.generate(size, (i) {
         final baseVal = nonZero ? ((i + seed) % 5) + 2 : ((i + seed) % 5);
         return baseVal.toDouble();
       });
-      return NDArray<double>.fromList(raw, shape, dt as DType<double>);
+      return NDArray<AnyFloat>.fromList(raw, shape, dt as DType<double>);
     }
     final raw = List<int>.generate(size, (i) {
       final baseVal = nonZero ? ((i + seed) % 5) + 2 : ((i + seed) % 5);
       return baseVal;
     });
-    return NDArray<int>.fromList(raw, shape, dt as DType<int>);
+    return NDArray<AnyInt>.fromList(raw, shape, dt as DType<int>);
   }
 
-  void testUnaryHelper<T extends Object>(
+  void testUnaryHelper<T extends AnyDType>(
     NDArray<T> a,
     NDArray<T> aTrans,
-    NDArray<bool> mask, {
+    NDArray<Boolean> mask, {
     bool testNegative = true,
     bool testPositive = true,
     bool testRounding = false,
@@ -214,7 +214,7 @@ void main() {
   group('Unary Operations Deep Coverage across all 15 DTypes', () {
     test('negative, positive, abs, square, sqrt, reciprocal across DTypes', () {
       NDArray.scope(() {
-        final mask = NDArray<bool>.fromList(
+        final mask = NDArray<Boolean>.fromList(
           [true, false, true, false, true, false],
           [2, 3],
           DType.boolean,
@@ -228,14 +228,14 @@ void main() {
           if (dt == DType.boolean) {
             expect(() => positive(aContig), throwsUnsupportedError);
             expect(() => negative(aContig), throwsUnsupportedError);
-            final conj1 = conj(aContig as NDArray<bool>);
+            final conj1 = conj(aContig as NDArray<Boolean>);
             expect(conj1.shape, [2, 3]);
-            final conj2 = conjugate(aTrans as NDArray<bool>, where: mask);
+            final conj2 = conjugate(aTrans as NDArray<Boolean>, where: mask);
             expect(conj2.shape, [2, 3]);
           } else if (dt.isComplex) {
             testUnaryHelper<Complex>(
-              aContig as NDArray<Complex>,
-              aTrans as NDArray<Complex>,
+              aContig as NDArray<AnyComplex>,
+              aTrans as NDArray<AnyComplex>,
               mask,
               testNegative: true,
               testPositive: true,
@@ -247,8 +247,8 @@ void main() {
             expect(() => fix(aContig), throwsUnsupportedError);
           } else if (floatDTypes.contains(dt)) {
             testUnaryHelper<double>(
-              aContig as NDArray<double>,
-              aTrans as NDArray<double>,
+              aContig as NDArray<AnyFloat>,
+              aTrans as NDArray<AnyFloat>,
               mask,
               testNegative: true,
               testPositive: true,
@@ -257,8 +257,8 @@ void main() {
             );
           } else {
             testUnaryHelper<int>(
-              aContig as NDArray<int>,
-              aTrans as NDArray<int>,
+              aContig as NDArray<AnyInt>,
+              aTrans as NDArray<AnyInt>,
               mask,
               testNegative: true,
               testPositive: true,
@@ -272,9 +272,9 @@ void main() {
 
     test('Unary operations error handling & invalid buffer checks', () {
       NDArray.scope(() {
-        final a = NDArray<double>.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-        final badOutShape = NDArray<double>.zeros([4], DType.float64);
-        final badOutDType = NDArray<double>.zeros([3], DType.float32);
+        final a = NDArray<AnyFloat>.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final badOutShape = NDArray<AnyFloat>.zeros([4], DType.float64);
+        final badOutDType = NDArray<AnyFloat>.zeros([3], DType.float32);
 
         // Incompatible shape/dtype out errors
         expect(() => sqrt(a, out: badOutShape), throwsArgumentError);
@@ -303,7 +303,7 @@ void main() {
         expect(() => conj(a, out: badOutDType), throwsArgumentError);
 
         // Disposed array errors
-        final dispArr = NDArray<double>.fromList(
+        final dispArr = NDArray<AnyFloat>.fromList(
           [1.0, 2.0],
           [2],
           DType.float64,
@@ -331,7 +331,7 @@ void main() {
       'divmod, remainder, mod, fmod, floor_divide across Integer and Float types',
       () {
         NDArray.scope(() {
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false, true, false],
             [2, 3],
             DType.boolean,
@@ -418,7 +418,7 @@ void main() {
 
     test('gcd, lcm, heaviside across applicable DTypes and Strided Views', () {
       NDArray.scope(() {
-        final mask = NDArray<bool>.fromList(
+        final mask = NDArray<Boolean>.fromList(
           [true, false, true, false, true, false],
           [2, 3],
           DType.boolean,
@@ -503,7 +503,7 @@ void main() {
       'logaddexp, logaddexp2, copysign with Broadcasting & Strided Views',
       () {
         NDArray.scope(() {
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false, true, false],
             [2, 3],
             DType.boolean,
@@ -548,15 +548,15 @@ void main() {
 
     test('Binary operations error cases & unsupported operands', () {
       NDArray.scope(() {
-        final aFloat = NDArray<double>.fromList([1.0, 2.0], [2], DType.float64);
-        final bFloat = NDArray<double>.fromList([3.0, 4.0], [2], DType.float64);
-        final cCplx = NDArray<Complex>.fromList(
+        final aFloat = NDArray<AnyFloat>.fromList([1.0, 2.0], [2], DType.float64);
+        final bFloat = NDArray<AnyFloat>.fromList([3.0, 4.0], [2], DType.float64);
+        final cCplx = NDArray<AnyComplex>.fromList(
           [Complex(1.0, 2.0)],
           [1],
           DType.complex128,
         );
-        final bZeroInt = NDArray<int>.fromList([0, 2], [2], DType.int32);
-        final aInt = NDArray<int>.fromList([4, 6], [2], DType.int32);
+        final bZeroInt = NDArray<AnyInt>.fromList([0, 2], [2], DType.int32);
+        final aInt = NDArray<AnyInt>.fromList([4, 6], [2], DType.int32);
 
         // Complex unsupported for logaddexp, logaddexp2, heaviside, copysign, fmod
         expect(() => logaddexp(aFloat, cCplx), throwsUnsupportedError);
@@ -572,14 +572,14 @@ void main() {
         expect(() => divmod(aInt, bZeroInt), throwsUnsupportedError);
 
         // Incompatible broadcast shapes
-        final badShape = NDArray<double>.zeros([5], DType.float64);
+        final badShape = NDArray<AnyFloat>.zeros([5], DType.float64);
         expect(() => add(aFloat, badShape), throwsArgumentError);
         expect(() => subtract(aFloat, badShape), throwsArgumentError);
         expect(() => multiply(aFloat, badShape), throwsArgumentError);
         expect(() => divide(aFloat, badShape), throwsArgumentError);
 
         // Disposed array errors
-        final disp = NDArray<double>.zeros([2], DType.float64);
+        final disp = NDArray<AnyFloat>.zeros([2], DType.float64);
         disp.dispose();
         expect(() => add(disp, bFloat), throwsStateError);
         expect(() => subtract(aFloat, disp), throwsStateError);
@@ -599,7 +599,7 @@ void main() {
   group('Logical & Comparison Operations Deep Coverage', () {
     test('logical_not across all 15 DTypes in Contiguous and Strided views', () {
       NDArray.scope(() {
-        final mask = NDArray<bool>.fromList(
+        final mask = NDArray<Boolean>.fromList(
           [true, false, true, false, true, false],
           [2, 3],
           DType.boolean,
@@ -620,7 +620,7 @@ void main() {
           expect(not2.dtype, DType.boolean);
 
           // Out buffer reuse
-          final outBuf = NDArray<bool>.zeros([2, 3], DType.boolean);
+          final outBuf = NDArray<Boolean>.zeros([2, 3], DType.boolean);
           final not3 = logical_not(aContig, out: outBuf);
           expect(identical(not3, outBuf), isTrue);
         }
@@ -631,7 +631,7 @@ void main() {
       'logical_and, logical_or, logical_xor across all 15 DTypes with Broadcasting',
       () {
         NDArray.scope(() {
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false, true, false],
             [2, 3],
             DType.boolean,
@@ -683,7 +683,7 @@ void main() {
       'equal, not_equal, greater, greater_equal, less, less_equal across DTypes',
       () {
         NDArray.scope(() {
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false, true, false],
             [2, 3],
             DType.boolean,
@@ -760,9 +760,9 @@ void main() {
 
     test('Logical and Comparison error cases and invalid out buffers', () {
       NDArray.scope(() {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([1, 4, 3], [3], DType.int32);
-        final badShapeOut = NDArray<bool>.zeros([5], DType.boolean);
+        final a = NDArray<AnyInt>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<AnyInt>.fromList([1, 4, 3], [3], DType.int32);
+        final badShapeOut = NDArray<Boolean>.zeros([5], DType.boolean);
 
         expect(() => logical_not(a, out: badShapeOut), throwsArgumentError);
         expect(() => equal(a, b, out: badShapeOut), throwsArgumentError);
@@ -775,7 +775,7 @@ void main() {
         expect(() => logical_or(a, b, out: badShapeOut), throwsArgumentError);
         expect(() => logical_xor(a, b, out: badShapeOut), throwsArgumentError);
 
-        final disp = NDArray<bool>.fromList([true], [1], DType.boolean);
+        final disp = NDArray<Boolean>.fromList([true], [1], DType.boolean);
         disp.dispose();
         expect(() => logical_not(disp), throwsStateError);
         expect(() => logical_and(disp, disp), throwsStateError);
@@ -796,7 +796,7 @@ void main() {
       'bitwise_and, bitwise_or, bitwise_xor, invert, left_shift, right_shift on supported integer types',
       () {
         NDArray.scope(() {
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false, true, false],
             [2, 3],
             DType.boolean,
@@ -896,13 +896,13 @@ void main() {
 
     test('Bitwise operations error cases & type validation', () {
       NDArray.scope(() {
-        final floatArr = NDArray<double>.fromList(
+        final floatArr = NDArray<AnyFloat>.fromList(
           [1.0, 2.0],
           [2],
           DType.float64,
         );
-        final intArr = NDArray<int>.fromList([1, 2], [2], DType.int32);
-        final boolArr = NDArray<bool>.fromList(
+        final intArr = NDArray<AnyInt>.fromList([1, 2], [2], DType.int32);
+        final boolArr = NDArray<Boolean>.fromList(
           [true, false],
           [2],
           DType.boolean,
@@ -918,7 +918,7 @@ void main() {
         expect(() => right_shift(intArr, floatArr), throwsArgumentError);
 
         // Disposed array throws StateError
-        final disp = NDArray<int>.fromList([1, 2], [2], DType.int32);
+        final disp = NDArray<AnyInt>.fromList([1, 2], [2], DType.int32);
         disp.dispose();
         expect(() => invert(disp), throwsStateError);
         expect(() => bitwise_and(disp, intArr), throwsStateError);
@@ -935,14 +935,14 @@ void main() {
       'isnan, isinf, isfinite across Float, Complex, Int, and Bool types',
       () {
         NDArray.scope(() {
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false],
             [2, 2],
             DType.boolean,
           );
 
           // Float64 special values
-          final f64Arr = NDArray<double>.fromList(
+          final f64Arr = NDArray<AnyFloat>.fromList(
             [0.0, double.nan, double.infinity, double.negativeInfinity],
             [2, 2],
             DType.float64,
@@ -965,7 +965,7 @@ void main() {
           expect(finRes2.shape, [2, 2]);
 
           // Float32 special values
-          final f32Arr = NDArray<double>.fromList(
+          final f32Arr = NDArray<AnyFloat>.fromList(
             [1.0, double.nan, double.infinity, -2.5],
             [2, 2],
             DType.float32,
@@ -975,7 +975,7 @@ void main() {
           expect(isfinite(f32Arr).data, [true, false, false, true]);
 
           // Complex128 special values
-          final c128Arr = NDArray<Complex>.fromList(
+          final c128Arr = NDArray<AnyComplex>.fromList(
             [
               Complex(1.0, 2.0),
               Complex(double.nan, 0.0),
@@ -994,7 +994,7 @@ void main() {
           expect(isfinite(c128Trans, where: mask).shape, [2, 2]);
 
           // Complex64 special values
-          final c64Arr = NDArray<Complex>.fromList(
+          final c64Arr = NDArray<AnyComplex>.fromList(
             [
               Complex(3.0, 4.0),
               Complex(double.nan, 1.0),
@@ -1042,18 +1042,18 @@ void main() {
       'copysign with Subnormals, Signed Zeros, Infinities, and Out Buffers',
       () {
         NDArray.scope(() {
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false],
             [2, 2],
             DType.boolean,
           );
 
-          final x1 = NDArray<double>.fromList(
+          final x1 = NDArray<AnyFloat>.fromList(
             [1.0, -2.0, 3.0, -4.0],
             [2, 2],
             DType.float64,
           );
-          final x2 = NDArray<double>.fromList(
+          final x2 = NDArray<AnyFloat>.fromList(
             [-1.0, 1.0, -0.0, 0.0],
             [2, 2],
             DType.float64,
@@ -1065,17 +1065,17 @@ void main() {
           final res2 = copysign(x1.transpose(), x2.transpose(), where: mask);
           expect(res2.shape, [2, 2]);
 
-          final outBuf = NDArray<double>.zeros([2, 2], DType.float64);
+          final outBuf = NDArray<AnyFloat>.zeros([2, 2], DType.float64);
           final res3 = copysign(x1, x2, out: outBuf);
           expect(identical(res3, outBuf), isTrue);
 
           // Float32 copysign
-          final f32_1 = NDArray<double>.fromList(
+          final f32_1 = NDArray<AnyFloat>.fromList(
             [5.0, -6.0],
             [2],
             DType.float32,
           );
-          final f32_2 = NDArray<double>.fromList(
+          final f32_2 = NDArray<AnyFloat>.fromList(
             [-1.0, 1.0],
             [2],
             DType.float32,
@@ -1084,8 +1084,8 @@ void main() {
           expect(f32Res.data, [-5.0, 6.0]);
 
           // Integer copysign
-          final int1 = NDArray<int>.fromList([10, -20], [2], DType.int32);
-          final int2 = NDArray<int>.fromList([-1, 1], [2], DType.int32);
+          final int1 = NDArray<AnyInt>.fromList([10, -20], [2], DType.int32);
+          final int2 = NDArray<AnyInt>.fromList([-1, 1], [2], DType.int32);
           final intRes = copysign(int1, int2);
           expect(intRes.data, [-10, 20]);
         });
@@ -1096,12 +1096,12 @@ void main() {
       'isClose & allClose with various tolerances, equalNan, Infs, and Complex',
       () {
         NDArray.scope(() {
-          final a = NDArray<double>.fromList(
+          final a = NDArray<AnyFloat>.fromList(
             [1.0, 2.0, double.nan, double.infinity],
             [4],
             DType.float64,
           );
-          final b = NDArray<double>.fromList(
+          final b = NDArray<AnyFloat>.fromList(
             [1.000001, 2.0, double.nan, double.infinity],
             [4],
             DType.float64,
@@ -1121,12 +1121,12 @@ void main() {
           expect(close3.data, [false, true, true, true]);
 
           // Complex isClose
-          final cA = NDArray<Complex>.fromList(
+          final cA = NDArray<AnyComplex>.fromList(
             [Complex(1.0, 2.0), Complex(double.nan, 1.0)],
             [2],
             DType.complex128,
           );
-          final cB = NDArray<Complex>.fromList(
+          final cB = NDArray<AnyComplex>.fromList(
             [Complex(1.000001, 2.0), Complex(double.nan, 1.0)],
             [2],
             DType.complex128,
@@ -1134,8 +1134,8 @@ void main() {
           expect(allClose(cA, cB, equalNan: true), isTrue);
 
           // Mixed real and complex isClose
-          final rA = NDArray<double>.fromList([1.0, 2.0], [2], DType.float64);
-          final cB2 = NDArray<Complex>.fromList(
+          final rA = NDArray<AnyFloat>.fromList([1.0, 2.0], [2], DType.float64);
+          final cB2 = NDArray<AnyComplex>.fromList(
             [Complex(1.0, 0.0), Complex(2.0, 0.0)],
             [2],
             DType.complex128,
@@ -1144,22 +1144,22 @@ void main() {
           expect(allClose(cB2, rA), isTrue);
 
           // Strided transposed isClose with where mask and out buffer
-          final a2D = NDArray<double>.fromList(
+          final a2D = NDArray<AnyFloat>.fromList(
             [1.0, 2.0, 3.0, 4.0],
             [2, 2],
             DType.float64,
           );
-          final b2D = NDArray<double>.fromList(
+          final b2D = NDArray<AnyFloat>.fromList(
             [1.0, 2.0, 3.0, 4.0],
             [2, 2],
             DType.float64,
           );
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false],
             [2, 2],
             DType.boolean,
           );
-          final outClose = NDArray<bool>.zeros([2, 2], DType.boolean);
+          final outClose = NDArray<Boolean>.zeros([2, 2], DType.boolean);
           final resClose = isClose(
             a2D.transpose(),
             b2D.transpose(),

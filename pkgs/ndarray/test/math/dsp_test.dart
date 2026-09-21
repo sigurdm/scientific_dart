@@ -102,7 +102,7 @@ void main() {
 
     test('invalid type and real/integer support', () {
       NDArray.scope(() {
-        final boolArray = NDArray<bool>.fromList(
+        final boolArray = NDArray<Boolean>.fromList(
           [true, false],
           [2],
           DType.boolean,

@@ -300,7 +300,7 @@ void main() {
           [5],
           DType.float64,
         );
-        final outRfft = NDArray<Complex>.zeros([3], DType.complex128);
+        final outRfft = NDArray<AnyComplex>.zeros([3], DType.complex128);
         final resRfft = rfft(input, n: 5, out: outRfft);
         expect(identical(resRfft, outRfft), isTrue);
         expect(resRfft.isDisposed, isFalse);
@@ -460,7 +460,7 @@ void main() {
           );
 
           // eigh return generic <T> check
-          ({NDArray<num> eigenvalues, NDArray<Float64> eigenvectors}) resEigh =
+          ({NDArray<AnyReal> eigenvalues, NDArray<Float64> eigenvectors}) resEigh =
               eigh<Float64, Float64>(mat);
           expect(resEigh.eigenvectors.dtype, equals(DType.float64));
 

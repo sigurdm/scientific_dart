@@ -21,7 +21,7 @@ void main() {
       DType.boolean,
     ];
 
-    NDArray<Object> makeArr(DType dt, List<int> shape, {int seed = 2}) {
+    NDArray<AnyDType> makeArr(DType dt, List<int> shape, {int seed = 2}) {
       final size = shape.reduce((a, b) => a * b);
       final rawList = List<Object>.generate(size, (i) {
         final val = ((i + seed) % 5) + 2;
@@ -32,14 +32,14 @@ void main() {
         return val;
       });
 
-      return NDArray<Object>.fromList(rawList, shape, dt as DType<Object>);
+      return NDArray<AnyDType>.fromList(rawList, shape, dt as DType<Object>);
     }
 
     test(
       'All Cross-DType Pairs for arctan2, hypot, logaddexp, logaddexp2 across Contiguous, Transposed & Broadcast',
       () {
         NDArray.scope(() {
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false, true, false],
             [2, 3],
             DType.boolean,
@@ -107,7 +107,7 @@ void main() {
       'All Unary Transcendental Functions across Contiguous & Transposed Views',
       () {
         NDArray.scope(() {
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false, true, false],
             [2, 3],
             DType.boolean,

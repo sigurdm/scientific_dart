@@ -22,7 +22,7 @@ void main() {
     final angle = time * (2.0 * math.pi * 10.0);
     final NDArray<Float64> pureSignal = multiply(
       sin(angle),
-      NDArray.scalar(Float64(5.0), dtype: DType.float64),
+      NDArray.scalar(5.0, dtype: DType.float64),
     );
     print(
       '1. Generated pure 10 Hz sine wave signal (size: $numPoints points).',
@@ -50,7 +50,7 @@ void main() {
 
     // 4. Vectorized Low-pass Filter: Zero out high frequencies (noise) above 15 Hz!
     final highFreqMask = freqs > 15.0;
-    fftCoeffs.setByMaskScalar(highFreqMask, Complex128(0.0, 0.0));
+    fftCoeffs.setByMaskScalar(highFreqMask, Complex(0.0, 0.0));
     print(
       '4. Low-pass filter applied: zeroed out high-frequency noise bins (> 15 Hz) via boolean mask.',
     );

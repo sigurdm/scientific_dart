@@ -36,7 +36,7 @@ void main() {
           DType.float64,
         ); // x^2 - 3x + 2
         final x = NDArray.fromList([0.0, 1.0, 2.0], [3], DType.float64);
-        final out = NDArray<double>.zeros([3], DType.float64);
+        final out = NDArray<AnyFloat>.zeros([3], DType.float64);
         final res = polyval(c, x, out: out);
         expect(identical(res, out), isTrue);
         expect(out.getCell([0]), closeTo(2.0, 1e-6));
@@ -315,7 +315,7 @@ void main() {
         expect(yStrided.getCell([2]), closeTo(6.0, 1e-5));
 
         // Out buffer with strided array
-        final outBuf = NDArray<double>.zeros([3], DType.float64);
+        final outBuf = NDArray<AnyFloat>.zeros([3], DType.float64);
         final res = chebval(c, xSlice, out: outBuf);
         expect(identical(res, outBuf), isTrue);
         expect(outBuf.getCell([0]), closeTo(-2.0, 1e-5));

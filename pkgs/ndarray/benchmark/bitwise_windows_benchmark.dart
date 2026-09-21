@@ -44,10 +44,10 @@ void main() async {
       });
 
       c.group('3. Bitwise Integer Operations (100k elements)', () {
-        final intA = NDArray<int>.fromList(List.generate(size, (i) => i * 13), [
+        final intA = NDArray<AnyInt>.fromList(List.generate(size, (i) => i * 13), [
           size,
         ], DType.int32);
-        final intB = NDArray<int>.fromList(
+        final intB = NDArray<AnyInt>.fromList(
           List.generate(size, (i) => i * 7 + 1),
           [size],
           DType.int32,
@@ -77,7 +77,7 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(size));
 
-        final shiftAmt = NDArray<int>.fromList(
+        final shiftAmt = NDArray<AnyInt>.fromList(
           List.generate(size, (i) => (i % 8)),
           [size],
           DType.int32,

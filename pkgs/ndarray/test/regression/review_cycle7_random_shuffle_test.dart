@@ -272,7 +272,7 @@ void main() {
           for (var i = 0; i < 6; i++) {
             for (var k = 0; k < 4; k++) {
               final coords = <int>[i, ...List<int>.filled(32, 0), k];
-              base.setCell(coords, Float64((i + 1) * 100.0 + k));
+              base.setCell(coords, (i + 1) * 100.0 + k);
             }
           }
 

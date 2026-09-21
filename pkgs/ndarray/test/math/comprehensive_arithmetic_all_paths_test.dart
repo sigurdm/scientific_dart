@@ -49,7 +49,7 @@ void main() {
               dt,
             );
 
-            final mask = NDArray<bool>.fromList(
+            final mask = NDArray<Boolean>.fromList(
               List.generate(16, (i) => i % 2 == 0),
               [2, 2, 2, 2],
               DType.boolean,

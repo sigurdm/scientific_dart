@@ -23,7 +23,7 @@ void runStaticTypedAddressingExample() {
     final cellVal = mat.getCell([0, 1]);
     print('getCell([0, 1]) -> expected 20.0: $cellVal');
 
-    mat.setCell([1, 0], Float64(99.0));
+    mat.setCell([1, 0], 99.0);
     print(
       'After setCell([1, 0], 99.0) data -> expected [10, 20, 99, 40]: ${mat.toList()}',
     );
@@ -32,10 +32,10 @@ void runStaticTypedAddressingExample() {
     final arr = NDArray.fromList(Float64List.fromList([-1.0, 5.0, -3.0, 8.0]), [
       4,
     ], DType.float64);
-    final negativeMask = arr < 0.0; // returns an NDArray<bool> mask
+    final negativeMask = arr < 0.0; // returns an NDArray<Boolean> mask
 
     // Clips all negative elements to 0.0 explicitly!
-    arr.setByMaskScalar(negativeMask, Float64(0.0));
+    arr.setByMaskScalar(negativeMask, 0.0);
     print(
       'After setByMask clipping negatives -> expected [0, 5, 0, 8]: ${arr.toList()}',
     );
@@ -46,7 +46,7 @@ void runStaticTypedAddressingExample() {
     ], DType.int32);
     final targetIndices = NDArray.fromList([0, 4], [2], DType.int32);
 
-    bigVec.setIndicesScalar(targetIndices, Int32(999));
+    bigVec.setIndicesScalar(targetIndices, 999);
     print(
       'After setIndicesScalar positions [0, 4] -> expected [999, 20, 30, 40, 999]: ${bigVec.toList()}\n',
     );

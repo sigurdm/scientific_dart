@@ -18,7 +18,7 @@ final class ImageConvolution {
       Slice(start: startY, stop: endY),
       Slice(start: startX, stop: endX),
     ]);
-    subView.fill(Float64(1.0));
+    subView.fill(1.0);
 
     return image;
   }
@@ -62,7 +62,7 @@ final class ImageConvolution {
             sum += imVal * kVal;
           }
         }
-        result.setCell([i, j], Float64(sum));
+        result.setCell([i, j], sum);
       }
     }
     return result;
@@ -100,7 +100,7 @@ final class ImageConvolution {
     final NDArray<Float64> result =
         out ?? NDArray<Float64>.zeros([outH, outW], DType.float64);
     if (out != null) {
-      result.fill(Float64(0.0));
+      result.fill(0.0);
     }
 
     // Pre-allocate temp buffer for scaled slice.
@@ -113,7 +113,7 @@ final class ImageConvolution {
         final kVal = kernel.getCell([i, j]);
         if (kVal == 0.0) continue;
 
-        factor.setCell([0], Float64(kVal));
+        factor.setCell([0], kVal);
 
         final imSlice = image.slice([
           Slice(start: i, stop: outH + i),
@@ -227,15 +227,15 @@ void main() {
     print('Defining Sobel kernels...');
     final sobelX = NDArray<Float64>.fromList(
       <Float64>[
-        Float64(-1.0),
-        Float64(0.0),
-        Float64(1.0),
-        Float64(-2.0),
-        Float64(0.0),
-        Float64(2.0),
-        Float64(-1.0),
-        Float64(0.0),
-        Float64(1.0),
+        -1.0,
+        0.0,
+        1.0,
+        -2.0,
+        0.0,
+        2.0,
+        -1.0,
+        0.0,
+        1.0,
       ],
       [3, 3],
       DType.float64,
@@ -243,22 +243,22 @@ void main() {
 
     final sobelY = NDArray<Float64>.fromList(
       <Float64>[
-        Float64(-1.0),
-        Float64(-2.0),
-        Float64(-1.0),
-        Float64(0.0),
-        Float64(0.0),
-        Float64(0.0),
-        Float64(1.0),
-        Float64(2.0),
-        Float64(1.0),
+        -1.0,
+        -2.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        2.0,
+        1.0,
       ],
       [3, 3],
       DType.float64,
     );
 
     final constantTwo = NDArray<Float64>.fromList(
-      <Float64>[Float64(2.0)],
+      <Float64>[2.0],
       [1],
       DType.float64,
     );
@@ -317,7 +317,7 @@ void main() {
 
     // Generic Magnitude - Hypot
     final stopwatchGenericHypot = Stopwatch()..start();
-    late NDArray<double> magnitudeGenericHypot;
+    late NDArray<AnyFloat> magnitudeGenericHypot;
     for (var i = 0; i < iterations; i++) {
       magnitudeGenericHypot = hypot(gradXGeneric, gradYGeneric);
       if (i < iterations - 1) {

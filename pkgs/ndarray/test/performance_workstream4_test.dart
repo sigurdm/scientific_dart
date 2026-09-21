@@ -7,7 +7,7 @@ void main() {
       'Sorts 1D uint8 array correctly with Counting Sort (kind = quicksort)',
       () {
         final data = [255, 0, 128, 42, 0, 255, 128, 7, 3, 250, 100, 100, 100];
-        final a = NDArray<int>.fromList(data, [data.length], DType.uint8);
+        final a = NDArray<AnyInt>.fromList(data, [data.length], DType.uint8);
         final sorted = sort(a, kind: SortKind.quicksort);
 
         final expected = List<int>.from(data)..sort();
@@ -21,7 +21,7 @@ void main() {
       for (var i = 255; i >= 0; i--) {
         data.addAll(List.filled(10, i));
       }
-      final a = NDArray<int>.fromList(data, [data.length], DType.uint8);
+      final a = NDArray<AnyInt>.fromList(data, [data.length], DType.uint8);
       final sorted = sort(a);
 
       final expected = List<int>.from(data)..sort();
@@ -29,7 +29,7 @@ void main() {
     });
 
     test('Sorts 2D uint8 matrix along axis 0 and 1', () {
-      final a = NDArray<int>.fromList(
+      final a = NDArray<AnyInt>.fromList(
         [100, 20, 50, 10, 200, 30],
         [2, 3],
         DType.uint8,
@@ -46,12 +46,12 @@ void main() {
   group('Workstream 4: Level 2 BLAS GEMV', () {
     test('Matrix (2D) x Vector (1D) float64', () {
       // A: 2x3, x: 3 -> y: 2
-      final a = NDArray<double>.fromList(
+      final a = NDArray<AnyFloat>.fromList(
         [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
         [2, 3],
         DType.float64,
       );
-      final x = NDArray<double>.fromList([0.5, -1.0, 2.0], [3], DType.float64);
+      final x = NDArray<AnyFloat>.fromList([0.5, -1.0, 2.0], [3], DType.float64);
 
       final y = matmul(a, x);
       expect(y.shape, equals([2]));
@@ -64,8 +64,8 @@ void main() {
 
     test('Vector (1D) x Matrix (2D) float64', () {
       // x: 2, B: 2x3 -> y: 3
-      final x = NDArray<double>.fromList([2.0, 3.0], [2], DType.float64);
-      final b = NDArray<double>.fromList(
+      final x = NDArray<AnyFloat>.fromList([2.0, 3.0], [2], DType.float64);
+      final b = NDArray<AnyFloat>.fromList(
         [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
         [2, 3],
         DType.float64,
@@ -82,12 +82,12 @@ void main() {
     });
 
     test('Matrix (2D) x Vector (1D) float32', () {
-      final a = NDArray<double>.fromList(
+      final a = NDArray<AnyFloat>.fromList(
         [2.0, 1.0, -1.0, 3.0],
         [2, 2],
         DType.float32,
       );
-      final x = NDArray<double>.fromList([3.0, 4.0], [2], DType.float32);
+      final x = NDArray<AnyFloat>.fromList([3.0, 4.0], [2], DType.float32);
 
       final y = matmul(a, x);
       expect(y.shape, equals([2]));
@@ -99,8 +99,8 @@ void main() {
     });
 
     test('Vector (1D) x Matrix (2D) float32', () {
-      final x = NDArray<double>.fromList([1.0, 2.0], [2], DType.float32);
-      final b = NDArray<double>.fromList(
+      final x = NDArray<AnyFloat>.fromList([1.0, 2.0], [2], DType.float32);
+      final b = NDArray<AnyFloat>.fromList(
         [3.0, 4.0, 5.0, 6.0],
         [2, 2],
         DType.float32,
@@ -116,13 +116,13 @@ void main() {
 
     test('Transposed Matrix x Vector float64 (GEMV trans)', () {
       // A is 3x2, transposed to 2x3 view
-      final a = NDArray<double>.fromList(
+      final a = NDArray<AnyFloat>.fromList(
         [1.0, 4.0, 2.0, 5.0, 3.0, 6.0],
         [3, 2],
         DType.float64,
       );
       final aT = a.transpose(); // 2x3 view
-      final x = NDArray<double>.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+      final x = NDArray<AnyFloat>.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 
       final y = matmul(aT, x);
       expect(y.shape, equals([2]));
@@ -133,8 +133,8 @@ void main() {
     });
 
     test('Vector x Transposed Matrix float64 (GEMV trans)', () {
-      final x = NDArray<double>.fromList([1.0, 2.0], [2], DType.float64);
-      final b = NDArray<double>.fromList(
+      final x = NDArray<AnyFloat>.fromList([1.0, 2.0], [2], DType.float64);
+      final b = NDArray<AnyFloat>.fromList(
         [1.0, 4.0, 2.0, 5.0, 3.0, 6.0],
         [3, 2],
         DType.float64,
@@ -153,12 +153,12 @@ void main() {
 
     test('Batch 3D Matrix x Vector float64', () {
       // Shape [2, 2, 3] x [3] -> [2, 2]
-      final a = NDArray<double>.fromList(
+      final a = NDArray<AnyFloat>.fromList(
         [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0],
         [2, 2, 3],
         DType.float64,
       );
-      final x = NDArray<double>.fromList([1.0, 0.0, -1.0], [3], DType.float64);
+      final x = NDArray<AnyFloat>.fromList([1.0, 0.0, -1.0], [3], DType.float64);
 
       final y = matmul(a, x);
       expect(y.shape, equals([2, 2]));
@@ -171,7 +171,7 @@ void main() {
     });
 
     test('Complex128 Matrix x Vector', () {
-      final a = NDArray<Complex>.fromList(
+      final a = NDArray<AnyComplex>.fromList(
         [
           Complex(1.0, 1.0),
           Complex(2.0, 0.0),
@@ -181,7 +181,7 @@ void main() {
         [2, 2],
         DType.complex128,
       );
-      final x = NDArray<Complex>.fromList(
+      final x = NDArray<AnyComplex>.fromList(
         [Complex(1.0, 0.0), Complex(0.0, 1.0)],
         [2],
         DType.complex128,
@@ -203,12 +203,12 @@ void main() {
 
   group('Workstream 4: Copying Anti-Patterns Eliminated', () {
     test('real() with out buffer on real array uses copy', () {
-      final a = NDArray<double>.fromList(
+      final a = NDArray<AnyFloat>.fromList(
         [1.0, 2.0, 3.0, 4.0],
         [2, 2],
         DType.float64,
       );
-      final out = NDArray<double>.zeros([2, 2], DType.float64);
+      final out = NDArray<AnyFloat>.zeros([2, 2], DType.float64);
 
       final r = real(a, out: out);
       expect(identical(r, out), isTrue);
@@ -216,7 +216,7 @@ void main() {
     });
 
     test('save() and load() roundtrip with strided non-contiguous array', () {
-      final a = NDArray<double>.fromList(
+      final a = NDArray<AnyFloat>.fromList(
         [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
         [3, 2],
         DType.float64,
@@ -233,7 +233,7 @@ void main() {
     });
 
     test('sort() and partition() on non-contiguous strided views', () {
-      final a = NDArray<double>.fromList(
+      final a = NDArray<AnyFloat>.fromList(
         [5.0, 1.0, 3.0, 4.0, 2.0, 6.0],
         [3, 2],
         DType.float64,

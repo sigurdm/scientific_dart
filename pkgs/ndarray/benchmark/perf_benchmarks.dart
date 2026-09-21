@@ -49,7 +49,7 @@ void main() async {
           List.generate(30000, (_) => rand.nextDouble()),
         );
 
-        c.bench<NDArray<double>>(
+        c.bench<NDArray<AnyFloat>>(
           'Native C Heap sort() (Contiguous vector) [size=30,000]',
           (arr) {
             final res = sort(arr);
@@ -58,12 +58,12 @@ void main() async {
             arr.dispose();
           },
           setup: () =>
-              NDArray<double>.fromList(templateContig, [30000], DType.float64),
+              NDArray<AnyFloat>.fromList(templateContig, [30000], DType.float64),
           batchSize: BatchSize.largeInput,
           throughput: Throughput.elements(30000),
         );
 
-        c.bench<NDArray<double>>(
+        c.bench<NDArray<AnyFloat>>(
           'Native C Heap sort() (Random vector) [size=30,000]',
           (arr) {
             final res = sort(arr);
@@ -72,7 +72,7 @@ void main() async {
             arr.dispose();
           },
           setup: () =>
-              NDArray<double>.fromList(templateRandom, [30000], DType.float64),
+              NDArray<AnyFloat>.fromList(templateRandom, [30000], DType.float64),
           batchSize: BatchSize.largeInput,
           throughput: Throughput.elements(30000),
         );
@@ -87,7 +87,7 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(100000));
 
-        c.bench<NDArray<double>>(
+        c.bench<NDArray<AnyFloat>>(
           'Argsort (argsort) [size=30,000]',
           (arr) {
             final indices = argsort(arr);
@@ -96,7 +96,7 @@ void main() async {
             arr.dispose();
           },
           setup: () =>
-              NDArray<double>.fromList(templateContig, [30000], DType.float64),
+              NDArray<AnyFloat>.fromList(templateContig, [30000], DType.float64),
           batchSize: BatchSize.largeInput,
           throughput: Throughput.elements(30000),
         );
@@ -127,11 +127,11 @@ void main() async {
           final qrA = NDArray.zeros([30, 30], DType.float64);
           for (var i = 0; i < 30; i++) {
             for (var j = 0; j < 30; j++) {
-              qrA.data[i * 30 + j] = Float64((i + j + 1.0) / 10.0);
+              qrA.data[i * 30 + j] = (i + j + 1.0) / 10.0;
               if (i == j) {
-                qrA.data[i * 30 + j] = Float64(
+                qrA.data[i * 30 + j] = 
                   qrA.data[i * 30 + j].toDouble() + 1.0,
-                );
+                ;
               }
             }
           }
@@ -158,11 +158,11 @@ void main() async {
           final cholA = NDArray.zeros([30, 30], DType.float64);
           for (var i = 0; i < 30; i++) {
             for (var j = 0; j < 30; j++) {
-              cholA.data[i * 30 + j] = Float64((i + j + 1.0) / 10.0);
+              cholA.data[i * 30 + j] = (i + j + 1.0) / 10.0;
               if (i == j) {
-                cholA.data[i * 30 + j] = Float64(
+                cholA.data[i * 30 + j] = 
                   cholA.data[i * 30 + j].toDouble() + 30.0,
-                );
+                ;
               }
             }
           }
@@ -226,7 +226,7 @@ void main() async {
         }, throughput: Throughput.elements(300000));
 
         c.bench('Zeros Array Creation (zeros) [size=1,000,000]', () {
-          final arr = NDArray<double>.zeros([1000, 1000], DType.float64);
+          final arr = NDArray<AnyFloat>.zeros([1000, 1000], DType.float64);
           blackhole(arr);
           arr.dispose();
         }, throughput: Throughput.elements(1000000));

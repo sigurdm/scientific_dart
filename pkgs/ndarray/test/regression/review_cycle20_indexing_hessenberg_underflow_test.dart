@@ -22,7 +22,7 @@ void main() {
                 DType.uint32,
                 DType.uint64,
               ]) {
-                final idx = NDArray<int>.fromList([3, 1, 0], [3], idxDType);
+                final idx = NDArray<AnyInt>.fromList([3, 1, 0], [3], idxDType);
                 final res = take_along_axis(arr1d, idx, 0);
                 expect(res[[0]], equals(40.0));
                 expect(res[[1]], equals(20.0));
@@ -74,7 +74,7 @@ void main() {
                   [4],
                   DType.float64,
                 );
-                final idx = NDArray<int>.fromList([3, 1], [2], idxDType);
+                final idx = NDArray<AnyInt>.fromList([3, 1], [2], idxDType);
                 final vals = NDArray<Float64>.fromList(
                   [99.0, 88.0],
                   [2],

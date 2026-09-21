@@ -47,7 +47,7 @@ void main() {
 
     test('where(cond, flip(a), b, out: a) handles strided overlap', () {
       NDArray.scope(() {
-        final cond = NDArray<bool>.fromList(
+        final cond = NDArray<Boolean>.fromList(
           [true, true, false, true],
           [4],
           DType.boolean,
@@ -74,7 +74,7 @@ void main() {
 
     test('native s_where_double handles strided overlap directly', () {
       NDArray.scope(() {
-        final cond = NDArray<bool>.fromList(
+        final cond = NDArray<Boolean>.fromList(
           [true, true, false, true],
           [4],
           DType.boolean,

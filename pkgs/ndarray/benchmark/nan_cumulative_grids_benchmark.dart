@@ -20,20 +20,20 @@ void main() async {
       );
 
       final cleanVec = linspace<Float64>(
-        Float64(1.00001),
-        Float64(1.00002),
+        1.00001,
+        1.00002,
         size,
         dtype: DType.float64,
       );
       final cleanVecJitter = linspace<Float64>(
-        Float64(1.000010001),
-        Float64(1.000020001),
+        1.000010001,
+        1.000020001,
         size,
         dtype: DType.float64,
       );
       final mat2d = linspace<Float64>(
-        Float64(0.0),
-        Float64(100.0),
+        0.0,
+        100.0,
         dim * dim,
         dtype: DType.float64,
       ).reshape([dim, dim]);
@@ -142,8 +142,8 @@ void main() async {
         }, throughput: Throughput.elements(2 * dim * dim));
 
         final rowVec = linspace<Float64>(
-          Float64(0.0),
-          Float64(10.0),
+          0.0,
+          10.0,
           dim,
           dtype: DType.float64,
         );

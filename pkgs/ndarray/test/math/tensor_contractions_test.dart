@@ -1087,15 +1087,15 @@ void main() {
 
         // Non-fastpath 2-operand einsum fallback
         final resFallback = einsum(EinsumSubscripts.parse("ij,jk->k"), [
-          a[0] as NDArray<Object>,
-          b[0] as NDArray<Object>,
+          a[0] as NDArray<AnyDType>,
+          b[0] as NDArray<AnyDType>,
         ]);
         expect(resFallback.shape, equals([2]));
 
         final outFallback = NDArray.zeros([2], DType.float64);
         einsum(EinsumSubscripts.parse("ij,jk->k"), [
-          a[0] as NDArray<Object>,
-          b[0] as NDArray<Object>,
+          a[0] as NDArray<AnyDType>,
+          b[0] as NDArray<AnyDType>,
         ], out: outFallback);
         expect(outFallback.shape, equals([2]));
 
@@ -1467,13 +1467,13 @@ void main() {
 
     test("Targeted 100% line coverage edge case dispatches", () {
       NDArray.scope(() {
-        // Untyped NDArray<Object> to Float64 _asTyped cast (lines 13-17)
+        // Untyped NDArray<AnyDType> to Float64 _asTyped cast (lines 13-17)
         final untypedA =
             NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64)
-                as NDArray<Object>;
+                as NDArray<AnyDType>;
         final untypedB =
             NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64)
-                as NDArray<Object>;
+                as NDArray<AnyDType>;
         final castRes = einsum<Object, Float64>(
           EinsumSubscripts.parse("ij,jk->ik"),
           [untypedA, untypedB],

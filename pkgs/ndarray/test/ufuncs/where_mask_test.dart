@@ -15,7 +15,7 @@ void main() {
           [4],
           DType.float64,
         );
-        final mask = NDArray<bool>.fromList(
+        final mask = NDArray<Boolean>.fromList(
           [true, false, true, false],
           [4],
           DType.boolean,
@@ -56,7 +56,7 @@ void main() {
         );
         final a = aFull.slice([Slice(start: 0, stop: 4, step: 2)]);
         final out = NDArray<Float64>.fromList([99.0, 99.0], [2], DType.float64);
-        final mask = NDArray<bool>.fromList([true, false], [2], DType.boolean);
+        final mask = NDArray<Boolean>.fromList([true, false], [2], DType.boolean);
 
         sin(a, out: out, where: mask);
 
@@ -82,7 +82,7 @@ void main() {
           [4],
           DType.float64,
         );
-        final mask = NDArray<bool>.fromList(
+        final mask = NDArray<Boolean>.fromList(
           [true, false, true, false],
           [4],
           DType.boolean,
@@ -99,7 +99,7 @@ void main() {
         final a = NDArray<Int32>.fromList([2, 3, 4, 5], [4], DType.int32);
         final b = NDArray<Int32>.fromList([10, 10, 10, 10], [4], DType.int32);
         final out = NDArray<Int32>.fromList([-1, -1, -1, -1], [4], DType.int32);
-        final mask = NDArray<bool>.fromList(
+        final mask = NDArray<Boolean>.fromList(
           [false, true, false, true],
           [4],
           DType.boolean,
@@ -151,7 +151,7 @@ void main() {
             [2],
             DType.float64,
           );
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false],
             [2],
             DType.boolean,
@@ -181,7 +181,7 @@ void main() {
           [2],
           DType.complex128,
         );
-        final mask = NDArray<bool>.fromList([true, false], [2], DType.boolean);
+        final mask = NDArray<Boolean>.fromList([true, false], [2], DType.boolean);
 
         divide(a, b, out: out, where: mask);
 

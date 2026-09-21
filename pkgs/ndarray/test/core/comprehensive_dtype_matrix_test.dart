@@ -47,7 +47,7 @@ void main() {
       DType.uint8,
     ];
 
-    NDArray<Object> createSampleArray(
+    NDArray<AnyDType> createSampleArray(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -64,15 +64,15 @@ void main() {
 
       final dtObj = dt as DType<Object>;
       if (strided) {
-        final flatArr = NDArray<Object>.fromList(rawList, [size * 2], dtObj);
+        final flatArr = NDArray<AnyDType>.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<Object>.fromList(rawList, shape, dtObj);
+        return NDArray<AnyDType>.fromList(rawList, shape, dtObj);
       }
     }
 
-    NDArray<num> createNumericArray(
+    NDArray<AnyReal> createNumericArray(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -84,11 +84,11 @@ void main() {
       );
       final dtNum = dt as DType<num>;
       if (strided) {
-        final flatArr = NDArray<num>.fromList(rawList, [size * 2], dtNum);
+        final flatArr = NDArray<AnyReal>.fromList(rawList, [size * 2], dtNum);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<num>.fromList(rawList, shape, dtNum);
+        return NDArray<AnyReal>.fromList(rawList, shape, dtNum);
       }
     }
 

@@ -1450,7 +1450,7 @@ void main() {
           final wRes = where(cond, wX, wY) as NDArray<Float64>;
           expect(wRes.toList(), equals([1.0, 20.0, 3.0, 40.0]));
 
-          final coords = where(cond) as List<NDArray<int>>;
+          final coords = where(cond) as List<NDArray<AnyInt>>;
           expect(coords.length, equals(1));
           expect(coords[0].toList(), equals([0, 2]));
         });

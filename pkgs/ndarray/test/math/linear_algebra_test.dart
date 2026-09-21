@@ -95,7 +95,7 @@ void main() {
           expect(aInv.toList()[6], closeTo(1.5, 1e-6));
           expect(aInv.toList()[7], closeTo(-0.5, 1e-6));
 
-          final out = NDArray<double>.zeros([2, 2, 2], DType.float64);
+          final out = NDArray<AnyFloat>.zeros([2, 2, 2], DType.float64);
           final res = inv(a, out: out);
           expect(identical(res, out), true);
           expect(out.toList()[0], closeTo(0.6, 1e-6));
@@ -263,7 +263,7 @@ void main() {
             DType.float64,
           );
 
-          final outL = NDArray<double>.zeros([3, 3], DType.float64);
+          final outL = NDArray<AnyFloat>.zeros([3, 3], DType.float64);
           final res = cholesky(a, out: outL);
           expect(identical(res, outL), true);
 
@@ -303,7 +303,7 @@ void main() {
           expect(l.toList()[6], closeTo(1.0, 1e-6));
           expect(l.toList()[7], closeTo(1.0, 1e-6));
 
-          final out = NDArray<double>.zeros([2, 2, 2], DType.float64);
+          final out = NDArray<AnyFloat>.zeros([2, 2, 2], DType.float64);
           final res = cholesky(a, out: out);
           expect(identical(res, out), true);
           expect(out.toList()[1], 0.0);
@@ -434,8 +434,8 @@ void main() {
             DType.float64,
           );
 
-          final qBuffer = NDArray<double>.zeros([3, 3], DType.float64);
-          final rBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+          final qBuffer = NDArray<AnyFloat>.zeros([3, 3], DType.float64);
+          final rBuffer = NDArray<AnyFloat>.zeros([3, 3], DType.float64);
 
           final res = qr(a, out: (q: qBuffer, r: rBuffer));
 
@@ -484,19 +484,19 @@ void main() {
           final a = NDArray.zeros([3, 3], DType.float64);
 
           // Wrong shape for Q
-          final qBufferWrongShape = NDArray<double>.zeros([
+          final qBufferWrongShape = NDArray<AnyFloat>.zeros([
             2,
             3,
           ], DType.float64);
-          final rBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+          final rBuffer = NDArray<AnyFloat>.zeros([3, 3], DType.float64);
           expect(
             () => qr(a, out: (q: qBufferWrongShape, r: rBuffer)),
             throwsArgumentError,
           );
 
           // Wrong shape for R
-          final qBuffer = NDArray<double>.zeros([3, 3], DType.float64);
-          final rBufferWrongShape = NDArray<double>.zeros([
+          final qBuffer = NDArray<AnyFloat>.zeros([3, 3], DType.float64);
+          final rBufferWrongShape = NDArray<AnyFloat>.zeros([
             3,
             2,
           ], DType.float64);
@@ -594,7 +594,7 @@ void main() {
       test(
         'det() throws ArgumentError on non-square matrix',
         () => NDArray.scope(() {
-          final a = NDArray<double>.zeros([2, 3], DType.float64);
+          final a = NDArray<AnyFloat>.zeros([2, 3], DType.float64);
           expect(() => det(a), throwsArgumentError);
         }),
       );
@@ -709,7 +709,7 @@ void main() {
             2,
             1,
           ], DType.float64);
-          final outBuffer = NDArray<double>.zeros([2, 1], DType.float64);
+          final outBuffer = NDArray<AnyFloat>.zeros([2, 1], DType.float64);
           final x = solve(a, b, out: outBuffer);
           expect(identical(x, outBuffer), true);
           expect(x.shape, [2, 1]);
@@ -782,7 +782,7 @@ void main() {
             DType.float64,
           );
 
-          final out = NDArray<double>.zeros([2, 2, 1], DType.float64);
+          final out = NDArray<AnyFloat>.zeros([2, 2, 1], DType.float64);
           final x = solve(a, b, out: out);
           expect(identical(x, out), true);
           expect(x.shape, [2, 2, 1]);
@@ -880,8 +880,8 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final outW = NDArray<Complex>.zeros([2], DType.complex128);
-          final outVR = NDArray<Complex>.zeros([2, 2], DType.complex128);
+          final outW = NDArray<AnyComplex>.zeros([2], DType.complex128);
+          final outVR = NDArray<AnyComplex>.zeros([2, 2], DType.complex128);
 
           final (eigenvalues: w, eigenvectors: vr) = eig(
             a,
@@ -1120,7 +1120,7 @@ void main() {
             DType.float64,
           );
           final b = NDArray.fromList([2.0, 3.9, 6.1], [3], DType.float64);
-          final outBuffer = NDArray<double>.zeros([2], DType.float64);
+          final outBuffer = NDArray<AnyFloat>.zeros([2], DType.float64);
 
           final res = lstsq(a, b, out: outBuffer);
 
@@ -1217,7 +1217,7 @@ void main() {
           final b = NDArray.ones([10, 5], DType.float64);
           final c = NDArray.ones([5, 3], DType.float64);
 
-          final out = NDArray<double>.zeros([2, 3], DType.float64);
+          final out = NDArray<AnyFloat>.zeros([2, 3], DType.float64);
           final res = multi_dot([a, b, c], out: out);
 
           expect(res == out, true);
@@ -2235,12 +2235,12 @@ void main() {
       test(
         'matmul() throws ArgumentError on incompatible 1D vector dot dimensions',
         () => NDArray.scope(() {
-          final v1 = NDArray<double>.fromList(
+          final v1 = NDArray<AnyFloat>.fromList(
             Float64List.fromList([1.0, 2.0]),
             [2],
             DType.float64,
           );
-          final v2 = NDArray<double>.fromList(
+          final v2 = NDArray<AnyFloat>.fromList(
             Float64List.fromList([1.0, 2.0, 3.0]),
             [3],
             DType.float64,
@@ -2252,8 +2252,8 @@ void main() {
       test(
         'matmul() throws ArgumentError on incompatible inner dimensions',
         () => NDArray.scope(() {
-          final a = NDArray<double>.zeros([2, 3], DType.float64);
-          final b = NDArray<double>.zeros([2, 2], DType.float64);
+          final a = NDArray<AnyFloat>.zeros([2, 3], DType.float64);
+          final b = NDArray<AnyFloat>.zeros([2, 2], DType.float64);
           expect(() => matmul(a, b), throwsArgumentError);
         }),
       );
@@ -2263,12 +2263,12 @@ void main() {
       test(
         'Verify Float32 1D Vector Dot Product sdot',
         () => NDArray.scope(() {
-          final v1 = NDArray<double>.fromList(
+          final v1 = NDArray<AnyFloat>.fromList(
             Float32List.fromList([1.0, 2.0]),
             [2],
             DType.float32,
           );
-          final v2 = NDArray<double>.fromList(
+          final v2 = NDArray<AnyFloat>.fromList(
             Float32List.fromList([3.0, 4.0]),
             [2],
             DType.float32,
@@ -2284,12 +2284,12 @@ void main() {
       test(
         'Verify Float32 2D Matrix Multiply sgemm',
         () => NDArray.scope(() {
-          final a = NDArray<double>.fromList(
+          final a = NDArray<AnyFloat>.fromList(
             Float32List.fromList([1.0, 2.0, 3.0, 4.0]),
             [2, 2],
             DType.float32,
           );
-          final b = NDArray<double>.fromList(
+          final b = NDArray<AnyFloat>.fromList(
             Float32List.fromList([5.0, 6.0, 7.0, 8.0]),
             [2, 2],
             DType.float32,
@@ -2363,7 +2363,7 @@ void main() {
         final viewT = parent.transposed; // non-contiguous!
         expect(viewT.isContiguous, false);
 
-        final out = NDArray<double>.create([2, 2], DType.float64);
+        final out = NDArray<AnyFloat>.create([2, 2], DType.float64);
         final result = inv(viewT, out: out);
 
         expect(result == out, true);
@@ -2378,13 +2378,13 @@ void main() {
     test(
       'inv() in-place out buffer validations and solvers coverage',
       () => NDArray.scope(() {
-        final a = NDArray<double>.fromList(
+        final a = NDArray<AnyFloat>.fromList(
           [1.0, 2.0, 3.0, 4.0],
           [2, 2],
           DType.float64,
         );
-        final out = NDArray<double>.zeros([2, 2], DType.float64);
-        final incompatibleOut = NDArray<double>.ones([3, 3], DType.float64);
+        final out = NDArray<AnyFloat>.zeros([2, 2], DType.float64);
+        final incompatibleOut = NDArray<AnyFloat>.ones([3, 3], DType.float64);
 
         // 1. Incompatible out shape throws ArgumentError
         expect(() => inv(a, out: incompatibleOut), throwsArgumentError);
@@ -2467,7 +2467,7 @@ void main() {
         expect(() => diag(tensor3d), throwsArgumentError);
 
         // 5. In-place recycler out reuse
-        final outRecycler = NDArray<double>.zeros([3, 3], DType.float64);
+        final outRecycler = NDArray<AnyFloat>.zeros([3, 3], DType.float64);
         final dMatRec = diag(vec, k: 1, out: outRecycler);
         expect(identical(dMatRec, outRecycler), true);
         expect(dMatRec.toList(), [
@@ -2596,7 +2596,7 @@ void main() {
         expect(uKM1.toList(), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.0, 8.0, 9.0]);
 
         // 4. in-place recycler out reuse
-        final outBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+        final outBuffer = NDArray<AnyFloat>.zeros([3, 3], DType.float64);
         final lOut = tril(a, k: 0, out: outBuffer);
         expect(identical(lOut, outBuffer), true);
         expect(lOut.toList(), [1.0, 0.0, 0.0, 4.0, 5.0, 0.0, 7.0, 8.0, 9.0]);

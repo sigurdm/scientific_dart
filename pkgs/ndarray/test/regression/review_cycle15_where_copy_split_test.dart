@@ -22,7 +22,7 @@ void main() {
               64,
             ], DType.float64);
             final maskList = List<bool>.generate(64, (i) => i.isEven);
-            final where = NDArray<bool>.fromList(maskList, [64], DType.boolean);
+            final where = NDArray<Boolean>.fromList(maskList, [64], DType.boolean);
 
             final resExp = exp<Float64, Float64>(a, where: where);
             final resLog = log<Float64, Float64>(a, where: where);
@@ -54,10 +54,10 @@ void main() {
               dirty.dispose();
             }
 
-            final a = NDArray<bool>.zeros([64], DType.boolean);
-            final b = NDArray<bool>.ones([64], DType.boolean);
+            final a = NDArray<Boolean>.zeros([64], DType.boolean);
+            final b = NDArray<Boolean>.ones([64], DType.boolean);
             final maskList = List<bool>.generate(64, (i) => i.isEven);
-            final where = NDArray<bool>.fromList(maskList, [64], DType.boolean);
+            final where = NDArray<Boolean>.fromList(maskList, [64], DType.boolean);
 
             final resNot = logical_not(a, where: where);
             final resOr = logical_or(a, b, where: where);
@@ -96,7 +96,7 @@ void main() {
               64,
             ], DType.int32);
             final maskList = List<bool>.generate(64, (i) => i.isEven);
-            final where = NDArray<bool>.fromList(maskList, [64], DType.boolean);
+            final where = NDArray<Boolean>.fromList(maskList, [64], DType.boolean);
 
             final resInv = invert<Int32, Int32>(a, where: where);
             final resOr = bitwise_or<Int32, Int32, Int32>(a, b, where: where);

@@ -33,7 +33,7 @@ void main() async {
 
       c.group('2. 2D Complex Fourier Transforms (fft2 & ifft2)', () {
         for (final dim in [256, 512]) {
-          final img2d = NDArray<double>.zeros([dim, dim], DType.float64);
+          final img2d = NDArray<AnyFloat>.zeros([dim, dim], DType.float64);
           for (var i = 0; i < dim; i++) {
             img2d.setCell([i, i], 1.0);
           }

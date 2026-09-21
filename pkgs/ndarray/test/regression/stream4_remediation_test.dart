@@ -12,7 +12,7 @@ void main() {
 
       final a2 = NDArray.fromList([2.0, 4.0], [2], DType.float64);
       final outStd = NDArray<Float64>.scalar(
-        Float64(0.0),
+        0.0,
         dtype: DType.float64,
       );
       std(a2, out: outStd);
@@ -47,12 +47,12 @@ void main() {
   group('Stream 4 Remediation Sorting Tests', () {
     test('partition and argpartition 0D fallbacks with out', () {
       final a = NDArray.scalar(42, dtype: DType.int32);
-      final outP = NDArray<int>.scalar(0, dtype: DType.int32);
+      final outP = NDArray<AnyInt>.scalar(0, dtype: DType.int32);
       final p = partition(a, 0, out: outP);
       expect(p, same(outP));
       expect(outP.scalar, 42);
 
-      final outAP = NDArray<int>.scalar(99, dtype: DType.int32);
+      final outAP = NDArray<AnyInt>.scalar(99, dtype: DType.int32);
       final ap = argpartition(a, 0, out: outAP);
       expect(ap, same(outAP));
       expect(outAP.scalar, 0);
@@ -100,7 +100,7 @@ void main() {
   group('Stream 4 Remediation Random & Meshes & Splitting Tests', () {
     test('choice with optional out parameter', () {
       final a = NDArray.fromList([10, 20, 30], [3], DType.int32);
-      final outChoice = NDArray<int>.zeros([2], DType.int32);
+      final outChoice = NDArray<AnyInt>.zeros([2], DType.int32);
       final res = choice(a, size: [2], out: outChoice, seed: 123);
       expect(res, same(outChoice));
       expect(outChoice.getCell([0]), isIn([10, 20, 30]));
@@ -119,8 +119,8 @@ void main() {
 
     test('hsplit, vsplit, dsplit with optional out parameter', () {
       final a2 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-      final outV0 = NDArray<int>.zeros([1, 2], DType.int32);
-      final outV1 = NDArray<int>.zeros([1, 2], DType.int32);
+      final outV0 = NDArray<AnyInt>.zeros([1, 2], DType.int32);
+      final outV1 = NDArray<AnyInt>.zeros([1, 2], DType.int32);
       final resV = vsplit(a2, 2, out: [outV0, outV1]);
       expect(resV[0], same(outV0));
       expect(resV[1], same(outV1));

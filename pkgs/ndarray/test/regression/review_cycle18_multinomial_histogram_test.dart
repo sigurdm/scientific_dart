@@ -66,7 +66,7 @@ void main() {
               ];
 
               for (final dt in dtypes) {
-                final x = castNDArray<num>(
+                final x = castNDArray<AnyReal>(
                   NDArray<Float64>.fromList(
                     [1.0, 2.0, 3.0, 4.0],
                     [4],
@@ -74,7 +74,7 @@ void main() {
                   ),
                   dt,
                 );
-                final weights = castNDArray<num>(
+                final weights = castNDArray<AnyReal>(
                   NDArray<Float64>.fromList(
                     [1.0, 2.0, 3.0, 4.0],
                     [4],
@@ -160,7 +160,7 @@ void main() {
               src,
               PadWidth.all(1),
               mode: PadMode.constant,
-              constantValues: PadValues.all(Uint64(msbVal)),
+              constantValues: PadValues.all(msbVal),
             );
             expect(paddedConst.shape, equals([3]));
             expect(paddedConst.getCell([0]).value, equals(msbVal));
@@ -171,7 +171,7 @@ void main() {
               src,
               PadWidth.all(1),
               mode: PadMode.linearRamp,
-              endValues: PadValues.all(Uint64(msbVal)),
+              endValues: PadValues.all(msbVal),
             );
             expect(paddedRamp.shape, equals([3]));
             expect(paddedRamp.getCell([0]).value, equals(msbVal));
@@ -186,19 +186,19 @@ void main() {
       test('defaults to PaymentDue.end and supports PaymentDue.begin', () {
         NDArray.scope(() {
           final rate = NDArray<Float64>.scalar(
-            Float64(0.05),
+            0.05,
             dtype: DType.float64,
           );
           final nper = NDArray<Float64>.scalar(
-            Float64(10.0),
+            10.0,
             dtype: DType.float64,
           );
           final pmt = NDArray<Float64>.scalar(
-            Float64(-100.0),
+            -100.0,
             dtype: DType.float64,
           );
           final pvVal = NDArray<Float64>.scalar(
-            Float64(-1000.0),
+            -1000.0,
             dtype: DType.float64,
           );
 

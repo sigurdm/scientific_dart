@@ -14,19 +14,19 @@ void main() {
           test('calculates fv with zero interest rate (fv_zero branch)', () {
             NDArray.scope(() {
               final rate = NDArray<Float64>.scalar(
-                Float64(0.0),
+                0.0,
                 dtype: DType.float64,
               );
               final nper = NDArray<Float64>.scalar(
-                Float64(10.0),
+                10.0,
                 dtype: DType.float64,
               );
               final pmt = NDArray<Float64>.scalar(
-                Float64(-100.0),
+                -100.0,
                 dtype: DType.float64,
               );
               final pvVal = NDArray<Float64>.scalar(
-                Float64(-1000.0),
+                -1000.0,
                 dtype: DType.float64,
               );
 
@@ -39,19 +39,19 @@ void main() {
           test('calculates fv with non-zero rate and end/begin payments', () {
             NDArray.scope(() {
               final rate = NDArray<Float64>.scalar(
-                Float64(0.05),
+                0.05,
                 dtype: DType.float64,
               );
               final nper = NDArray<Float64>.scalar(
-                Float64(10.0),
+                10.0,
                 dtype: DType.float64,
               );
               final pmt = NDArray<Float64>.scalar(
-                Float64(-100.0),
+                -100.0,
                 dtype: DType.float64,
               );
               final pvVal = NDArray<Float64>.scalar(
-                Float64(-1000.0),
+                -1000.0,
                 dtype: DType.float64,
               );
 
@@ -72,19 +72,19 @@ void main() {
           test('supports PaymentDue enum for when parameter', () {
             NDArray.scope(() {
               final rate = NDArray<Float64>.scalar(
-                Float64(0.05),
+                0.05,
                 dtype: DType.float64,
               );
               final nper = NDArray<Float64>.scalar(
-                Float64(5.0),
+                5.0,
                 dtype: DType.float64,
               );
               final pmt = NDArray<Float64>.scalar(
-                Float64(-50.0),
+                -50.0,
                 dtype: DType.float64,
               );
               final pvVal = NDArray<Float64>.scalar(
-                Float64(-500.0),
+                -500.0,
                 dtype: DType.float64,
               );
 
@@ -114,11 +114,11 @@ void main() {
                 DType.float64,
               );
               final pmt = NDArray<Float64>.scalar(
-                Float64(-100.0),
+                -100.0,
                 dtype: DType.float64,
               );
               final pvVal = NDArray<Float64>.scalar(
-                Float64(0.0),
+                0.0,
                 dtype: DType.float64,
               );
 
@@ -132,19 +132,19 @@ void main() {
 
           test('throws on disposed inputs', () {
             final rate = NDArray<Float64>.scalar(
-              Float64(0.05),
+              0.05,
               dtype: DType.float64,
             );
             final nper = NDArray<Float64>.scalar(
-              Float64(10.0),
+              10.0,
               dtype: DType.float64,
             );
             final pmt = NDArray<Float64>.scalar(
-              Float64(-100.0),
+              -100.0,
               dtype: DType.float64,
             );
             final pvVal = NDArray<Float64>.scalar(
-              Float64(-1000.0),
+              -1000.0,
               dtype: DType.float64,
             );
 
@@ -160,19 +160,19 @@ void main() {
           test('calculates pv with zero interest rate (pv_zero branch)', () {
             NDArray.scope(() {
               final rate = NDArray<Float64>.scalar(
-                Float64(0.0),
+                0.0,
                 dtype: DType.float64,
               );
               final nper = NDArray<Float64>.scalar(
-                Float64(10.0),
+                10.0,
                 dtype: DType.float64,
               );
               final pmt = NDArray<Float64>.scalar(
-                Float64(-100.0),
+                -100.0,
                 dtype: DType.float64,
               );
               final fvVal = NDArray<Float64>.scalar(
-                Float64(2000.0),
+                2000.0,
                 dtype: DType.float64,
               );
 
@@ -185,19 +185,19 @@ void main() {
           test('calculates pv with non-zero rate and end/begin payments', () {
             NDArray.scope(() {
               final rate = NDArray<Float64>.scalar(
-                Float64(0.05),
+                0.05,
                 dtype: DType.float64,
               );
               final nper = NDArray<Float64>.scalar(
-                Float64(10.0),
+                10.0,
                 dtype: DType.float64,
               );
               final pmt = NDArray<Float64>.scalar(
-                Float64(-100.0),
+                -100.0,
                 dtype: DType.float64,
               );
               final fvVal = NDArray<Float64>.scalar(
-                Float64(2886.68388),
+                2886.68388,
                 dtype: DType.float64,
               );
 
@@ -218,19 +218,19 @@ void main() {
           test('supports PaymentDue enum for when and out buffer', () {
             NDArray.scope(() {
               final rate = NDArray<Float64>.scalar(
-                Float64(0.05),
+                0.05,
                 dtype: DType.float64,
               );
               final nper = NDArray<Float64>.scalar(
-                Float64(5.0),
+                5.0,
                 dtype: DType.float64,
               );
               final pmt = NDArray<Float64>.scalar(
-                Float64(-50.0),
+                -50.0,
                 dtype: DType.float64,
               );
               final fvVal = NDArray<Float64>.scalar(
-                Float64(1000.0),
+                1000.0,
                 dtype: DType.float64,
               );
 
@@ -249,19 +249,19 @@ void main() {
 
           test('throws on disposed inputs', () {
             final rate = NDArray<Float64>.scalar(
-              Float64(0.05),
+              0.05,
               dtype: DType.float64,
             );
             final nper = NDArray<Float64>.scalar(
-              Float64(10.0),
+              10.0,
               dtype: DType.float64,
             );
             final pmt = NDArray<Float64>.scalar(
-              Float64(-100.0),
+              -100.0,
               dtype: DType.float64,
             );
             final fvVal = NDArray<Float64>.scalar(
-              Float64(1000.0),
+              1000.0,
               dtype: DType.float64,
             );
 
@@ -277,7 +277,7 @@ void main() {
           test('calculates npv for 1D cash flows', () {
             NDArray.scope(() {
               final rate = NDArray<Float64>.scalar(
-                Float64(0.281),
+                0.281,
                 dtype: DType.float64,
               );
               final values = NDArray<Float64>.fromList(
@@ -318,18 +318,18 @@ void main() {
           test('throws for 0D values and disposed arrays', () {
             NDArray.scope(() {
               final rate = NDArray<Float64>.scalar(
-                Float64(0.05),
+                0.05,
                 dtype: DType.float64,
               );
               final scalarValues = NDArray<Float64>.scalar(
-                Float64(100.0),
+                100.0,
                 dtype: DType.float64,
               );
               expect(() => npv(rate, scalarValues), throwsArgumentError);
             });
 
             final rate = NDArray<Float64>.scalar(
-              Float64(0.05),
+              0.05,
               dtype: DType.float64,
             );
             final values = NDArray<Float64>.fromList(
@@ -848,10 +848,10 @@ void main() {
               final a4D = NDArray<Float64>.zeros([2, 2, 2, 2], DType.float64);
               for (var b1 = 0; b1 < 2; b1++) {
                 for (var b2 = 0; b2 < 2; b2++) {
-                  a4D.setCell([b1, b2, 0, 0], Float64(4.0));
-                  a4D.setCell([b1, b2, 0, 1], Float64(1.0));
-                  a4D.setCell([b1, b2, 1, 0], Float64(1.0));
-                  a4D.setCell([b1, b2, 1, 1], Float64(4.0));
+                  a4D.setCell([b1, b2, 0, 0], 4.0);
+                  a4D.setCell([b1, b2, 0, 1], 1.0);
+                  a4D.setCell([b1, b2, 1, 0], 1.0);
+                  a4D.setCell([b1, b2, 1, 1], 4.0);
                 }
               }
               final l4D = cholesky(a4D);
@@ -924,7 +924,7 @@ void main() {
                       b,
                       i,
                       j,
-                    ], Float64((i + j + b + 1).toDouble()));
+                    ], (i + j + b + 1).toDouble());
                   }
                 }
               }
@@ -972,7 +972,7 @@ void main() {
                       b,
                       i,
                       j,
-                    ], Float64((i * 2 + j + 1).toDouble()));
+                    ], (i * 2 + j + 1).toDouble());
                   }
                 }
               }
@@ -1061,10 +1061,10 @@ void main() {
               // 3D Stacked Batch Inversion
               final a3D = NDArray<Float64>.zeros([3, 2, 2], DType.float64);
               for (var b = 0; b < 3; b++) {
-                a3D.setCell([b, 0, 0], Float64((b + 1) * 2.0));
-                a3D.setCell([b, 0, 1], Float64(1.0));
-                a3D.setCell([b, 1, 0], Float64(1.0));
-                a3D.setCell([b, 1, 1], Float64(3.0));
+                a3D.setCell([b, 0, 0], (b + 1) * 2.0);
+                a3D.setCell([b, 0, 1], 1.0);
+                a3D.setCell([b, 1, 0], 1.0);
+                a3D.setCell([b, 1, 1], 3.0);
               }
               final inv3D = inv(a3D);
               expect(inv3D.shape, [3, 2, 2]);
@@ -1078,10 +1078,10 @@ void main() {
               final a4D = NDArray<Float64>.zeros([2, 2, 2, 2], DType.float64);
               for (var i = 0; i < 2; i++) {
                 for (var j = 0; j < 2; j++) {
-                  a4D.setCell([i, j, 0, 0], Float64(3.0));
-                  a4D.setCell([i, j, 0, 1], Float64(1.0));
-                  a4D.setCell([i, j, 1, 0], Float64(1.0));
-                  a4D.setCell([i, j, 1, 1], Float64(2.0));
+                  a4D.setCell([i, j, 0, 0], 3.0);
+                  a4D.setCell([i, j, 0, 1], 1.0);
+                  a4D.setCell([i, j, 1, 0], 1.0);
+                  a4D.setCell([i, j, 1, 1], 2.0);
                 }
               }
               final inv4D = inv(a4D);
@@ -1108,10 +1108,10 @@ void main() {
 
               // 3D batch det
               final a3D = NDArray<Float64>.zeros([2, 2, 2], DType.float64);
-              a3D.setCell([0, 0, 0], Float64(2.0));
-              a3D.setCell([0, 1, 1], Float64(3.0));
-              a3D.setCell([1, 0, 0], Float64(4.0));
-              a3D.setCell([1, 1, 1], Float64(5.0));
+              a3D.setCell([0, 0, 0], 2.0);
+              a3D.setCell([0, 1, 1], 3.0);
+              a3D.setCell([1, 0, 0], 4.0);
+              a3D.setCell([1, 1, 1], 5.0);
               final d3D = det(a3D);
               expect(d3D.shape, [2]);
               expect(d3D.getCell([0]), closeTo(6.0, 1e-9));
@@ -1137,19 +1137,19 @@ void main() {
               final a3D = NDArray<Float64>.zeros([2, 2, 2], DType.float64);
               final b3D = NDArray<Float64>.zeros([2, 2], DType.float64);
 
-              a3D.setCell([0, 0, 0], Float64(3.0));
-              a3D.setCell([0, 0, 1], Float64(1.0));
-              a3D.setCell([0, 1, 0], Float64(1.0));
-              a3D.setCell([0, 1, 1], Float64(2.0));
-              b3D.setCell([0, 0], Float64(9.0));
-              b3D.setCell([0, 1], Float64(8.0));
+              a3D.setCell([0, 0, 0], 3.0);
+              a3D.setCell([0, 0, 1], 1.0);
+              a3D.setCell([0, 1, 0], 1.0);
+              a3D.setCell([0, 1, 1], 2.0);
+              b3D.setCell([0, 0], 9.0);
+              b3D.setCell([0, 1], 8.0);
 
-              a3D.setCell([1, 0, 0], Float64(2.0));
-              a3D.setCell([1, 0, 1], Float64(0.0));
-              a3D.setCell([1, 1, 0], Float64(0.0));
-              a3D.setCell([1, 1, 1], Float64(4.0));
-              b3D.setCell([1, 0], Float64(6.0));
-              b3D.setCell([1, 1], Float64(8.0));
+              a3D.setCell([1, 0, 0], 2.0);
+              a3D.setCell([1, 0, 1], 0.0);
+              a3D.setCell([1, 1, 0], 0.0);
+              a3D.setCell([1, 1, 1], 4.0);
+              b3D.setCell([1, 0], 6.0);
+              b3D.setCell([1, 1], 8.0);
 
               final x3D = solve(a3D, b3D);
               expect(x3D.shape, [2, 2]);
@@ -1259,7 +1259,7 @@ void main() {
           test('norm along specific axes and keepdims', () {
             NDArray.scope(() {
               final a3D = NDArray<Float64>.zeros([2, 3, 4], DType.float64);
-              a3D.fill(Float64(1.0));
+              a3D.fill(1.0);
 
               // Vector norm along axis 1
               final normAx1 = norm(a3D, axis: 1);
@@ -1603,9 +1603,9 @@ void main() {
 
                 // 3D Kronecker product
                 final a3D = NDArray<Float64>.zeros([2, 2, 2], DType.float64);
-                a3D.fill(Float64(2.0));
+                a3D.fill(2.0);
                 final b3D = NDArray<Float64>.zeros([2, 3, 2], DType.float64);
-                b3D.fill(Float64(3.0));
+                b3D.fill(3.0);
                 final res3D = kron(a3D, b3D);
                 expect(res3D.shape, [4, 6, 4]);
                 expect(res3D.getCell([0, 0, 0]), 6.0);
@@ -1680,8 +1680,8 @@ void main() {
                     2,
                     2,
                   ], DType.float64);
-                  aBatch.fill(Float64(1.0));
-                  bBatch.fill(Float64(2.0));
+                  aBatch.fill(1.0);
+                  bBatch.fill(2.0);
                   final batchRes = einsum(
                     EinsumSubscripts.parse('...ij,...jk->...ik'),
                     [aBatch, bBatch],
