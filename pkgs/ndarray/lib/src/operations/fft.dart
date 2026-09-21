@@ -29,104 +29,218 @@ NDArray _createZeros(List<int> shape, DType dtype) => switch (dtype) {
 
 /// Helper to allocate a KissFFT plan configuration on the ScratchArena stack.
 
+int _getSignalOffset(int s, List<int> shape, List<int> strides) {
+  final rank = shape.length;
+  if (rank <= 1) return 0;
+  int offset = 0;
+  int temp = s;
+  for (var d = rank - 2; d >= 0; d--) {
+    final dim = shape[d];
+    final coord = temp % dim;
+    temp ~/= dim;
+    offset += coord * strides[d];
+  }
+  return offset;
+}
+
 void _loadSignalToKissInput<T>(
   NDArray<T> inputA,
   int srcStart,
   int copyLen,
   int targetLen,
-  ffi.Pointer<kiss_fft_cpx> pin,
-) {
-  switch (inputA.dtype) {
-    case DType.complex128:
-      final inPtr = inputA.pointer.cast<kiss_fft_cpx>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].r;
-        pin[i].i = inPtr[i].i;
-      }
-    case DType.complex64:
-      final inPtr = inputA.pointer.cast<ffi.Float>() + (srcStart * 2);
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[2 * i];
-        pin[i].i = inPtr[2 * i + 1];
-      }
-    case DType.float64:
-      final inPtr = inputA.pointer.cast<ffi.Double>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i];
-        pin[i].i = 0.0;
-      }
-    case DType.float32:
-      final inPtr = inputA.pointer.cast<ffi.Float>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i];
-        pin[i].i = 0.0;
-      }
-    case DType.int64:
-      final inPtr = inputA.pointer.cast<ffi.Int64>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.int32:
-      final inPtr = inputA.pointer.cast<ffi.Int32>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.int16:
-      final inPtr = inputA.pointer.cast<ffi.Int16>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.uint8:
-      final inPtr = inputA.pointer.cast<ffi.Uint8>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.int8:
-      final inPtr = inputA.pointer.cast<ffi.Int8>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.uint64:
-      final inPtr = inputA.pointer.cast<ffi.Uint64>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = BigInt.from(inPtr[i]).toUnsigned(64).toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.uint32:
-      final inPtr = inputA.pointer.cast<ffi.Uint32>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.uint16:
-      final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.float16:
-      final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = Float16Utils.decodeFloat16(inPtr[i]);
-        pin[i].i = 0.0;
-      }
-    case DType.bfloat16:
-      final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = Float16Utils.decodeBFloat16(inPtr[i]);
-        pin[i].i = 0.0;
-      }
-    case DType.boolean:
-      final inPtr = inputA.pointer.cast<ffi.Uint8>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i] != 0 ? 1.0 : 0.0;
-        pin[i].i = 0.0;
-      }
+  ffi.Pointer<kiss_fft_cpx> pin, {
+  int elemStride = 1,
+}) {
+  if (elemStride == 1) {
+    switch (inputA.dtype) {
+      case DType.complex128:
+        final inPtr = inputA.pointer.cast<kiss_fft_cpx>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i].r;
+          pin[i].i = inPtr[i].i;
+        }
+      case DType.complex64:
+        final inPtr = inputA.pointer.cast<ffi.Float>() + (srcStart * 2);
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[2 * i];
+          pin[i].i = inPtr[2 * i + 1];
+        }
+      case DType.float64:
+        final inPtr = inputA.pointer.cast<ffi.Double>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i];
+          pin[i].i = 0.0;
+        }
+      case DType.float32:
+        final inPtr = inputA.pointer.cast<ffi.Float>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i];
+          pin[i].i = 0.0;
+        }
+      case DType.int64:
+        final inPtr = inputA.pointer.cast<ffi.Int64>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.int32:
+        final inPtr = inputA.pointer.cast<ffi.Int32>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.int16:
+        final inPtr = inputA.pointer.cast<ffi.Int16>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.uint8:
+        final inPtr = inputA.pointer.cast<ffi.Uint8>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.int8:
+        final inPtr = inputA.pointer.cast<ffi.Int8>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.uint64:
+        final inPtr = inputA.pointer.cast<ffi.Uint64>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = BigInt.from(inPtr[i]).toUnsigned(64).toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.uint32:
+        final inPtr = inputA.pointer.cast<ffi.Uint32>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.uint16:
+        final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.float16:
+        final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = Float16Utils.decodeFloat16(inPtr[i]);
+          pin[i].i = 0.0;
+        }
+      case DType.bfloat16:
+        final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = Float16Utils.decodeBFloat16(inPtr[i]);
+          pin[i].i = 0.0;
+        }
+      case DType.boolean:
+        final inPtr = inputA.pointer.cast<ffi.Uint8>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i] != 0 ? 1.0 : 0.0;
+          pin[i].i = 0.0;
+        }
+    }
+  } else {
+    switch (inputA.dtype) {
+      case DType.complex128:
+        final inPtr = inputA.pointer.cast<kiss_fft_cpx>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          final idx = i * elemStride;
+          pin[i].r = inPtr[idx].r;
+          pin[i].i = inPtr[idx].i;
+        }
+      case DType.complex64:
+        final inPtr = inputA.pointer.cast<ffi.Float>() + (srcStart * 2);
+        for (var i = 0; i < copyLen; i++) {
+          final idx = (i * elemStride) * 2;
+          pin[i].r = inPtr[idx];
+          pin[i].i = inPtr[idx + 1];
+        }
+      case DType.float64:
+        final inPtr = inputA.pointer.cast<ffi.Double>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i * elemStride];
+          pin[i].i = 0.0;
+        }
+      case DType.float32:
+        final inPtr = inputA.pointer.cast<ffi.Float>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i * elemStride];
+          pin[i].i = 0.0;
+        }
+      case DType.int64:
+        final inPtr = inputA.pointer.cast<ffi.Int64>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i * elemStride].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.int32:
+        final inPtr = inputA.pointer.cast<ffi.Int32>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i * elemStride].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.int16:
+        final inPtr = inputA.pointer.cast<ffi.Int16>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i * elemStride].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.uint8:
+        final inPtr = inputA.pointer.cast<ffi.Uint8>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i * elemStride].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.int8:
+        final inPtr = inputA.pointer.cast<ffi.Int8>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i * elemStride].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.uint64:
+        final inPtr = inputA.pointer.cast<ffi.Uint64>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = BigInt.from(
+            inPtr[i * elemStride],
+          ).toUnsigned(64).toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.uint32:
+        final inPtr = inputA.pointer.cast<ffi.Uint32>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i * elemStride].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.uint16:
+        final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i * elemStride].toDouble();
+          pin[i].i = 0.0;
+        }
+      case DType.float16:
+        final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = Float16Utils.decodeFloat16(inPtr[i * elemStride]);
+          pin[i].i = 0.0;
+        }
+      case DType.bfloat16:
+        final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = Float16Utils.decodeBFloat16(inPtr[i * elemStride]);
+          pin[i].i = 0.0;
+        }
+      case DType.boolean:
+        final inPtr = inputA.pointer.cast<ffi.Uint8>() + srcStart;
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = inPtr[i * elemStride] != 0 ? 1.0 : 0.0;
+          pin[i].i = 0.0;
+        }
+    }
   }
   for (var i = copyLen; i < targetLen; i++) {
     pin[i].r = 0.0;
@@ -140,22 +254,44 @@ void _storeKissOutputToResult<R>(
   int targetLen,
   ffi.Pointer<kiss_fft_cpx> pout, {
   double scale = 1.0,
+  int elemStride = 1,
 }) {
-  switch (result.dtype) {
-    case DType.complex128:
-      final outPtr = result.pointer.cast<kiss_fft_cpx>() + destStart;
-      for (var i = 0; i < targetLen; i++) {
-        outPtr[i].r = pout[i].r * scale;
-        outPtr[i].i = pout[i].i * scale;
-      }
-    case DType.complex64:
-      final outPtr = result.pointer.cast<ffi.Float>() + (destStart * 2);
-      for (var i = 0; i < targetLen; i++) {
-        outPtr[2 * i] = (pout[i].r * scale);
-        outPtr[2 * i + 1] = (pout[i].i * scale);
-      }
-    default:
-      break;
+  if (elemStride == 1) {
+    switch (result.dtype) {
+      case DType.complex128:
+        final outPtr = result.pointer.cast<kiss_fft_cpx>() + destStart;
+        for (var i = 0; i < targetLen; i++) {
+          outPtr[i].r = pout[i].r * scale;
+          outPtr[i].i = pout[i].i * scale;
+        }
+      case DType.complex64:
+        final outPtr = result.pointer.cast<ffi.Float>() + (destStart * 2);
+        for (var i = 0; i < targetLen; i++) {
+          outPtr[2 * i] = (pout[i].r * scale);
+          outPtr[2 * i + 1] = (pout[i].i * scale);
+        }
+      default:
+        break;
+    }
+  } else {
+    switch (result.dtype) {
+      case DType.complex128:
+        final outPtr = result.pointer.cast<kiss_fft_cpx>() + destStart;
+        for (var i = 0; i < targetLen; i++) {
+          final idx = i * elemStride;
+          outPtr[idx].r = pout[i].r * scale;
+          outPtr[idx].i = pout[i].i * scale;
+        }
+      case DType.complex64:
+        final outPtr = result.pointer.cast<ffi.Float>() + (destStart * 2);
+        for (var i = 0; i < targetLen; i++) {
+          final idx = (i * elemStride) * 2;
+          outPtr[idx] = (pout[i].r * scale);
+          outPtr[idx + 1] = (pout[i].i * scale);
+        }
+      default:
+        break;
+    }
   }
 }
 
@@ -253,7 +389,7 @@ NDArray<R> fft<T, R extends Complex>(
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
-    if (!out.isContiguous || sharesMemory(a, out)) {
+    if (sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
         fft<T, R>(a, n: n, axis: axis, out: temp);
@@ -282,31 +418,35 @@ NDArray<R> fft<T, R extends Complex>(
 
     return NDArray.scope(() {
       final transposedInput = a.transpose(axes);
-      final transposedResult = fft<T, R>(transposedInput, n: n);
-      final finalResult = transposedResult.transpose(axes);
       if (out != null) {
-        finalResult.copy(out: out);
+        final transposedOut = out.transpose(axes);
+        fft<T, R>(transposedInput, n: n, out: transposedOut);
         return out;
       } else {
-        final resCopy = finalResult.copy();
-        resCopy.detachToParentScope();
-        return resCopy;
+        final result = _createZeros(outShape, targetDType) as NDArray<R>;
+        final transposedOut = result.transpose(axes);
+        fft<T, R>(transposedInput, n: n, out: transposedOut);
+        result.detachToParentScope();
+        return result;
       }
     });
   }
 
   return NDArray.scope(() {
-    final NDArray<T> inputA = a.isContiguous ? a : a.copy();
+    final NDArray<T> inputA = a;
     final result = out ?? _createZeros(outShape, targetDType) as NDArray<R>;
 
     // Count how many 1D row sub-signals exist to execute strided walks
-    final totalElements = inputA.shape.reduce((x, y) => x * y);
-    final signalsCount = totalElements ~/ lastAxisDim;
+    final signalsCount = rank <= 1
+        ? 1
+        : inputA.shape.take(rank - 1).reduce((x, y) => x * y);
 
     final isZeroCopyFastPath =
         inputA.dtype == DType.complex128 &&
+        result.dtype == DType.complex128 &&
         targetLen == lastAxisDim &&
-        inputA.isContiguous;
+        inputA.isContiguous &&
+        result.isContiguous;
 
     kiss_fft_cfg cfg = ffi.nullptr.cast();
 
@@ -340,17 +480,33 @@ NDArray<R> fft<T, R extends Complex>(
       );
 
       final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
-      for (var s = 0; s < signalsCount; s++) {
-        final srcStart = s * lastAxisDim;
-        final destStart = s * targetLen;
+      final inStride = inputA.strides.isEmpty ? 1 : inputA.strides.last;
+      final outStride = result.strides.isEmpty ? 1 : result.strides.last;
 
-        _loadSignalToKissInput(inputA, srcStart, copyLen, targetLen, pin);
+      for (var s = 0; s < signalsCount; s++) {
+        final srcStart = _getSignalOffset(s, inputA.shape, inputA.strides);
+        final destStart = _getSignalOffset(s, result.shape, result.strides);
+
+        _loadSignalToKissInput(
+          inputA,
+          srcStart,
+          copyLen,
+          targetLen,
+          pin,
+          elemStride: inStride,
+        );
 
         // 3. Fire high-speed native FFT on the C heap components
         kiss_fft(cfg, pin, pout);
 
         // 4. Collect results from pout back into result array
-        _storeKissOutputToResult(result, destStart, targetLen, pout);
+        _storeKissOutputToResult(
+          result,
+          destStart,
+          targetLen,
+          pout,
+          elemStride: outStride,
+        );
       }
     } finally {
       ScratchArena.reset(marker);
@@ -448,7 +604,7 @@ NDArray<R> ifft<T, R extends Complex>(
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
-    if (!out.isContiguous || sharesMemory(a, out)) {
+    if (sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
         ifft<T, R>(a, n: n, axis: axis, out: temp);
@@ -477,30 +633,34 @@ NDArray<R> ifft<T, R extends Complex>(
 
     return NDArray.scope(() {
       final transposedInput = a.transpose(axes);
-      final transposedResult = ifft<T, R>(transposedInput, n: n);
-      final finalResult = transposedResult.transpose(axes);
       if (out != null) {
-        finalResult.copy(out: out);
+        final transposedOut = out.transpose(axes);
+        ifft<T, R>(transposedInput, n: n, out: transposedOut);
         return out;
       } else {
-        final resCopy = finalResult.copy();
-        resCopy.detachToParentScope();
-        return resCopy;
+        final result = _createZeros(outShape, targetDType) as NDArray<R>;
+        final transposedOut = result.transpose(axes);
+        ifft<T, R>(transposedInput, n: n, out: transposedOut);
+        result.detachToParentScope();
+        return result;
       }
     });
   }
 
   return NDArray.scope(() {
-    final NDArray<T> inputA = a.isContiguous ? a : a.copy();
+    final NDArray<T> inputA = a;
     final result = out ?? _createZeros(outShape, targetDType) as NDArray<R>;
 
-    final totalElements = inputA.shape.reduce((x, y) => x * y);
-    final signalsCount = totalElements ~/ lastAxisDim;
+    final signalsCount = rank <= 1
+        ? 1
+        : inputA.shape.take(rank - 1).reduce((x, y) => x * y);
 
     final isZeroCopyFastPath =
         inputA.dtype == DType.complex128 &&
+        result.dtype == DType.complex128 &&
         targetLen == lastAxisDim &&
-        inputA.isContiguous;
+        inputA.isContiguous &&
+        result.isContiguous;
 
     kiss_fft_cfg cfg = ffi.nullptr.cast();
 
@@ -542,11 +702,21 @@ NDArray<R> ifft<T, R extends Complex>(
 
       final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
       final scaleFactor = 1.0 / targetLen;
-      for (var s = 0; s < signalsCount; s++) {
-        final srcStart = s * lastAxisDim;
-        final destStart = s * targetLen;
+      final inStride = inputA.strides.isEmpty ? 1 : inputA.strides.last;
+      final outStride = result.strides.isEmpty ? 1 : result.strides.last;
 
-        _loadSignalToKissInput(inputA, srcStart, copyLen, targetLen, pin);
+      for (var s = 0; s < signalsCount; s++) {
+        final srcStart = _getSignalOffset(s, inputA.shape, inputA.strides);
+        final destStart = _getSignalOffset(s, result.shape, result.strides);
+
+        _loadSignalToKissInput(
+          inputA,
+          srcStart,
+          copyLen,
+          targetLen,
+          pin,
+          elemStride: inStride,
+        );
 
         // 2. Fire high-speed native inverse transform
         kiss_fft(cfg, pin, pout);
@@ -558,6 +728,7 @@ NDArray<R> ifft<T, R extends Complex>(
           targetLen,
           pout,
           scale: scaleFactor,
+          elemStride: outStride,
         );
       }
     } finally {

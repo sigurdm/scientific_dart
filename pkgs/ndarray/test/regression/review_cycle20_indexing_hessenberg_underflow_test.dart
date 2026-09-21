@@ -225,18 +225,29 @@ void main() {
           'geomspace succeeds for sub-1e-162 start and stop of same sign',
           () {
             NDArray.scope(() {
-              final pos = geomspace<double>(1e-200, 1e-180, 5);
+              final pos = geomspace<double>(
+                1e-200,
+                1e-180,
+                5,
+                dtype: DType.float64,
+              );
               expect(pos.shape, equals([5]));
               expect(pos[[0]], closeTo(1e-200, 1e-212));
               expect(pos[[2]], closeTo(1e-190, 1e-202));
               expect(pos[[4]], closeTo(1e-180, 1e-192));
 
-              final neg = geomspace<double>(-1e-200, -1e-180, 5);
+              final neg = geomspace<double>(
+                -1e-200,
+                -1e-180,
+                5,
+                dtype: DType.float64,
+              );
               expect(neg[[0]], closeTo(-1e-200, 1e-212));
               expect(neg[[4]], closeTo(-1e-180, 1e-192));
 
               expect(
-                () => geomspace<double>(1e-200, -1e-200, 5),
+                () =>
+                    geomspace<double>(1e-200, -1e-200, 5, dtype: DType.float64),
                 throwsArgumentError,
               );
             });

@@ -1306,14 +1306,25 @@ void main() {
       () {
         NDArray.scope(() {
           // linspace
-          final lin = linspace(0.0, 1.0, 5);
+          final lin = linspace(0.0, 1.0, 5, dtype: DType.float64);
           expect(lin.shape, equals([5]));
           expect(lin.toList(), equals([0.0, 0.25, 0.5, 0.75, 1.0]));
 
-          final linNoEnd = linspace(0.0, 1.0, 4, endpoint: false);
+          final linNoEnd = linspace(
+            0.0,
+            1.0,
+            4,
+            endpoint: false,
+            dtype: DType.float64,
+          );
           expect(linNoEnd.toList(), equals([0.0, 0.25, 0.5, 0.75]));
 
-          final (samples: linS, step: linStep) = linspaceWithStep(0.0, 10.0, 5);
+          final (samples: linS, step: linStep) = linspaceWithStep(
+            0.0,
+            10.0,
+            5,
+            dtype: DType.float64,
+          );
           expect(linStep, equals(2.5));
           expect(linS.toList(), equals([0.0, 2.5, 5.0, 7.5, 10.0]));
 
@@ -1328,7 +1339,7 @@ void main() {
           expect(grid.getCell([2, 1]), equals(12.0));
 
           // logspace: 10^0 to 10^3 in 4 steps -> [1, 10, 100, 1000]
-          final log = logspace(0.0, 3.0, 4);
+          final log = logspace(0.0, 3.0, 4, dtype: DType.float64);
           expect(log.shape, equals([4]));
           expect(log.getCell([0]), closeTo(1.0, 1e-10));
           expect(log.getCell([1]), closeTo(10.0, 1e-10));
@@ -1336,7 +1347,7 @@ void main() {
           expect(log.getCell([3]), closeTo(1000.0, 1e-10));
 
           // geomspace: 1 to 1000 in 4 steps -> [1, 10, 100, 1000]
-          final geom = geomspace(1.0, 1000.0, 4);
+          final geom = geomspace(1.0, 1000.0, 4, dtype: DType.float64);
           expect(geom.shape, equals([4]));
           expect(geom.getCell([0]), closeTo(1.0, 1e-10));
           expect(geom.getCell([1]), closeTo(10.0, 1e-10));

@@ -1297,9 +1297,18 @@ void main() {
     test(
       'arange() zero and negative step validation',
       () => NDArray.scope(() {
-        expect(() => NDArray.arange(0.0, 5.0, step: 0.0), throwsArgumentError);
-        expect(() => NDArray.arange(0.0, 5.0, step: -1.0), throwsArgumentError);
-        expect(() => NDArray.arange(5.0, 0.0, step: 1.0), throwsArgumentError);
+        expect(
+          () => NDArray.arange(0.0, 5.0, step: 0.0, dtype: DType.float64),
+          throwsArgumentError,
+        );
+        expect(
+          () => NDArray.arange(0.0, 5.0, step: -1.0, dtype: DType.float64),
+          throwsArgumentError,
+        );
+        expect(
+          () => NDArray.arange(5.0, 0.0, step: 1.0, dtype: DType.float64),
+          throwsArgumentError,
+        );
 
         // Valid arange with negative step
         final a = NDArray<double>.arange(

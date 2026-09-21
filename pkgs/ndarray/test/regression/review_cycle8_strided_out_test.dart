@@ -150,7 +150,13 @@ void main() {
       NDArray.scope(() {
         // linspace
         final bufLin = NDArray<Float64>.zeros([4], DType.float64);
-        linspace<Float64>(Float64(0.0), Float64(3.0), 4, out: flip(bufLin));
+        linspace<Float64>(
+          Float64(0.0),
+          Float64(3.0),
+          4,
+          dtype: DType.float64,
+          out: flip(bufLin),
+        );
         expect(bufLin[0].scalar, closeTo(3.0, 1e-12));
         expect(bufLin[1].scalar, closeTo(2.0, 1e-12));
         expect(bufLin[2].scalar, closeTo(1.0, 1e-12));
@@ -161,6 +167,7 @@ void main() {
           Float64(0.0),
           Float64(3.0),
           4,
+          dtype: DType.float64,
           out: bufLinStep.slice([Slice(step: 2)]),
         );
         expect(bufLinStep[0].scalar, closeTo(0.0, 1e-12));
@@ -170,7 +177,13 @@ void main() {
 
         // logspace
         final bufLog = NDArray<Float64>.zeros([3], DType.float64);
-        logspace<Float64>(Float64(0.0), Float64(2.0), 3, out: flip(bufLog));
+        logspace<Float64>(
+          Float64(0.0),
+          Float64(2.0),
+          3,
+          dtype: DType.float64,
+          out: flip(bufLog),
+        );
         expect(bufLog[0].scalar, closeTo(100.0, 1e-9));
         expect(bufLog[1].scalar, closeTo(10.0, 1e-9));
         expect(bufLog[2].scalar, closeTo(1.0, 1e-9));
@@ -180,6 +193,7 @@ void main() {
           Float64(0.0),
           Float64(2.0),
           3,
+          dtype: DType.float64,
           out: bufLogStep.slice([Slice(step: 2)]),
         );
         expect(bufLogStep[0].scalar, closeTo(1.0, 1e-9));
@@ -188,7 +202,13 @@ void main() {
 
         // geomspace
         final bufGeom = NDArray<Float64>.zeros([3], DType.float64);
-        geomspace<Float64>(Float64(1.0), Float64(100.0), 3, out: flip(bufGeom));
+        geomspace<Float64>(
+          Float64(1.0),
+          Float64(100.0),
+          3,
+          dtype: DType.float64,
+          out: flip(bufGeom),
+        );
         expect(bufGeom[0].scalar, closeTo(100.0, 1e-9));
         expect(bufGeom[1].scalar, closeTo(10.0, 1e-9));
         expect(bufGeom[2].scalar, closeTo(1.0, 1e-9));
@@ -198,6 +218,7 @@ void main() {
           Float64(1.0),
           Float64(100.0),
           3,
+          dtype: DType.float64,
           out: bufGeomStep.slice([Slice(step: 2)]),
         );
         expect(bufGeomStep[0].scalar, closeTo(1.0, 1e-9));

@@ -399,18 +399,26 @@ void main() {
       expect(aI32.toString(), '[1, 2, 3], dtype=int32');
 
       // 1-D large array truncation (threshold > 6 elements)
-      final large1D = NDArray.arange(0.0, 10.0);
+      final large1D = NDArray.arange(0.0, 10.0, dtype: DType.float64);
       expect(large1D.toString(), '[0., 1., 2., ..., 7., 8., 9.]');
 
       // 2-D matrix formatting with column alignment
-      final mat = NDArray.arange(0.0, 12.0).reshape([3, 4]);
+      final mat = NDArray.arange(
+        0.0,
+        12.0,
+        dtype: DType.float64,
+      ).reshape([3, 4]);
       final matStr = mat.toString();
       expect(matStr, contains('[[0., 1.,  2.,  3.]'));
       expect(matStr, contains('[4., 5.,  6.,  7.]'));
       expect(matStr, contains('[8., 9., 10., 11.]]'));
 
       // 2-D large matrix truncation
-      final large2D = NDArray.arange(0.0, 100.0).reshape([10, 10]);
+      final large2D = NDArray.arange(
+        0.0,
+        100.0,
+        dtype: DType.float64,
+      ).reshape([10, 10]);
       final large2DStr = large2D.toString();
       expect(large2DStr, contains('...'));
       expect(large2DStr, contains('[[ 0.,  1.,  2., ...,  7.,  8.,  9.]'));

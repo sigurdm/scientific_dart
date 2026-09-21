@@ -37,7 +37,13 @@ void native_sort_float(float *array, int size, int kind);
 void native_sort_int64(long long *array, int size, int kind);
 void native_sort_int32(int *array, int size, int kind);
 void native_sort_int16(int16_t *array, int size, int kind);
+void native_sort_int8(int8_t *array, int size, int kind);
+void native_sort_uint64(uint64_t *array, int size, int kind);
+void native_sort_uint32(uint32_t *array, int size, int kind);
+void native_sort_uint16(uint16_t *array, int size, int kind);
 void native_sort_uint8(uint8_t *array, int size, int kind);
+void native_sort_float16(uint16_t *array, int size, int kind);
+void native_sort_bfloat16(uint16_t *array, int size, int kind);
 void native_sort_complex128(double *array, int size, int kind);
 void native_sort_complex64(float *array, int size, int kind);
 
@@ -49,7 +55,13 @@ void native_argsort_float(const float *data, int *indices, int size, int kind);
 void native_argsort_int64(const long long *data, int *indices, int size, int kind);
 void native_argsort_int32(const int *data, int *indices, int size, int kind);
 void native_argsort_int16(const int16_t *data, int *indices, int size, int kind);
+void native_argsort_int8(const int8_t *data, int *indices, int size, int kind);
+void native_argsort_uint64(const uint64_t *data, int *indices, int size, int kind);
+void native_argsort_uint32(const uint32_t *data, int *indices, int size, int kind);
+void native_argsort_uint16(const uint16_t *data, int *indices, int size, int kind);
 void native_argsort_uint8(const uint8_t *data, int *indices, int size, int kind);
+void native_argsort_float16(const uint16_t *data, int *indices, int size, int kind);
+void native_argsort_bfloat16(const uint16_t *data, int *indices, int size, int kind);
 
 // ----------------------------------------------------------------------------
 // Public Partition Sorters
@@ -59,7 +71,13 @@ void native_partition_float(float *array, int size, const int *k_list, int k_siz
 void native_partition_int64(long long *array, int size, const int *k_list, int k_size);
 void native_partition_int32(int *array, int size, const int *k_list, int k_size);
 void native_partition_int16(int16_t *array, int size, const int *k_list, int k_size);
+void native_partition_int8(int8_t *array, int size, const int *k_list, int k_size);
+void native_partition_uint64(uint64_t *array, int size, const int *k_list, int k_size);
+void native_partition_uint32(uint32_t *array, int size, const int *k_list, int k_size);
+void native_partition_uint16(uint16_t *array, int size, const int *k_list, int k_size);
 void native_partition_uint8(uint8_t *array, int size, const int *k_list, int k_size);
+void native_partition_float16(uint16_t *array, int size, const int *k_list, int k_size);
+void native_partition_bfloat16(uint16_t *array, int size, const int *k_list, int k_size);
 void native_partition_complex128(double *array, int size, const int *k_list, int k_size);
 void native_partition_complex64(float *array, int size, const int *k_list, int k_size);
 
@@ -71,7 +89,13 @@ void native_argpartition_float(const float *data, int *indices, int size, const 
 void native_argpartition_int64(const long long *data, int *indices, int size, const int *k_list, int k_size);
 void native_argpartition_int32(const int *data, int *indices, int size, const int *k_list, int k_size);
 void native_argpartition_int16(const int16_t *data, int *indices, int size, const int *k_list, int k_size);
+void native_argpartition_int8(const int8_t *data, int *indices, int size, const int *k_list, int k_size);
+void native_argpartition_uint64(const uint64_t *data, int *indices, int size, const int *k_list, int k_size);
+void native_argpartition_uint32(const uint32_t *data, int *indices, int size, const int *k_list, int k_size);
+void native_argpartition_uint16(const uint16_t *data, int *indices, int size, const int *k_list, int k_size);
 void native_argpartition_uint8(const uint8_t *data, int *indices, int size, const int *k_list, int k_size);
+void native_argpartition_float16(const uint16_t *data, int *indices, int size, const int *k_list, int k_size);
+void native_argpartition_bfloat16(const uint16_t *data, int *indices, int size, const int *k_list, int k_size);
 void native_argpartition_complex128(const double *data, int *indices, int size, const int *k_list, int k_size);
 void native_argpartition_complex64(const float *data, int *indices, int size, const int *k_list, int k_size);
 
@@ -83,7 +107,13 @@ void native_searchsorted_float(const float *array, int size, const float *values
 void native_searchsorted_int64(const long long *array, int size, const long long *values, int *out_indices, int num_values, int side_left, const int *sorter);
 void native_searchsorted_int32(const int *array, int size, const int *values, int *out_indices, int num_values, int side_left, const int *sorter);
 void native_searchsorted_int16(const int16_t *array, int size, const int16_t *values, int *out_indices, int num_values, int side_left, const int *sorter);
+void native_searchsorted_int8(const int8_t *array, int size, const int8_t *values, int *out_indices, int num_values, int side_left, const int *sorter);
+void native_searchsorted_uint64(const uint64_t *array, int size, const uint64_t *values, int *out_indices, int num_values, int side_left, const int *sorter);
+void native_searchsorted_uint32(const uint32_t *array, int size, const uint32_t *values, int *out_indices, int num_values, int side_left, const int *sorter);
+void native_searchsorted_uint16(const uint16_t *array, int size, const uint16_t *values, int *out_indices, int num_values, int side_left, const int *sorter);
 void native_searchsorted_uint8(const uint8_t *array, int size, const uint8_t *values, int *out_indices, int num_values, int side_left, const int *sorter);
+void native_searchsorted_float16(const uint16_t *array, int size, const uint16_t *values, int *out_indices, int num_values, int side_left, const int *sorter);
+void native_searchsorted_bfloat16(const uint16_t *array, int size, const uint16_t *values, int *out_indices, int num_values, int side_left, const int *sorter);
 void native_searchsorted_complex128(const double *array, int size, const double *values, int *out_indices, int num_values, int side_left, const int *sorter);
 void native_searchsorted_complex64(const float *array, int size, const float *values, int *out_indices, int num_values, int side_left, const int *sorter);
 

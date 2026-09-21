@@ -79,65 +79,19 @@ void main(List<String> args) async {
     final libhwy = File.fromUri(hwyLibUri);
     final libhwyContrib = File.fromUri(hwyContribLibUri);
 
-    if (!libhwy.existsSync() || !libhwyContrib.existsSync()) {
-      print('Highway static libraries not found. Compiling highway...');
-      if (!highwayBuildDir.existsSync()) {
-        highwayBuildDir.createSync(recursive: true);
-      }
-
-      // Run cmake configuration
-      final cmakeRes = await Process.run(
-        'cmake',
-        [
-          '-DCMAKE_BUILD_TYPE=Release',
-          '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
-          '-DHWY_ENABLE_TESTS=OFF',
-          '-DHWY_ENABLE_EXAMPLES=OFF',
-          if (cCompiler != null) ...[
-            '-DCMAKE_C_COMPILER=$compilerPath',
-            '-DCMAKE_CXX_COMPILER=$cppCompilerPath',
-          ],
-          if (os == OS.macOS || os == OS.iOS)
-            '-DCMAKE_OSX_ARCHITECTURES=${arch == Architecture.arm64 ? 'arm64' : 'x86_64'}',
-          highwayDir.toFilePath(),
-        ],
-        workingDirectory: highwayBuildDir.path,
-        environment: msvcEnv,
-      );
-
-      if (cmakeRes.exitCode != 0) {
-        throw StateError(
-          'CMake failed for highway (exit ${cmakeRes.exitCode}):\n'
-          'stdout: ${cmakeRes.stdout}\n'
-          'stderr: ${cmakeRes.stderr}',
-        );
-      }
-
-      // Run cmake build
-      final buildRes = await Process.run(
-        'cmake',
-        [
-          '--build',
-          '.',
-          '--target',
-          'hwy',
-          'hwy_contrib',
-          if (isMSVC) ...['--config', 'Release'],
-          '--parallel',
-        ],
-        workingDirectory: highwayBuildDir.path,
-        environment: msvcEnv,
-      );
-
-      if (buildRes.exitCode != 0) {
-        throw StateError(
-          'Build failed for highway (exit ${buildRes.exitCode}):\n'
-          'stdout: ${buildRes.stdout}\n'
-          'stderr: ${buildRes.stderr}',
-        );
-      }
-      print('Highway compiled successfully.');
-    }
+    await buildHighwayIfNeeded(
+      highwayDir: highwayDir,
+      highwayBuildDir: highwayBuildDir,
+      libhwy: libhwy,
+      libhwyContrib: libhwyContrib,
+      isMSVC: isMSVC,
+      os: os,
+      arch: arch,
+      cCompiler: cCompiler,
+      compilerPath: compilerPath,
+      cppCompilerPath: cppCompilerPath,
+      msvcEnv: msvcEnv,
+    );
 
     print(
       'Compiling ndarray custom C++ extensions using compiler: $cppCompilerPath',
@@ -159,7 +113,6 @@ void main(List<String> args) async {
         '/O2',
         '/MD',
         '/EHsc',
-        if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
         '/I${input.packageRoot.toFilePath()}',
         input.packageRoot.resolve('hook/custom_ufuncs.cpp').toFilePath(),
@@ -178,7 +131,6 @@ void main(List<String> args) async {
         '/O2',
         '/MD',
         '/EHsc',
-        if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
         '/I${input.packageRoot.toFilePath()}',
         '/I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
@@ -198,7 +150,6 @@ void main(List<String> args) async {
         '/O2',
         '/MD',
         '/EHsc',
-        if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
         '/I${input.packageRoot.toFilePath()}',
         input.packageRoot.resolve('hook/custom_indexing.cpp').toFilePath(),
@@ -331,7 +282,7 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
+          '-ffp-contract=fast',
           '-fno-math-errno',
           '-I${input.packageRoot.toFilePath()}',
           ufuncsSrc,
@@ -356,7 +307,7 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
+          '-ffp-contract=fast',
           '-fno-math-errno',
           '-I${input.packageRoot.toFilePath()}',
           '-I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
@@ -382,7 +333,7 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
+          '-ffp-contract=fast',
           '-fno-math-errno',
           '-I${input.packageRoot.toFilePath()}',
           indexingSrc,
@@ -524,6 +475,100 @@ void main(List<String> args) async {
       );
     }
   });
+}
+
+Future<void> buildHighwayIfNeeded({
+  required Uri highwayDir,
+  required Directory highwayBuildDir,
+  required File libhwy,
+  required File libhwyContrib,
+  required bool isMSVC,
+  required OS os,
+  required Architecture arch,
+  required CCompilerConfig? cCompiler,
+  required String compilerPath,
+  required String cppCompilerPath,
+  required Map<String, String> msvcEnv,
+}) async {
+  if (!libhwy.existsSync() || !libhwyContrib.existsSync()) {
+    print('Highway static libraries not found. Compiling highway...');
+    if (!highwayBuildDir.existsSync()) {
+      highwayBuildDir.createSync(recursive: true);
+    }
+
+    // Run cmake configuration
+    final cmakeRes = await Process.run(
+      'cmake',
+      [
+        '-DCMAKE_BUILD_TYPE=Release',
+        '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+        '-DHWY_ENABLE_TESTS=OFF',
+        '-DHWY_ENABLE_EXAMPLES=OFF',
+        if (cCompiler != null) ...[
+          '-DCMAKE_C_COMPILER=$compilerPath',
+          '-DCMAKE_CXX_COMPILER=$cppCompilerPath',
+        ],
+        if (os != OS.current) ...[
+          switch (os) {
+            OS.windows => '-DCMAKE_SYSTEM_NAME=Windows',
+            OS.linux => '-DCMAKE_SYSTEM_NAME=Linux',
+            OS.macOS => '-DCMAKE_SYSTEM_NAME=Darwin',
+            OS.iOS => '-DCMAKE_SYSTEM_NAME=iOS',
+            OS.android => '-DCMAKE_SYSTEM_NAME=Android',
+            OS.fuchsia => '-DCMAKE_SYSTEM_NAME=Fuchsia',
+            _ => '-DCMAKE_SYSTEM_NAME=${os.name}',
+          },
+          switch (arch) {
+            Architecture.arm64 => '-DCMAKE_SYSTEM_PROCESSOR=aarch64',
+            Architecture.x64 => '-DCMAKE_SYSTEM_PROCESSOR=x86_64',
+            Architecture.arm => '-DCMAKE_SYSTEM_PROCESSOR=arm',
+            Architecture.ia32 => '-DCMAKE_SYSTEM_PROCESSOR=x86',
+            Architecture.riscv64 => '-DCMAKE_SYSTEM_PROCESSOR=riscv64',
+            Architecture.riscv32 => '-DCMAKE_SYSTEM_PROCESSOR=riscv32',
+            _ => '-DCMAKE_SYSTEM_PROCESSOR=${arch.name}',
+          },
+        ],
+        if (os == OS.macOS || os == OS.iOS)
+          '-DCMAKE_OSX_ARCHITECTURES=${arch == Architecture.arm64 ? 'arm64' : 'x86_64'}',
+        highwayDir.toFilePath(),
+      ],
+      workingDirectory: highwayBuildDir.path,
+      environment: msvcEnv,
+    );
+
+    if (cmakeRes.exitCode != 0) {
+      throw StateError(
+        'CMake failed for highway (exit ${cmakeRes.exitCode}):\n'
+        'stdout: ${cmakeRes.stdout}\n'
+        'stderr: ${cmakeRes.stderr}',
+      );
+    }
+
+    // Run cmake build
+    final buildRes = await Process.run(
+      'cmake',
+      [
+        '--build',
+        '.',
+        '--target',
+        'hwy',
+        'hwy_contrib',
+        if (isMSVC) ...['--config', 'Release'],
+        '--parallel',
+      ],
+      workingDirectory: highwayBuildDir.path,
+      environment: msvcEnv,
+    );
+
+    if (buildRes.exitCode != 0) {
+      throw StateError(
+        'Build failed for highway (exit ${buildRes.exitCode}):\n'
+        'stdout: ${buildRes.stdout}\n'
+        'stderr: ${buildRes.stderr}',
+      );
+    }
+    print('Highway compiled successfully.');
+  }
 }
 
 List<String> extractExportsFromBindings(String bindingsPath) {

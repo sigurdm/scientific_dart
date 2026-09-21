@@ -995,6 +995,7 @@ Plot plotSymbolic(
     Float64(from.toDouble()),
     Float64(to.toDouble()),
     points,
+    dtype: DType.float64,
   );
   final yArr = lambda.callArray([xArr]);
   return Plot(

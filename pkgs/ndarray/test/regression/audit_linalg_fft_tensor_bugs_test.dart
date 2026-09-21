@@ -331,7 +331,7 @@ void main() {
 
     test('matmul rejects 0D scalar inputs with ArgumentError', () {
       NDArray.scope(() {
-        final s = NDArray.scalar(2.0);
+        final s = NDArray.scalar(2.0, dtype: DType.float64);
         final v = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
           2,
         ], DType.float64);

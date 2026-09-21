@@ -13,6 +13,7 @@ import 'operations.dart' as ops;
 import 'operations/helpers.dart' as helpers;
 
 import 'float16_utils.dart';
+import 'sendable_ndarray.dart';
 
 /// Supported data types for the elements of an [NDArray].
 extension type const Float64(double value) implements double {}
@@ -216,6 +217,19 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       throw StateError('Cannot access a disposed NDArray.');
     }
     return _data;
+  }
+
+  /// The physical capacity in bytes of the native memory buffer backing this array or view.
+  ///
+  /// It is an error if this array has been disposed.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity: $O(1)$.
+  int get physicalByteCapacity {
+    if (isDisposed) {
+      throw StateError('Cannot access a disposed NDArray.');
+    }
+    return _data.length * dtype.byteWidth;
   }
 
   /// The dimensions of the n-dimensional array.
@@ -647,31 +661,8 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// print(a.shape); // []
   /// print(a.scalar); // 42
   /// ```
-  factory NDArray.scalar(T value, {DType<T>? dtype}) {
-    final resolvedDType = dtype ?? _resolveDType<T>(value);
-    return NDArray.fromList([value], [], resolvedDType);
-  }
-
-  static DType<T> _resolveDType<T>(T value) {
-    if (T == Float64) return DType.float64 as DType<T>;
-    if (T == Float32) return DType.float32 as DType<T>;
-    if (T == Float16) return DType.float16 as DType<T>;
-    if (T == BFloat16) return DType.bfloat16 as DType<T>;
-    if (T == Int64) return DType.int64 as DType<T>;
-    if (T == Int32) return DType.int32 as DType<T>;
-    if (T == Int16) return DType.int16 as DType<T>;
-    if (T == Int8) return DType.int8 as DType<T>;
-    if (T == Uint64) return DType.uint64 as DType<T>;
-    if (T == Uint32) return DType.uint32 as DType<T>;
-    if (T == Uint16) return DType.uint16 as DType<T>;
-    if (T == Uint8) return DType.uint8 as DType<T>;
-    if (T == Complex128) return DType.complex128 as DType<T>;
-    if (T == Complex64) return DType.complex64 as DType<T>;
-    if (T == bool || value is bool) return DType.boolean as DType<T>;
-    if (T == int || value is int) return DType.int64 as DType<T>;
-    if (T == double || value is double) return DType.float64 as DType<T>;
-    if (T == Complex || value is Complex) return DType.complex128 as DType<T>;
-    return helpers.defaultDType<T>();
+  factory NDArray.scalar(T value, {required DType<T> dtype}) {
+    return NDArray.fromList([value], [], dtype);
   }
 
   /// Factory to create a new C-contiguous array filled with zeros.
@@ -731,9 +722,12 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// ```
   ///
   /// Refer to the [NumPy full reference](https://numpy.org/doc/stable/reference/generated/numpy.full.html) for additional details.
-  factory NDArray.full(List<int> shape, T fillValue, {DType<T>? dtype}) {
-    final resolvedDType = dtype ?? _resolveDType<T>(fillValue);
-    final arr = NDArray<T>.create(shape, resolvedDType);
+  factory NDArray.full(
+    List<int> shape,
+    T fillValue, {
+    required DType<T> dtype,
+  }) {
+    final arr = NDArray<T>.create(shape, dtype);
     arr.fill(fillValue);
     return arr;
   }
@@ -749,9 +743,8 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     double start,
     double stop, {
     double step = 1.0,
-    DType<T>? dtype,
+    required DType<T> dtype,
   }) {
-    final DType<T> resolvedDType = dtype ?? (DType.float64 as DType<T>);
     if (step == 0.0) {
       throw ArgumentError('Step size cannot be zero.');
     }
@@ -759,14 +752,14 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       throw ArgumentError('Step size direction must match start/stop range.');
     }
     final length = ((stop - start) / step).ceil();
-    final arr = NDArray<T>.create([length], resolvedDType);
+    final arr = NDArray<T>.create([length], dtype);
     for (var i = 0; i < length; i++) {
       final val = start + i * step;
-      if (resolvedDType.isComplex) {
+      if (dtype.isComplex) {
         arr.setCellRaw(i, Complex(val, 0.0) as T);
-      } else if (resolvedDType.isInteger) {
+      } else if (dtype.isInteger) {
         arr.setCellRaw(i, val.toInt() as T);
-      } else if (resolvedDType == DType.boolean) {
+      } else if (dtype == DType.boolean) {
         arr.setCellRaw(i, (val != 0.0) as T);
       } else {
         arr.setCellRaw(i, val as T);
@@ -1348,6 +1341,68 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
     return helpers.castNDArray<R>(this, targetDType);
   }
+
+  /// Creates a [SendableNDArray] by copying this array's data into an isolate-transferable buffer.
+  ///
+  /// This operation copies all elements into a [TransferableTypedData], allowing
+  /// the array to be safely passed across Dart Isolates (via `Isolate.run` or [SendPort]).
+  /// The receiving isolate can then call [SendableNDArray.materialize] to reconstruct a fresh,
+  /// scope-registered [NDArray] that owns its memory on the destination isolate.
+  ///
+  /// **Preconditions:**
+  /// - This array must not be disposed.
+  ///
+  /// It is an error if this array has been disposed.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity: $O(N)$ where $N$ is the total number of elements.
+  /// - Space complexity: $O(N)$ to allocate the transferable buffer.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray<Float64>.ones([100], DType.float64);
+  /// final sendable = a.toSendable();
+  /// final result = await Isolate.run(() {
+  ///   final workerArray = sendable.materialize();
+  ///   return workerArray.toSendable();
+  /// });
+  /// final finalArray = result.materialize();
+  /// ```
+  SendableNDArray<T> toSendable() => SendableNDArray<T>.fromCopy(this);
+
+  /// Creates a zero-copy [SendableNDArray] borrowing the raw native memory address of this array.
+  ///
+  /// **Safety Contract:**
+  /// - This array **must remain alive and undisposed** on the sending isolate for the
+  ///   entire duration that the worker isolate accesses it. Typically, this is achieved
+  ///   by keeping this array within an [NDArray.scope] on the main isolate and awaiting
+  ///   the completion of `Isolate.run`.
+  /// - The worker isolate reconstructs a view over this memory using
+  ///   [SendableNDArray.materializeView] (backed by [NDArray.fromPointer] with no finalizer).
+  /// - Concurrent unsynchronized writes to overlapping memory regions from multiple isolates
+  ///   result in undefined behavior.
+  ///
+  /// **Preconditions:**
+  /// - This array must not be disposed.
+  ///
+  /// It is an error if this array has been disposed.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity: $O(1)$.
+  /// - Space complexity: $O(1)$.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray<Float64>.zeros([1000], DType.float64);
+  /// final borrowed = a.toSendableBorrow();
+  /// await Isolate.run(() {
+  ///   final view = borrowed.materializeView();
+  ///   view.fill(42.0 as Float64);
+  /// });
+  /// print(a[0]); // 42.0
+  /// ```
+  SendableNDArray<T> toSendableBorrow() =>
+      SendableNDArray<T>.unsafeBorrow(this);
 
   /// Internal helper to copy contiguous array elements to another contiguous array,
   /// bypassing generic type constraints.

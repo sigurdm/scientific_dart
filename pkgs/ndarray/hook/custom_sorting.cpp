@@ -9,6 +9,7 @@
 #define VQSORT_ENABLED 1
 #include "hwy/contrib/sort/vqsort.h"
 #include "hwy/highway.h"
+#include "hwy/per_target.h"
 #include <vector>
 #include <type_traits>
 
@@ -98,6 +99,94 @@ static inline int compare_uint8_inline(uint8_t a, uint8_t b) {
     if (a > b) return 1;
     return 0;
 }
+
+static inline int compare_int8_inline(int8_t a, int8_t b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int compare_uint16_inline(uint16_t a, uint16_t b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int compare_uint32_inline(uint32_t a, uint32_t b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int compare_uint64_inline(uint64_t a, uint64_t b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline bool is_nan_float16(uint16_t bits) {
+    return ((bits & 0x7C00) == 0x7C00) && ((bits & 0x03FF) != 0);
+}
+
+static inline float decode_f16_to_f32(uint16_t bits) {
+    return hwy::F32FromF16Mem(&bits);
+}
+
+static inline int compare_float16_inline(uint16_t a_bits, uint16_t b_bits) {
+    bool nan_a = is_nan_float16(a_bits);
+    bool nan_b = is_nan_float16(b_bits);
+    if (nan_a && nan_b) return 0;
+    if (nan_a) return 1;
+    if (nan_b) return -1;
+    float a = decode_f16_to_f32(a_bits);
+    float b = decode_f16_to_f32(b_bits);
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+struct Float16Less {
+    bool operator()(uint16_t a_bits, uint16_t b_bits) const {
+        bool nan_a = is_nan_float16(a_bits);
+        bool nan_b = is_nan_float16(b_bits);
+        if (nan_a || nan_b) {
+            return !nan_a && nan_b;
+        }
+        return decode_f16_to_f32(a_bits) < decode_f16_to_f32(b_bits);
+    }
+};
+
+static inline bool is_nan_bfloat16(uint16_t bits) {
+    return ((bits & 0x7F80) == 0x7F80) && ((bits & 0x007F) != 0);
+}
+
+static inline float decode_bf16_to_f32(uint16_t bits) {
+    return hwy::F32FromBF16Mem(&bits);
+}
+
+static inline int compare_bfloat16_inline(uint16_t a_bits, uint16_t b_bits) {
+    bool nan_a = is_nan_bfloat16(a_bits);
+    bool nan_b = is_nan_bfloat16(b_bits);
+    if (nan_a && nan_b) return 0;
+    if (nan_a) return 1;
+    if (nan_b) return -1;
+    float a = decode_bf16_to_f32(a_bits);
+    float b = decode_bf16_to_f32(b_bits);
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+struct BFloat16Less {
+    bool operator()(uint16_t a_bits, uint16_t b_bits) const {
+        bool nan_a = is_nan_bfloat16(a_bits);
+        bool nan_b = is_nan_bfloat16(b_bits);
+        if (nan_a || nan_b) {
+            return !nan_a && nan_b;
+        }
+        return decode_bf16_to_f32(a_bits) < decode_bf16_to_f32(b_bits);
+    }
+};
 
 static inline int compare_double_with_nan(double a, double b) {
     bool a_nan = std::isnan(a);
@@ -732,8 +821,10 @@ static void sort_int_impl(T *array, int size, int kind) {
         if (size < 128) {
             std::sort(array, array + size);
         } else {
-            if constexpr (std::is_same_v<T, long long>) {
+            if constexpr (std::is_same_v<T, long long> || std::is_same_v<T, int64_t>) {
                 hwy::VQSort((int64_t *)array, size, hwy::SortAscending());
+            } else if constexpr (std::is_same_v<T, unsigned long long> || std::is_same_v<T, uint64_t>) {
+                hwy::VQSort((uint64_t *)array, size, hwy::SortAscending());
             } else {
                 hwy::VQSort(array, size, hwy::SortAscending());
             }
@@ -1144,6 +1235,209 @@ extern "C" void native_sort_complex64(float *array, int size, int kind) {
     }
 }
 
+extern "C" void native_sort_int8(int8_t *array, int size, int kind) {
+    if (array == nullptr || size <= 1) return;
+
+    bool is_sorted = true;
+    bool is_rev_sorted = true;
+    for (int i = 0; i < size - 1; i++) {
+        if (array[i] > array[i + 1]) {
+            is_sorted = false;
+            if (!is_rev_sorted) break;
+        }
+        if (array[i] <= array[i + 1]) {
+            is_rev_sorted = false;
+            if (!is_sorted) break;
+        }
+    }
+    if (is_sorted) return;
+    if (is_rev_sorted) {
+        std::reverse(array, array + size);
+        return;
+    }
+
+    if (kind == 0 || kind == 1) {
+        if (size > 32) {
+            int counts[256] = {0};
+            for (int i = 0; i < size; i++) {
+                counts[(uint8_t)(array[i] + 128)]++;
+            }
+            int idx = 0;
+            for (int val = 0; val < 256; val++) {
+                int c = counts[val];
+                if (c > 0) {
+                    memset(array + idx, (int8_t)(val - 128), c);
+                    idx += c;
+                }
+            }
+        } else {
+            if (kind == 0) std::sort(array, array + size);
+            else std::stable_sort(array, array + size);
+        }
+    } else if (kind == 2) {
+        std::make_heap(array, array + size);
+        std::sort_heap(array, array + size);
+    }
+}
+
+extern "C" void native_sort_uint16(uint16_t *array, int size, int kind) {
+    sort_int_impl(array, size, kind);
+}
+
+extern "C" void native_sort_uint32(uint32_t *array, int size, int kind) {
+    sort_int_impl(array, size, kind);
+}
+
+extern "C" void native_sort_uint64(uint64_t *array, int size, int kind) {
+    sort_int_impl(array, size, kind);
+}
+
+extern "C" void native_sort_float16(uint16_t *array, int size, int kind) {
+    if (array == nullptr || size <= 1) return;
+
+    int first_nan = -1;
+    for (int i = 0; i < size; i++) {
+        if (is_nan_float16(array[i])) {
+            first_nan = i;
+            break;
+        }
+    }
+    int non_nan_size = size;
+    if (first_nan != -1) {
+        if (kind == 1) {
+            std::vector<uint16_t> nans;
+            nans.push_back(array[first_nan]);
+            int write_pos = first_nan;
+            for (int i = first_nan + 1; i < size; i++) {
+                if (is_nan_float16(array[i])) {
+                    nans.push_back(array[i]);
+                } else {
+                    array[write_pos++] = array[i];
+                }
+            }
+            for (size_t i = 0; i < nans.size(); i++) {
+                array[write_pos + i] = nans[i];
+            }
+            non_nan_size = write_pos;
+        } else {
+            int write_pos = first_nan;
+            for (int i = first_nan + 1; i < size; i++) {
+                if (!is_nan_float16(array[i])) {
+                    std::swap(array[write_pos], array[i]);
+                    write_pos++;
+                }
+            }
+            non_nan_size = write_pos;
+        }
+    }
+
+    if (non_nan_size <= 1) return;
+
+    bool is_sorted = true;
+    bool is_rev_sorted = true;
+    for (int i = 0; i < non_nan_size - 1; i++) {
+        float cur = decode_f16_to_f32(array[i]);
+        float next = decode_f16_to_f32(array[i + 1]);
+        if (cur > next) {
+            is_sorted = false;
+            if (!is_rev_sorted) break;
+        }
+        if (cur <= next) {
+            is_rev_sorted = false;
+            if (!is_sorted) break;
+        }
+    }
+    if (is_sorted) return;
+    if (is_rev_sorted) {
+        std::reverse(array, array + non_nan_size);
+        return;
+    }
+
+    if (kind == 0) {
+        if (non_nan_size >= 128 && hwy::HaveFloat16()) {
+            hwy::VQSort((hwy::float16_t *)array, non_nan_size, hwy::SortAscending());
+        } else {
+            std::sort(array, array + non_nan_size, Float16Less());
+        }
+    } else if (kind == 2) {
+        std::make_heap(array, array + non_nan_size, Float16Less());
+        std::sort_heap(array, array + non_nan_size, Float16Less());
+    } else {
+        std::stable_sort(array, array + non_nan_size, Float16Less());
+    }
+}
+
+extern "C" void native_sort_bfloat16(uint16_t *array, int size, int kind) {
+    if (array == nullptr || size <= 1) return;
+
+    int first_nan = -1;
+    for (int i = 0; i < size; i++) {
+        if (is_nan_bfloat16(array[i])) {
+            first_nan = i;
+            break;
+        }
+    }
+    int non_nan_size = size;
+    if (first_nan != -1) {
+        if (kind == 1) {
+            std::vector<uint16_t> nans;
+            nans.push_back(array[first_nan]);
+            int write_pos = first_nan;
+            for (int i = first_nan + 1; i < size; i++) {
+                if (is_nan_bfloat16(array[i])) {
+                    nans.push_back(array[i]);
+                } else {
+                    array[write_pos++] = array[i];
+                }
+            }
+            for (size_t i = 0; i < nans.size(); i++) {
+                array[write_pos + i] = nans[i];
+            }
+            non_nan_size = write_pos;
+        } else {
+            int write_pos = first_nan;
+            for (int i = first_nan + 1; i < size; i++) {
+                if (!is_nan_bfloat16(array[i])) {
+                    std::swap(array[write_pos], array[i]);
+                    write_pos++;
+                }
+            }
+            non_nan_size = write_pos;
+        }
+    }
+
+    if (non_nan_size <= 1) return;
+
+    bool is_sorted = true;
+    bool is_rev_sorted = true;
+    for (int i = 0; i < non_nan_size - 1; i++) {
+        float cur = decode_bf16_to_f32(array[i]);
+        float next = decode_bf16_to_f32(array[i + 1]);
+        if (cur > next) {
+            is_sorted = false;
+            if (!is_rev_sorted) break;
+        }
+        if (cur <= next) {
+            is_rev_sorted = false;
+            if (!is_sorted) break;
+        }
+    }
+    if (is_sorted) return;
+    if (is_rev_sorted) {
+        std::reverse(array, array + non_nan_size);
+        return;
+    }
+
+    if (kind == 0) {
+        std::sort(array, array + non_nan_size, BFloat16Less());
+    } else if (kind == 2) {
+        std::make_heap(array, array + non_nan_size, BFloat16Less());
+        std::sort_heap(array, array + non_nan_size, BFloat16Less());
+    } else {
+        std::stable_sort(array, array + non_nan_size, BFloat16Less());
+    }
+}
+
 // ----------------------------------------------------------------------------
 // Public Argsort Sorters with Kind Parameter
 // ----------------------------------------------------------------------------
@@ -1170,6 +1464,136 @@ extern "C" void native_argsort_int16(const int16_t *data, int *indices, int size
 
 extern "C" void native_argsort_uint8(const uint8_t *data, int *indices, int size, int kind) {
     argsort_impl(data, indices, size, kind);
+}
+
+extern "C" void native_argsort_int8(const int8_t *data, int *indices, int size, int kind) {
+    argsort_impl(data, indices, size, kind);
+}
+
+extern "C" void native_argsort_uint16(const uint16_t *data, int *indices, int size, int kind) {
+    argsort_impl(data, indices, size, kind);
+}
+
+extern "C" void native_argsort_uint32(const uint32_t *data, int *indices, int size, int kind) {
+    argsort_impl(data, indices, size, kind);
+}
+
+extern "C" void native_argsort_uint64(const uint64_t *data, int *indices, int size, int kind) {
+    argsort_impl(data, indices, size, kind);
+}
+
+extern "C" void native_argsort_float16(const uint16_t *data, int *indices, int size, int kind) {
+    if (data == nullptr || indices == nullptr || size <= 0) return;
+    if (size == 1) {
+        indices[0] = 0;
+        return;
+    }
+
+    int left = 0;
+    int right = size - 1;
+    for (int i = 0; i < size; i++) {
+        if (is_nan_float16(data[i])) {
+            indices[right--] = i;
+        } else {
+            indices[left++] = i;
+        }
+    }
+    int valid_len = left;
+    if (valid_len < size) {
+        std::reverse(indices + valid_len, indices + size);
+    }
+
+    if (valid_len <= 1) return;
+
+    bool is_sorted = true;
+    bool is_rev_sorted = true;
+    for (int i = 0; i < valid_len - 1; i++) {
+        float val_cur = decode_f16_to_f32(data[indices[i]]);
+        float val_next = decode_f16_to_f32(data[indices[i + 1]]);
+        if (val_cur > val_next) {
+            is_sorted = false;
+            if (!is_rev_sorted) break;
+        }
+        if (val_cur <= val_next) {
+            is_rev_sorted = false;
+            if (!is_sorted) break;
+        }
+    }
+    if (is_sorted) return;
+    if (is_rev_sorted) {
+        std::reverse(indices, indices + valid_len);
+        return;
+    }
+
+    auto cmp = [data](int a, int b) {
+        return decode_f16_to_f32(data[a]) < decode_f16_to_f32(data[b]);
+    };
+
+    if (kind == 0) {
+        std::sort(indices, indices + valid_len, cmp);
+    } else if (kind == 1) {
+        std::stable_sort(indices, indices + valid_len, cmp);
+    } else {
+        std::make_heap(indices, indices + valid_len, cmp);
+        std::sort_heap(indices, indices + valid_len, cmp);
+    }
+}
+
+extern "C" void native_argsort_bfloat16(const uint16_t *data, int *indices, int size, int kind) {
+    if (data == nullptr || indices == nullptr || size <= 0) return;
+    if (size == 1) {
+        indices[0] = 0;
+        return;
+    }
+
+    int left = 0;
+    int right = size - 1;
+    for (int i = 0; i < size; i++) {
+        if (is_nan_bfloat16(data[i])) {
+            indices[right--] = i;
+        } else {
+            indices[left++] = i;
+        }
+    }
+    int valid_len = left;
+    if (valid_len < size) {
+        std::reverse(indices + valid_len, indices + size);
+    }
+
+    if (valid_len <= 1) return;
+
+    bool is_sorted = true;
+    bool is_rev_sorted = true;
+    for (int i = 0; i < valid_len - 1; i++) {
+        float val_cur = decode_bf16_to_f32(data[indices[i]]);
+        float val_next = decode_bf16_to_f32(data[indices[i + 1]]);
+        if (val_cur > val_next) {
+            is_sorted = false;
+            if (!is_rev_sorted) break;
+        }
+        if (val_cur <= val_next) {
+            is_rev_sorted = false;
+            if (!is_sorted) break;
+        }
+    }
+    if (is_sorted) return;
+    if (is_rev_sorted) {
+        std::reverse(indices, indices + valid_len);
+        return;
+    }
+
+    auto cmp = [data](int a, int b) {
+        return decode_bf16_to_f32(data[a]) < decode_bf16_to_f32(data[b]);
+    };
+
+    if (kind == 0) {
+        std::sort(indices, indices + valid_len, cmp);
+    } else if (kind == 1) {
+        std::stable_sort(indices, indices + valid_len, cmp);
+    } else {
+        std::make_heap(indices, indices + valid_len, cmp);
+        std::sort_heap(indices, indices + valid_len, cmp);
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -1237,6 +1661,118 @@ extern "C" void native_partition_complex64(float *array, int size, const int *k_
         }
     } else {
         multi_nth_element(carr, 0, size - 1, k_ptr, 0, num_k - 1, comp_complex_impl<complex64_t>);
+    }
+}
+
+extern "C" void native_partition_int8(int8_t *array, int size, const int *k_list, int k_size) {
+    partition_impl(array, size, k_list, k_size);
+}
+
+extern "C" void native_partition_uint16(uint16_t *array, int size, const int *k_list, int k_size) {
+    partition_impl(array, size, k_list, k_size);
+}
+
+extern "C" void native_partition_uint32(uint32_t *array, int size, const int *k_list, int k_size) {
+    partition_impl(array, size, k_list, k_size);
+}
+
+extern "C" void native_partition_uint64(uint64_t *array, int size, const int *k_list, int k_size) {
+    partition_impl(array, size, k_list, k_size);
+}
+
+extern "C" void native_partition_float16(uint16_t *array, int size, const int *k_list, int k_size) {
+    if (array == nullptr || size <= 1 || k_list == nullptr || k_size <= 0) return;
+
+    int valid_len = size;
+    int first_nan = -1;
+    for (int i = 0; i < size; i++) {
+        if (is_nan_float16(array[i])) {
+            first_nan = i;
+            break;
+        }
+    }
+    if (first_nan != -1) {
+        int write_pos = first_nan;
+        for (int i = first_nan + 1; i < size; i++) {
+            if (!is_nan_float16(array[i])) {
+                std::swap(array[write_pos], array[i]);
+                write_pos++;
+            }
+        }
+        valid_len = write_pos;
+    }
+
+    if (valid_len <= 1) return;
+
+    std::vector<int> sorted_k;
+    const int *k_ptr = k_list;
+    int num_k = k_size;
+    if (!std::is_sorted(k_list, k_list + k_size)) {
+        sorted_k.assign(k_list, k_list + k_size);
+        std::sort(sorted_k.begin(), sorted_k.end());
+        k_ptr = sorted_k.data();
+    }
+
+    int k_start = 0;
+    while (k_start < num_k && k_ptr[k_start] < 0) k_start++;
+    int k_end = k_start;
+    while (k_end < num_k && k_ptr[k_end] < valid_len) k_end++;
+
+    if (k_end <= k_start) return;
+
+    auto cmp = Float16Less();
+    if (k_end - k_start == 1) {
+        std::nth_element(array, array + k_ptr[k_start], array + valid_len, cmp);
+    } else {
+        multi_nth_element(array, 0, valid_len - 1, k_ptr, k_start, k_end - 1, cmp);
+    }
+}
+
+extern "C" void native_partition_bfloat16(uint16_t *array, int size, const int *k_list, int k_size) {
+    if (array == nullptr || size <= 1 || k_list == nullptr || k_size <= 0) return;
+
+    int valid_len = size;
+    int first_nan = -1;
+    for (int i = 0; i < size; i++) {
+        if (is_nan_bfloat16(array[i])) {
+            first_nan = i;
+            break;
+        }
+    }
+    if (first_nan != -1) {
+        int write_pos = first_nan;
+        for (int i = first_nan + 1; i < size; i++) {
+            if (!is_nan_bfloat16(array[i])) {
+                std::swap(array[write_pos], array[i]);
+                write_pos++;
+            }
+        }
+        valid_len = write_pos;
+    }
+
+    if (valid_len <= 1) return;
+
+    std::vector<int> sorted_k;
+    const int *k_ptr = k_list;
+    int num_k = k_size;
+    if (!std::is_sorted(k_list, k_list + k_size)) {
+        sorted_k.assign(k_list, k_list + k_size);
+        std::sort(sorted_k.begin(), sorted_k.end());
+        k_ptr = sorted_k.data();
+    }
+
+    int k_start = 0;
+    while (k_start < num_k && k_ptr[k_start] < 0) k_start++;
+    int k_end = k_start;
+    while (k_end < num_k && k_ptr[k_end] < valid_len) k_end++;
+
+    if (k_end <= k_start) return;
+
+    auto cmp = BFloat16Less();
+    if (k_end - k_start == 1) {
+        std::nth_element(array, array + k_ptr[k_start], array + valid_len, cmp);
+    } else {
+        multi_nth_element(array, 0, valid_len - 1, k_ptr, k_start, k_end - 1, cmp);
     }
 }
 
@@ -1318,6 +1854,122 @@ extern "C" void native_argpartition_complex64(const float *data, int *indices, i
     }
 }
 
+extern "C" void native_argpartition_int8(const int8_t *data, int *indices, int size, const int *k_list, int k_size) {
+    argpartition_impl(data, indices, size, k_list, k_size);
+}
+
+extern "C" void native_argpartition_uint16(const uint16_t *data, int *indices, int size, const int *k_list, int k_size) {
+    argpartition_impl(data, indices, size, k_list, k_size);
+}
+
+extern "C" void native_argpartition_uint32(const uint32_t *data, int *indices, int size, const int *k_list, int k_size) {
+    argpartition_impl(data, indices, size, k_list, k_size);
+}
+
+extern "C" void native_argpartition_uint64(const uint64_t *data, int *indices, int size, const int *k_list, int k_size) {
+    argpartition_impl(data, indices, size, k_list, k_size);
+}
+
+extern "C" void native_argpartition_float16(const uint16_t *data, int *indices, int size, const int *k_list, int k_size) {
+    if (data == nullptr || indices == nullptr || size <= 0 || k_list == nullptr || k_size <= 0) return;
+    if (size == 1) {
+        indices[0] = 0;
+        return;
+    }
+
+    int left = 0;
+    int right = size - 1;
+    for (int i = 0; i < size; i++) {
+        if (is_nan_float16(data[i])) {
+            indices[right--] = i;
+        } else {
+            indices[left++] = i;
+        }
+    }
+    int valid_len = left;
+    if (valid_len < size) {
+        std::reverse(indices + valid_len, indices + size);
+    }
+
+    if (valid_len <= 1) return;
+
+    std::vector<int> sorted_k;
+    const int *k_ptr = k_list;
+    int num_k = k_size;
+    if (!std::is_sorted(k_list, k_list + k_size)) {
+        sorted_k.assign(k_list, k_list + k_size);
+        std::sort(sorted_k.begin(), sorted_k.end());
+        k_ptr = sorted_k.data();
+    }
+
+    int k_start = 0;
+    while (k_start < num_k && k_ptr[k_start] < 0) k_start++;
+    int k_end = k_start;
+    while (k_end < num_k && k_ptr[k_end] < valid_len) k_end++;
+
+    if (k_end <= k_start) return;
+
+    auto cmp = [data](int a, int b) {
+        return decode_f16_to_f32(data[a]) < decode_f16_to_f32(data[b]);
+    };
+
+    if (k_end - k_start == 1) {
+        std::nth_element(indices, indices + k_ptr[k_start], indices + valid_len, cmp);
+    } else {
+        arg_multi_nth_element(indices, 0, valid_len - 1, k_ptr, k_start, k_end - 1, cmp);
+    }
+}
+
+extern "C" void native_argpartition_bfloat16(const uint16_t *data, int *indices, int size, const int *k_list, int k_size) {
+    if (data == nullptr || indices == nullptr || size <= 0 || k_list == nullptr || k_size <= 0) return;
+    if (size == 1) {
+        indices[0] = 0;
+        return;
+    }
+
+    int left = 0;
+    int right = size - 1;
+    for (int i = 0; i < size; i++) {
+        if (is_nan_bfloat16(data[i])) {
+            indices[right--] = i;
+        } else {
+            indices[left++] = i;
+        }
+    }
+    int valid_len = left;
+    if (valid_len < size) {
+        std::reverse(indices + valid_len, indices + size);
+    }
+
+    if (valid_len <= 1) return;
+
+    std::vector<int> sorted_k;
+    const int *k_ptr = k_list;
+    int num_k = k_size;
+    if (!std::is_sorted(k_list, k_list + k_size)) {
+        sorted_k.assign(k_list, k_list + k_size);
+        std::sort(sorted_k.begin(), sorted_k.end());
+        k_ptr = sorted_k.data();
+    }
+
+    int k_start = 0;
+    while (k_start < num_k && k_ptr[k_start] < 0) k_start++;
+    int k_end = k_start;
+    while (k_end < num_k && k_ptr[k_end] < valid_len) k_end++;
+
+    if (k_end <= k_start) return;
+
+    auto cmp = [data](int a, int b) {
+        return decode_bf16_to_f32(data[a]) < decode_bf16_to_f32(data[b]);
+    };
+
+    if (k_end - k_start == 1) {
+        std::nth_element(indices, indices + k_ptr[k_start], indices + valid_len, cmp);
+    } else {
+        arg_multi_nth_element(indices, 0, valid_len - 1, k_ptr, k_start, k_end - 1, cmp);
+    }
+}
+
 // ----------------------------------------------------------------------------
 // Public Searchsorted (Binary Search) functions
 // ----------------------------------------------------------------------------
@@ -1352,6 +2004,30 @@ extern "C" void native_searchsorted_complex128(const double *array, int size, co
 
 extern "C" void native_searchsorted_complex64(const float *array, int size, const float *values, int *out_indices, int num_values, int side_left, const int *sorter) {
     searchsorted((const complex64_t *)array, size, (const complex64_t *)values, out_indices, num_values, side_left, sorter, compare_complex64_inline);
+}
+
+extern "C" void native_searchsorted_int8(const int8_t *array, int size, const int8_t *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    searchsorted(array, size, values, out_indices, num_values, side_left, sorter, standard_compare<int8_t>);
+}
+
+extern "C" void native_searchsorted_uint16(const uint16_t *array, int size, const uint16_t *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    searchsorted(array, size, values, out_indices, num_values, side_left, sorter, standard_compare<uint16_t>);
+}
+
+extern "C" void native_searchsorted_uint32(const uint32_t *array, int size, const uint32_t *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    searchsorted(array, size, values, out_indices, num_values, side_left, sorter, standard_compare<uint32_t>);
+}
+
+extern "C" void native_searchsorted_uint64(const uint64_t *array, int size, const uint64_t *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    searchsorted(array, size, values, out_indices, num_values, side_left, sorter, standard_compare<uint64_t>);
+}
+
+extern "C" void native_searchsorted_float16(const uint16_t *array, int size, const uint16_t *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    searchsorted(array, size, values, out_indices, num_values, side_left, sorter, compare_float16_inline);
+}
+
+extern "C" void native_searchsorted_bfloat16(const uint16_t *array, int size, const uint16_t *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    searchsorted(array, size, values, out_indices, num_values, side_left, sorter, compare_bfloat16_inline);
 }
 
 // ----------------------------------------------------------------------------

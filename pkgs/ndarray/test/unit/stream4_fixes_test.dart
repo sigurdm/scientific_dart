@@ -109,15 +109,20 @@ void main() {
       '6. Spacers logspace and geomspace with numSamples == 0 and named records',
       () {
         NDArray.scope(() {
-          final ls0 = logspace(1.0, 3.0, 0);
+          final ls0 = logspace(1.0, 3.0, 0, dtype: DType.float64);
           expect(ls0.shape, equals([0]));
           expect(ls0.toList(), equals([]));
 
-          final gs0 = geomspace(1.0, 100.0, 0);
+          final gs0 = geomspace(1.0, 100.0, 0, dtype: DType.float64);
           expect(gs0.shape, equals([0]));
           expect(gs0.toList(), equals([]));
 
-          final (:samples, :step) = linspaceWithStep(0.0, 10.0, 5);
+          final (:samples, :step) = linspaceWithStep(
+            0.0,
+            10.0,
+            5,
+            dtype: DType.float64,
+          );
           expect(samples.toList(), equals([0.0, 2.5, 5.0, 7.5, 10.0]));
           expect(step, equals(2.5));
 
@@ -182,17 +187,35 @@ void main() {
       () {
         NDArray.scope(() {
           final outLin = NDArray<Float64>.zeros([5], DType.float64);
-          final resLin = linspace(0.0, 10.0, 5, out: outLin);
+          final resLin = linspace(
+            0.0,
+            10.0,
+            5,
+            dtype: DType.float64,
+            out: outLin,
+          );
           expect(identical(resLin, outLin), isTrue);
           expect(outLin.toList(), equals([0.0, 2.5, 5.0, 7.5, 10.0]));
 
           final outLog = NDArray<Float64>.zeros([3], DType.float64);
-          final resLog = logspace(0.0, 2.0, 3, out: outLog);
+          final resLog = logspace(
+            0.0,
+            2.0,
+            3,
+            dtype: DType.float64,
+            out: outLog,
+          );
           expect(identical(resLog, outLog), isTrue);
           expect(outLog.toList(), equals([1.0, 10.0, 100.0]));
 
           final outGeom = NDArray<Float64>.zeros([3], DType.float64);
-          final resGeom = geomspace(1.0, 100.0, 3, out: outGeom);
+          final resGeom = geomspace(
+            1.0,
+            100.0,
+            3,
+            dtype: DType.float64,
+            out: outGeom,
+          );
           expect(identical(resGeom, outGeom), isTrue);
           expect(outGeom.toList(), equals([1.0, 10.0, 100.0]));
         });

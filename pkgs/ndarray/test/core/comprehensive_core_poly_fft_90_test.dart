@@ -104,8 +104,14 @@ void main() {
         final ar2 = NDArray.arange(2.0, 10.0, step: 2.0, dtype: DType.float64);
         expect(ar2.toList(), equals([2.0, 4.0, 6.0, 8.0]));
 
-        expect(() => NDArray.arange(0.0, 5.0, step: 0.0), throwsArgumentError);
-        expect(() => NDArray.arange(5.0, 0.0, step: 1.0), throwsArgumentError);
+        expect(
+          () => NDArray.arange(0.0, 5.0, step: 0.0, dtype: DType.float64),
+          throwsArgumentError,
+        );
+        expect(
+          () => NDArray.arange(5.0, 0.0, step: 1.0, dtype: DType.float64),
+          throwsArgumentError,
+        );
       });
     });
 

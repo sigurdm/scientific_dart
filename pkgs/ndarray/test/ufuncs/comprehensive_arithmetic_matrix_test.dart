@@ -1054,14 +1054,6 @@ void main() {
       expect(resolveDType(DType.complex64, DType.float32), DType.complex64);
     });
 
-    test("defaultDType for generic type parameters", () {
-      expect(defaultDType<Complex>(), DType.complex128);
-      expect(defaultDType<int>(), DType.int64);
-      expect(defaultDType<bool>(), DType.boolean);
-      expect(defaultDType<double>(), DType.float64);
-      expect(defaultDType<num>(), DType.float64);
-    });
-
     test("normalizeScalar across all 15 DTypes with num, Complex, bool", () {
       for (final dtype in allDTypes) {
         final normNum = normalizeScalar(42, dtype);
@@ -1198,7 +1190,10 @@ void main() {
           );
 
           // Negative numSamples throws ArgumentError
-          expect(() => linspaceInternal(0.0, 10.0, -1), throwsArgumentError);
+          expect(
+            () => linspaceInternal(0.0, 10.0, -1, dtype: DType.float64),
+            throwsArgumentError,
+          );
 
           // Boolean throws UnsupportedError
           expect(

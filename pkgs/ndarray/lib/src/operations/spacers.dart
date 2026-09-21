@@ -71,7 +71,6 @@ enum SearchSide {
 /// The endpoint of the interval can optionally be excluded.
 /// Supports [Complex] bounds for path generation in the complex plane.
 /// If [endpoint] is true, `stop` is the last sample. Otherwise, it is not included.
-/// If [dtype] is not provided, it defaults to [DType.complex128] if [T] is [Complex], [DType.int64] if [T] is [int], and [DType.float64] otherwise.
 ///
 /// **Preconditions:**
 /// - [numSamples] must be non-negative.
@@ -83,14 +82,14 @@ enum SearchSide {
 ///
 /// **Example:**
 /// ```dart
-/// linspace(0.0, 10.0, 5); // [0.0, 2.5, 5.0, 7.5, 10.0]
+/// linspace(0.0, 10.0, 5, dtype: DType.float64); // [0.0, 2.5, 5.0, 7.5, 10.0]
 /// ```
 NDArray<T> linspace<T>(
   T start,
   T stop,
   int numSamples, {
   bool endpoint = true,
-  DType<T>? dtype,
+  required DType<T> dtype,
   NDArray<T>? out,
 }) {
   return linspaceInternal<T>(
@@ -107,7 +106,6 @@ NDArray<T> linspace<T>(
 ///
 /// Returns a record `(samples, step)`.
 /// If [endpoint] is true, `stop` is the last sample. Otherwise, it is not included.
-/// If [dtype] is not provided, it defaults to [DType.complex128] if [T] is [Complex], [DType.int64] if [T] is [int], and [DType.float64] otherwise.
 ///
 /// **Preconditions:**
 /// - [numSamples] must be non-negative.
@@ -121,7 +119,7 @@ NDArray<T> linspace<T>(
   T stop,
   int numSamples, {
   bool endpoint = true,
-  DType<T>? dtype,
+  required DType<T> dtype,
   NDArray<T>? out,
 }) {
   return linspaceInternal<T>(
@@ -241,8 +239,16 @@ NDArray<T> linspaceGrid<T>(
   NDArray<T>? out,
 }) {
   if (numSamples < 0) throw ArgumentError('numSamples must be non-negative');
+  if (dtype == DType.boolean ||
+      start.dtype == DType.boolean ||
+      stop.dtype == DType.boolean) {
+    throw UnsupportedError('linspaceGrid not supported for boolean arrays');
+  }
 
-  final resolvedDType = dtype ?? defaultDType<T>();
+  final resolvedDType =
+      dtype ??
+      out?.dtype ??
+      (resolveDType(start.dtype, stop.dtype) as DType<T>);
 
   return NDArray.scope(() {
     final startArr = toNDArray(start, resolvedDType);
@@ -478,13 +484,13 @@ NDArray<T> logspace<T>(
   int numSamples, {
   double base = 10.0,
   bool endpoint = true,
-  DType<T>? dtype,
+  required DType<T> dtype,
   NDArray<T>? out,
 }) {
   if (numSamples < 0) {
     throw ArgumentError('numSamples must be non-negative (was $numSamples)');
   }
-  final resolvedDType = dtype ?? defaultDType<T>();
+  final resolvedDType = dtype;
   if (out != null) {
     if (out.isDisposed) {
       throw StateError(
@@ -594,9 +600,8 @@ NDArray<T> logspace<T>(
 /// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
 /// - [axis]: The axis in the result to store the samples. Defaults to 0.
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
-///   - [DType.complex128] if [T] is [Complex].
-///   - [DType.int64] if [T] is [int].
-///   - [DType.float64] otherwise.
+///   - [out.dtype] if [out] is provided, or
+///   - the resolved dtype between [start] and [stop].
 NDArray<T> logspaceGrid<T extends Object>(
   NDArray<T> start,
   NDArray<T> stop,
@@ -615,7 +620,15 @@ NDArray<T> logspaceGrid<T extends Object>(
       'Cannot execute logspaceGrid() with a disposed base array.',
     );
   }
-  final resolvedDType = dtype ?? defaultDType<T>();
+  if (dtype == DType.boolean ||
+      start.dtype == DType.boolean ||
+      stop.dtype == DType.boolean) {
+    throw UnsupportedError('logspaceGrid not supported for boolean arrays');
+  }
+  final resolvedDType =
+      dtype ??
+      out?.dtype ??
+      (resolveDType(start.dtype, stop.dtype) as DType<T>);
 
   return NDArray.scope(() {
     final startArr = toNDArray<T>(start, resolvedDType);
@@ -683,13 +696,13 @@ NDArray<T> geomspace<T>(
   T stop,
   int numSamples, {
   bool endpoint = true,
-  DType<T>? dtype,
+  required DType<T> dtype,
   NDArray<T>? out,
 }) {
   if (numSamples < 0) {
     throw ArgumentError('numSamples must be non-negative (was $numSamples)');
   }
-  final resolvedDType = dtype ?? defaultDType<T>();
+  final resolvedDType = dtype;
   if (out != null) {
     if (out.isDisposed) {
       throw StateError(
@@ -838,9 +851,8 @@ NDArray<T> geomspace<T>(
 /// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
 /// - [axis]: The axis in the result to store the samples. Defaults to 0.
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
-///   - [DType.complex128] if [T] is [Complex].
-///   - [DType.int64] if [T] is [int].
-///   - [DType.float64] otherwise.
+///   - [out.dtype] if [out] is provided, or
+///   - the resolved dtype between [start] and [stop].
 NDArray<T> geomspaceGrid<T extends Object>(
   NDArray<T> start,
   NDArray<T> stop,
@@ -853,13 +865,20 @@ NDArray<T> geomspaceGrid<T extends Object>(
   if (start.isDisposed || stop.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute geomspaceGrid() on a disposed array.');
   }
-  final resolvedDType = dtype ?? defaultDType<T>();
-
-  if (resolvedDType.isInteger || resolvedDType == DType.boolean) {
+  if ((dtype != null && (dtype.isInteger || dtype == DType.boolean)) ||
+      start.dtype.isInteger ||
+      start.dtype == DType.boolean ||
+      stop.dtype.isInteger ||
+      stop.dtype == DType.boolean) {
     throw UnsupportedError(
-      'geomspaceGrid not supported for type $resolvedDType',
+      'geomspaceGrid not supported for integer or boolean types',
     );
   }
+
+  final resolvedDType =
+      dtype ??
+      out?.dtype ??
+      (resolveDType(start.dtype, stop.dtype) as DType<T>);
 
   return NDArray.scope(() {
     final startArr = toNDArray(start, resolvedDType);

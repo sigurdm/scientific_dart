@@ -139,11 +139,16 @@ void main() {
     });
 
     test('7. linspace with 0 samples', () {
-      final ls0 = linspace(0.0, 10.0, 0);
+      final ls0 = linspace(0.0, 10.0, 0, dtype: DType.float64);
       expect(ls0.shape, equals([0]));
       expect(ls0.toList(), equals([]));
 
-      final (samples: lsStepArr, step: step) = linspaceWithStep(0.0, 10.0, 0);
+      final (samples: lsStepArr, step: step) = linspaceWithStep(
+        0.0,
+        10.0,
+        0,
+        dtype: DType.float64,
+      );
       expect(lsStepArr.shape, equals([0]));
       expect(step.isNaN, isTrue);
 

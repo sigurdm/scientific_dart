@@ -8,7 +8,7 @@ void main() {
       test(
         'standard linspace',
         () => NDArray.scope(() {
-          final a = linspace(0.0, 1.0, 5);
+          final a = linspace(0.0, 1.0, 5, dtype: DType.float64);
           expect(a.shape, [5]);
           for (var i = 0; i < 5; i++) {
             expect(a.data[i], closeTo(i * 0.25, 1e-10));
@@ -19,7 +19,13 @@ void main() {
       test(
         'linspace without endpoint',
         () => NDArray.scope(() {
-          final a = linspace(0.0, 1.0, 5, endpoint: false);
+          final a = linspace(
+            0.0,
+            1.0,
+            5,
+            endpoint: false,
+            dtype: DType.float64,
+          );
           expect(a.shape, [5]);
           for (var i = 0; i < 5; i++) {
             expect(a.data[i], closeTo(i * 0.2, 1e-10));
@@ -47,7 +53,12 @@ void main() {
       test(
         'standard logspace (base 10)',
         () => NDArray.scope(() {
-          final a = logspace(0.0, 2.0, 3); // 10^0, 10^1, 10^2
+          final a = logspace(
+            0.0,
+            2.0,
+            3,
+            dtype: DType.float64,
+          ); // 10^0, 10^1, 10^2
           expect(a.shape, [3]);
           expect(a.data[0], closeTo(1.0, 1e-10));
           expect(a.data[1], closeTo(10.0, 1e-10));
@@ -58,7 +69,13 @@ void main() {
       test(
         'logspace base 2',
         () => NDArray.scope(() {
-          final a = logspace(0.0, 4.0, 5, base: 2.0); // 2^0, 2^1, 2^2, 2^3, 2^4
+          final a = logspace(
+            0.0,
+            4.0,
+            5,
+            base: 2.0,
+            dtype: DType.float64,
+          ); // 2^0, 2^1, 2^2, 2^3, 2^4
           expect(a.data, [1.0, 2.0, 4.0, 8.0, 16.0]);
         }),
       );
@@ -66,7 +83,13 @@ void main() {
       test(
         'logspace without endpoint',
         () => NDArray.scope(() {
-          final a = logspace(0.0, 3.0, 3, endpoint: false); // 10^0, 10^1, 10^2
+          final a = logspace(
+            0.0,
+            3.0,
+            3,
+            endpoint: false,
+            dtype: DType.float64,
+          ); // 10^0, 10^1, 10^2
           expect(a.data[0], closeTo(1.0, 1e-10));
           expect(a.data[1], closeTo(10.0, 1e-10));
           expect(a.data[2], closeTo(100.0, 1e-10));
@@ -78,7 +101,7 @@ void main() {
       test(
         'standard geomspace',
         () => NDArray.scope(() {
-          final a = geomspace(1.0, 1000.0, 4);
+          final a = geomspace(1.0, 1000.0, 4, dtype: DType.float64);
           expect(a.data[0], closeTo(1.0, 1e-10));
           expect(a.data[1], closeTo(10.0, 1e-10));
           expect(a.data[2], closeTo(100.0, 1e-10));
@@ -89,7 +112,7 @@ void main() {
       test(
         'negative geomspace',
         () => NDArray.scope(() {
-          final a = geomspace(-1.0, -1000.0, 4);
+          final a = geomspace(-1.0, -1000.0, 4, dtype: DType.float64);
           expect(a.data[0], closeTo(-1.0, 1e-10));
           expect(a.data[1], closeTo(-10.0, 1e-10));
           expect(a.data[2], closeTo(-100.0, 1e-10));
@@ -100,7 +123,13 @@ void main() {
       test(
         'geomspace without endpoint',
         () => NDArray.scope(() {
-          final a = geomspace(1.0, 1000.0, 3, endpoint: false);
+          final a = geomspace(
+            1.0,
+            1000.0,
+            3,
+            endpoint: false,
+            dtype: DType.float64,
+          );
           expect(a.data[0], closeTo(1.0, 1e-10));
           expect(a.data[1], closeTo(10.0, 1e-10));
           expect(a.data[2], closeTo(100.0, 1e-10));
@@ -112,7 +141,12 @@ void main() {
       test(
         'linspace complex',
         () => NDArray.scope(() {
-          final a = linspace<Complex>(Complex(0, 0), Complex(1, 1), 3);
+          final a = linspace<Complex>(
+            Complex(0, 0),
+            Complex(1, 1),
+            3,
+            dtype: DType.complex128,
+          );
           expect(a.dtype, DType.complex128);
           expect(a.data[0], Complex(0, 0));
           expect(a.data[1], Complex(0.5, 0.5));
@@ -128,6 +162,7 @@ void main() {
             Complex(0, 2),
             3,
             base: 10.0,
+            dtype: DType.complex128,
           );
           expect(a.data[0], Complex(1, 0));
           final expected1 = Complex(
@@ -143,7 +178,12 @@ void main() {
       test(
         'geomspace complex',
         () => NDArray.scope(() {
-          final a = geomspace<Complex>(Complex(1, 0), Complex(-1, 0), 3);
+          final a = geomspace<Complex>(
+            Complex(1, 0),
+            Complex(-1, 0),
+            3,
+            dtype: DType.complex128,
+          );
           expect(a.data[0], Complex(1, 0));
           final val1 = a.data[1];
           expect(val1.real, closeTo(0, 1e-10));
@@ -197,7 +237,12 @@ void main() {
       test(
         'linspaceWithStep',
         () => NDArray.scope(() {
-          final (samples: a, step: step) = linspaceWithStep(0.0, 10.0, 5);
+          final (samples: a, step: step) = linspaceWithStep(
+            0.0,
+            10.0,
+            5,
+            dtype: DType.float64,
+          );
           expect(step, 2.5);
           expect(a.toList(), [0.0, 2.5, 5.0, 7.5, 10.0]);
         }),
@@ -556,18 +601,40 @@ void main() {
       test(
         'geomspace with 0.0 or mismatched signs throws ArgumentError',
         () => NDArray.scope(() {
-          expect(() => geomspace(0.0, 10.0, 5), throwsArgumentError);
-          expect(() => geomspace(1.0, 0.0, 5), throwsArgumentError);
-          expect(() => geomspace(-1.0, 10.0, 5), throwsArgumentError);
-          expect(() => geomspace(1.0, -10.0, 5), throwsArgumentError);
-
-          // Complex geomspace with 0.0 throws ArgumentError
           expect(
-            () => geomspace(Complex(0, 0), Complex(1, 1), 5),
+            () => geomspace(0.0, 10.0, 5, dtype: DType.float64),
             throwsArgumentError,
           );
           expect(
-            () => geomspace(Complex(1, 1), Complex(0, 0), 5),
+            () => geomspace(1.0, 0.0, 5, dtype: DType.float64),
+            throwsArgumentError,
+          );
+          expect(
+            () => geomspace(-1.0, 10.0, 5, dtype: DType.float64),
+            throwsArgumentError,
+          );
+          expect(
+            () => geomspace(1.0, -10.0, 5, dtype: DType.float64),
+            throwsArgumentError,
+          );
+
+          // Complex geomspace with 0.0 throws ArgumentError
+          expect(
+            () => geomspace(
+              Complex(0, 0),
+              Complex(1, 1),
+              5,
+              dtype: DType.complex128,
+            ),
+            throwsArgumentError,
+          );
+          expect(
+            () => geomspace(
+              Complex(1, 1),
+              Complex(0, 0),
+              5,
+              dtype: DType.complex128,
+            ),
             throwsArgumentError,
           );
         }),

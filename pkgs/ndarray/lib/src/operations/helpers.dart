@@ -186,13 +186,6 @@ DType resolveDType(DType a, DType b) {
   return DType.float64;
 }
 
-DType<T> defaultDType<T>() {
-  if (T == Complex) return DType.complex128 as DType<T>;
-  if (T == int) return DType.int64 as DType<T>;
-  if (T == bool) return DType.boolean as DType<T>;
-  return DType.float64 as DType<T>;
-}
-
 Object normalizeScalar(Object o, DType dtype) {
   switch (dtype) {
     case DType.complex64:
@@ -255,12 +248,12 @@ NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
   T stop,
   int numSamples, {
   bool endpoint = true,
-  DType<T>? dtype,
+  required DType<T> dtype,
   NDArray<T>? out,
 }) {
   if (numSamples < 0) throw ArgumentError('numSamples must be non-negative');
 
-  final resolvedDType = dtype ?? defaultDType<T>();
+  final resolvedDType = dtype;
 
   if (out != null) {
     if (out.isDisposed) throw StateError('Cannot write to disposed out array');

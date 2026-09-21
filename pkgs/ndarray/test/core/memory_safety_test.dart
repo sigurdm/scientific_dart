@@ -656,10 +656,19 @@ void main() {
       test('spacers numSamples non-negative check', () {
         NDArray.scope(() {
           // logspace and geomspace return empty for numSamples == 0 and throw for negative
-          expect(logspace(0.0, 3.0, 0).size, equals(0));
-          expect(() => logspace(0.0, 3.0, -5), throwsArgumentError);
-          expect(geomspace(1.0, 100.0, 0).size, equals(0));
-          expect(() => geomspace(1.0, 100.0, -3), throwsArgumentError);
+          expect(logspace(0.0, 3.0, 0, dtype: DType.float64).size, equals(0));
+          expect(
+            () => logspace(0.0, 3.0, -5, dtype: DType.float64),
+            throwsArgumentError,
+          );
+          expect(
+            geomspace(1.0, 100.0, 0, dtype: DType.float64).size,
+            equals(0),
+          );
+          expect(
+            () => geomspace(1.0, 100.0, -3, dtype: DType.float64),
+            throwsArgumentError,
+          );
         });
       });
 
