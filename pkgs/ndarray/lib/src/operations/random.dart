@@ -1144,7 +1144,7 @@ NDArray<T> multinomial<T extends AnyReal, P extends AnyDType>(
   final result =
       out ?? NDArray<T>.create(finalShape, resolvedDType, zeroInit: true);
   if (out != null) {
-    result.fill(0 as T);
+    result.fill(0);
   }
 
   if (result.isContiguous) {
@@ -1199,8 +1199,8 @@ NDArray<T> multinomial<T extends AnyReal, P extends AnyDType>(
           rem ~/= sampleShape[d];
         }
         coords.add(outcome);
-        final currentVal = result.getCell(coords) as num;
-        result.setCell(coords, (currentVal + 1) as T);
+        final currentVal = result.getCell(coords);
+        result.setCell(coords, currentVal + 1);
       }
     }
   }
@@ -1272,7 +1272,7 @@ NDArray<T> choice<T extends AnyDType>(
       );
     }
     for (var i = 0; i < a.size; i++) {
-      final prob = p.getCellFlat(i).value;
+      final prob = p.getCellFlat(i);
       if (prob < 0.0) {
         throw ArgumentError(
           'pvals must contain non-negative probabilities (was $prob at index $i)',
@@ -1358,7 +1358,7 @@ NDArray<T> choice<T extends AnyDType>(
           );
           var runningSum = 0.0;
           for (var i = 0; i < a.size; i++) {
-            runningSum += nonNullP.getCellFlat(i).value;
+            runningSum += nonNullP.getCellFlat(i);
             cdfPtr[i] = runningSum;
           }
           if ((sumP - 1.0).abs() > 1e-3) {
@@ -1382,7 +1382,7 @@ NDArray<T> choice<T extends AnyDType>(
             a.size * ffi.sizeOf<ffi.Double>(),
           );
           for (var i = 0; i < a.size; i++) {
-            probsPtr[i] = nonNullP.getCellFlat(i).value;
+            probsPtr[i] = nonNullP.getCellFlat(i);
           }
           if ((sumP - 1.0).abs() > 1e-3 && sumP > 0.0) {
             for (var i = 0; i < a.size; i++) {

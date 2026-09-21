@@ -85,8 +85,8 @@ enum SearchSide {
 /// linspace(0.0, 10.0, 5, dtype: DType.float64); // [0.0, 2.5, 5.0, 7.5, 10.0]
 /// ```
 NDArray<T> linspace<T extends AnyDType>(
-  T start,
-  T stop,
+  Object? start,
+  Object? stop,
   int numSamples, {
   bool endpoint = true,
   required DType<T> dtype,
@@ -114,9 +114,9 @@ NDArray<T> linspace<T extends AnyDType>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-({NDArray<T> samples, T step}) linspaceWithStep<T extends AnyDType>(
-  T start,
-  T stop,
+({NDArray<T> samples, dynamic step}) linspaceWithStep<T extends AnyDType>(
+  Object? start,
+  Object? stop,
   int numSamples, {
   bool endpoint = true,
   required DType<T> dtype,
@@ -274,8 +274,8 @@ NDArray<T> linspaceGrid<T extends AnyDType>(
       final res = out ?? NDArray<T>.create(resultShape, resolvedDType);
       final step = NDArray<T>.create(commonShape, resolvedDType);
       final nanVal = (resolvedDType.isInteger || resolvedDType == DType.boolean)
-          ? normalizeScalar(0, resolvedDType) as T
-          : normalizeScalar(double.nan, resolvedDType) as T;
+          ? normalizeScalar(0, resolvedDType)
+          : normalizeScalar(double.nan, resolvedDType);
       step.fill(nanVal);
       if (out == null) res.detachToParentScope();
       step.detachToParentScope();
@@ -479,8 +479,8 @@ NDArray<T> linspaceGrid<T extends AnyDType>(
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 NDArray<T> logspace<T extends AnyDType>(
-  T start,
-  T stop,
+  Object? start,
+  Object? stop,
   int numSamples, {
   double base = 10.0,
   bool endpoint = true,
@@ -692,8 +692,8 @@ NDArray<T> logspaceGrid<T extends AnyDType>(
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 NDArray<T> geomspace<T extends AnyDType>(
-  T start,
-  T stop,
+  Object? start,
+  Object? stop,
   int numSamples, {
   bool endpoint = true,
   required DType<T> dtype,

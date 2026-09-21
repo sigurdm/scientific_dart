@@ -131,7 +131,7 @@ NDArray<R> real<T extends AnyDType, R extends AnyDType>(
         for (var i = 0; i < size; i++) {
           if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
             final c = a.getCell(coord) as Complex;
-            result.setCell(coord, c.real as R);
+            result.setCell(coord, c.real);
           }
           for (var d = a.shape.length - 1; d >= 0; d--) {
             coord[d]++;
@@ -151,7 +151,7 @@ NDArray<R> real<T extends AnyDType, R extends AnyDType>(
 
           for (var i = 0; i < size; i++) {
             if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
-              result.setCell(coord, a.getCell(coord) as R);
+              result.setCell(coord, a.getCell(coord));
             }
             for (var d = a.shape.length - 1; d >= 0; d--) {
               coord[d]++;
@@ -248,12 +248,12 @@ NDArray<R> imag<T extends AnyDType, R extends AnyDType>(
             as NDArray<R>);
     if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
       if (where == null) {
-        result.fill(0.0 as R);
+        result.fill(0.0);
       } else {
         final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
         final coord = List<int>.filled(a.shape.length, 0);
         final maskPtr = maskHolder.pointer;
-        final zeroVal = 0.0 as R;
+        final zeroVal = 0.0;
 
         for (var i = 0; i < size; i++) {
           if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
@@ -276,7 +276,7 @@ NDArray<R> imag<T extends AnyDType, R extends AnyDType>(
     for (var i = 0; i < size; i++) {
       if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
         final c = a.getCell(coord) as Complex;
-        result.setCell(coord, c.imag as R);
+        result.setCell(coord, c.imag);
       }
       for (var d = a.shape.length - 1; d >= 0; d--) {
         coord[d]++;

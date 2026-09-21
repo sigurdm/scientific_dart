@@ -821,7 +821,7 @@ bool _hasSameSign(NDArray<Float64> coeffs) {
   final length = coeffs.shape[0];
   if (length <= 1) return true;
 
-  final first = coeffs.getCell([0]);
+  final first = coeffs.getCell([0]) as num;
   if (first > 0) {
     return findIndex(coeffs, CompareOp.lessEqual, 0.0) == null;
   } else if (first < 0) {

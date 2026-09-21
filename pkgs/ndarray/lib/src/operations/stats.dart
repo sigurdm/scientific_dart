@@ -220,7 +220,7 @@ void _s_uint64_reduce(
   );
 }
 
-void _s_generic_reduce<T extends AnyDType>(
+void _s_generic_reduce<T>(
   NDArray a,
   NDArray result,
   int targetAxis,
@@ -528,13 +528,13 @@ NDArray<R> sum<R extends AnyDType>(
           out ?? NDArray<R>.create(targetShape, effectiveDType as DType<R>);
       if (size == 0) {
         if (effectiveDType.isComplex) {
-          result.setCellFlat(0, Complex(0.0, 0.0) as R);
+          result.setCellFlat(0, Complex(0.0, 0.0));
         } else if (effectiveDType.isFloating) {
-          result.setCellFlat(0, 0.0 as R);
+          result.setCellFlat(0, 0.0);
         } else if (effectiveDType == DType.boolean) {
-          result.setCellFlat(0, false as R);
+          result.setCellFlat(0, false);
         } else {
-          result.setCellFlat(0, 0 as R);
+          result.setCellFlat(0, 0);
         }
         return result;
       }
@@ -572,7 +572,7 @@ NDArray<R> sum<R extends AnyDType>(
           case DType.uint16:
             acc = _r_stat_scalar_fallback(workA, size, r_sum_double);
         }
-        result.setCellFlat(0, acc as R);
+        result.setCellFlat(0, acc);
         return result;
       }
 
@@ -612,7 +612,7 @@ NDArray<R> sum<R extends AnyDType>(
       } finally {
         copyA.dispose();
       }
-      result.setCellFlat(0, acc as R);
+      result.setCellFlat(0, acc);
       return result;
     }
 
@@ -625,7 +625,7 @@ NDArray<R> sum<R extends AnyDType>(
     final result =
         out ?? NDArray<R>.zeros(targetShape, effectiveDType as DType<R>);
     if (out != null) {
-      result.fill(normalizeScalar(0, effectiveDType) as R);
+      result.fill(normalizeScalar(0, effectiveDType));
     }
 
     final squeezedDestStrides = keepdims
@@ -829,13 +829,13 @@ NDArray<R> prod<R extends AnyDType>(
           out ?? NDArray<R>.zeros(targetShape, effectiveDType as DType<R>);
       if (size == 0) {
         if (effectiveDType.isComplex) {
-          result.setCellFlat(0, Complex(1.0, 0.0) as R);
+          result.setCellFlat(0, Complex(1.0, 0.0));
         } else if (effectiveDType.isFloating) {
-          result.setCellFlat(0, 1.0 as R);
+          result.setCellFlat(0, 1.0);
         } else if (effectiveDType == DType.boolean) {
-          result.setCellFlat(0, true as R);
+          result.setCellFlat(0, true);
         } else {
-          result.setCellFlat(0, 1 as R);
+          result.setCellFlat(0, 1);
         }
         return result;
       }
@@ -873,7 +873,7 @@ NDArray<R> prod<R extends AnyDType>(
           case DType.uint16:
             acc = _r_stat_scalar_fallback(workA, size, r_prod_double);
         }
-        result.setCellFlat(0, acc as R);
+        result.setCellFlat(0, acc);
         return result;
       }
 
@@ -913,7 +913,7 @@ NDArray<R> prod<R extends AnyDType>(
       } finally {
         copyA.dispose();
       }
-      result.setCellFlat(0, acc as R);
+      result.setCellFlat(0, acc);
       return result;
     }
 
@@ -926,7 +926,7 @@ NDArray<R> prod<R extends AnyDType>(
     final result =
         out ?? NDArray<R>.ones(targetShape, effectiveDType as DType<R>);
     if (out != null) {
-      result.fill(normalizeScalar(1, effectiveDType) as R);
+      result.fill(normalizeScalar(1, effectiveDType));
     }
 
     final squeezedDestStrides = keepdims
@@ -1142,14 +1142,14 @@ NDArray<Boolean> all<T extends AnyDType>(
       ? (List<int>.from(result.strides)..removeAt(normAxis))
       : result.strides;
 
-  reduceRecursive<T, bool>(
+  reduceRecursive<T, Boolean>(
     a,
     result,
     List<int>.filled(rank, 0),
     List<int>.filled(rank - 1, 0),
     normAxis,
     0,
-    (current, val) => current && isTrueHelper(val),
+    (current, val) => (current as bool) && isTrueHelper(val),
     destStrides: squeezedDestStrides,
   );
 
@@ -1233,14 +1233,14 @@ NDArray<Boolean> any<T extends AnyDType>(
       ? (List<int>.from(result.strides)..removeAt(normAxis))
       : result.strides;
 
-  reduceRecursive<T, bool>(
+  reduceRecursive<T, Boolean>(
     a,
     result,
     List<int>.filled(rank, 0),
     List<int>.filled(rank - 1, 0),
     normAxis,
     0,
-    (current, val) => current || isTrueHelper(val),
+    (current, val) => (current as bool) || isTrueHelper(val),
     destStrides: squeezedDestStrides,
   );
 
@@ -1315,9 +1315,9 @@ NDArray<R> mean<R extends AnyDType, T extends AnyDType>(
     if (size == 0) {
       if (out != null) {
         if (targetDType.isComplex) {
-          result.setCellFlat(0, Complex(double.nan, double.nan) as R);
+          result.setCellFlat(0, Complex(double.nan, double.nan));
         } else {
-          result.setCellFlat(0, double.nan as R);
+          result.setCellFlat(0, double.nan);
         }
       }
       return result;
@@ -1355,7 +1355,7 @@ NDArray<R> mean<R extends AnyDType, T extends AnyDType>(
         case DType.uint16:
           acc = _r_stat_scalar_double_fallback(a, size, r_mean_double);
       }
-      result.setCellFlat(0, acc as R);
+      result.setCellFlat(0, acc);
       return result;
     }
 
@@ -1391,7 +1391,7 @@ NDArray<R> mean<R extends AnyDType, T extends AnyDType>(
         acc = _r_stat_scalar_double_fallback(copyA, size, r_mean_double);
     }
     copyA.dispose();
-    result.setCellFlat(0, acc as R);
+    result.setCellFlat(0, acc);
     return result;
   }
 
@@ -1423,7 +1423,7 @@ NDArray<R> mean<R extends AnyDType, T extends AnyDType>(
         (targetDType.isComplex
                 ? Complex(double.nan, double.nan)
                 : double.nan)
-            as R,
+           ,
       );
     }
     return result;
@@ -2123,7 +2123,7 @@ NDArray<T> min<T extends AnyDType>(
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
-    result.setCellFlat(0, minVal as T);
+    result.setCellFlat(0, minVal);
     return result;
   }
 
@@ -2365,7 +2365,7 @@ NDArray<T> nanmin<T extends AnyDType>(
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
-    result.setCellFlat(0, minVal as T);
+    result.setCellFlat(0, minVal);
     return result;
   }
 
@@ -2577,7 +2577,7 @@ NDArray<T> max<T extends AnyDType>(
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
-    result.setCellFlat(0, maxVal as T);
+    result.setCellFlat(0, maxVal);
     return result;
   }
 
@@ -2819,7 +2819,7 @@ NDArray<T> nanmax<T extends AnyDType>(
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
-    result.setCellFlat(0, maxVal as T);
+    result.setCellFlat(0, maxVal);
     return result;
   }
 
@@ -3600,7 +3600,7 @@ NDArray<R> nanmean<R extends AnyDType>(
       final NDArray<R> result =
           out ??
           (NDArray<Float64>.create(targetShape, DType.float64) as NDArray<R>);
-      result.setCellFlat(0, meanVal as R);
+      result.setCellFlat(0, meanVal);
       return result;
     }
 
@@ -3642,10 +3642,10 @@ NDArray<R> nanmean<R extends AnyDType>(
       result.setCellFlat(
         0,
         (targetDType.isComplex ? Complex(double.nan, double.nan) : double.nan)
-            as R,
+           ,
       );
     } else {
-      result.setCellFlat(0, (sumVal / count) as R);
+      result.setCellFlat(0, (sumVal / count));
     }
     return result;
   }
@@ -3667,7 +3667,7 @@ NDArray<R> nanmean<R extends AnyDType>(
             as NDArray<R>);
     if (a.shape[normAxis] == 0) {
       if (out != null) {
-        result.fill(double.nan as R);
+        result.fill(double.nan);
       }
       return result;
     }
@@ -3730,7 +3730,7 @@ NDArray<R> nanmean<R extends AnyDType>(
   final NDArray<R> result;
   if (out != null) {
     result = out;
-    result.fill(normalizeScalar(0, targetDType) as R);
+    result.fill(normalizeScalar(0, targetDType));
   } else {
     result =
         NDArray<AnyComplex>.zeros(targetShape, DType.complex128) as NDArray<R>;
@@ -3755,9 +3755,9 @@ NDArray<R> nanmean<R extends AnyDType>(
     final coords = iter.coords;
     final c = counts.getCell(coords);
     if (c == 0) {
-      result.setCell(coords, Complex(double.nan, double.nan) as R);
+      result.setCell(coords, Complex(double.nan, double.nan));
     } else {
-      result.setCell(coords, ((result.getCell(coords) as dynamic) / c) as R);
+      result.setCell(coords, ((result.getCell(coords) as dynamic) / c));
     }
   }
   counts.dispose();
@@ -4106,27 +4106,27 @@ NDArray<T> median<T extends AnyDType>(
     if (a.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
-          result.setCellFlat(0, r_median_double(a.pointer.cast(), size) as T);
+          result.setCellFlat(0, r_median_double(a.pointer.cast(), size));
           return result;
         case DType.float32:
-          result.setCellFlat(0, r_median_float(a.pointer.cast(), size) as T);
+          result.setCellFlat(0, r_median_float(a.pointer.cast(), size));
           return result;
         case DType.int64:
-          result.setCellFlat(0, r_median_int64(a.pointer.cast(), size) as T);
+          result.setCellFlat(0, r_median_int64(a.pointer.cast(), size));
           return result;
         case DType.int32:
-          result.setCellFlat(0, r_median_int32(a.pointer.cast(), size) as T);
+          result.setCellFlat(0, r_median_int32(a.pointer.cast(), size));
           return result;
         case DType.uint8:
-          result.setCellFlat(0, r_median_uint8(a.pointer.cast(), size) as T);
+          result.setCellFlat(0, r_median_uint8(a.pointer.cast(), size));
           return result;
         case DType.complex128:
           final res = r_median_complex128(a.pointer.cast(), size);
-          result.setCellFlat(0, Complex(res.r, res.i) as T);
+          result.setCellFlat(0, Complex(res.r, res.i));
           return result;
         case DType.complex64:
           final res = r_median_complex64(a.pointer.cast(), size);
-          result.setCellFlat(0, Complex(res.r, res.i) as T);
+          result.setCellFlat(0, Complex(res.r, res.i));
           return result;
         case DType.int16:
         case DType.float16:
@@ -4139,14 +4139,14 @@ NDArray<T> median<T extends AnyDType>(
           final flat = a.flatten();
           final resVal = r_median_helper(flat, flat.size);
           flat.dispose();
-          result.setCellFlat(0, resVal as T);
+          result.setCellFlat(0, resVal);
           return result;
       }
     } else {
       final flat = a.flatten();
       final resVal = r_median_helper(flat, flat.size);
       flat.dispose();
-      result.setCellFlat(0, resVal as T);
+      result.setCellFlat(0, resVal);
       return result;
     }
   }
@@ -4405,7 +4405,7 @@ NDArray<T> ptp<T extends AnyReal>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
-    result.setCellFlat(0, ptpVal as T);
+    result.setCellFlat(0, ptpVal);
     return result;
   }
 
@@ -4601,10 +4601,10 @@ average<T extends AnyReal, W extends AnyReal, R extends AnyReal>(
       broadcastedWeights = weights.reshape(reshapedShape);
     }
 
-    final weighted_a = multiply<T, W, num>(a, broadcastedWeights);
-    final weighted_sum = sum<num>(weighted_a, axis: resolvedAxis);
-    final sum_of_weights = sum<num>(broadcastedWeights, axis: resolvedAxis);
-    final avg = divide<num, num, R>(weighted_sum, sum_of_weights, out: out);
+    final weighted_a = multiply<T, W, AnyReal>(a, broadcastedWeights);
+    final weighted_sum = sum<AnyReal>(weighted_a, axis: resolvedAxis);
+    final sum_of_weights = sum<AnyReal>(broadcastedWeights, axis: resolvedAxis);
+    final avg = divide<AnyReal, AnyReal, R>(weighted_sum, sum_of_weights, out: out);
 
     NDArray<R>? sumOfWeightsResult;
     if (returned) {
@@ -4780,12 +4780,14 @@ NDArray<Float64> cov<T extends AnyReal>(
     );
 
     final int resolvedDdof = ddof ?? (bias ? 0 : 1);
-    final denominator = v1 * v1 - resolvedDdof * v2;
+    final v1Num = v1 as num;
+    final v2Num = v2 as num;
+    final denominator = v1Num * v1Num - resolvedDdof * v2Num;
     final double fact;
     if (denominator == 0) {
       fact = double.nan;
     } else {
-      fact = v1 / denominator;
+      fact = v1Num / denominator;
     }
 
     final factArr = NDArray<Float64>.scalar(
@@ -4921,21 +4923,21 @@ NDArray<T> nansum<T extends AnyDType>(
     final size = a.size;
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
     if (size == 0) {
-      result.setCellFlat(0, normalizeScalar(0, a.dtype) as T);
+      result.setCellFlat(0, normalizeScalar(0, a.dtype));
       return result;
     }
-    T acc;
+    Object? acc;
     switch (a.dtype) {
       case DType.float64:
         final temp = a.isContiguous ? a : a.copy();
         final s = _fastContiguousNansumDouble(temp.pointer.cast(), size);
         if (!identical(temp, a)) temp.dispose();
-        acc = s as T;
+        acc = s;
       case DType.float32:
         final temp = a.isContiguous ? a : a.copy();
         final s = _fastContiguousNansumFloat(temp.pointer.cast(), size);
         if (!identical(temp, a)) temp.dispose();
-        acc = s as T;
+        acc = s;
       case DType.int32:
       case DType.int64:
         var sumVal = 0;
@@ -4943,7 +4945,7 @@ NDArray<T> nansum<T extends AnyDType>(
         while (en.moveNext()) {
           sumVal += en.value as int;
         }
-        acc = sumVal as T;
+        acc = sumVal;
       case DType.complex64:
       case DType.complex128:
         var sumVal = Complex(0.0, 0.0);
@@ -4953,7 +4955,7 @@ NDArray<T> nansum<T extends AnyDType>(
           if (val.real.isNaN || val.imag.isNaN) continue;
           sumVal += val;
         }
-        acc = sumVal as T;
+        acc = sumVal;
       default:
         var sumVal = 0.0;
         final en = NDEnumerate<T>(a);
@@ -4962,7 +4964,7 @@ NDArray<T> nansum<T extends AnyDType>(
           if (val.isNaN) continue;
           sumVal += val;
         }
-        acc = sumVal as T;
+        acc = sumVal;
     }
     result.setCellFlat(0, acc);
     return result;
@@ -4976,7 +4978,7 @@ NDArray<T> nansum<T extends AnyDType>(
 
   final result = out ?? NDArray<T>.zeros(targetShape, a.dtype);
   if (out != null) {
-    result.fill(normalizeScalar(0, a.dtype) as T);
+    result.fill(normalizeScalar(0, a.dtype));
   }
 
   final squeezedDestStrides = keepdims
@@ -5048,7 +5050,7 @@ NDArray<T> nansum<T extends AnyDType>(
     (current, val) {
       if (val is double && val.isNaN) return current;
       if (val is Complex && (val.real.isNaN || val.imag.isNaN)) return current;
-      return ((current as dynamic) + val) as T;
+      return ((current as dynamic) + val);
     },
     destStrides: squeezedDestStrides,
   );

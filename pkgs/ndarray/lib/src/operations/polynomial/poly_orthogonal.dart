@@ -660,7 +660,7 @@ NDArray<AnyComplex> _orthoRoots<T extends AnyDType>(
     throw ArgumentError("Coefficient array c must be 1-dimensional.");
   }
 
-  final DType<Complex> targetComplexDType = c.dtype == DType.complex64
+  final DType<AnyComplex> targetComplexDType = c.dtype == DType.complex64
       ? DType.complex64
       : DType.complex128;
 
@@ -730,7 +730,7 @@ NDArray<AnyComplex> _orthoRoots<T extends AnyDType>(
     switch (c.dtype) {
       case DType.complex64:
       case DType.complex128:
-        cMat = NDArray<AnyComplex>.zeros([n, n], c.dtype as DType<Complex>);
+        cMat = NDArray<AnyComplex>.zeros([n, n], c.dtype as DType<AnyComplex>);
         break;
       default:
         cMat = NDArray<Float64>.zeros([n, n], DType.float64);

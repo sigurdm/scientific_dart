@@ -240,12 +240,12 @@ NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
     return castNDArray(o, dtype);
   }
   final normalized = normalizeScalar(o, dtype);
-  return NDArray<T>.scalar(normalized as T, dtype: dtype);
+  return NDArray<T>.scalar(normalized, dtype: dtype);
 }
 
-({NDArray<T> samples, T step}) linspaceInternal<T extends AnyDType>(
-  T start,
-  T stop,
+({NDArray<T> samples, dynamic step}) linspaceInternal<T extends AnyDType>(
+  Object? start,
+  Object? stop,
   int numSamples, {
   bool endpoint = true,
   required DType<T> dtype,
@@ -264,7 +264,7 @@ NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
 
   if (numSamples == 0) {
     final arr = out ?? NDArray<T>.create([0], resolvedDType);
-    final step = normalizeScalar(double.nan, resolvedDType) as T;
+    final step = normalizeScalar(double.nan, resolvedDType);
     return (samples: arr, step: step);
   }
 
@@ -275,7 +275,7 @@ NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
     final arr = (out != null && !useTempOut)
         ? out
         : NDArray<T>.create([numSamples], resolvedDType);
-    T step;
+    dynamic step;
 
     switch (resolvedDType) {
       case DType.float64:
@@ -283,13 +283,13 @@ NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
         final e = (stop as num).toDouble();
         final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
         v_linspace_double(arr.pointer.cast(), s, stp, numSamples);
-        step = normalizeScalar(stp, resolvedDType) as T;
+        step = normalizeScalar(stp, resolvedDType);
       case DType.float32:
         final s = (start as num).toDouble();
         final e = (stop as num).toDouble();
         final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
         v_linspace_float(arr.pointer.cast(), s, stp, numSamples);
-        step = normalizeScalar(stp, resolvedDType) as T;
+        step = normalizeScalar(stp, resolvedDType);
       case DType.complex128:
         final s = normalizeScalar(start as Object, DType.complex128) as Complex;
         final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
@@ -302,7 +302,7 @@ NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
           stp.imag,
           numSamples,
         );
-        step = normalizeScalar(stp, resolvedDType) as T;
+        step = normalizeScalar(stp, resolvedDType);
       case DType.complex64:
         final s = normalizeScalar(start as Object, DType.complex128) as Complex;
         final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
@@ -315,31 +315,31 @@ NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
           stp.imag,
           numSamples,
         );
-        step = normalizeScalar(stp, resolvedDType) as T;
+        step = normalizeScalar(stp, resolvedDType);
       case DType.int64:
         final s = (start as num).toDouble();
         final e = (stop as num).toDouble();
         final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
         v_linspace_int64(arr.pointer.cast(), s, stp, numSamples);
-        step = normalizeScalar(stp, resolvedDType) as T;
+        step = normalizeScalar(stp, resolvedDType);
       case DType.int32:
         final s = (start as num).toDouble();
         final e = (stop as num).toDouble();
         final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
         v_linspace_int32(arr.pointer.cast(), s, stp, numSamples);
-        step = normalizeScalar(stp, resolvedDType) as T;
+        step = normalizeScalar(stp, resolvedDType);
       case DType.int16:
         final s = (start as num).toDouble();
         final e = (stop as num).toDouble();
         final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
         v_linspace_int16(arr.pointer.cast(), s, stp, numSamples);
-        step = normalizeScalar(stp, resolvedDType) as T;
+        step = normalizeScalar(stp, resolvedDType);
       case DType.uint8:
         final s = (start as num).toDouble();
         final e = (stop as num).toDouble();
         final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
         v_linspace_uint8(arr.pointer.cast(), s, stp, numSamples);
-        step = normalizeScalar(stp, resolvedDType) as T;
+        step = normalizeScalar(stp, resolvedDType);
       case DType.float16:
       case DType.bfloat16:
       case DType.int8:
@@ -353,7 +353,7 @@ NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
         v_linspace_double(temp.pointer.cast(), s, stp, numSamples);
         final casted = castNDArray(temp, resolvedDType);
         casted.copy(out: arr);
-        step = normalizeScalar(stp, resolvedDType) as T;
+        step = normalizeScalar(stp, resolvedDType);
       case DType.boolean:
         throw UnsupportedError('linspace not supported for boolean arrays');
     }
@@ -589,7 +589,7 @@ void nanReduceRecursive<T extends AnyDType>(
     if (val is double && val.isNaN) return;
     if (val is Complex && (val.real.isNaN || val.imag.isNaN)) return;
     final current = result.getCell(coordRes);
-    result.setCell(coordRes, ((current as dynamic) + val) as T);
+    result.setCell(coordRes, ((current as dynamic) + val));
     counts.setCell(coordRes, counts.getCell(coordRes) + 1);
     return;
   }
@@ -1400,7 +1400,7 @@ NDArray<R> castNDArray<R extends AnyDType>(NDArray a, DType<R> targetDType) {
   if (a.rank == 0) {
     final scalarVal = a.scalar;
     final converted = castValue(scalarVal, targetDType, sourceDType: a.dtype);
-    result.setCellRaw(0, converted as R);
+    result.setCellRaw(0, converted);
     return result;
   }
 
@@ -1534,7 +1534,7 @@ void _cumOpFallbackHelper<T extends AnyDType, R extends AnyDType>(
         final resIdx = baseOffsetRes + i * result.strides[axis];
         result.setCellRaw(
           resIdx,
-          castValue(acc, result.dtype, sourceDType: accSourceDType) as R,
+          castValue(acc, result.dtype, sourceDType: accSourceDType),
         );
         if (result.dtype.isInteger || result.dtype == DType.boolean) {
           acc = toIntVal(result.getCellRaw(resIdx));

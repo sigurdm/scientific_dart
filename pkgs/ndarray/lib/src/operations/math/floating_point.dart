@@ -1343,15 +1343,15 @@ extension FrexpRecordExtension<R extends AnyDType>
         res1.offsetElements,
         (v) {
           final dv = toDoubleVal(v);
-          if (dv.isNaN) return castValue(double.nan, targetDType) as R;
+          if (dv.isNaN) return castValue(double.nan, targetDType);
           if (dv.isInfinite) {
-            return castValue(dv.isNegative ? -0.0 : 0.0, targetDType) as R;
+            return castValue(dv.isNegative ? -0.0 : 0.0, targetDType);
           }
           final iPart = dv.truncateToDouble();
           final fPart = dv - iPart == 0.0
               ? (dv.isNegative ? -0.0 : 0.0)
               : dv - iPart;
-          return castValue(fPart, targetDType) as R;
+          return castValue(fPart, targetDType);
         },
         maskHolder.pointer,
       );
@@ -1368,10 +1368,10 @@ extension FrexpRecordExtension<R extends AnyDType>
         (v) {
           final dv = toDoubleVal(v);
           if (dv.isNaN || dv.isInfinite) {
-            return castValue(dv, targetDType) as R;
+            return castValue(dv, targetDType);
           }
           final iPart = dv.truncateToDouble();
-          return castValue(iPart, targetDType) as R;
+          return castValue(iPart, targetDType);
         },
         maskHolder.pointer,
       );
@@ -1507,7 +1507,7 @@ extension FrexpRecordExtension<R extends AnyDType>
         res1.offsetElements,
         (v) {
           final (m, _) = decomposeFrexp(toDoubleVal(v));
-          return castValue(m, targetDType) as R;
+          return castValue(m, targetDType);
         },
         maskHolder.pointer,
       );

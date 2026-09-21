@@ -1395,7 +1395,7 @@ NDArray<R> sinh<T extends AnyDType, R extends AnyDType>(
       result.offsetElements,
       (x) {
         final val = (x as num).toDouble();
-        return (math.exp(val) - math.exp(-val)) / 2.0 as R;
+        return (math.exp(val) - math.exp(-val)) / 2.0;
       },
       maskHolder.pointer,
     );
@@ -1573,7 +1573,7 @@ NDArray<R> cosh<T extends AnyDType, R extends AnyDType>(
       result.offsetElements,
       (x) {
         final val = (x as num).toDouble();
-        return (math.exp(val) + math.exp(-val)) / 2.0 as R;
+        return (math.exp(val) + math.exp(-val)) / 2.0;
       },
       maskHolder.pointer,
     );
@@ -1752,7 +1752,7 @@ NDArray<R> tanh<T extends AnyDType, R extends AnyDType>(
       (x) {
         final val = (x as num).toDouble();
         final exp2val = math.exp(2.0 * val);
-        return (exp2val - 1.0) / (exp2val + 1.0) as R;
+        return (exp2val - 1.0) / (exp2val + 1.0);
       },
       maskHolder.pointer,
     );
@@ -1930,7 +1930,7 @@ NDArray<R> asinh<T extends AnyDType, R extends AnyDType>(
       result.offsetElements,
       (x) {
         final val = (x as num).toDouble();
-        return math.log(val + math.sqrt(val * val + 1.0)) as R;
+        return math.log(val + math.sqrt(val * val + 1.0));
       },
       maskHolder.pointer,
     );
@@ -2108,7 +2108,7 @@ NDArray<R> acosh<T extends AnyDType, R extends AnyDType>(
       result.offsetElements,
       (x) {
         final val = (x as num).toDouble();
-        return math.log(val + math.sqrt(val * val - 1.0)) as R;
+        return math.log(val + math.sqrt(val * val - 1.0));
       },
       maskHolder.pointer,
     );
@@ -2286,7 +2286,7 @@ NDArray<R> atanh<T extends AnyDType, R extends AnyDType>(
       result.offsetElements,
       (x) {
         final val = (x as num).toDouble();
-        return 0.5 * math.log((1.0 + val) / (1.0 - val)) as R;
+        return 0.5 * math.log((1.0 + val) / (1.0 - val));
       },
       maskHolder.pointer,
     );

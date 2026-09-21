@@ -414,7 +414,7 @@ final class NDArray<T extends AnyDType>
     NDArray<T> Function() callback,
   ) => ResourceScope.returning(callback);
 
-  static R unmanaged<R extends AnyDType>(R Function() callback) =>
+  static R unmanaged<R>(R Function() callback) =>
       ResourceScope.unmanaged(callback);
 
   static bool _checkContiguous(List<int> shape, List<int> strides) {
@@ -1017,7 +1017,7 @@ final class NDArray<T extends AnyDType>
   /// Refer to the [NumPy full reference](https://numpy.org/doc/stable/reference/generated/numpy.full.html) for additional details.
   factory NDArray.full(
     List<int> shape,
-    T fillValue, {
+    Object? fillValue, {
     required DType<T> dtype,
   }) {
     final arr = NDArray<T>.create(shape, dtype);

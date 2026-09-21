@@ -816,7 +816,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
     }
 
     if (operands.length == 1) {
-      var op = _asTyped<Object>(operands[0]);
+      var op = _asTyped<AnyDType>(operands[0]);
       var sub = operandSubs[0];
 
       final seenInOp = <int, int>{};
@@ -850,7 +850,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
       NDArray res = op;
       axesToSum.sort((a, b) => b.compareTo(a));
       for (final ax in axesToSum) {
-        res = sum<Object>(res as NDArray<AnyDType>, axis: ax);
+        res = sum<AnyDType>(res, axis: ax);
       }
 
       if (keptIds.length > 1) {
@@ -894,9 +894,9 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             subA[1] == subB[0] &&
             subA[0] == finalOutSub[0] &&
             subB[1] == finalOutSub[1]) {
-          final res = matmul<Object, Object, R>(
-            operands[0] as NDArray<AnyDType>,
-            operands[1] as NDArray<AnyDType>,
+          final res = matmul<AnyDType, AnyDType, R>(
+            operands[0],
+            operands[1],
             out: out,
           );
           return _returnFromScope<R>(res, operands, out: out);
@@ -910,9 +910,9 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             subA[2] == subB[1] &&
             subA[1] == finalOutSub[1] &&
             subB[2] == finalOutSub[2]) {
-          final res = matmul<Object, Object, R>(
-            operands[0] as NDArray<AnyDType>,
-            operands[1] as NDArray<AnyDType>,
+          final res = matmul<AnyDType, AnyDType, R>(
+            operands[0],
+            operands[1],
             out: out,
           );
           return _returnFromScope<R>(res, operands, out: out);
@@ -922,9 +922,9 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             subB.length == 1 &&
             finalOutSub.isEmpty &&
             subA[0] == subB[0]) {
-          final res = matmul<Object, Object, R>(
-            operands[0] as NDArray<AnyDType>,
-            operands[1] as NDArray<AnyDType>,
+          final res = matmul<AnyDType, AnyDType, R>(
+            operands[0],
+            operands[1],
             out: out,
           );
           return _returnFromScope<R>(res, operands, out: out);
@@ -937,9 +937,9 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             subB[0] == finalOutSub[1]) {
           final aCol = operands[0].reshape([operands[0].shape[0], 1]);
           final bRow = operands[1].reshape([1, operands[1].shape[0]]);
-          final res = multiply<Object, Object, R>(
-            aCol as NDArray<AnyDType>,
-            bRow as NDArray<AnyDType>,
+          final res = multiply<AnyDType, AnyDType, R>(
+            aCol,
+            bRow,
             out: out,
           );
           return _returnFromScope<R>(res, operands, out: out);
@@ -960,9 +960,9 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
               subA[kBatch + 1] == subB[kBatch] &&
               subA[kBatch] == finalOutSub[kBatch] &&
               subB[kBatch + 1] == finalOutSub[kBatch + 1]) {
-            final res = matmul<Object, Object, R>(
-              operands[0] as NDArray<AnyDType>,
-              operands[1] as NDArray<AnyDType>,
+            final res = matmul<AnyDType, AnyDType, R>(
+              operands[0],
+              operands[1],
               out: out,
             );
             return _returnFromScope<R>(res, operands, out: out);
@@ -1053,9 +1053,9 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
               b3D = operands[1].transpose(permB).reshape([numBatch, k, n]);
             }
 
-            final res3D = matmul<Object, Object, R>(
-              a3D as NDArray<AnyDType>,
-              b3D as NDArray<AnyDType>,
+            final res3D = matmul<AnyDType, AnyDType, R>(
+              a3D,
+              b3D,
             );
 
             final freeAShapes = freeA.map((id) => labelSizes[id]!);
@@ -1159,9 +1159,9 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             ], bestInterOut);
 
             final interRes = NDArray.unmanaged(
-              () => einsum<Object, Object>(specInter, [
-                opI as NDArray<AnyDType>,
-                opJ as NDArray<AnyDType>,
+              () => einsum<AnyDType, AnyDType>(specInter, [
+                opI,
+                opJ,
               ]),
             );
             toDispose.add(interRes);
@@ -1179,9 +1179,9 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             currentSubs[0],
             currentSubs[1],
           ], finalOutSub);
-          final finalRes = einsum<Object, R>(specFinal, [
-            currentOps[0] as NDArray<AnyDType>,
-            currentOps[1] as NDArray<AnyDType>,
+          final finalRes = einsum<AnyDType, R>(specFinal, [
+            currentOps[0],
+            currentOps[1],
           ], out: out);
           return _returnFromScope<R>(finalRes, operands, out: out);
         }
@@ -1208,7 +1208,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
 
     final expandedOperands = <NDArray>[];
     for (var i = 0; i < operands.length; i++) {
-      var op = _asTyped<Object>(operands[i]);
+      var op = _asTyped<AnyDType>(operands[i]);
       var sub = operandSubs[i];
 
       final seen = <int, int>{};
@@ -1244,16 +1244,16 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
 
     NDArray combined = expandedOperands[0];
     for (var i = 1; i < expandedOperands.length; i++) {
-      combined = multiply<Object, Object, Object>(
-        combined as NDArray<AnyDType>,
-        expandedOperands[i] as NDArray<AnyDType>,
+      combined = multiply<AnyDType, AnyDType, AnyDType>(
+        combined,
+        expandedOperands[i],
       );
     }
 
     for (var j = allIds.length - 1; j >= 0; j--) {
       final id = allIds[j];
       if (!finalOutSub.contains(id)) {
-        combined = sum<Object>(combined as NDArray<AnyDType>, axis: j);
+        combined = sum<AnyDType>(combined, axis: j);
       }
     }
 
@@ -1306,9 +1306,9 @@ NDArray<R> inner<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(N
 
   if (a.rank == 0 || b.rank == 0) {
     return NDArray.scope(() {
-      final res = multiply<Object, Object, R>(
-        a as NDArray<AnyDType>,
-        b as NDArray<AnyDType>,
+      final res = multiply<AnyDType, AnyDType, R>(
+        a,
+        b,
         out: out,
       );
       return _returnFromScope<R>(res, [a, b], out: out);
@@ -1376,9 +1376,9 @@ NDArray<R> vdot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(ND
     final flatA = a.reshape([a.size]);
     final flatB = b.reshape([b.size]);
     final conjA = a.dtype.isComplex ? conjugate(flatA) : flatA;
-    final res = matmul<Object, Object, R>(
-      conjA as NDArray<AnyDType>,
-      flatB as NDArray<AnyDType>,
+    final res = matmul<AnyDType, AnyDType, R>(
+      conjA,
+      flatB,
       out: out,
     );
     return _returnFromScope<R>(res, [a, b], out: out);

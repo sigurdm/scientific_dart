@@ -150,10 +150,10 @@ NDArray<T> sort<T extends AnyDType>(
           if (!(result.getCellFlat(rowStart + i) as bool)) falses++;
         }
         for (var i = 0; i < falses; i++) {
-          result.setCellFlat(rowStart + i, false as T);
+          result.setCellFlat(rowStart + i, false);
         }
         for (var i = falses; i < n; i++) {
-          result.setCellFlat(rowStart + i, true as T);
+          result.setCellFlat(rowStart + i, true);
         }
       }
       return finish();
@@ -2833,7 +2833,7 @@ enum CompareOp {
 List<int>? findIndex<T extends AnyDType>(
   NDArray<T> a,
   CompareOp op,
-  T target, {
+  Object? target, {
   List<int>? startCoords,
   List<int>? directions,
 }) {

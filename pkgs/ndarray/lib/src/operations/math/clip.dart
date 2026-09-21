@@ -266,11 +266,11 @@ NDArray<T> clipArray<T extends AnyDType>(
     try {
       minArr = min == null
           ? (NDArray<T>.create([], a.dtype)
-              ..setCellRaw(0, _getMinLimit(a.dtype) as T))
+              ..setCellRaw(0, _getMinLimit(a.dtype)))
           : (min.dtype == a.dtype ? min : castNDArray(min, a.dtype));
       maxArr = max == null
           ? (NDArray<T>.create([], a.dtype)
-              ..setCellRaw(0, _getMaxLimit(a.dtype) as T))
+              ..setCellRaw(0, _getMaxLimit(a.dtype)))
           : (max.dtype == a.dtype ? max : castNDArray(max, a.dtype));
 
       final result =

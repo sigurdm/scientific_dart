@@ -668,7 +668,7 @@ NDArray<AnyComplex> roots<T extends AnyDType>(NDArray<T> p, {NDArray<AnyComplex>
     throw ArgumentError("Coefficient array p must be 1-dimensional.");
   }
 
-  final DType<Complex> targetComplexDType = p.dtype == DType.complex64
+  final DType<AnyComplex> targetComplexDType = p.dtype == DType.complex64
       ? DType.complex64
       : DType.complex128;
 
@@ -733,7 +733,7 @@ NDArray<AnyComplex> roots<T extends AnyDType>(NDArray<T> p, {NDArray<AnyComplex>
     switch (p.dtype) {
       case DType.complex64:
       case DType.complex128:
-        aMat = NDArray<AnyComplex>.zeros([deg, deg], p.dtype as DType<Complex>);
+        aMat = NDArray<AnyComplex>.zeros([deg, deg], p.dtype as DType<AnyComplex>);
         break;
       default:
         aMat = NDArray<Float64>.zeros([deg, deg], DType.float64);

@@ -3269,7 +3269,7 @@ NDArray<T> matrix_power<T extends AnyDType>(NDArray<T> a, int n, {NDArray<T>? ou
     final result = out ?? NDArray<T>.create(a.shape, a.dtype);
     if (n == 0) {
       final eye = NDArray.eye(size, a.dtype);
-      result.fill(normalizeScalar(0, a.dtype) as T);
+      result.fill(normalizeScalar(0, a.dtype));
       for (var i = 0; i < size; i++) {
         result.setCell([i, i], eye.getCell([i, i]));
       }
@@ -6984,7 +6984,7 @@ LstsqResult<R> lstsq<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDTyp
       final NDArray<R> x;
       if (out != null) {
         if (out.size > 0) {
-          out.fill((targetDType.isComplex ? Complex(0, 0) : 0.0) as R);
+          out.fill((targetDType.isComplex ? Complex(0, 0) : 0.0));
         }
         x = out;
       } else {

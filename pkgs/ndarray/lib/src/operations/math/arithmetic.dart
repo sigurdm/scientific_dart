@@ -1284,7 +1284,7 @@ NDArray<T> square<T extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, N
           for (var i = 0; i < a.size; i++) {
             if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
               final val = a.getCellFlat(i) as num;
-              result.setCellFlat(i, (val * val) as T);
+              result.setCellFlat(i, (val * val));
             }
           }
           return result;
@@ -1648,12 +1648,12 @@ NDArray<T> reciprocal<T extends AnyDType>(
       result.offsetElements,
       (x) {
         if (x is Complex) {
-          return (Complex(1.0, 0.0) / x) as T;
+          return (Complex(1.0, 0.0) / x);
         } else if (x is double) {
-          return (1.0 / x) as T;
+          return (1.0 / x);
         } else if (x is int) {
           if (x == 0) throw UnsupportedError('Integer division by zero');
-          return (1 ~/ x) as T;
+          return (1 ~/ x);
         }
         throw UnsupportedError('Unsupported type for reciprocal');
       },

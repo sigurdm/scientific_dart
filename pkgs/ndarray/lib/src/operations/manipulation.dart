@@ -822,7 +822,7 @@ NDArray<T> diag<T extends AnyDType>(NDArray<T> v, {int k = 0, NDArray<T>? out}) 
             'Provided out buffer has incompatible shape or dtype.',
           );
         }
-        out.fill(castValue(0, v.dtype) as T);
+        out.fill(castValue(0, v.dtype));
         return out;
       }
       return NDArray<T>.create([0], v.dtype);
@@ -862,7 +862,7 @@ NDArray<T> diag<T extends AnyDType>(NDArray<T> v, {int k = 0, NDArray<T>? out}) 
           ? out
           : NDArray<T>.zeros(targetShape, v.dtype);
       if (out != null && !useTempOut) {
-        result.fill(castValue(0, v.dtype) as T);
+        result.fill(castValue(0, v.dtype));
       }
 
       int startRow;
@@ -968,7 +968,7 @@ NDArray<T> tril<T extends AnyDType>(NDArray<T> a, {int k = 0, NDArray<T>? out}) 
     }
 
     if (!handledByFastKernel) {
-      final zeroVal = castValue(0, a.dtype) as T;
+      final zeroVal = castValue(0, a.dtype);
       final coords = List<int>.filled(rank, 0);
 
       void walk(int dim) {
@@ -1076,7 +1076,7 @@ NDArray<T> triu<T extends AnyDType>(NDArray<T> a, {int k = 0, NDArray<T>? out}) 
     }
 
     if (!handledByFastKernel) {
-      final zeroVal = castValue(0, a.dtype) as T;
+      final zeroVal = castValue(0, a.dtype);
       final coords = List<int>.filled(rank, 0);
 
       void walk(int dim) {
