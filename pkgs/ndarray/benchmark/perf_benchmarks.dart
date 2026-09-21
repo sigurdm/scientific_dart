@@ -268,8 +268,16 @@ void main() async {
       // TRACK E: DISTANCE METRICS TRACK (pdist & cdist)
       // ============================================================================
       c.group('Track E: Distance Metrics (pdist & cdist)', () {
-        final distMatA = normal([500, 100], seed: 42);
-        final distMatB = normal([500, 100], seed: 43);
+        final distMatA = normal<Float64>(
+          [500, 100],
+          dtype: DType.float64,
+          seed: 42,
+        );
+        final distMatB = normal<Float64>(
+          [500, 100],
+          dtype: DType.float64,
+          seed: 43,
+        );
         final distIntA = randint(
           [500, 100],
           low: 0,

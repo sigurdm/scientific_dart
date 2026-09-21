@@ -1,4 +1,7 @@
+import 'dart:ffi' as ffi;
+
 import '../ndarray.dart';
+import '../ndarray_bindings.dart';
 import '../ndarray_extensions_bindings.dart';
 import '../scratch_arena.dart';
 
@@ -130,32 +133,185 @@ NDArray<T> repeat<T>(
 
     final destDim = target.shape[normAxis];
 
-    var destOffset = 0;
-    for (var i = 0; i < dim; i++) {
-      final rep = repsList[i];
-      if (rep == 0) continue;
-
-      for (var o = 0; o < outer; o++) {
-        final srcStart = (o * dim + i) * inner;
-        final destStart = (o * destDim + destOffset) * inner;
-
-        final srcView = NDArray<T>.view(
-          src,
-          shape: [rep, inner],
-          strides: [0, 1],
-          offsetElements: srcStart,
-        );
-
-        final destView = NDArray<T>.view(
-          target,
-          shape: [rep, inner],
-          strides: [inner, 1],
-          offsetElements: destStart,
-        );
-
-        srcView.copy(out: destView);
+    if (inner == 1) {
+      switch (src.dtype) {
+        case DType.float64:
+          final srcList = src.pointer.cast<ffi.Double>().asTypedList(src.size);
+          final dstList = target.pointer.cast<ffi.Double>().asTypedList(
+            target.size,
+          );
+          for (var o = 0; o < outer; o++) {
+            final srcBase = o * dim;
+            var destPos = o * destDim;
+            for (var i = 0; i < dim; i++) {
+              final rep = repsList[i];
+              if (rep == 0) continue;
+              final val = srcList[srcBase + i];
+              for (var r = 0; r < rep; r++) {
+                dstList[destPos++] = val;
+              }
+            }
+          }
+        case DType.float32:
+          final srcList = src.pointer.cast<ffi.Float>().asTypedList(src.size);
+          final dstList = target.pointer.cast<ffi.Float>().asTypedList(
+            target.size,
+          );
+          for (var o = 0; o < outer; o++) {
+            final srcBase = o * dim;
+            var destPos = o * destDim;
+            for (var i = 0; i < dim; i++) {
+              final rep = repsList[i];
+              if (rep == 0) continue;
+              final val = srcList[srcBase + i];
+              for (var r = 0; r < rep; r++) {
+                dstList[destPos++] = val;
+              }
+            }
+          }
+        case DType.int64:
+        case DType.uint64:
+          final srcList = src.pointer.cast<ffi.Int64>().asTypedList(src.size);
+          final dstList = target.pointer.cast<ffi.Int64>().asTypedList(
+            target.size,
+          );
+          for (var o = 0; o < outer; o++) {
+            final srcBase = o * dim;
+            var destPos = o * destDim;
+            for (var i = 0; i < dim; i++) {
+              final rep = repsList[i];
+              if (rep == 0) continue;
+              final val = srcList[srcBase + i];
+              for (var r = 0; r < rep; r++) {
+                dstList[destPos++] = val;
+              }
+            }
+          }
+        case DType.int32:
+        case DType.uint32:
+          final srcList = src.pointer.cast<ffi.Int32>().asTypedList(src.size);
+          final dstList = target.pointer.cast<ffi.Int32>().asTypedList(
+            target.size,
+          );
+          for (var o = 0; o < outer; o++) {
+            final srcBase = o * dim;
+            var destPos = o * destDim;
+            for (var i = 0; i < dim; i++) {
+              final rep = repsList[i];
+              if (rep == 0) continue;
+              final val = srcList[srcBase + i];
+              for (var r = 0; r < rep; r++) {
+                dstList[destPos++] = val;
+              }
+            }
+          }
+        case DType.int16:
+        case DType.uint16:
+        case DType.float16:
+        case DType.bfloat16:
+          final srcList = src.pointer.cast<ffi.Int16>().asTypedList(src.size);
+          final dstList = target.pointer.cast<ffi.Int16>().asTypedList(
+            target.size,
+          );
+          for (var o = 0; o < outer; o++) {
+            final srcBase = o * dim;
+            var destPos = o * destDim;
+            for (var i = 0; i < dim; i++) {
+              final rep = repsList[i];
+              if (rep == 0) continue;
+              final val = srcList[srcBase + i];
+              for (var r = 0; r < rep; r++) {
+                dstList[destPos++] = val;
+              }
+            }
+          }
+        case DType.int8:
+        case DType.uint8:
+        case DType.boolean:
+          final srcList = src.pointer.cast<ffi.Int8>().asTypedList(src.size);
+          final dstList = target.pointer.cast<ffi.Int8>().asTypedList(
+            target.size,
+          );
+          for (var o = 0; o < outer; o++) {
+            final srcBase = o * dim;
+            var destPos = o * destDim;
+            for (var i = 0; i < dim; i++) {
+              final rep = repsList[i];
+              if (rep == 0) continue;
+              final val = srcList[srcBase + i];
+              for (var r = 0; r < rep; r++) {
+                dstList[destPos++] = val;
+              }
+            }
+          }
+        case DType.complex64:
+          final srcList = src.pointer.cast<ffi.Int64>().asTypedList(src.size);
+          final dstList = target.pointer.cast<ffi.Int64>().asTypedList(
+            target.size,
+          );
+          for (var o = 0; o < outer; o++) {
+            final srcBase = o * dim;
+            var destPos = o * destDim;
+            for (var i = 0; i < dim; i++) {
+              final rep = repsList[i];
+              if (rep == 0) continue;
+              final val = srcList[srcBase + i];
+              for (var r = 0; r < rep; r++) {
+                dstList[destPos++] = val;
+              }
+            }
+          }
+        case DType.complex128:
+          final srcList = src.pointer.cast<ffi.Double>().asTypedList(
+            src.size * 2,
+          );
+          final dstList = target.pointer.cast<ffi.Double>().asTypedList(
+            target.size * 2,
+          );
+          for (var o = 0; o < outer; o++) {
+            final srcBase = o * dim * 2;
+            var destPos = o * destDim * 2;
+            for (var i = 0; i < dim; i++) {
+              final rep = repsList[i];
+              if (rep == 0) continue;
+              final rVal = srcList[srcBase + i * 2];
+              final iVal = srcList[srcBase + i * 2 + 1];
+              for (var r = 0; r < rep; r++) {
+                dstList[destPos++] = rVal;
+                dstList[destPos++] = iVal;
+              }
+            }
+          }
       }
-      destOffset += rep;
+    } else {
+      final srcBytePtr = src.pointer.cast<ffi.Uint8>();
+      final dstBytePtr = target.pointer.cast<ffi.Uint8>();
+      final itemBytes = src.dtype.byteWidth;
+      final sliceBytes = inner * itemBytes;
+      final destDimBytes = destDim * sliceBytes;
+      final dimBytes = dim * sliceBytes;
+      for (var o = 0; o < outer; o++) {
+        final srcOuterPtr = srcBytePtr + o * dimBytes;
+        final dstOuterPtr = dstBytePtr + o * destDimBytes;
+        var destByteOffset = 0;
+        for (var i = 0; i < dim; i++) {
+          final rep = repsList[i];
+          if (rep == 0) continue;
+          final sPtr = srcOuterPtr + i * sliceBytes;
+          final dPtr = dstOuterPtr + destByteOffset;
+          custom_memcpy(dPtr.cast(), sPtr.cast(), sliceBytes);
+          var copied = sliceBytes;
+          final totalBytes = rep * sliceBytes;
+          while (copied < totalBytes) {
+            final toCopy = (copied <= totalBytes - copied)
+                ? copied
+                : (totalBytes - copied);
+            custom_memcpy((dPtr + copied).cast(), dPtr.cast(), toCopy);
+            copied += toCopy;
+          }
+          destByteOffset += totalBytes;
+        }
+      }
     }
 
     if (out != null) {

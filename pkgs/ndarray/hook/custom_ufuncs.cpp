@@ -1039,6 +1039,105 @@ static inline void strided_unary_op_loop(
         return;
     }
 
+    if (!HAS_MASK) {
+        if (rank == 0) {
+            res[0] = op(src[0]);
+            return;
+        }
+        if (rank == 1) {
+            const int sSrc = stridesSrc[0];
+            const int sRes = stridesRes[0];
+            if (sSrc == 1 && sRes == 1) {
+                for (int i = 0; i < total_size; i++) {
+                    res[i] = op(src[i]);
+                }
+                return;
+            }
+            for (int i = 0; i < total_size; i++) {
+                res[i * sRes] = op(src[i * sSrc]);
+            }
+            return;
+        }
+        if (rank == 2 && stridesSrc[0] == 1 && stridesSrc[1] == shape[0] &&
+            stridesRes[0] == shape[1] && stridesRes[1] == 1) {
+            const int M = shape[0];
+            const int N = shape[1];
+            constexpr int TILE = 32;
+            for (int i0 = 0; i0 < M; i0 += TILE) {
+                int bh = std::min(TILE, M - i0);
+                for (int j0 = 0; j0 < N; j0 += TILE) {
+                    int bw = std::min(TILE, N - j0);
+                    T tile[TILE][TILE];
+                    for (int jj = 0; jj < bw; jj++) {
+                        const T *src_row = src + (j0 + jj) * M + i0;
+                        for (int ii = 0; ii < bh; ii++) {
+                            tile[jj][ii] = op(src_row[ii]);
+                        }
+                    }
+                    for (int ii = 0; ii < bh; ii++) {
+                        T *res_row = res + (i0 + ii) * N + j0;
+                        for (int jj = 0; jj < bw; jj++) {
+                            res_row[jj] = tile[jj][ii];
+                        }
+                    }
+                }
+            }
+            return;
+        }
+        if (rank >= 2) {
+            const int inner_n = shape[rank - 1];
+            const int sSrc = stridesSrc[rank - 1];
+            const int sRes = stridesRes[rank - 1];
+            int outer_elements = 1;
+            for (int d = 0; d < rank - 1; d++) outer_elements *= shape[d];
+
+            DECLARE_RANK_BUFFER(int, coord, rank);
+            int offsetSrc = 0, offsetRes = 0;
+
+            if (sSrc == 1 && sRes == 1) {
+                for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                    const T *rowSrc = src + offsetSrc;
+                    T *rowRes = res + offsetRes;
+                    for (int j = 0; j < inner_n; j++) {
+                        rowRes[j] = op(rowSrc[j]);
+                    }
+                    for (int d = rank - 2; d >= 0; d--) {
+                        coord[d]++;
+                        if (coord[d] < shape[d]) {
+                            offsetSrc += stridesSrc[d];
+                            offsetRes += stridesRes[d];
+                            break;
+                        }
+                        coord[d] = 0;
+                        offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+                        offsetRes -= (shape[d] - 1) * stridesRes[d];
+                    }
+                }
+                return;
+            }
+
+            for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                const T *rowSrc = src + offsetSrc;
+                T *rowRes = res + offsetRes;
+                for (int j = 0; j < inner_n; j++) {
+                    rowRes[j * sRes] = op(rowSrc[j * sSrc]);
+                }
+                for (int d = rank - 2; d >= 0; d--) {
+                    coord[d]++;
+                    if (coord[d] < shape[d]) {
+                        offsetSrc += stridesSrc[d];
+                        offsetRes += stridesRes[d];
+                        break;
+                    }
+                    coord[d] = 0;
+                    offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+                    offsetRes -= (shape[d] - 1) * stridesRes[d];
+                }
+            }
+            return;
+        }
+    }
+
     DECLARE_RANK_BUFFER(int, coord, rank);
     for (int i = 0; i < total_size; i++) {
         if (!HAS_MASK || mask[i]) {
@@ -1356,6 +1455,148 @@ static inline void strided_binary_op_loop(
         return;
     }
 
+    if (!HAS_MASK) {
+        if (rank == 0) {
+            res[0] = op(a[0], b[0]);
+            return;
+        }
+        if (rank == 1) {
+            const int sA = stridesA[0];
+            const int sB = stridesB[0];
+            const int sR = stridesRes[0];
+            if (sA == 1 && sB == 0 && sR == 1) {
+                const T2 b0 = b[0];
+                for (int i = 0; i < total_elements; i++) {
+                    res[i] = op(a[i], b0);
+                }
+                return;
+            }
+            if (sA == 0 && sB == 1 && sR == 1) {
+                const T1 a0 = a[0];
+                for (int i = 0; i < total_elements; i++) {
+                    res[i] = op(a0, b[i]);
+                }
+                return;
+            }
+            if (sA == 1 && sB == 1 && sR == 1) {
+                for (int i = 0; i < total_elements; i++) {
+                    res[i] = op(a[i], b[i]);
+                }
+                return;
+            }
+            for (int i = 0; i < total_elements; i++) {
+                res[i * sR] = op(a[i * sA], b[i * sB]);
+            }
+            return;
+        }
+        if (rank >= 2) {
+            const int inner_n = shape[rank - 1];
+            const int sA = stridesA[rank - 1];
+            const int sB = stridesB[rank - 1];
+            const int sR = stridesRes[rank - 1];
+            int outer_elements = 1;
+            for (int d = 0; d < rank - 1; d++) outer_elements *= shape[d];
+
+            DECLARE_RANK_BUFFER(int, coord, rank);
+            int offsetA = 0, offsetB = 0, offsetRes = 0;
+
+            if (sA == 1 && sB == 0 && sR == 1) {
+                for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                    const T2 b0 = b[offsetB];
+                    const T1 *rowA = a + offsetA;
+                    TRes *rowRes = res + offsetRes;
+                    for (int j = 0; j < inner_n; j++) {
+                        rowRes[j] = op(rowA[j], b0);
+                    }
+                    for (int d = rank - 2; d >= 0; d--) {
+                        coord[d]++;
+                        if (coord[d] < shape[d]) {
+                            offsetA += stridesA[d];
+                            offsetB += stridesB[d];
+                            offsetRes += stridesRes[d];
+                            break;
+                        }
+                        coord[d] = 0;
+                        offsetA -= (shape[d] - 1) * stridesA[d];
+                        offsetB -= (shape[d] - 1) * stridesB[d];
+                        offsetRes -= (shape[d] - 1) * stridesRes[d];
+                    }
+                }
+                return;
+            }
+            if (sA == 0 && sB == 1 && sR == 1) {
+                for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                    const T1 a0 = a[offsetA];
+                    const T2 *rowB = b + offsetB;
+                    TRes *rowRes = res + offsetRes;
+                    for (int j = 0; j < inner_n; j++) {
+                        rowRes[j] = op(a0, rowB[j]);
+                    }
+                    for (int d = rank - 2; d >= 0; d--) {
+                        coord[d]++;
+                        if (coord[d] < shape[d]) {
+                            offsetA += stridesA[d];
+                            offsetB += stridesB[d];
+                            offsetRes += stridesRes[d];
+                            break;
+                        }
+                        coord[d] = 0;
+                        offsetA -= (shape[d] - 1) * stridesA[d];
+                        offsetB -= (shape[d] - 1) * stridesB[d];
+                        offsetRes -= (shape[d] - 1) * stridesRes[d];
+                    }
+                }
+                return;
+            }
+            if (sA == 1 && sB == 1 && sR == 1) {
+                for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                    const T1 *rowA = a + offsetA;
+                    const T2 *rowB = b + offsetB;
+                    TRes *rowRes = res + offsetRes;
+                    for (int j = 0; j < inner_n; j++) {
+                        rowRes[j] = op(rowA[j], rowB[j]);
+                    }
+                    for (int d = rank - 2; d >= 0; d--) {
+                        coord[d]++;
+                        if (coord[d] < shape[d]) {
+                            offsetA += stridesA[d];
+                            offsetB += stridesB[d];
+                            offsetRes += stridesRes[d];
+                            break;
+                        }
+                        coord[d] = 0;
+                        offsetA -= (shape[d] - 1) * stridesA[d];
+                        offsetB -= (shape[d] - 1) * stridesB[d];
+                        offsetRes -= (shape[d] - 1) * stridesRes[d];
+                    }
+                }
+                return;
+            }
+            for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                const T1 *rowA = a + offsetA;
+                const T2 *rowB = b + offsetB;
+                TRes *rowRes = res + offsetRes;
+                for (int j = 0; j < inner_n; j++) {
+                    rowRes[j * sR] = op(rowA[j * sA], rowB[j * sB]);
+                }
+                for (int d = rank - 2; d >= 0; d--) {
+                    coord[d]++;
+                    if (coord[d] < shape[d]) {
+                        offsetA += stridesA[d];
+                        offsetB += stridesB[d];
+                        offsetRes += stridesRes[d];
+                        break;
+                    }
+                    coord[d] = 0;
+                    offsetA -= (shape[d] - 1) * stridesA[d];
+                    offsetB -= (shape[d] - 1) * stridesB[d];
+                    offsetRes -= (shape[d] - 1) * stridesRes[d];
+                }
+            }
+            return;
+        }
+    }
+
     DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
@@ -1536,6 +1777,149 @@ static void s_where_impl(
         }
         return;
     }
+    if (rank == 1) {
+        const int sCond = stridesCond[0];
+        const int sX = stridesX[0];
+        const int sY = stridesY[0];
+        const int sRes = stridesRes[0];
+        if (sCond == 1 && sRes == 1) {
+            if (sX == 1 && sY == 1) {
+                for (int i = 0; i < total_elements; i++) res[i] = cond[i] ? x[i] : y[i];
+                return;
+            }
+            if (sX == 1 && sY == 0) {
+                const T y0 = y[0];
+                for (int i = 0; i < total_elements; i++) res[i] = cond[i] ? x[i] : y0;
+                return;
+            }
+            if (sX == 0 && sY == 1) {
+                const T x0 = x[0];
+                for (int i = 0; i < total_elements; i++) res[i] = cond[i] ? x0 : y[i];
+                return;
+            }
+            if (sX == 0 && sY == 0) {
+                const T x0 = x[0], y0 = y[0];
+                for (int i = 0; i < total_elements; i++) res[i] = cond[i] ? x0 : y0;
+                return;
+            }
+            for (int i = 0; i < total_elements; i++) res[i] = cond[i] ? x[i * sX] : y[i * sY];
+            return;
+        }
+        for (int i = 0; i < total_elements; i++) {
+            res[i * sRes] = cond[i * sCond] ? x[i * sX] : y[i * sY];
+        }
+        return;
+    }
+
+    if (rank >= 2) {
+        const int inner_n = shape[rank - 1];
+        const int sCond = stridesCond[rank - 1];
+        const int sX = stridesX[rank - 1];
+        const int sY = stridesY[rank - 1];
+        const int sRes = stridesRes[rank - 1];
+        int outer_elements = 1;
+        for (int d = 0; d < rank - 1; d++) outer_elements *= shape[d];
+
+        DECLARE_RANK_BUFFER(int, coord, rank);
+        int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
+
+        auto step_outer = [&]() {
+            for (int d = rank - 2; d >= 0; d--) {
+                coord[d]++;
+                if (coord[d] < shape[d]) {
+                    offsetCond += stridesCond[d];
+                    offsetX    += stridesX[d];
+                    offsetY    += stridesY[d];
+                    offsetRes  += stridesRes[d];
+                    break;
+                }
+                coord[d] = 0;
+                offsetCond -= (shape[d] - 1) * stridesCond[d];
+                offsetX    -= (shape[d] - 1) * stridesX[d];
+                offsetY    -= (shape[d] - 1) * stridesY[d];
+                offsetRes  -= (shape[d] - 1) * stridesRes[d];
+            }
+        };
+
+        if (sCond == 1 && sRes == 1) {
+            if (sX == 1 && sY == 1) {
+                for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                    const unsigned char *rowCond = cond + offsetCond;
+                    const T *rowX = x + offsetX;
+                    const T *rowY = y + offsetY;
+                    T *rowRes = res + offsetRes;
+                    for (int j = 0; j < inner_n; j++) {
+                        rowRes[j] = rowCond[j] ? rowX[j] : rowY[j];
+                    }
+                    step_outer();
+                }
+                return;
+            }
+            if (sX == 1 && sY == 0) {
+                for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                    const unsigned char *rowCond = cond + offsetCond;
+                    const T *rowX = x + offsetX;
+                    const T y0 = y[offsetY];
+                    T *rowRes = res + offsetRes;
+                    for (int j = 0; j < inner_n; j++) {
+                        rowRes[j] = rowCond[j] ? rowX[j] : y0;
+                    }
+                    step_outer();
+                }
+                return;
+            }
+            if (sX == 0 && sY == 1) {
+                for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                    const unsigned char *rowCond = cond + offsetCond;
+                    const T x0 = x[offsetX];
+                    const T *rowY = y + offsetY;
+                    T *rowRes = res + offsetRes;
+                    for (int j = 0; j < inner_n; j++) {
+                        rowRes[j] = rowCond[j] ? x0 : rowY[j];
+                    }
+                    step_outer();
+                }
+                return;
+            }
+            if (sX == 0 && sY == 0) {
+                for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                    const unsigned char *rowCond = cond + offsetCond;
+                    const T x0 = x[offsetX];
+                    const T y0 = y[offsetY];
+                    T *rowRes = res + offsetRes;
+                    for (int j = 0; j < inner_n; j++) {
+                        rowRes[j] = rowCond[j] ? x0 : y0;
+                    }
+                    step_outer();
+                }
+                return;
+            }
+            for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+                const unsigned char *rowCond = cond + offsetCond;
+                const T *rowX = x + offsetX;
+                const T *rowY = y + offsetY;
+                T *rowRes = res + offsetRes;
+                for (int j = 0; j < inner_n; j++) {
+                    rowRes[j] = rowCond[j] ? rowX[j * sX] : rowY[j * sY];
+                }
+                step_outer();
+            }
+            return;
+        }
+
+        for (int out_idx = 0; out_idx < outer_elements; out_idx++) {
+            const unsigned char *rowCond = cond + offsetCond;
+            const T *rowX = x + offsetX;
+            const T *rowY = y + offsetY;
+            T *rowRes = res + offsetRes;
+            for (int j = 0; j < inner_n; j++) {
+                rowRes[j * sRes] = rowCond[j * sCond] ? rowX[j * sX] : rowY[j * sY];
+            }
+            step_outer();
+        }
+        return;
+    }
+
     DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
@@ -11036,6 +11420,13 @@ static inline void fast_interp_vector(const T *x, int x_size,
     T rval = (right != nullptr) ? *right : fp[xp_size - 1];
 
     int j = 0;
+    T x0 = xp[0];
+    T x1 = xp[1];
+    T y0 = fp[0];
+    T y1 = fp[1];
+    T dx = x1 - x0;
+    T slope = (dx != 0) ? (y1 - y0) / dx : static_cast<T>(0);
+
     for (int i = 0; i < x_size; i++) {
         T xv = x[i];
         if (std::isnan(xv)) {
@@ -11056,29 +11447,46 @@ static inline void fast_interp_vector(const T *x, int x_size,
         }
 
         // Fast path for monotonic / localized query streams
-        if (xv >= xp[j] && xv < xp[j + 1]) {
+        if (xv >= x0 && xv < x1) {
             // within current interval
-        } else if (j + 1 < xp_size - 1 && xv >= xp[j + 1] && xv < xp[j + 2]) {
+        } else if (j + 1 < xp_size - 1 && xv >= x1 && xv < xp[j + 2]) {
             j++;
-        } else if (j > 0 && xv >= xp[j - 1] && xv < xp[j]) {
+            x0 = x1;
+            x1 = xp[j + 1];
+            y0 = y1;
+            y1 = fp[j + 1];
+            dx = x1 - x0;
+            slope = (dx != 0) ? (y1 - y0) / dx : static_cast<T>(0);
+        } else if (j > 0 && xv >= xp[j - 1] && xv < x0) {
             j--;
+            x1 = x0;
+            x0 = xp[j];
+            y1 = y0;
+            y0 = fp[j];
+            dx = x1 - x0;
+            slope = (dx != 0) ? (y1 - y0) / dx : static_cast<T>(0);
         } else {
             // Binary search using std::upper_bound
-            const T *it = std::upper_bound(xp, xp + xp_size, xv);
+            const T *search_start = (j + 2 < xp_size && xv >= xp[j + 2]) ? (xp + j + 2) : xp;
+            const T *it = std::upper_bound(search_start, xp + xp_size, xv);
             j = static_cast<int>(it - xp) - 1;
             if (j < 0) j = 0;
             if (j >= xp_size - 1) j = xp_size - 2;
+            x0 = xp[j];
+            x1 = xp[j + 1];
+            y0 = fp[j];
+            y1 = fp[j + 1];
+            dx = x1 - x0;
+            slope = (dx != 0) ? (y1 - y0) / dx : static_cast<T>(0);
         }
 
-        T x0 = xp[j];
-        T x1 = xp[j + 1];
-        T y0 = fp[j];
-        T y1 = fp[j + 1];
-        T dx = x1 - x0;
-        if (dx == 0) {
+        if (xv == x0 || dx == 0) {
             res[i] = y0;
+        } else if (std::isfinite(slope)) {
+            res[i] = y0 + slope * (xv - x0);
         } else {
-            res[i] = y0 + (y1 - y0) * (xv - x0) / dx;
+            T t = (xv - x0) / dx;
+            res[i] = (static_cast<T>(1) - t) * y0 + t * y1;
         }
     }
 }
@@ -11139,6 +11547,12 @@ static inline void fast_interp_strided(const T *x, const int *stridesX,
     DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetX = 0, offsetRes = 0;
     int j = 0;
+    T x0 = xp[0];
+    T x1 = xp[strideXP];
+    T y0 = fp[0];
+    T y1 = fp[strideFP];
+    T dx = x1 - x0;
+    T slope = (dx != 0) ? (y1 - y0) / dx : static_cast<T>(0);
 
     for (int el = 0; el < total_elements; el++) {
         T xv = x[offsetX];
@@ -11151,16 +11565,26 @@ static inline void fast_interp_strided(const T *x, const int *stridesX,
         } else if (xv == xp_max) {
             res[offsetRes] = fp[(xp_size - 1) * strideFP];
         } else {
-            T xj = xp[j * strideXP];
-            T xj1 = xp[(j + 1) * strideXP];
-            if (xv >= xj && xv < xj1) {
+            if (xv >= x0 && xv < x1) {
                 // in current interval
-            } else if (j + 1 < xp_size - 1 && xv >= xj1 && xv < xp[(j + 2) * strideXP]) {
+            } else if (j + 1 < xp_size - 1 && xv >= x1 && xv < xp[(j + 2) * strideXP]) {
                 j++;
-            } else if (j > 0 && xv >= xp[(j - 1) * strideXP] && xv < xj) {
+                x0 = x1;
+                x1 = xp[(j + 1) * strideXP];
+                y0 = y1;
+                y1 = fp[(j + 1) * strideFP];
+                dx = x1 - x0;
+                slope = (dx != 0) ? (y1 - y0) / dx : static_cast<T>(0);
+            } else if (j > 0 && xv >= xp[(j - 1) * strideXP] && xv < x0) {
                 j--;
+                x1 = x0;
+                x0 = xp[j * strideXP];
+                y1 = y0;
+                y0 = fp[j * strideFP];
+                dx = x1 - x0;
+                slope = (dx != 0) ? (y1 - y0) / dx : static_cast<T>(0);
             } else {
-                int low = 0;
+                int low = (j + 2 < xp_size && xv >= xp[(j + 2) * strideXP]) ? (j + 2) : 0;
                 int high = xp_size - 1;
                 while (low < high - 1) {
                     int mid = low + (high - low) / 2;
@@ -11171,17 +11595,21 @@ static inline void fast_interp_strided(const T *x, const int *stridesX,
                     }
                 }
                 j = low;
+                x0 = xp[j * strideXP];
+                x1 = xp[(j + 1) * strideXP];
+                y0 = fp[j * strideFP];
+                y1 = fp[(j + 1) * strideFP];
+                dx = x1 - x0;
+                slope = (dx != 0) ? (y1 - y0) / dx : static_cast<T>(0);
             }
 
-            T x0 = xp[j * strideXP];
-            T x1 = xp[(j + 1) * strideXP];
-            T y0 = fp[j * strideFP];
-            T y1 = fp[(j + 1) * strideFP];
-            T dx = x1 - x0;
-            if (dx == 0) {
+            if (xv == x0 || dx == 0) {
                 res[offsetRes] = y0;
+            } else if (std::isfinite(slope)) {
+                res[offsetRes] = y0 + slope * (xv - x0);
             } else {
-                res[offsetRes] = y0 + (y1 - y0) * (xv - x0) / dx;
+                T t = (xv - x0) / dx;
+                res[offsetRes] = (static_cast<T>(1) - t) * y0 + t * y1;
             }
         }
 
@@ -11664,7 +12092,33 @@ int ndarray_equals(
 
 // Reduction Min/Max
 
-#define DEFINE_R_MINMAX(NAME, TYPE, OP) TYPE r_##NAME##_##TYPE(const TYPE *src, int size) {     if (src == nullptr || size <= 0) return (TYPE)0;     TYPE acc = src[0];     for (int i = 1; i < size; i++) {         if (is_nan_check(acc)) break;         if (is_nan_check(src[i])) { acc = src[i]; break; }         if (src[i] OP acc) acc = src[i];     }     return acc; }
+#define DEFINE_R_MINMAX(NAME, TYPE, OP) \
+TYPE r_##NAME##_##TYPE(const TYPE *src, int size) { \
+    if (src == nullptr || size <= 0) return (TYPE)0; \
+    TYPE acc0 = src[0]; \
+    if (is_nan_check(acc0)) return acc0; \
+    TYPE acc1 = acc0, acc2 = acc0, acc3 = acc0; \
+    int i = 1; \
+    for (; i + 3 < size; i += 4) { \
+        TYPE v0 = src[i], v1 = src[i + 1], v2 = src[i + 2], v3 = src[i + 3]; \
+        if (is_nan_check(v0)) return v0; \
+        if (is_nan_check(v1)) return v1; \
+        if (is_nan_check(v2)) return v2; \
+        if (is_nan_check(v3)) return v3; \
+        if (v0 OP acc0) acc0 = v0; \
+        if (v1 OP acc1) acc1 = v1; \
+        if (v2 OP acc2) acc2 = v2; \
+        if (v3 OP acc3) acc3 = v3; \
+    } \
+    if (acc1 OP acc0) acc0 = acc1; \
+    if (acc2 OP acc0) acc0 = acc2; \
+    if (acc3 OP acc0) acc0 = acc3; \
+    for (; i < size; i++) { \
+        if (is_nan_check(src[i])) return src[i]; \
+        if (src[i] OP acc0) acc0 = src[i]; \
+    } \
+    return acc0; \
+}
 
 DEFINE_R_MINMAX(min, double, <)
 DEFINE_R_MINMAX(min, float, <)
@@ -11743,16 +12197,28 @@ TYPE r_##NAME##_##TYPE(const TYPE *src, int size) { \
     for (; i < size; i++) { \
         if (!isnan(src[i])) { \
             acc = src[i]; \
+            i++; \
             break; \
         } \
     } \
     if (isnan(acc)) return (TYPE)NAN; \
+    TYPE acc0 = acc, acc1 = acc, acc2 = acc, acc3 = acc; \
+    for (; i + 3 < size; i += 4) { \
+        TYPE v0 = src[i], v1 = src[i + 1], v2 = src[i + 2], v3 = src[i + 3]; \
+        if (v0 OP acc0) acc0 = v0; \
+        if (v1 OP acc1) acc1 = v1; \
+        if (v2 OP acc2) acc2 = v2; \
+        if (v3 OP acc3) acc3 = v3; \
+    } \
+    if (acc1 OP acc0) acc0 = acc1; \
+    if (acc2 OP acc0) acc0 = acc2; \
+    if (acc3 OP acc0) acc0 = acc3; \
     for (; i < size; i++) { \
-        if (!isnan(src[i]) && src[i] OP acc) { \
-            acc = src[i]; \
+        if (src[i] OP acc0) { \
+            acc0 = src[i]; \
         } \
     } \
-    return acc; \
+    return acc0; \
 }
 
 DEFINE_R_NANMINMAX(nanmin, double, <)

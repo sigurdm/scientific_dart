@@ -529,13 +529,333 @@ NDArray<T> choose<T extends Object>(
 
     final bool needsTemp =
         out != null &&
-        (sharesMemory(a, out) ||
+        (!out.isContiguous ||
+            sharesMemory(a, out) ||
             choices.any((c) => c is NDArray && sharesMemory(c, out)) ||
             choiceArrays.any((c) => sharesMemory(c, out)));
     final result = needsTemp || out == null
         ? NDArray<T>.create(targetShape, resolvedDType)
         : out;
     final nChoices = choiceArrays.length;
+
+    // Fast path: contiguous arrays or scalar choice/index arrays
+    final canFastPath =
+        result.isContiguous &&
+        ((a.isContiguous && a.size == result.size) || a.size == 1) &&
+        choiceArrays.every(
+          (c) => (c.isContiguous && c.size == result.size) || c.size == 1,
+        );
+
+    if (canFastPath) {
+      final totalElements = result.size;
+      final aIsScalar = a.size == 1;
+
+      // Extract a pointer reader function based on a.dtype
+      int Function(int) getIdx;
+      switch (a.dtype) {
+        case DType.int64:
+          final ptr = a.pointer.cast<ffi.Int64>();
+          getIdx = aIsScalar ? ((_) => ptr[0]) : ((i) => ptr[i]);
+          break;
+        case DType.int32:
+          final ptr = a.pointer.cast<ffi.Int32>();
+          getIdx = aIsScalar ? ((_) => ptr[0]) : ((i) => ptr[i]);
+          break;
+        case DType.int16:
+          final ptr = a.pointer.cast<ffi.Int16>();
+          getIdx = aIsScalar ? ((_) => ptr[0]) : ((i) => ptr[i]);
+          break;
+        case DType.int8:
+          final ptr = a.pointer.cast<ffi.Int8>();
+          getIdx = aIsScalar ? ((_) => ptr[0]) : ((i) => ptr[i]);
+          break;
+        case DType.uint64:
+          final ptr = a.pointer.cast<ffi.Uint64>();
+          final twoPow63Mod = ((1 << 62) % nChoices) * 2;
+          int normalizeUint64(int raw) {
+            if (raw >= 0) return raw;
+            return mode == ChooseMode.wrap
+                ? ((raw & 0x7FFFFFFFFFFFFFFF) % nChoices + twoPow63Mod) %
+                      nChoices
+                : nChoices;
+          }
+          getIdx = aIsScalar
+              ? ((_) => normalizeUint64(ptr[0]))
+              : ((i) => normalizeUint64(ptr[i]));
+          break;
+        case DType.uint32:
+          final ptr = a.pointer.cast<ffi.Uint32>();
+          getIdx = aIsScalar ? ((_) => ptr[0]) : ((i) => ptr[i]);
+          break;
+        case DType.uint16:
+          final ptr = a.pointer.cast<ffi.Uint16>();
+          getIdx = aIsScalar ? ((_) => ptr[0]) : ((i) => ptr[i]);
+          break;
+        case DType.uint8:
+          final ptr = a.pointer.cast<ffi.Uint8>();
+          getIdx = aIsScalar ? ((_) => ptr[0]) : ((i) => ptr[i]);
+          break;
+      }
+
+      final isScalarChoice = choiceArrays.map((c) => c.size == 1).toList();
+
+      switch (resolvedDType) {
+        case DType.float64:
+          final resPtr = result.pointer.cast<ffi.Double>();
+          final cPtrs = choiceArrays
+              .map((c) => c.pointer.cast<ffi.Double>())
+              .toList();
+          for (var i = 0; i < totalElements; i++) {
+            var idx = getIdx(i);
+            switch (mode) {
+              case ChooseMode.raise:
+                if (idx < 0 || idx >= nChoices) {
+                  throw RangeError.range(idx, 0, nChoices - 1, 'choice index');
+                }
+                break;
+              case ChooseMode.wrap:
+                idx = idx % nChoices;
+                if (idx < 0) idx += nChoices;
+                break;
+              case ChooseMode.clip:
+                if (idx < 0) {
+                  idx = 0;
+                } else if (idx >= nChoices) {
+                  idx = nChoices - 1;
+                }
+                break;
+            }
+            final srcPtr = cPtrs[idx];
+            resPtr[i] = isScalarChoice[idx] ? srcPtr[0] : srcPtr[i];
+          }
+          break;
+
+        case DType.float32:
+          final resPtr = result.pointer.cast<ffi.Float>();
+          final cPtrs = choiceArrays
+              .map((c) => c.pointer.cast<ffi.Float>())
+              .toList();
+          for (var i = 0; i < totalElements; i++) {
+            var idx = getIdx(i);
+            switch (mode) {
+              case ChooseMode.raise:
+                if (idx < 0 || idx >= nChoices) {
+                  throw RangeError.range(idx, 0, nChoices - 1, 'choice index');
+                }
+                break;
+              case ChooseMode.wrap:
+                idx = idx % nChoices;
+                if (idx < 0) idx += nChoices;
+                break;
+              case ChooseMode.clip:
+                if (idx < 0) {
+                  idx = 0;
+                } else if (idx >= nChoices) {
+                  idx = nChoices - 1;
+                }
+                break;
+            }
+            final srcPtr = cPtrs[idx];
+            resPtr[i] = isScalarChoice[idx] ? srcPtr[0] : srcPtr[i];
+          }
+          break;
+
+        case DType.int64 || DType.uint64:
+          final resPtr = result.pointer.cast<ffi.Int64>();
+          final cPtrs = choiceArrays
+              .map((c) => c.pointer.cast<ffi.Int64>())
+              .toList();
+          for (var i = 0; i < totalElements; i++) {
+            var idx = getIdx(i);
+            switch (mode) {
+              case ChooseMode.raise:
+                if (idx < 0 || idx >= nChoices) {
+                  throw RangeError.range(idx, 0, nChoices - 1, 'choice index');
+                }
+                break;
+              case ChooseMode.wrap:
+                idx = idx % nChoices;
+                if (idx < 0) idx += nChoices;
+                break;
+              case ChooseMode.clip:
+                if (idx < 0) {
+                  idx = 0;
+                } else if (idx >= nChoices) {
+                  idx = nChoices - 1;
+                }
+                break;
+            }
+            final srcPtr = cPtrs[idx];
+            resPtr[i] = isScalarChoice[idx] ? srcPtr[0] : srcPtr[i];
+          }
+          break;
+
+        case DType.int32 || DType.uint32:
+          final resPtr = result.pointer.cast<ffi.Int32>();
+          final cPtrs = choiceArrays
+              .map((c) => c.pointer.cast<ffi.Int32>())
+              .toList();
+          for (var i = 0; i < totalElements; i++) {
+            var idx = getIdx(i);
+            switch (mode) {
+              case ChooseMode.raise:
+                if (idx < 0 || idx >= nChoices) {
+                  throw RangeError.range(idx, 0, nChoices - 1, 'choice index');
+                }
+                break;
+              case ChooseMode.wrap:
+                idx = idx % nChoices;
+                if (idx < 0) idx += nChoices;
+                break;
+              case ChooseMode.clip:
+                if (idx < 0) {
+                  idx = 0;
+                } else if (idx >= nChoices) {
+                  idx = nChoices - 1;
+                }
+                break;
+            }
+            final srcPtr = cPtrs[idx];
+            resPtr[i] = isScalarChoice[idx] ? srcPtr[0] : srcPtr[i];
+          }
+          break;
+
+        case DType.int16 || DType.uint16 || DType.float16 || DType.bfloat16:
+          final resPtr = result.pointer.cast<ffi.Int16>();
+          final cPtrs = choiceArrays
+              .map((c) => c.pointer.cast<ffi.Int16>())
+              .toList();
+          for (var i = 0; i < totalElements; i++) {
+            var idx = getIdx(i);
+            switch (mode) {
+              case ChooseMode.raise:
+                if (idx < 0 || idx >= nChoices) {
+                  throw RangeError.range(idx, 0, nChoices - 1, 'choice index');
+                }
+                break;
+              case ChooseMode.wrap:
+                idx = idx % nChoices;
+                if (idx < 0) idx += nChoices;
+                break;
+              case ChooseMode.clip:
+                if (idx < 0) {
+                  idx = 0;
+                } else if (idx >= nChoices) {
+                  idx = nChoices - 1;
+                }
+                break;
+            }
+            final srcPtr = cPtrs[idx];
+            resPtr[i] = isScalarChoice[idx] ? srcPtr[0] : srcPtr[i];
+          }
+          break;
+
+        case DType.int8 || DType.uint8 || DType.boolean:
+          final resPtr = result.pointer.cast<ffi.Uint8>();
+          final cPtrs = choiceArrays
+              .map((c) => c.pointer.cast<ffi.Uint8>())
+              .toList();
+          for (var i = 0; i < totalElements; i++) {
+            var idx = getIdx(i);
+            switch (mode) {
+              case ChooseMode.raise:
+                if (idx < 0 || idx >= nChoices) {
+                  throw RangeError.range(idx, 0, nChoices - 1, 'choice index');
+                }
+                break;
+              case ChooseMode.wrap:
+                idx = idx % nChoices;
+                if (idx < 0) idx += nChoices;
+                break;
+              case ChooseMode.clip:
+                if (idx < 0) {
+                  idx = 0;
+                } else if (idx >= nChoices) {
+                  idx = nChoices - 1;
+                }
+                break;
+            }
+            final srcPtr = cPtrs[idx];
+            resPtr[i] = isScalarChoice[idx] ? srcPtr[0] : srcPtr[i];
+          }
+          break;
+
+        case DType.complex128:
+          final resPtr = result.pointer.cast<ffi.Double>();
+          final cPtrs = choiceArrays
+              .map((c) => c.pointer.cast<ffi.Double>())
+              .toList();
+          for (var i = 0; i < totalElements; i++) {
+            var idx = getIdx(i);
+            switch (mode) {
+              case ChooseMode.raise:
+                if (idx < 0 || idx >= nChoices) {
+                  throw RangeError.range(idx, 0, nChoices - 1, 'choice index');
+                }
+                break;
+              case ChooseMode.wrap:
+                idx = idx % nChoices;
+                if (idx < 0) idx += nChoices;
+                break;
+              case ChooseMode.clip:
+                if (idx < 0) {
+                  idx = 0;
+                } else if (idx >= nChoices) {
+                  idx = nChoices - 1;
+                }
+                break;
+            }
+            final srcPtr = cPtrs[idx];
+            final srcIdx = isScalarChoice[idx] ? 0 : (i << 1);
+            final dstIdx = i << 1;
+            resPtr[dstIdx] = srcPtr[srcIdx];
+            resPtr[dstIdx + 1] = srcPtr[srcIdx + 1];
+          }
+          break;
+
+        case DType.complex64:
+          final resPtr = result.pointer.cast<ffi.Float>();
+          final cPtrs = choiceArrays
+              .map((c) => c.pointer.cast<ffi.Float>())
+              .toList();
+          for (var i = 0; i < totalElements; i++) {
+            var idx = getIdx(i);
+            switch (mode) {
+              case ChooseMode.raise:
+                if (idx < 0 || idx >= nChoices) {
+                  throw RangeError.range(idx, 0, nChoices - 1, 'choice index');
+                }
+                break;
+              case ChooseMode.wrap:
+                idx = idx % nChoices;
+                if (idx < 0) idx += nChoices;
+                break;
+              case ChooseMode.clip:
+                if (idx < 0) {
+                  idx = 0;
+                } else if (idx >= nChoices) {
+                  idx = nChoices - 1;
+                }
+                break;
+            }
+            final srcPtr = cPtrs[idx];
+            final srcIdx = isScalarChoice[idx] ? 0 : (i << 1);
+            final dstIdx = i << 1;
+            resPtr[dstIdx] = srcPtr[srcIdx];
+            resPtr[dstIdx + 1] = srcPtr[srcIdx + 1];
+          }
+          break;
+      }
+
+      if (out != null) {
+        if (needsTemp) {
+          result.copy(out: out);
+        }
+        return out;
+      }
+      return result.detachToParentScope();
+    }
+
     final marker = ScratchArena.marker;
     try {
       final aCoord = List<int>.filled(a.shape.length, 0);
@@ -543,11 +863,18 @@ NDArray<T> choose<T extends Object>(
           .map((c) => List<int>.filled(c.shape.length, 0))
           .toList();
 
+      final twoPow63Mod = ((1 << 62) % nChoices) * 2;
       final iter = NDIter(result);
       while (iter.moveNext()) {
         final coords = iter.coords;
         _mapCoordInPlace(coords, a.shape, aCoord);
         var idxVal = a.getCell(aCoord);
+        if (a.dtype == DType.uint64 && idxVal < 0) {
+          idxVal = mode == ChooseMode.wrap
+              ? ((idxVal & 0x7FFFFFFFFFFFFFFF) % nChoices + twoPow63Mod) %
+                    nChoices
+              : nChoices;
+        }
 
         switch (mode) {
           case ChooseMode.raise:

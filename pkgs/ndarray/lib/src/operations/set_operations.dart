@@ -1,6 +1,8 @@
 import 'dart:ffi' as ffi;
+import 'dart:typed_data';
 import '../ndarray.dart';
 import '../ndarray_bindings.dart';
+import '../scratch_arena.dart';
 import 'helpers.dart';
 import 'sorting.dart';
 
@@ -32,6 +34,30 @@ dynamic unique<T extends Object>(
 
   return NDArray.scope(() {
     final flat = (ar.rank == 1 && ar.isContiguous) ? ar : ar.flatten();
+
+    if (!returnIndex &&
+        !returnInverse &&
+        flat.dtype.isInteger &&
+        flat.dtype != DType.uint64 &&
+        flat.size > 64) {
+      final tableRes = _tryUniqueTable<T>(
+        flat,
+        returnCounts: returnCounts,
+        out: out,
+      );
+      if (tableRes != null) {
+        if (returnCounts) {
+          return (
+            values: tableRes.values,
+            index: null,
+            inverse: null,
+            counts: tableRes.counts,
+          );
+        }
+        return tableRes.values;
+      }
+    }
+
     final dest = NDArray<T>.create(flat.shape, flat.dtype);
     final outIndex = returnIndex
         ? NDArray<int>.create([flat.size], DType.int64)
@@ -516,29 +542,44 @@ NDArray<bool> isin<T extends Object>(
         ? testElements
         : castNDArray<T>(testElements, commonDType);
 
-    final NDArray<T> flatTest = (cTest.rank == 1 && cTest.isContiguous)
-        ? cTest
-        : cTest.flatten();
-    final NDArray uTest = assumeUnique
-        ? sort(flatTest)
-        : unique(flatTest) as NDArray;
-    final NDArray<T> contigElement = cElement.isContiguous
-        ? cElement
-        : cElement.copy();
-
     final dest = (out != null && !useTempOut)
         ? out
         : NDArray<bool>.create(element.shape, DType.boolean);
 
-    ndarray_isin(
-      contigElement.pointer.cast(),
-      element.size,
-      uTest.pointer.cast(),
-      uTest.size,
-      dest.pointer.cast(),
-      encodeDType(commonDType),
-      invert ? 1 : 0,
-    );
+    if (element.size == 0) {
+      // Empty input array, result is empty boolean array.
+    } else if (testElements.size == 0) {
+      dest.fill(invert);
+    } else {
+      final NDArray<T> contigElement = cElement.isContiguous
+          ? cElement
+          : cElement.copy();
+      final NDArray<T> flatTest = (cTest.rank == 1 && cTest.isContiguous)
+          ? cTest
+          : cTest.flatten();
+
+      if (!_tryIsinTable<T>(
+        contigElement,
+        flatTest,
+        dest,
+        commonDType,
+        invert,
+      )) {
+        final NDArray uTest = assumeUnique
+            ? sort(flatTest)
+            : unique(flatTest) as NDArray;
+
+        ndarray_isin(
+          contigElement.pointer.cast(),
+          element.size,
+          uTest.pointer.cast(),
+          uTest.size,
+          dest.pointer.cast(),
+          encodeDType(commonDType),
+          invert ? 1 : 0,
+        );
+      }
+    }
 
     if (useTempOut) {
       dest.copy(out: out);
@@ -549,4 +590,706 @@ NDArray<bool> isin<T extends Object>(
     }
     return dest;
   });
+}
+
+bool _tryIsinTable<T extends Object>(
+  NDArray<T> contigElement,
+  NDArray<T> flatTest,
+  NDArray<bool> dest,
+  DType<T> dtype,
+  bool invert,
+) {
+  final elemSize = contigElement.size;
+  final testSize = flatTest.size;
+  const maxTableRange = 10000000;
+
+  switch (dtype) {
+    case DType.int32:
+      final pTest = flatTest.pointer.cast<ffi.Int32>();
+      final minVal = r_min_int32_t(pTest, testSize);
+      final maxVal = r_max_int32_t(pTest, testSize);
+      if (maxVal < minVal) return false;
+      final range = maxVal - minVal + 1;
+      if (range > maxTableRange || range <= 0) return false;
+      final table = Uint8List(range);
+      for (var i = 0; i < testSize; i++) {
+        table[pTest[i] - minVal] = 1;
+      }
+      final pElem = contigElement.pointer.cast<ffi.Int32>();
+      final pDest = dest.pointer.cast<ffi.Uint8>();
+      if (invert) {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 0
+              : 1;
+        }
+      } else {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 1
+              : 0;
+        }
+      }
+      return true;
+
+    case DType.int64:
+      final pTest = flatTest.pointer.cast<ffi.Int64>();
+      final minVal = r_min_int64_t(pTest, testSize);
+      final maxVal = r_max_int64_t(pTest, testSize);
+      if (maxVal < minVal) return false;
+      final diff = maxVal - minVal;
+      if (diff < 0 || diff >= maxTableRange) return false;
+      final range = diff + 1;
+      final table = Uint8List(range);
+      for (var i = 0; i < testSize; i++) {
+        table[pTest[i] - minVal] = 1;
+      }
+      final pElem = contigElement.pointer.cast<ffi.Int64>();
+      final pDest = dest.pointer.cast<ffi.Uint8>();
+      if (invert) {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 0
+              : 1;
+        }
+      } else {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 1
+              : 0;
+        }
+      }
+      return true;
+
+    case DType.int16:
+      final pTest = flatTest.pointer.cast<ffi.Int16>();
+      final minVal = r_min_int16_t(pTest, testSize);
+      final maxVal = r_max_int16_t(pTest, testSize);
+      if (maxVal < minVal) return false;
+      final range = maxVal - minVal + 1;
+      if (range > 65536 || range <= 0) return false;
+      final table = Uint8List(range);
+      for (var i = 0; i < testSize; i++) {
+        table[pTest[i] - minVal] = 1;
+      }
+      final pElem = contigElement.pointer.cast<ffi.Int16>();
+      final pDest = dest.pointer.cast<ffi.Uint8>();
+      if (invert) {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 0
+              : 1;
+        }
+      } else {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 1
+              : 0;
+        }
+      }
+      return true;
+
+    case DType.int8:
+      final pTest = flatTest.pointer.cast<ffi.Int8>();
+      var minVal = pTest[0];
+      var maxVal = pTest[0];
+      for (var i = 1; i < testSize; i++) {
+        final v = pTest[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+      }
+      final range = maxVal - minVal + 1;
+      final table = Uint8List(range);
+      for (var i = 0; i < testSize; i++) {
+        table[pTest[i] - minVal] = 1;
+      }
+      final pElem = contigElement.pointer.cast<ffi.Int8>();
+      final pDest = dest.pointer.cast<ffi.Uint8>();
+      if (invert) {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 0
+              : 1;
+        }
+      } else {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 1
+              : 0;
+        }
+      }
+      return true;
+
+    case DType.uint8:
+      final pTest = flatTest.pointer.cast<ffi.Uint8>();
+      final minVal = r_min_uint8_t(pTest, testSize);
+      final maxVal = r_max_uint8_t(pTest, testSize);
+      final range = maxVal - minVal + 1;
+      final table = Uint8List(range);
+      for (var i = 0; i < testSize; i++) {
+        table[pTest[i] - minVal] = 1;
+      }
+      final pElem = contigElement.pointer.cast<ffi.Uint8>();
+      final pDest = dest.pointer.cast<ffi.Uint8>();
+      if (invert) {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 0
+              : 1;
+        }
+      } else {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 1
+              : 0;
+        }
+      }
+      return true;
+
+    case DType.uint16:
+      final pTest = flatTest.pointer.cast<ffi.Uint16>();
+      var minVal = pTest[0];
+      var maxVal = pTest[0];
+      for (var i = 1; i < testSize; i++) {
+        final v = pTest[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+      }
+      final range = maxVal - minVal + 1;
+      final table = Uint8List(range);
+      for (var i = 0; i < testSize; i++) {
+        table[pTest[i] - minVal] = 1;
+      }
+      final pElem = contigElement.pointer.cast<ffi.Uint16>();
+      final pDest = dest.pointer.cast<ffi.Uint8>();
+      if (invert) {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 0
+              : 1;
+        }
+      } else {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 1
+              : 0;
+        }
+      }
+      return true;
+
+    case DType.uint32:
+      final pTest = flatTest.pointer.cast<ffi.Uint32>();
+      var minVal = pTest[0];
+      var maxVal = pTest[0];
+      for (var i = 1; i < testSize; i++) {
+        final v = pTest[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+      }
+      if (maxVal < minVal) return false;
+      final range = maxVal - minVal + 1;
+      if (range > maxTableRange || range <= 0) return false;
+      final table = Uint8List(range);
+      for (var i = 0; i < testSize; i++) {
+        table[pTest[i] - minVal] = 1;
+      }
+      final pElem = contigElement.pointer.cast<ffi.Uint32>();
+      final pDest = dest.pointer.cast<ffi.Uint8>();
+      if (invert) {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 0
+              : 1;
+        }
+      } else {
+        for (var i = 0; i < elemSize; i++) {
+          final v = pElem[i];
+          pDest[i] = (v >= minVal && v <= maxVal && table[v - minVal] == 1)
+              ? 1
+              : 0;
+        }
+      }
+      return true;
+
+    case DType.boolean:
+      final pTest = flatTest.pointer.cast<ffi.Uint8>();
+      var hasZero = false;
+      var hasOne = false;
+      for (var i = 0; i < testSize; i++) {
+        if (pTest[i] == 0) hasZero = true;
+        if (pTest[i] != 0) hasOne = true;
+        if (hasZero && hasOne) break;
+      }
+      final pElem = contigElement.pointer.cast<ffi.Uint8>();
+      final pDest = dest.pointer.cast<ffi.Uint8>();
+      if (hasZero && hasOne) {
+        pDest.asTypedList(elemSize).fillRange(0, elemSize, invert ? 0 : 1);
+      } else if (hasOne) {
+        if (invert) {
+          for (var i = 0; i < elemSize; i++) {
+            pDest[i] = pElem[i] != 0 ? 0 : 1;
+          }
+        } else {
+          for (var i = 0; i < elemSize; i++) {
+            pDest[i] = pElem[i] != 0 ? 1 : 0;
+          }
+        }
+      } else if (hasZero) {
+        if (invert) {
+          for (var i = 0; i < elemSize; i++) {
+            pDest[i] = pElem[i] == 0 ? 0 : 1;
+          }
+        } else {
+          for (var i = 0; i < elemSize; i++) {
+            pDest[i] = pElem[i] == 0 ? 1 : 0;
+          }
+        }
+      } else {
+        pDest.asTypedList(elemSize).fillRange(0, elemSize, invert ? 1 : 0);
+      }
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+(int, int)? _minMaxInt<T extends Object>(NDArray<T> values) {
+  final size = values.size;
+  if (size == 0) return null;
+  final ptr = values.pointer;
+  switch (values.dtype) {
+    case DType.int32:
+      final p = ptr.cast<ffi.Int32>();
+      var minVal = p[0];
+      var maxVal = minVal;
+      for (var i = 1; i < size; i++) {
+        final v = p[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+      }
+      return (minVal, maxVal);
+    case DType.int64:
+      final p = ptr.cast<ffi.Int64>();
+      var minVal = p[0];
+      var maxVal = minVal;
+      for (var i = 1; i < size; i++) {
+        final v = p[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+      }
+      return (minVal, maxVal);
+    case DType.int16:
+      final p = ptr.cast<ffi.Int16>();
+      var minVal = p[0];
+      var maxVal = minVal;
+      for (var i = 1; i < size; i++) {
+        final v = p[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+      }
+      return (minVal, maxVal);
+    case DType.int8:
+      final p = ptr.cast<ffi.Int8>();
+      var minVal = p[0];
+      var maxVal = minVal;
+      for (var i = 1; i < size; i++) {
+        final v = p[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+      }
+      return (minVal, maxVal);
+    case DType.uint32:
+      final p = ptr.cast<ffi.Uint32>();
+      var minVal = p[0];
+      var maxVal = minVal;
+      for (var i = 1; i < size; i++) {
+        final v = p[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+      }
+      return (minVal, maxVal);
+    case DType.uint16:
+      final p = ptr.cast<ffi.Uint16>();
+      var minVal = p[0];
+      var maxVal = minVal;
+      for (var i = 1; i < size; i++) {
+        final v = p[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+      }
+      return (minVal, maxVal);
+    case DType.uint8:
+      final p = ptr.cast<ffi.Uint8>();
+      var minVal = p[0];
+      var maxVal = minVal;
+      for (var i = 1; i < size; i++) {
+        final v = p[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+      }
+      return (minVal, maxVal);
+    default:
+      return null;
+  }
+}
+
+({NDArray<T> values, NDArray<int>? counts})? _tryUniqueTable<T extends Object>(
+  NDArray<T> values, {
+  required bool returnCounts,
+  NDArray<T>? out,
+}) {
+  final mm = _minMaxInt(values);
+  if (mm == null) return null;
+  final (minVal, maxVal) = mm;
+  if (maxVal < minVal) return null;
+  final span = maxVal - minVal;
+  const maxSpan = 16777216;
+  if (span < 0 || span > maxSpan) return null;
+  final maxAllowedSpan = values.size * 16 > 262144 ? values.size * 16 : 262144;
+  if (span > maxAllowedSpan) return null;
+
+  final size = values.size;
+  final tableSize = span + 1;
+  final ptr = values.pointer;
+  final marker = ScratchArena.marker;
+
+  try {
+    if (!returnCounts) {
+      final tablePtr = ScratchArena.allocate<ffi.Uint8>(tableSize);
+      tablePtr.asTypedList(tableSize).fillRange(0, tableSize, 0);
+
+      var uniqueCount = 0;
+      switch (values.dtype) {
+        case DType.int32:
+          final p = ptr.cast<ffi.Int32>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              tablePtr[idx] = 1;
+              uniqueCount++;
+            }
+          }
+        case DType.int64:
+          final p = ptr.cast<ffi.Int64>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              tablePtr[idx] = 1;
+              uniqueCount++;
+            }
+          }
+        case DType.int16:
+          final p = ptr.cast<ffi.Int16>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              tablePtr[idx] = 1;
+              uniqueCount++;
+            }
+          }
+        case DType.int8:
+          final p = ptr.cast<ffi.Int8>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              tablePtr[idx] = 1;
+              uniqueCount++;
+            }
+          }
+        case DType.uint32:
+          final p = ptr.cast<ffi.Uint32>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              tablePtr[idx] = 1;
+              uniqueCount++;
+            }
+          }
+        case DType.uint16:
+          final p = ptr.cast<ffi.Uint16>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              tablePtr[idx] = 1;
+              uniqueCount++;
+            }
+          }
+        case DType.uint8:
+          final p = ptr.cast<ffi.Uint8>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              tablePtr[idx] = 1;
+              uniqueCount++;
+            }
+          }
+        default:
+          return null;
+      }
+
+      if (out != null && !listEquals(out.shape, [uniqueCount])) {
+        throw ArgumentError('Incompatible out buffer shape.');
+      }
+
+      final bool useTempOut =
+          out != null && (!out.isContiguous || sharesMemory(values, out));
+      final NDArray<T> res = (out != null && !useTempOut)
+          ? out
+          : NDArray<T>.create([uniqueCount], values.dtype);
+
+      final resPtr = res.pointer;
+      var outIdx = 0;
+      switch (values.dtype) {
+        case DType.int32:
+          final pRes = resPtr.cast<ffi.Int32>();
+          for (var idx = 0; idx <= span; idx++) {
+            if (tablePtr[idx] != 0) {
+              pRes[outIdx++] = minVal + idx;
+            }
+          }
+        case DType.int64:
+          final pRes = resPtr.cast<ffi.Int64>();
+          for (var idx = 0; idx <= span; idx++) {
+            if (tablePtr[idx] != 0) {
+              pRes[outIdx++] = minVal + idx;
+            }
+          }
+        case DType.int16:
+          final pRes = resPtr.cast<ffi.Int16>();
+          for (var idx = 0; idx <= span; idx++) {
+            if (tablePtr[idx] != 0) {
+              pRes[outIdx++] = minVal + idx;
+            }
+          }
+        case DType.int8:
+          final pRes = resPtr.cast<ffi.Int8>();
+          for (var idx = 0; idx <= span; idx++) {
+            if (tablePtr[idx] != 0) {
+              pRes[outIdx++] = minVal + idx;
+            }
+          }
+        case DType.uint32:
+          final pRes = resPtr.cast<ffi.Uint32>();
+          for (var idx = 0; idx <= span; idx++) {
+            if (tablePtr[idx] != 0) {
+              pRes[outIdx++] = minVal + idx;
+            }
+          }
+        case DType.uint16:
+          final pRes = resPtr.cast<ffi.Uint16>();
+          for (var idx = 0; idx <= span; idx++) {
+            if (tablePtr[idx] != 0) {
+              pRes[outIdx++] = minVal + idx;
+            }
+          }
+        case DType.uint8:
+          final pRes = resPtr.cast<ffi.Uint8>();
+          for (var idx = 0; idx <= span; idx++) {
+            if (tablePtr[idx] != 0) {
+              pRes[outIdx++] = minVal + idx;
+            }
+          }
+        default:
+          return null;
+      }
+
+      if (useTempOut) {
+        res.copy(out: out);
+        return (values: out, counts: null);
+      }
+      if (out == null) {
+        res.detachToParentScope();
+      }
+      return (values: res, counts: null);
+    } else {
+      final tableBytes = tableSize * 4;
+      final tablePtr = ScratchArena.allocate<ffi.Int32>(tableBytes);
+      tablePtr
+          .cast<ffi.Uint8>()
+          .asTypedList(tableBytes)
+          .fillRange(0, tableBytes, 0);
+
+      var uniqueCount = 0;
+      switch (values.dtype) {
+        case DType.int32:
+          final p = ptr.cast<ffi.Int32>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              uniqueCount++;
+            }
+            tablePtr[idx]++;
+          }
+        case DType.int64:
+          final p = ptr.cast<ffi.Int64>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              uniqueCount++;
+            }
+            tablePtr[idx]++;
+          }
+        case DType.int16:
+          final p = ptr.cast<ffi.Int16>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              uniqueCount++;
+            }
+            tablePtr[idx]++;
+          }
+        case DType.int8:
+          final p = ptr.cast<ffi.Int8>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              uniqueCount++;
+            }
+            tablePtr[idx]++;
+          }
+        case DType.uint32:
+          final p = ptr.cast<ffi.Uint32>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              uniqueCount++;
+            }
+            tablePtr[idx]++;
+          }
+        case DType.uint16:
+          final p = ptr.cast<ffi.Uint16>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              uniqueCount++;
+            }
+            tablePtr[idx]++;
+          }
+        case DType.uint8:
+          final p = ptr.cast<ffi.Uint8>();
+          for (var i = 0; i < size; i++) {
+            final idx = p[i] - minVal;
+            if (tablePtr[idx] == 0) {
+              uniqueCount++;
+            }
+            tablePtr[idx]++;
+          }
+        default:
+          return null;
+      }
+
+      if (out != null && !listEquals(out.shape, [uniqueCount])) {
+        throw ArgumentError('Incompatible out buffer shape.');
+      }
+
+      final bool useTempOut =
+          out != null && (!out.isContiguous || sharesMemory(values, out));
+      final NDArray<T> res = (out != null && !useTempOut)
+          ? out
+          : NDArray<T>.create([uniqueCount], values.dtype);
+      final counts = NDArray<int>.create([uniqueCount], DType.int64);
+
+      final resPtr = res.pointer;
+      final pCounts = counts.pointer.cast<ffi.Int64>();
+      var outIdx = 0;
+      switch (values.dtype) {
+        case DType.int32:
+          final pRes = resPtr.cast<ffi.Int32>();
+          for (var idx = 0; idx <= span; idx++) {
+            final c = tablePtr[idx];
+            if (c != 0) {
+              pRes[outIdx] = minVal + idx;
+              pCounts[outIdx] = c;
+              outIdx++;
+            }
+          }
+        case DType.int64:
+          final pRes = resPtr.cast<ffi.Int64>();
+          for (var idx = 0; idx <= span; idx++) {
+            final c = tablePtr[idx];
+            if (c != 0) {
+              pRes[outIdx] = minVal + idx;
+              pCounts[outIdx] = c;
+              outIdx++;
+            }
+          }
+        case DType.int16:
+          final pRes = resPtr.cast<ffi.Int16>();
+          for (var idx = 0; idx <= span; idx++) {
+            final c = tablePtr[idx];
+            if (c != 0) {
+              pRes[outIdx] = minVal + idx;
+              pCounts[outIdx] = c;
+              outIdx++;
+            }
+          }
+        case DType.int8:
+          final pRes = resPtr.cast<ffi.Int8>();
+          for (var idx = 0; idx <= span; idx++) {
+            final c = tablePtr[idx];
+            if (c != 0) {
+              pRes[outIdx] = minVal + idx;
+              pCounts[outIdx] = c;
+              outIdx++;
+            }
+          }
+        case DType.uint32:
+          final pRes = resPtr.cast<ffi.Uint32>();
+          for (var idx = 0; idx <= span; idx++) {
+            final c = tablePtr[idx];
+            if (c != 0) {
+              pRes[outIdx] = minVal + idx;
+              pCounts[outIdx] = c;
+              outIdx++;
+            }
+          }
+        case DType.uint16:
+          final pRes = resPtr.cast<ffi.Uint16>();
+          for (var idx = 0; idx <= span; idx++) {
+            final c = tablePtr[idx];
+            if (c != 0) {
+              pRes[outIdx] = minVal + idx;
+              pCounts[outIdx] = c;
+              outIdx++;
+            }
+          }
+        case DType.uint8:
+          final pRes = resPtr.cast<ffi.Uint8>();
+          for (var idx = 0; idx <= span; idx++) {
+            final c = tablePtr[idx];
+            if (c != 0) {
+              pRes[outIdx] = minVal + idx;
+              pCounts[outIdx] = c;
+              outIdx++;
+            }
+          }
+        default:
+          return null;
+      }
+
+      if (useTempOut) {
+        res.copy(out: out);
+      } else if (out == null) {
+        res.detachToParentScope();
+      }
+      counts.detachToParentScope();
+      return (values: out ?? res, counts: counts);
+    }
+  } finally {
+    ScratchArena.reset(marker);
+  }
 }

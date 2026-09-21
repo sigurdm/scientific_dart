@@ -25,6 +25,279 @@ List<int> _reductionTargetShape(List<int> shape, int? axis, bool keepdims) {
   }
 }
 
+double _fastContiguousMinDouble(ffi.Pointer<ffi.Double> ptr, int size) =>
+    r_min_double(ptr, size);
+
+double _fastContiguousMaxDouble(ffi.Pointer<ffi.Double> ptr, int size) =>
+    r_max_double(ptr, size);
+
+double _fastContiguousPtpDouble(ffi.Pointer<ffi.Double> ptr, int size) =>
+    r_max_double(ptr, size) - r_min_double(ptr, size);
+
+double _fastContiguousNanminDouble(ffi.Pointer<ffi.Double> ptr, int size) =>
+    r_nanmin_double(ptr, size);
+
+double _fastContiguousNanmaxDouble(ffi.Pointer<ffi.Double> ptr, int size) =>
+    r_nanmax_double(ptr, size);
+
+double _fastContiguousNansumDouble(ffi.Pointer<ffi.Double> ptr, int size) {
+  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+  var i = 0;
+  final limit = size - 3;
+  for (; i < limit; i += 4) {
+    final v0 = ptr[i];
+    final v1 = ptr[i + 1];
+    final v2 = ptr[i + 2];
+    final v3 = ptr[i + 3];
+    if (!v0.isNaN) sum0 += v0;
+    if (!v1.isNaN) sum1 += v1;
+    if (!v2.isNaN) sum2 += v2;
+    if (!v3.isNaN) sum3 += v3;
+  }
+  for (; i < size; i++) {
+    final v = ptr[i];
+    if (!v.isNaN) sum0 += v;
+  }
+  return (sum0 + sum1) + (sum2 + sum3);
+}
+
+double _fastContiguousNansumFloat(ffi.Pointer<ffi.Float> ptr, int size) {
+  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+  var i = 0;
+  final limit = size - 3;
+  for (; i < limit; i += 4) {
+    final v0 = ptr[i];
+    final v1 = ptr[i + 1];
+    final v2 = ptr[i + 2];
+    final v3 = ptr[i + 3];
+    if (!v0.isNaN) sum0 += v0;
+    if (!v1.isNaN) sum1 += v1;
+    if (!v2.isNaN) sum2 += v2;
+    if (!v3.isNaN) sum3 += v3;
+  }
+  for (; i < size; i++) {
+    final v = ptr[i];
+    if (!v.isNaN) sum0 += v;
+  }
+  return (sum0 + sum1) + (sum2 + sum3);
+}
+
+double _fastContiguousNanmeanDouble(ffi.Pointer<ffi.Double> ptr, int size) {
+  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+  var count = 0;
+  var i = 0;
+  final limit = size - 3;
+  for (; i < limit; i += 4) {
+    final v0 = ptr[i];
+    final v1 = ptr[i + 1];
+    final v2 = ptr[i + 2];
+    final v3 = ptr[i + 3];
+    if (!v0.isNaN) {
+      sum0 += v0;
+      count++;
+    }
+    if (!v1.isNaN) {
+      sum1 += v1;
+      count++;
+    }
+    if (!v2.isNaN) {
+      sum2 += v2;
+      count++;
+    }
+    if (!v3.isNaN) {
+      sum3 += v3;
+      count++;
+    }
+  }
+  for (; i < size; i++) {
+    final v = ptr[i];
+    if (!v.isNaN) {
+      sum0 += v;
+      count++;
+    }
+  }
+  return count == 0 ? double.nan : ((sum0 + sum1) + (sum2 + sum3)) / count;
+}
+
+double _fastContiguousNanmeanFloat(ffi.Pointer<ffi.Float> ptr, int size) {
+  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+  var count = 0;
+  var i = 0;
+  final limit = size - 3;
+  for (; i < limit; i += 4) {
+    final v0 = ptr[i];
+    final v1 = ptr[i + 1];
+    final v2 = ptr[i + 2];
+    final v3 = ptr[i + 3];
+    if (!v0.isNaN) {
+      sum0 += v0;
+      count++;
+    }
+    if (!v1.isNaN) {
+      sum1 += v1;
+      count++;
+    }
+    if (!v2.isNaN) {
+      sum2 += v2;
+      count++;
+    }
+    if (!v3.isNaN) {
+      sum3 += v3;
+      count++;
+    }
+  }
+  for (; i < size; i++) {
+    final v = ptr[i];
+    if (!v.isNaN) {
+      sum0 += v;
+      count++;
+    }
+  }
+  return count == 0 ? double.nan : ((sum0 + sum1) + (sum2 + sum3)) / count;
+}
+
+double _fastContiguousNanvarDouble(ffi.Pointer<ffi.Double> ptr, int size) {
+  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+  var count = 0;
+  var i = 0;
+  final limit = size - 3;
+  for (; i < limit; i += 4) {
+    final v0 = ptr[i];
+    final v1 = ptr[i + 1];
+    final v2 = ptr[i + 2];
+    final v3 = ptr[i + 3];
+    if (!v0.isNaN) {
+      sum0 += v0;
+      count++;
+    }
+    if (!v1.isNaN) {
+      sum1 += v1;
+      count++;
+    }
+    if (!v2.isNaN) {
+      sum2 += v2;
+      count++;
+    }
+    if (!v3.isNaN) {
+      sum3 += v3;
+      count++;
+    }
+  }
+  for (; i < size; i++) {
+    final v = ptr[i];
+    if (!v.isNaN) {
+      sum0 += v;
+      count++;
+    }
+  }
+  if (count == 0) return double.nan;
+  final meanVal = ((sum0 + sum1) + (sum2 + sum3)) / count;
+
+  var sq0 = 0.0, sq1 = 0.0, sq2 = 0.0, sq3 = 0.0;
+  i = 0;
+  for (; i < limit; i += 4) {
+    final v0 = ptr[i];
+    final v1 = ptr[i + 1];
+    final v2 = ptr[i + 2];
+    final v3 = ptr[i + 3];
+    if (!v0.isNaN) {
+      final d0 = v0 - meanVal;
+      sq0 += d0 * d0;
+    }
+    if (!v1.isNaN) {
+      final d1 = v1 - meanVal;
+      sq1 += d1 * d1;
+    }
+    if (!v2.isNaN) {
+      final d2 = v2 - meanVal;
+      sq2 += d2 * d2;
+    }
+    if (!v3.isNaN) {
+      final d3 = v3 - meanVal;
+      sq3 += d3 * d3;
+    }
+  }
+  for (; i < size; i++) {
+    final v = ptr[i];
+    if (!v.isNaN) {
+      final d = v - meanVal;
+      sq0 += d * d;
+    }
+  }
+  return ((sq0 + sq1) + (sq2 + sq3)) / count;
+}
+
+double _fastContiguousNanvarFloat(ffi.Pointer<ffi.Float> ptr, int size) {
+  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+  var count = 0;
+  var i = 0;
+  final limit = size - 3;
+  for (; i < limit; i += 4) {
+    final v0 = ptr[i];
+    final v1 = ptr[i + 1];
+    final v2 = ptr[i + 2];
+    final v3 = ptr[i + 3];
+    if (!v0.isNaN) {
+      sum0 += v0;
+      count++;
+    }
+    if (!v1.isNaN) {
+      sum1 += v1;
+      count++;
+    }
+    if (!v2.isNaN) {
+      sum2 += v2;
+      count++;
+    }
+    if (!v3.isNaN) {
+      sum3 += v3;
+      count++;
+    }
+  }
+  for (; i < size; i++) {
+    final v = ptr[i];
+    if (!v.isNaN) {
+      sum0 += v;
+      count++;
+    }
+  }
+  if (count == 0) return double.nan;
+  final meanVal = ((sum0 + sum1) + (sum2 + sum3)) / count;
+
+  var sq0 = 0.0, sq1 = 0.0, sq2 = 0.0, sq3 = 0.0;
+  i = 0;
+  for (; i < limit; i += 4) {
+    final v0 = ptr[i];
+    final v1 = ptr[i + 1];
+    final v2 = ptr[i + 2];
+    final v3 = ptr[i + 3];
+    if (!v0.isNaN) {
+      final d0 = v0 - meanVal;
+      sq0 += d0 * d0;
+    }
+    if (!v1.isNaN) {
+      final d1 = v1 - meanVal;
+      sq1 += d1 * d1;
+    }
+    if (!v2.isNaN) {
+      final d2 = v2 - meanVal;
+      sq2 += d2 * d2;
+    }
+    if (!v3.isNaN) {
+      final d3 = v3 - meanVal;
+      sq3 += d3 * d3;
+    }
+  }
+  for (; i < size; i++) {
+    final v = ptr[i];
+    if (!v.isNaN) {
+      final d = v - meanVal;
+      sq0 += d * d;
+    }
+  }
+  return ((sq0 + sq1) + (sq2 + sq3)) / count;
+}
+
 double _r_stat_scalar_double_fallback<T>(
   NDArray<T> arr,
   int size,
@@ -1833,6 +2106,9 @@ NDArray<Float64> nanvar<T extends num>(
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write nanvar to a disposed output array.');
   }
+  if (!a.dtype.isFloating && !a.dtype.isComplex) {
+    return variance<T>(a, axis: axis, keepdims: keepdims, ddof: 0, out: out);
+  }
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
@@ -1847,43 +2123,36 @@ NDArray<Float64> nanvar<T extends num>(
     }
   }
 
-  final m = nanmean(a, axis: axis, keepdims: true);
-
   if (axis == null) {
-    var sumSqDiff = 0.0;
-    final meanVal = m.getCell(List.filled(m.rank, 0)) as num;
-    m.dispose();
-    if (meanVal.toDouble().isNaN) {
-      final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
-      result.setCell(List.filled(targetShape.length, 0), Float64(double.nan));
+    final size = a.size;
+    final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
+    if (size == 0) {
+      result.setCellFlat(0, Float64(double.nan));
       return result;
     }
-
-    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    var count = 0;
-    for (var i = 0; i < size; i++) {
-      final val = (a.getCellFlat(i) as num).toDouble();
-      if (val.isNaN) continue;
-      final diff = val - meanVal.toDouble();
-      sumSqDiff += diff * diff;
-      count++;
+    final temp = a.isContiguous ? a : a.copy();
+    double varVal;
+    switch (temp.dtype) {
+      case DType.float64:
+        varVal = _fastContiguousNanvarDouble(temp.pointer.cast(), size);
+      case DType.float32:
+        varVal = _fastContiguousNanvarFloat(temp.pointer.cast(), size);
+      default:
+        final d = castNDArray(temp, DType.float64);
+        varVal = _fastContiguousNanvarDouble(d.pointer.cast(), size);
+        d.dispose();
     }
-    final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
-    if (count == 0) {
-      result.setCell(List.filled(targetShape.length, 0), Float64(double.nan));
-    } else {
-      result.setCell(
-        List.filled(targetShape.length, 0),
-        Float64(sumSqDiff / count),
-      );
+    if (!identical(temp, a)) {
+      temp.dispose();
     }
+    result.setCellFlat(0, Float64(varVal));
     return result;
-  } else {
+  }
+
+  return NDArray.scope(() {
+    final m = nanmean(a, axis: axis, keepdims: true);
     final diff = subtract(a, m);
     final sqDiff = multiply(diff, diff);
-
-    m.dispose();
-    diff.dispose();
 
     final res = nanmean<Float64>(
       sqDiff,
@@ -1891,9 +2160,8 @@ NDArray<Float64> nanvar<T extends num>(
       keepdims: keepdims,
       out: out,
     );
-    sqDiff.dispose();
-    return res;
-  }
+    return out == null ? res.detachToParentScope() : res;
+  });
 }
 
 /// Computes the standard deviation along the specified axis, ignoring NaNs.
@@ -1924,6 +2192,9 @@ NDArray<Float64> nanstd<T extends num>(
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write nanstd to a disposed output array.');
   }
+  if (!a.dtype.isFloating && !a.dtype.isComplex) {
+    return std<T>(a, axis: axis, keepdims: keepdims, ddof: 0, out: out);
+  }
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
@@ -1938,19 +2209,12 @@ NDArray<Float64> nanstd<T extends num>(
     }
   }
 
-  final v = nanvar(a, axis: axis, keepdims: keepdims);
+  final v = nanvar(a, axis: axis, keepdims: keepdims, out: out);
   if (axis == null) {
-    final num varianceVal = v.shape.isEmpty
-        ? (v.scalar as num)
-        : (v.getCellFlat(0) as num);
-    final stdVal = math.sqrt(varianceVal.toDouble());
-    final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
-    result.setCell(List.filled(targetShape.length, 0), Float64(stdVal));
-    v.dispose();
-    return result;
+    v.setCellFlat(0, Float64(math.sqrt(v.getCellFlat(0).toDouble())));
+    return v;
   } else {
-    final res = sqrt(v, out: out);
-    v.dispose();
+    final res = sqrt(v, out: v);
     return res;
   }
 }
@@ -2008,7 +2272,7 @@ NDArray<T> min<T extends Object>(
     dynamic minVal;
     switch (temp.dtype) {
       case DType.float64:
-        minVal = r_min_double(ptr.cast(), size);
+        minVal = _fastContiguousMinDouble(ptr.cast(), size);
       case DType.float32:
         minVal = r_min_float(ptr.cast(), size);
       case DType.int64:
@@ -2026,7 +2290,7 @@ NDArray<T> min<T extends Object>(
       case DType.int8:
       case DType.uint32:
       case DType.uint16:
-        minVal = _r_stat_scalar_fallback(temp, size, r_min_double);
+        minVal = _r_stat_scalar_fallback(temp, size, _fastContiguousMinDouble);
       case DType.complex128:
       case DType.complex64:
         minVal = _r_complex_min(temp, size);
@@ -2037,7 +2301,7 @@ NDArray<T> min<T extends Object>(
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
-    result.setCell(List.filled(targetShape.length, 0), minVal as T);
+    result.setCellFlat(0, minVal as T);
     return result;
   }
 
@@ -2246,7 +2510,7 @@ NDArray<T> nanmin<T extends Object>(
     dynamic minVal;
     switch (temp.dtype) {
       case DType.float64:
-        minVal = r_nanmin_double(ptr.cast(), size);
+        minVal = _fastContiguousNanminDouble(ptr.cast(), size);
       case DType.float32:
         minVal = r_nanmin_float(ptr.cast(), size);
       case DType.int64:
@@ -2266,7 +2530,11 @@ NDArray<T> nanmin<T extends Object>(
       case DType.int8:
       case DType.uint32:
       case DType.uint16:
-        minVal = _r_stat_scalar_fallback(temp, size, r_nanmin_double);
+        minVal = _r_stat_scalar_fallback(
+          temp,
+          size,
+          _fastContiguousNanminDouble,
+        );
       case DType.complex128:
       case DType.complex64:
         throw UnsupportedError('Unsupported dtype for nanmin: ${temp.dtype}');
@@ -2275,7 +2543,7 @@ NDArray<T> nanmin<T extends Object>(
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
-    result.setCell(List.filled(targetShape.length, 0), minVal as T);
+    result.setCellFlat(0, minVal as T);
     return result;
   }
 
@@ -2458,7 +2726,7 @@ NDArray<T> max<T extends Object>(
     dynamic maxVal;
     switch (temp.dtype) {
       case DType.float64:
-        maxVal = r_max_double(ptr.cast(), size);
+        maxVal = _fastContiguousMaxDouble(ptr.cast(), size);
       case DType.float32:
         maxVal = r_max_float(ptr.cast(), size);
       case DType.int64:
@@ -2476,7 +2744,7 @@ NDArray<T> max<T extends Object>(
       case DType.int8:
       case DType.uint32:
       case DType.uint16:
-        maxVal = _r_stat_scalar_fallback(temp, size, r_max_double);
+        maxVal = _r_stat_scalar_fallback(temp, size, _fastContiguousMaxDouble);
       case DType.complex128:
       case DType.complex64:
         maxVal = _r_complex_max(temp, size);
@@ -2487,7 +2755,7 @@ NDArray<T> max<T extends Object>(
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
-    result.setCell(List.filled(targetShape.length, 0), maxVal as T);
+    result.setCellFlat(0, maxVal as T);
     return result;
   }
 
@@ -2696,7 +2964,7 @@ NDArray<T> nanmax<T extends Object>(
     dynamic maxVal;
     switch (temp.dtype) {
       case DType.float64:
-        maxVal = r_nanmax_double(ptr.cast(), size);
+        maxVal = _fastContiguousNanmaxDouble(ptr.cast(), size);
       case DType.float32:
         maxVal = r_nanmax_float(ptr.cast(), size);
       case DType.int64:
@@ -2716,7 +2984,11 @@ NDArray<T> nanmax<T extends Object>(
       case DType.int8:
       case DType.uint32:
       case DType.uint16:
-        maxVal = _r_stat_scalar_fallback(temp, size, r_nanmax_double);
+        maxVal = _r_stat_scalar_fallback(
+          temp,
+          size,
+          _fastContiguousNanmaxDouble,
+        );
       case DType.complex128:
       case DType.complex64:
         throw UnsupportedError('Unsupported dtype for nanmax: ${temp.dtype}');
@@ -2725,7 +2997,7 @@ NDArray<T> nanmax<T extends Object>(
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
-    result.setCell(List.filled(targetShape.length, 0), maxVal as T);
+    result.setCellFlat(0, maxVal as T);
     return result;
   }
 
@@ -2897,18 +3169,10 @@ NDArray<R> cumsum<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
       }
     }
 
-    final en = NDEnumerate<T>(a);
-    dynamic acc;
-    var i = 0;
-    while (en.moveNext()) {
-      final val = en.value;
-      final numVal = (val is bool) ? (val ? 1 : 0) : val;
-      if (i == 0) {
-        acc = numVal;
-      } else {
-        acc = (acc as dynamic) + numVal;
-      }
-      result.setCell([i++], acc as R);
+    final flatA = a.shape.length == 1 ? a : a.reshape([size]);
+    cumOpFFI(flatA, 0, result, CumOpType.sum);
+    if (!identical(flatA, a)) {
+      flatA.dispose();
     }
     return result;
   }
@@ -2982,18 +3246,10 @@ NDArray<R> cumprod<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
       }
     }
 
-    final en = NDEnumerate<T>(a);
-    dynamic acc;
-    var i = 0;
-    while (en.moveNext()) {
-      final val = en.value;
-      final numVal = (val is bool) ? (val ? 1 : 0) : val;
-      if (i == 0) {
-        acc = numVal;
-      } else {
-        acc = (acc as dynamic) * numVal;
-      }
-      result.setCell([i++], acc as R);
+    final flatA = a.shape.length == 1 ? a : a.reshape([size]);
+    cumOpFFI(flatA, 0, result, CumOpType.prod);
+    if (!identical(flatA, a)) {
+      flatA.dispose();
     }
     return result;
   }
@@ -3502,6 +3758,30 @@ NDArray<R> nanmean<R extends Object>(
   final DType<R> targetDType = expectedDType as DType<R>;
 
   if (axis == null) {
+    final size = a.size;
+    if (!targetDType.isComplex && size > 0) {
+      final temp = a.isContiguous ? a : a.copy();
+      double meanVal;
+      switch (temp.dtype) {
+        case DType.float64:
+          meanVal = _fastContiguousNanmeanDouble(temp.pointer.cast(), size);
+        case DType.float32:
+          meanVal = _fastContiguousNanmeanFloat(temp.pointer.cast(), size);
+        default:
+          final d = castNDArray(temp, DType.float64);
+          meanVal = _fastContiguousNanmeanDouble(d.pointer.cast(), size);
+          d.dispose();
+      }
+      if (!identical(temp, a)) {
+        temp.dispose();
+      }
+      final NDArray<R> result =
+          out ??
+          (NDArray<Float64>.create(targetShape, DType.float64) as NDArray<R>);
+      result.setCellFlat(0, meanVal as R);
+      return result;
+    }
+
     NDArray promotedA;
     if (a.dtype.isComplex || a.dtype.isFloating) {
       promotedA = a;
@@ -4205,6 +4485,60 @@ NDArray<T> ptp<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     }
   }
 
+  if (resolvedAxis == null) {
+    final temp = a.isContiguous ? a : a.copy();
+    final size = temp.size;
+    final ptr = temp.pointer;
+    dynamic ptpVal;
+    switch (temp.dtype) {
+      case DType.float64:
+        ptpVal = _fastContiguousPtpDouble(ptr.cast(), size);
+      case DType.float32:
+        final mn = r_min_float(ptr.cast(), size);
+        final mx = r_max_float(ptr.cast(), size);
+        ptpVal = mx - mn;
+      case DType.int64:
+        final mn = r_min_int64_t(ptr.cast(), size);
+        final mx = r_max_int64_t(ptr.cast(), size);
+        ptpVal = mx - mn;
+      case DType.int32:
+        final mn = r_min_int32_t(ptr.cast(), size);
+        final mx = r_max_int32_t(ptr.cast(), size);
+        ptpVal = mx - mn;
+      case DType.uint8:
+        final mn = r_min_uint8_t(ptr.cast(), size);
+        final mx = r_max_uint8_t(ptr.cast(), size);
+        ptpVal = mx - mn;
+      case DType.int16:
+        final mn = r_min_int16_t(ptr.cast(), size);
+        final mx = r_max_int16_t(ptr.cast(), size);
+        ptpVal = mx - mn;
+      case DType.uint64:
+        final mn = _r_uint64_min(temp, size);
+        final mx = _r_uint64_max(temp, size);
+        ptpVal = mx - mn;
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint32:
+      case DType.uint16:
+        ptpVal = _r_stat_scalar_fallback(temp, size, _fastContiguousPtpDouble);
+      case DType.complex128:
+      case DType.complex64:
+        throw ArgumentError('ptp is not supported for complex dtypes.');
+      case DType.boolean:
+        final mn = r_min_uint8_t(ptr.cast(), size);
+        final mx = r_max_uint8_t(ptr.cast(), size);
+        ptpVal = mx - mn;
+    }
+    if (!identical(temp, a)) {
+      temp.dispose();
+    }
+    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+    result.setCellFlat(0, ptpVal as T);
+    return result;
+  }
+
   return NDArray.scope(() {
     final mx = max(a, axis: resolvedAxis);
     final mn = min(a, axis: resolvedAxis);
@@ -4714,8 +5048,24 @@ NDArray<T> nansum<T extends Object>(
   }
 
   if (axis == null) {
+    final size = a.size;
+    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+    if (size == 0) {
+      result.setCellFlat(0, normalizeScalar(0, a.dtype) as T);
+      return result;
+    }
     T acc;
     switch (a.dtype) {
+      case DType.float64:
+        final temp = a.isContiguous ? a : a.copy();
+        final s = _fastContiguousNansumDouble(temp.pointer.cast(), size);
+        if (!identical(temp, a)) temp.dispose();
+        acc = Float64(s) as T;
+      case DType.float32:
+        final temp = a.isContiguous ? a : a.copy();
+        final s = _fastContiguousNansumFloat(temp.pointer.cast(), size);
+        if (!identical(temp, a)) temp.dispose();
+        acc = Float32(s) as T;
       case DType.int32:
       case DType.int64:
         var sumVal = 0;
@@ -4744,8 +5094,7 @@ NDArray<T> nansum<T extends Object>(
         }
         acc = sumVal as T;
     }
-    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
-    result.setCell(List.filled(targetShape.length, 0), acc);
+    result.setCellFlat(0, acc);
     return result;
   }
 

@@ -52,7 +52,8 @@ NDArray<Float64> _promoteToFloat64(NDArray a) {
     throw StateError('Cannot perform operation on a disposed array.');
   }
   if (a.dtype == DType.float64) {
-    return a as NDArray<Float64>;
+    if (a is NDArray<Float64>) return a;
+    return NDArray<Float64>.view(a, shape: a.shape, strides: a.strides);
   }
   final res = NDArray<Float64>.create(a.shape, DType.float64);
   final ndim = a.shape.length;

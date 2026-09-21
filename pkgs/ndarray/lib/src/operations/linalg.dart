@@ -4353,6 +4353,194 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   });
 }
 
+NDArray<Float64> _svdVals<T extends Object>(NDArray<T> a) {
+  if (a.dtype == DType.float16 || a.dtype == DType.bfloat16) {
+    return NDArray.scope(() {
+      final aF64 = castNDArray<Float64>(a, DType.float64);
+      final sF64 = _svdVals<Float64>(aF64);
+      return sF64.detachToParentScope();
+    });
+  }
+
+  final rank = a.shape.length;
+  final m = a.shape[rank - 2];
+  final n = a.shape[rank - 1];
+  final stackShape = a.shape.sublist(0, rank - 2);
+
+  return NDArray.scope(() {
+    if (m == 0 || n == 0) {
+      final dtypeS = a.dtype.isComplex
+          ? (a.dtype == DType.complex128 ? DType.float64 : DType.float32)
+          : a.dtype;
+      final sShape = [...stackShape, 0];
+      final sMat = NDArray<Float64>.zeros(sShape, dtypeS as DType<Float64>);
+      sMat.detachToParentScope();
+      return sMat;
+    }
+
+    if (m < n) {
+      final axes = List<int>.generate(rank, (i) => i);
+      axes[rank - 2] = rank - 1;
+      axes[rank - 1] = rank - 2;
+      final aT = a.dtype.isComplex
+          ? conjugate(a.transpose(axes))
+          : a.transpose(axes).copy();
+      try {
+        final resT = _svdVals<T>(aT);
+        resT.detachToParentScope();
+        return resT;
+      } finally {
+        aT.dispose();
+      }
+    }
+
+    final dtypeS = a.dtype.isComplex
+        ? (a.dtype == DType.complex128 ? DType.float64 : DType.float32)
+        : a.dtype;
+
+    final sShape = [...stackShape, n];
+    final NDArray<Float64> sMat = NDArray<Float64>.zeros(
+      sShape,
+      dtypeS as DType<Float64>,
+    );
+
+    final aCopy = NDArray<T>.create([m, n], a.dtype);
+    final marker = ScratchArena.marker;
+    try {
+      final superbLen = math.max(1, n - 1);
+      final ffi.Pointer<ffi.Void> superb = switch (a.dtype) {
+        DType.float64 || DType.complex128 => ScratchArena.allocate<ffi.Double>(
+          superbLen * ffi.sizeOf<ffi.Double>(),
+        ).cast<ffi.Void>(),
+        _ => ScratchArena.allocate<ffi.Float>(
+          superbLen * ffi.sizeOf<ffi.Float>(),
+        ).cast<ffi.Void>(),
+      };
+
+      walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+        coords,
+      ) {
+        var offsetA = 0;
+        for (var i = 0; i < coords.length; i++) {
+          offsetA += coords[i] * a.strides[i];
+        }
+
+        final sliceView = NDArray.view(
+          a,
+          shape: [m, n],
+          strides: a.strides.sublist(rank - 2),
+          offsetElements: offsetA,
+        );
+        sliceView.copy(out: aCopy);
+        sliceView.dispose();
+
+        final NDArray<Float64> s2D =
+            (a.dtype == DType.float32 || a.dtype == DType.complex64)
+            ? NDArray<Float32>.zeros([n], DType.float32) as NDArray<Float64>
+            : NDArray<Float64>.zeros([n], DType.float64);
+
+        switch (a.dtype) {
+          case DType.float64:
+            final info = LAPACKE_dgesvd(
+              101,
+              78,
+              78,
+              m,
+              n,
+              aCopy.pointer.cast<ffi.Double>(),
+              n,
+              s2D.pointer.cast<ffi.Double>(),
+              ffi.nullptr,
+              1,
+              ffi.nullptr,
+              1,
+              superb.cast<ffi.Double>(),
+            );
+            if (info != 0) throw ArgumentError('LAPACKE_dgesvd failed: $info');
+
+          case DType.float32:
+            final info = LAPACKE_sgesvd(
+              101,
+              78,
+              78,
+              m,
+              n,
+              aCopy.pointer.cast<ffi.Float>(),
+              n,
+              s2D.pointer.cast<ffi.Float>(),
+              ffi.nullptr,
+              1,
+              ffi.nullptr,
+              1,
+              superb.cast<ffi.Float>(),
+            );
+            if (info != 0) throw ArgumentError('LAPACKE_sgesvd failed: $info');
+
+          case DType.complex128:
+            final info = LAPACKE_zgesvd(
+              101,
+              78,
+              78,
+              m,
+              n,
+              aCopy.pointer.cast<ffi.Double>(),
+              n,
+              s2D.pointer.cast<ffi.Double>(),
+              ffi.nullptr,
+              1,
+              ffi.nullptr,
+              1,
+              superb.cast<ffi.Double>(),
+            );
+            if (info != 0) throw ArgumentError('LAPACKE_zgesvd failed: $info');
+
+          case DType.complex64:
+            final info = LAPACKE_cgesvd(
+              101,
+              78,
+              78,
+              m,
+              n,
+              aCopy.pointer.cast<ffi.Float>(),
+              n,
+              s2D.pointer.cast<ffi.Float>(),
+              ffi.nullptr,
+              1,
+              ffi.nullptr,
+              1,
+              superb.cast<ffi.Float>(),
+            );
+            if (info != 0) throw ArgumentError('LAPACKE_cgesvd failed: $info');
+          default:
+            throw ArgumentError('Unsupported dtype for SVD: ${a.dtype}');
+        }
+
+        var offsetS = 0;
+        for (var i = 0; i < coords.length; i++) {
+          offsetS += coords[i] * sMat.strides[i];
+        }
+
+        final sSlice = NDArray<Float64>.view(
+          sMat,
+          shape: [n],
+          strides: sMat.strides.isEmpty ? [1] : [sMat.strides.last],
+          offsetElements: offsetS,
+        );
+        s2D.copy(out: sSlice);
+        sSlice.dispose();
+
+        s2D.dispose();
+      });
+    } finally {
+      ScratchArena.reset(marker);
+      aCopy.dispose();
+    }
+
+    sMat.detachToParentScope();
+    return sMat;
+  });
+}
+
 /// Computes the eigenvalues and eigenvectors of a complex Hermitian (conjugate symmetric) or a real symmetric matrix.
 ///
 /// Returns a record containing:
@@ -6621,28 +6809,36 @@ double _matrixNorm<T extends Object>(
     }
     return minRowSum;
   } else if (ord == 2) {
-    final svdRes = svd(a);
-    final maxS = (svdRes.s.dtype == DType.float32)
-        ? svdRes.s.pointer.cast<ffi.Float>()[0]
-        : svdRes.s.pointer.cast<ffi.Double>()[0];
-    svdRes.dispose();
+    final s = _svdVals(a);
+    if (s.shape[0] == 0) {
+      s.dispose();
+      return 0.0;
+    }
+    final maxS = (s.dtype == DType.float32)
+        ? s.pointer.cast<ffi.Float>()[0]
+        : s.pointer.cast<ffi.Double>()[0];
+    s.dispose();
     return maxS;
   } else if (ord == -2) {
-    final svdRes = svd(a);
-    final minS = (svdRes.s.dtype == DType.float32)
-        ? svdRes.s.pointer.cast<ffi.Float>()[svdRes.s.shape[0] - 1]
-        : svdRes.s.pointer.cast<ffi.Double>()[svdRes.s.shape[0] - 1];
-    svdRes.dispose();
+    final s = _svdVals(a);
+    if (s.shape[0] == 0) {
+      s.dispose();
+      return 0.0;
+    }
+    final minS = (s.dtype == DType.float32)
+        ? s.pointer.cast<ffi.Float>()[s.shape[0] - 1]
+        : s.pointer.cast<ffi.Double>()[s.shape[0] - 1];
+    s.dispose();
     return minS;
   } else if (ord == NormKind.nuclear) {
-    final svdRes = svd(a);
+    final s = _svdVals(a);
     var sumS = 0.0;
-    for (var i = 0; i < svdRes.s.shape[0]; i++) {
-      sumS += (svdRes.s.dtype == DType.float32)
-          ? svdRes.s.pointer.cast<ffi.Float>()[i]
-          : svdRes.s.pointer.cast<ffi.Double>()[i];
+    for (var i = 0; i < s.shape[0]; i++) {
+      sumS += (s.dtype == DType.float32)
+          ? s.pointer.cast<ffi.Float>()[i]
+          : s.pointer.cast<ffi.Double>()[i];
     }
-    svdRes.dispose();
+    s.dispose();
     return sumS;
   } else {
     throw ArgumentError('Invalid matrix norm order: $ord');
@@ -7168,8 +7364,7 @@ NDArray<R> cond<T extends Object, R extends num>(
         val = double.nan;
       } else if (isSvdNorm) {
         try {
-          final svdRes = svd(aSlice);
-          final s = svdRes.s;
+          final s = _svdVals(aSlice);
           final strideK = s.strides[0];
           const offsetSMax = 0;
           final offsetSMin = (k - 1) * strideK;
@@ -7187,9 +7382,7 @@ NDArray<R> cond<T extends Object, R extends num>(
             default:
               throw UnimplementedError('Unexpected dtype: $resDType');
           }
-          svdRes.u.dispose();
-          svdRes.s.dispose();
-          svdRes.vh.dispose();
+          s.dispose();
           if (sMax.isNaN || sMin.isNaN || sMax == 0.0) {
             val = double.nan;
           } else if (ord == null || ord == 2) {

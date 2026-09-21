@@ -14,12 +14,17 @@
 /// - **Constant Rates**: `npv` assumes a constant discount rate across all periods, rather than a yield curve.
 library;
 
-import '../ndarray.dart';
+import 'dart:ffi' as ffi;
+import 'dart:math' as math;
+
 import '../exceptions.dart';
-import 'math.dart';
-import 'stats.dart';
+import '../ndarray.dart';
+import 'broadcasting.dart' show broadcastTo;
+import 'helpers.dart' show sharesMemory;
 import 'linalg.dart';
+import 'math.dart';
 import 'sorting.dart';
+import 'stats.dart';
 
 /// Specifies when payments are due within a period in financial calculations.
 enum PaymentDue {
@@ -29,6 +34,8 @@ enum PaymentDue {
   /// Payments are due at the beginning of each period.
   begin,
 }
+
+enum _TVMMode { fv, pv, pmt }
 
 /// Future Value function.
 ///
@@ -59,41 +66,15 @@ NDArray<Float64> fv(
       (out != null && out.isDisposed)) {
     throw StateError('Cannot perform operation on a disposed array.');
   }
-  return NDArray.scope(() {
-    final whenArr = _parseWhen(when);
-
-    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
-    final zero = NDArray<Float64>.scalar(Float64(0.0), dtype: DType.float64);
-
-    // temp = (1 + rate) ** nper
-    final NDArray<Float64> onePlusRate = add(one, rate);
-    final NDArray<Float64> temp = power(onePlusRate, nper);
-
-    // fv_zero = - (pv + pmt * nper)
-    final NDArray<Float64> pmtNper = multiply(pmt, nper);
-    final NDArray<Float64> pvPlusPmtNper = add(pv, pmtNper);
-    final NDArray<Float64> fvZero = negative(pvPlusPmtNper);
-
-    // fv_nonzero = - (pv * temp + pmt * (1 + rate * when) / rate * (temp - 1))
-    final NDArray<Float64> rateWhen = multiply(rate, whenArr);
-    final NDArray<Float64> rateWhenPlusOne = add(one, rateWhen);
-    final NDArray<Float64> pmtRateWhenPlusOne = multiply(pmt, rateWhenPlusOne);
-    final NDArray<Float64> factor = divide(pmtRateWhenPlusOne, rate);
-    final NDArray<Float64> tempMinusOne = subtract(temp, one);
-    final NDArray<Float64> term2 = multiply(factor, tempMinusOne);
-    final NDArray<Float64> fvNonzeroInner = add(multiply(pv, temp), term2);
-    final NDArray<Float64> fvNonzero = negative(fvNonzeroInner);
-
-    final cond = equal(rate, zero);
-    final result = where(cond, fvZero, fvNonzero, out) as NDArray<Float64>;
-    if (out != null) {
-      if (!identical(result, out)) {
-        result.copy(out: out);
-      }
-      return out;
-    }
-    return result.detachToParentScope();
-  });
+  return _computeTVM(
+    rate: rate,
+    nper: nper,
+    pmt: pmt,
+    pv: pv,
+    mode: _TVMMode.fv,
+    when: when,
+    out: out,
+  );
 }
 
 /// Present Value function.
@@ -125,41 +106,56 @@ NDArray<Float64> pv(
       (out != null && out.isDisposed)) {
     throw StateError('Cannot perform operation on a disposed array.');
   }
-  return NDArray.scope(() {
-    final whenArr = _parseWhen(when);
+  return _computeTVM(
+    rate: rate,
+    nper: nper,
+    pmt: pmt,
+    fv: fv,
+    mode: _TVMMode.pv,
+    when: when,
+    out: out,
+  );
+}
 
-    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
-    final zero = NDArray<Float64>.scalar(Float64(0.0), dtype: DType.float64);
-
-    // temp = (1 + rate) ** nper
-    final NDArray<Float64> onePlusRate = add(one, rate);
-    final NDArray<Float64> temp = power(onePlusRate, nper);
-
-    // pv_zero = - (fv + pmt * nper)
-    final NDArray<Float64> pmtNper = multiply(pmt, nper);
-    final NDArray<Float64> fvPlusPmtNper = add(fv, pmtNper);
-    final NDArray<Float64> pvZero = negative(fvPlusPmtNper);
-
-    // pv_nonzero = - (fv + pmt * (1 + rate * when) / rate * (temp - 1)) / temp
-    final NDArray<Float64> rateWhen = multiply(rate, whenArr);
-    final NDArray<Float64> rateWhenPlusOne = add(one, rateWhen);
-    final NDArray<Float64> pmtRateWhenPlusOne = multiply(pmt, rateWhenPlusOne);
-    final NDArray<Float64> factor = divide(pmtRateWhenPlusOne, rate);
-    final NDArray<Float64> tempMinusOne = subtract(temp, one);
-    final NDArray<Float64> term2 = multiply(factor, tempMinusOne);
-    final NDArray<Float64> pvNonzeroInner = divide(add(fv, term2), temp);
-    final NDArray<Float64> pvNonzero = negative(pvNonzeroInner);
-
-    final cond = equal(rate, zero);
-    final result = where(cond, pvZero, pvNonzero, out) as NDArray<Float64>;
-    if (out != null) {
-      if (!identical(result, out)) {
-        result.copy(out: out);
-      }
-      return out;
-    }
-    return result.detachToParentScope();
-  });
+/// Payment function.
+///
+/// Computes the payment against loan principal plus interest.
+/// Replicates the behavior of `numpy_financial.pmt` exactly.
+///
+/// **Decimal Support:**
+/// `Decimal` is not supported because `ndarray` uses double-precision floats
+/// for quantitative simulations, which allow vectorization.
+///
+/// **Preconditions:**
+/// - All input arrays must not be disposed.
+/// - It is an error if any input array is disposed.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
+/// {@example /example/financial_example.dart lang=dart}
+NDArray<Float64> pmt(
+  NDArray<Float64> rate,
+  NDArray<Float64> nper,
+  NDArray<Float64> pv, {
+  NDArray<Float64>? fv,
+  PaymentDue when = PaymentDue.end,
+  NDArray<Float64>? out,
+}) {
+  if (rate.isDisposed ||
+      nper.isDisposed ||
+      pv.isDisposed ||
+      (fv != null && fv.isDisposed) ||
+      (out != null && out.isDisposed)) {
+    throw StateError('Cannot perform operation on a disposed array.');
+  }
+  return _computeTVM(
+    rate: rate,
+    nper: nper,
+    pv: pv,
+    fv: fv,
+    mode: _TVMMode.pmt,
+    when: when,
+    out: out,
+  );
 }
 
 /// Net Present Value function.
@@ -190,6 +186,51 @@ NDArray<Float64> npv(
     throw ArgumentError('values must be at least 1D');
   }
 
+  // Fast single-pass path when rate is a scalar (size 1).
+  if (rate.size == 1) {
+    final expectedOutShape = values.rank == 1
+        ? const <int>[]
+        : values.shape.sublist(0, values.rank - 1);
+
+    if (out != null) {
+      if (!listEquals(out.shape, expectedOutShape) ||
+          out.dtype != DType.float64) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype (expected shape $expectedOutShape and dtype ${DType.float64}, got shape ${out.shape} and dtype ${out.dtype}).',
+        );
+      }
+    }
+
+    final bool outSharesMem =
+        out != null &&
+        (!out.isContiguous ||
+            sharesMemory(rate, out) ||
+            sharesMemory(values, out));
+
+    if (outSharesMem) {
+      return NDArray.scope(() {
+        final temp = NDArray<Float64>.create(expectedOutShape, DType.float64);
+        _computeNpvScalarRate(rate, values, temp);
+        temp.copy(out: out);
+        return out;
+      });
+    }
+
+    if (out != null) {
+      return NDArray.scope(() {
+        _computeNpvScalarRate(rate, values, out);
+        return out;
+      });
+    }
+
+    return NDArray.scope(() {
+      final result = NDArray<Float64>.create(expectedOutShape, DType.float64);
+      _computeNpvScalarRate(rate, values, result);
+      return result.detachToParentScope();
+    });
+  }
+
+  // Fallback path when rate is multi-element.
   return NDArray.scope(() {
     final N = values.shape.last;
     final t = NDArray<Float64>.arange(0.0, N.toDouble(), dtype: DType.float64);
@@ -226,6 +267,399 @@ NDArray<Float64> npv(
     }
     return result.detachToParentScope();
   });
+}
+
+void _computeNpvScalarRate(
+  NDArray<Float64> rate,
+  NDArray<Float64> values,
+  NDArray<Float64> dest,
+) {
+  final N = values.shape.last;
+  final numBatches = dest.size;
+  final pDest = dest.pointer.cast<ffi.Double>();
+
+  if (N == 0) {
+    for (var b = 0; b < numBatches; b++) {
+      pDest[b] = 0.0;
+    }
+    return;
+  }
+
+  final r = rate.pointer.cast<ffi.Double>()[0];
+  final valuesContig = values.isContiguous ? values : values.copy();
+  final pVal = valuesContig.pointer.cast<ffi.Double>();
+
+  if (1.0 + r > 0) {
+    final invFactor = 1.0 / (1.0 + r);
+    for (var b = 0; b < numBatches; b++) {
+      final base = b * N;
+      var discount = 1.0;
+      var total = 0.0;
+      for (var t = 0; t < N; t++) {
+        total += pVal[base + t] * discount;
+        discount *= invFactor;
+      }
+      pDest[b] = total;
+    }
+  } else {
+    for (var b = 0; b < numBatches; b++) {
+      final base = b * N;
+      var total = 0.0;
+      for (var t = 0; t < N; t++) {
+        total += pVal[base + t] * math.pow(1.0 + r, -t);
+      }
+      pDest[b] = total;
+    }
+  }
+}
+
+NDArray<Float64> _computeTVM({
+  required NDArray<Float64> rate,
+  required NDArray<Float64> nper,
+  NDArray<Float64>? pmt,
+  NDArray<Float64>? pv,
+  NDArray<Float64>? fv,
+  required _TVMMode mode,
+  required PaymentDue when,
+  NDArray<Float64>? out,
+}) {
+  var commonShape = broadcastShapes(rate.shape, nper.shape);
+  if (pmt != null) commonShape = broadcastShapes(commonShape, pmt.shape);
+  if (pv != null) commonShape = broadcastShapes(commonShape, pv.shape);
+  if (fv != null) commonShape = broadcastShapes(commonShape, fv.shape);
+
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != DType.float64) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype (expected shape $commonShape and dtype ${DType.float64}, got shape ${out.shape} and dtype ${out.dtype}).',
+      );
+    }
+  }
+
+  final bool outSharesMem =
+      out != null &&
+      (!out.isContiguous ||
+          sharesMemory(rate, out) ||
+          sharesMemory(nper, out) ||
+          (pmt != null && sharesMemory(pmt, out)) ||
+          (pv != null && sharesMemory(pv, out)) ||
+          (fv != null && sharesMemory(fv, out)));
+
+  if (outSharesMem) {
+    return NDArray.scope(() {
+      final temp = NDArray<Float64>.create(commonShape, DType.float64);
+      _computeTVMDirect(
+        rate: rate,
+        nper: nper,
+        pmt: pmt,
+        pv: pv,
+        fv: fv,
+        mode: mode,
+        when: when,
+        dest: temp,
+      );
+      temp.copy(out: out);
+      return out;
+    });
+  }
+
+  if (out != null) {
+    return NDArray.scope(() {
+      _computeTVMDirect(
+        rate: rate,
+        nper: nper,
+        pmt: pmt,
+        pv: pv,
+        fv: fv,
+        mode: mode,
+        when: when,
+        dest: out,
+      );
+      return out;
+    });
+  }
+
+  return NDArray.scope(() {
+    final result = NDArray<Float64>.create(commonShape, DType.float64);
+    _computeTVMDirect(
+      rate: rate,
+      nper: nper,
+      pmt: pmt,
+      pv: pv,
+      fv: fv,
+      mode: mode,
+      when: when,
+      dest: result,
+    );
+    return result.detachToParentScope();
+  });
+}
+
+void _computeTVMDirect({
+  required NDArray<Float64> rate,
+  required NDArray<Float64> nper,
+  NDArray<Float64>? pmt,
+  NDArray<Float64>? pv,
+  NDArray<Float64>? fv,
+  required _TVMMode mode,
+  required PaymentDue when,
+  required NDArray<Float64> dest,
+}) {
+  final size = dest.size;
+  if (size == 0) return;
+
+  final commonShape = dest.shape;
+  final double w = when == PaymentDue.begin ? 1.0 : 0.0;
+  final pDest = dest.pointer.cast<ffi.Double>();
+
+  final bool fastRate =
+      rate.size == 1 ||
+      (rate.isContiguous && listEquals(rate.shape, commonShape));
+  final bool fastNper =
+      nper.size == 1 ||
+      (nper.isContiguous && listEquals(nper.shape, commonShape));
+  final bool fastPmt =
+      pmt == null ||
+      pmt.size == 1 ||
+      (pmt.isContiguous && listEquals(pmt.shape, commonShape));
+  final bool fastPv =
+      pv == null ||
+      pv.size == 1 ||
+      (pv.isContiguous && listEquals(pv.shape, commonShape));
+  final bool fastFv =
+      fv == null ||
+      fv.size == 1 ||
+      (fv.isContiguous && listEquals(fv.shape, commonShape));
+
+  if (fastRate && fastNper && fastPmt && fastPv && fastFv) {
+    final sRate = rate.size == 1 ? 0 : 1;
+    final sNper = nper.size == 1 ? 0 : 1;
+    final sPmt = (pmt == null || pmt.size == 1) ? 0 : 1;
+    final sPv = (pv == null || pv.size == 1) ? 0 : 1;
+    final sFv = (fv == null || fv.size == 1) ? 0 : 1;
+
+    final pRate = rate.pointer.cast<ffi.Double>();
+    final pNper = nper.pointer.cast<ffi.Double>();
+    final pPmt = pmt?.pointer.cast<ffi.Double>();
+    final pPv = pv?.pointer.cast<ffi.Double>();
+    final pFv = fv?.pointer.cast<ffi.Double>();
+
+    switch (mode) {
+      case _TVMMode.fv:
+        final ptrPmt = pPmt!;
+        final ptrPv = pPv!;
+        if (sRate == 1 && sNper == 1 && sPmt == 1 && sPv == 1) {
+          for (var i = 0; i < size; i++) {
+            final r = pRate[i];
+            final n = pNper[i];
+            final p = ptrPmt[i];
+            final v = ptrPv[i];
+            if (r == 0.0) {
+              pDest[i] = -(v + p * n);
+            } else {
+              final temp = math.pow(1.0 + r, n).toDouble();
+              final factor = (p * (1.0 + r * w)) / r;
+              pDest[i] = -(v * temp + factor * (temp - 1.0));
+            }
+          }
+        } else {
+          for (var i = 0; i < size; i++) {
+            final r = pRate[i * sRate];
+            final n = pNper[i * sNper];
+            final p = ptrPmt[i * sPmt];
+            final v = ptrPv[i * sPv];
+            if (r == 0.0) {
+              pDest[i] = -(v + p * n);
+            } else {
+              final temp = math.pow(1.0 + r, n).toDouble();
+              final factor = (p * (1.0 + r * w)) / r;
+              pDest[i] = -(v * temp + factor * (temp - 1.0));
+            }
+          }
+        }
+        return;
+
+      case _TVMMode.pv:
+        final ptrPmt = pPmt!;
+        final ptrFv = pFv!;
+        if (sRate == 1 && sNper == 1 && sPmt == 1 && sFv == 1) {
+          for (var i = 0; i < size; i++) {
+            final r = pRate[i];
+            final n = pNper[i];
+            final p = ptrPmt[i];
+            final f = ptrFv[i];
+            if (r == 0.0) {
+              pDest[i] = -(f + p * n);
+            } else {
+              final temp = math.pow(1.0 + r, n).toDouble();
+              final factor = (p * (1.0 + r * w)) / r;
+              pDest[i] = -(f + factor * (temp - 1.0)) / temp;
+            }
+          }
+        } else {
+          for (var i = 0; i < size; i++) {
+            final r = pRate[i * sRate];
+            final n = pNper[i * sNper];
+            final p = ptrPmt[i * sPmt];
+            final f = ptrFv[i * sFv];
+            if (r == 0.0) {
+              pDest[i] = -(f + p * n);
+            } else {
+              final temp = math.pow(1.0 + r, n).toDouble();
+              final factor = (p * (1.0 + r * w)) / r;
+              pDest[i] = -(f + factor * (temp - 1.0)) / temp;
+            }
+          }
+        }
+        return;
+
+      case _TVMMode.pmt:
+        final ptrPv = pPv!;
+        if (sRate == 1 && sNper == 1 && sPv == 1 && sFv == 1 && pFv != null) {
+          for (var i = 0; i < size; i++) {
+            final r = pRate[i];
+            final n = pNper[i];
+            final v = ptrPv[i];
+            final f = pFv[i];
+            if (r == 0.0) {
+              pDest[i] = -(f + v) / n;
+            } else {
+              final temp = math.pow(1.0 + r, n).toDouble();
+              final fact = (1.0 + r * w) * (temp - 1.0) / r;
+              pDest[i] = -(f + v * temp) / fact;
+            }
+          }
+        } else {
+          for (var i = 0; i < size; i++) {
+            final r = pRate[i * sRate];
+            final n = pNper[i * sNper];
+            final v = ptrPv[i * sPv];
+            final f = pFv != null ? pFv[i * sFv] : 0.0;
+            if (r == 0.0) {
+              pDest[i] = -(f + v) / n;
+            } else {
+              final temp = math.pow(1.0 + r, n).toDouble();
+              final fact = (1.0 + r * w) * (temp - 1.0) / r;
+              pDest[i] = -(f + v * temp) / fact;
+            }
+          }
+        }
+        return;
+    }
+  }
+
+  // General strided / broadcasted path:
+  _computeTVMStrided(
+    rate: rate,
+    nper: nper,
+    pmt: pmt,
+    pv: pv,
+    fv: fv,
+    mode: mode,
+    w: w,
+    dest: dest,
+  );
+}
+
+void _computeTVMStrided({
+  required NDArray<Float64> rate,
+  required NDArray<Float64> nper,
+  NDArray<Float64>? pmt,
+  NDArray<Float64>? pv,
+  NDArray<Float64>? fv,
+  required _TVMMode mode,
+  required double w,
+  required NDArray<Float64> dest,
+}) {
+  final commonShape = dest.shape;
+  final ndim = commonShape.length;
+  final size = dest.size;
+  final pDest = dest.pointer.cast<ffi.Double>();
+
+  final bRate = broadcastTo(rate, commonShape);
+  final bNper = broadcastTo(nper, commonShape);
+  final bPmt = pmt != null ? broadcastTo(pmt, commonShape) : null;
+  final bPv = pv != null ? broadcastTo(pv, commonShape) : null;
+  final bFv = fv != null ? broadcastTo(fv, commonShape) : null;
+
+  final pRate = bRate.pointer.cast<ffi.Double>();
+  final pNper = bNper.pointer.cast<ffi.Double>();
+  final pPmt = bPmt?.pointer.cast<ffi.Double>();
+  final pPv = bPv?.pointer.cast<ffi.Double>();
+  final pFv = bFv?.pointer.cast<ffi.Double>();
+
+  final stridesRate = bRate.strides;
+  final stridesNper = bNper.strides;
+  final stridesPmt = bPmt?.strides;
+  final stridesPv = bPv?.strides;
+  final stridesFv = bFv?.strides;
+
+  var offRate = 0;
+  var offNper = 0;
+  var offPmt = 0;
+  var offPv = 0;
+  var offFv = 0;
+
+  final coords = List<int>.filled(ndim, 0);
+
+  for (var i = 0; i < size; i++) {
+    final r = pRate[offRate];
+    final n = pNper[offNper];
+
+    switch (mode) {
+      case _TVMMode.fv:
+        final p = pPmt![offPmt];
+        final v = pPv![offPv];
+        if (r == 0.0) {
+          pDest[i] = -(v + p * n);
+        } else {
+          final temp = math.pow(1.0 + r, n).toDouble();
+          final factor = (p * (1.0 + r * w)) / r;
+          pDest[i] = -(v * temp + factor * (temp - 1.0));
+        }
+      case _TVMMode.pv:
+        final p = pPmt![offPmt];
+        final f = pFv![offFv];
+        if (r == 0.0) {
+          pDest[i] = -(f + p * n);
+        } else {
+          final temp = math.pow(1.0 + r, n).toDouble();
+          final factor = (p * (1.0 + r * w)) / r;
+          pDest[i] = -(f + factor * (temp - 1.0)) / temp;
+        }
+      case _TVMMode.pmt:
+        final v = pPv![offPv];
+        final f = pFv != null ? pFv[offFv] : 0.0;
+        if (r == 0.0) {
+          pDest[i] = -(f + v) / n;
+        } else {
+          final temp = math.pow(1.0 + r, n).toDouble();
+          final fact = (1.0 + r * w) * (temp - 1.0) / r;
+          pDest[i] = -(f + v * temp) / fact;
+        }
+    }
+
+    if (ndim > 0) {
+      for (var d = ndim - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < commonShape[d]) {
+          offRate += stridesRate[d];
+          offNper += stridesNper[d];
+          if (stridesPmt != null) offPmt += stridesPmt[d];
+          if (stridesPv != null) offPv += stridesPv[d];
+          if (stridesFv != null) offFv += stridesFv[d];
+          break;
+        }
+        coords[d] = 0;
+        final dimMinus1 = commonShape[d] - 1;
+        offRate -= dimMinus1 * stridesRate[d];
+        offNper -= dimMinus1 * stridesNper[d];
+        if (stridesPmt != null) offPmt -= dimMinus1 * stridesPmt[d];
+        if (stridesPv != null) offPv -= dimMinus1 * stridesPv[d];
+        if (stridesFv != null) offFv -= dimMinus1 * stridesFv[d];
+      }
+    }
+  }
 }
 
 /// Internal Rate of Return function.
@@ -345,14 +779,6 @@ NDArray<Float64> irr(
     result.setCell([], Float64(selectedRate));
     return result.detachToParentScope();
   });
-}
-
-NDArray<Float64> _parseWhen(PaymentDue when) {
-  final val = switch (when) {
-    PaymentDue.begin => 1.0,
-    PaymentDue.end => 0.0,
-  };
-  return NDArray<Float64>.scalar(Float64(val), dtype: DType.float64);
 }
 
 /// Strips leading zero coefficients from the cash flow values.

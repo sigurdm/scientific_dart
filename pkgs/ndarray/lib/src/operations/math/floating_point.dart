@@ -781,8 +781,13 @@ NDArray<bool> isClose<Ta, Tb>(
       (v is num && v.isInfinite) ||
       (v is Complex && (v.real.isInfinite || v.imag.isInfinite));
   double abs(Object? v) =>
-      v is num ? v.abs().toDouble() : (v is Complex ? v.abs : 0.0);
+      v is num ? v.toDouble().abs() : (v is Complex ? v.abs : 0.0);
   double diff(Object? v1, Object? v2) {
+    if (v1 is int && v2 is int) {
+      return ((v1 ^ v2) >= 0)
+          ? (v1 - v2).abs().toDouble()
+          : v1.toDouble().abs() + v2.toDouble().abs();
+    }
     if (v1 is num && v2 is num) return (v1 - v2).abs().toDouble();
     if (v1 is Complex && v2 is Complex) return (v1 - v2).abs;
     if (v1 is num && v2 is Complex) {
@@ -798,7 +803,8 @@ NDArray<bool> isClose<Ta, Tb>(
   try {
     final bool useTempOut =
         out != null &&
-        (sharesMemory(a, out) ||
+        (!out.isContiguous ||
+            sharesMemory(a, out) ||
             sharesMemory(b, out) ||
             (where != null && sharesMemory(where, out)));
     final result = useTempOut
@@ -806,6 +812,205 @@ NDArray<bool> isClose<Ta, Tb>(
               ? out.copy()
               : NDArray<bool>.zeros(commonShape, DType.boolean))
         : (out ?? NDArray<bool>.zeros(commonShape, DType.boolean));
+
+    if (listEquals(a.shape, b.shape) &&
+        a.isContiguous &&
+        b.isContiguous &&
+        result.isContiguous) {
+      final size = a.size;
+      final resPtr = result.pointer.cast<ffi.Uint8>();
+      final maskPtr = maskHolder.pointer;
+      var handled = true;
+
+      switch ((a.dtype, b.dtype)) {
+        case (DType.float64, DType.float64):
+          final ptrA = a.pointer.cast<ffi.Double>();
+          final ptrB = b.pointer.cast<ffi.Double>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)
+                  ? 1
+                  : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] =
+                    _isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)
+                    ? 1
+                    : 0;
+              }
+            }
+          }
+        case (DType.float32, DType.float32):
+          final ptrA = a.pointer.cast<ffi.Float>();
+          final ptrB = b.pointer.cast<ffi.Float>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)
+                  ? 1
+                  : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] =
+                    _isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)
+                    ? 1
+                    : 0;
+              }
+            }
+          }
+        case (DType.float64, DType.float32):
+          final ptrA = a.pointer.cast<ffi.Double>();
+          final ptrB = b.pointer.cast<ffi.Float>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)
+                  ? 1
+                  : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] =
+                    _isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)
+                    ? 1
+                    : 0;
+              }
+            }
+          }
+        case (DType.float32, DType.float64):
+          final ptrA = a.pointer.cast<ffi.Float>();
+          final ptrB = b.pointer.cast<ffi.Double>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)
+                  ? 1
+                  : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] =
+                    _isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)
+                    ? 1
+                    : 0;
+              }
+            }
+          }
+        case (DType.int64, DType.int64):
+          final ptrA = a.pointer.cast<ffi.Int64>();
+          final ptrB = b.pointer.cast<ffi.Int64>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+              }
+            }
+          }
+        case (DType.int32, DType.int32):
+          final ptrA = a.pointer.cast<ffi.Int32>();
+          final ptrB = b.pointer.cast<ffi.Int32>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+              }
+            }
+          }
+        case (DType.int16, DType.int16):
+          final ptrA = a.pointer.cast<ffi.Int16>();
+          final ptrB = b.pointer.cast<ffi.Int16>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+              }
+            }
+          }
+        case (DType.int8, DType.int8):
+          final ptrA = a.pointer.cast<ffi.Int8>();
+          final ptrB = b.pointer.cast<ffi.Int8>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+              }
+            }
+          }
+        case (DType.uint32, DType.uint32):
+          final ptrA = a.pointer.cast<ffi.Uint32>();
+          final ptrB = b.pointer.cast<ffi.Uint32>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+              }
+            }
+          }
+        case (DType.uint16, DType.uint16):
+          final ptrA = a.pointer.cast<ffi.Uint16>();
+          final ptrB = b.pointer.cast<ffi.Uint16>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+              }
+            }
+          }
+        case (DType.uint8, DType.uint8):
+          final ptrA = a.pointer.cast<ffi.Uint8>();
+          final ptrB = b.pointer.cast<ffi.Uint8>();
+          if (maskPtr == ffi.nullptr) {
+            for (var i = 0; i < size; i++) {
+              resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+            }
+          } else {
+            for (var i = 0; i < size; i++) {
+              if (maskPtr[i] != 0) {
+                resPtr[i] = _isCloseInt(ptrA[i], ptrB[i], rtol, atol) ? 1 : 0;
+              }
+            }
+          }
+        default:
+          handled = false;
+      }
+
+      if (handled) {
+        if (useTempOut) {
+          result.copy(out: out);
+          result.dispose();
+          return out;
+        }
+        return result;
+      }
+    }
+
     final iter = NDIter.broadcast3(result, a, b);
     final maskPtr = maskHolder.pointer;
     var flatIdx = 0;
@@ -844,6 +1049,38 @@ NDArray<bool> isClose<Ta, Tb>(
   }
 }
 
+@pragma('vm:prefer-inline')
+bool _isCloseDouble(
+  double aVal,
+  double bVal,
+  double rtol,
+  double atol,
+  bool equalNan,
+) {
+  final bAbs = bVal.abs();
+  if (bAbs < double.infinity &&
+      atol < double.infinity &&
+      rtol < double.infinity) {
+    return (aVal - bVal).abs() <= atol + rtol * bAbs;
+  }
+  if (aVal.isNaN || bVal.isNaN) {
+    return equalNan && aVal.isNaN && bVal.isNaN;
+  }
+  if (aVal.isInfinite || bVal.isInfinite) {
+    return aVal == bVal;
+  }
+  return (aVal - bVal).abs() <= atol + rtol * bAbs;
+}
+
+@pragma('vm:prefer-inline')
+bool _isCloseInt(int aVal, int bVal, double rtol, double atol) {
+  final d = ((aVal ^ bVal) >= 0)
+      ? (aVal - bVal).abs().toDouble()
+      : aVal.toDouble().abs() + bVal.toDouble().abs();
+  final limit = atol + rtol * bVal.toDouble().abs();
+  return d <= limit;
+}
+
 /// Returns true if two arrays are element-wise equal within a tolerance.
 ///
 /// The tolerance relation is defined as:
@@ -864,8 +1101,113 @@ bool allClose<Ta, Tb>(
   double atol = 1e-08,
   bool equalNan = false,
 }) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot execute allClose() on a disposed array.');
+  }
+
+  if (listEquals(a.shape, b.shape) && a.isContiguous && b.isContiguous) {
+    final size = a.size;
+    switch ((a.dtype, b.dtype)) {
+      case (DType.float64, DType.float64):
+        final ptrA = a.pointer.cast<ffi.Double>();
+        final ptrB = b.pointer.cast<ffi.Double>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)) {
+            return false;
+          }
+        }
+        return true;
+      case (DType.float32, DType.float32):
+        final ptrA = a.pointer.cast<ffi.Float>();
+        final ptrB = b.pointer.cast<ffi.Float>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)) {
+            return false;
+          }
+        }
+        return true;
+      case (DType.float64, DType.float32):
+        final ptrA = a.pointer.cast<ffi.Double>();
+        final ptrB = b.pointer.cast<ffi.Float>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)) {
+            return false;
+          }
+        }
+        return true;
+      case (DType.float32, DType.float64):
+        final ptrA = a.pointer.cast<ffi.Float>();
+        final ptrB = b.pointer.cast<ffi.Double>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseDouble(ptrA[i], ptrB[i], rtol, atol, equalNan)) {
+            return false;
+          }
+        }
+        return true;
+      case (DType.int64, DType.int64):
+        final ptrA = a.pointer.cast<ffi.Int64>();
+        final ptrB = b.pointer.cast<ffi.Int64>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseInt(ptrA[i], ptrB[i], rtol, atol)) return false;
+        }
+        return true;
+      case (DType.int32, DType.int32):
+        final ptrA = a.pointer.cast<ffi.Int32>();
+        final ptrB = b.pointer.cast<ffi.Int32>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseInt(ptrA[i], ptrB[i], rtol, atol)) return false;
+        }
+        return true;
+      case (DType.int16, DType.int16):
+        final ptrA = a.pointer.cast<ffi.Int16>();
+        final ptrB = b.pointer.cast<ffi.Int16>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseInt(ptrA[i], ptrB[i], rtol, atol)) return false;
+        }
+        return true;
+      case (DType.int8, DType.int8):
+        final ptrA = a.pointer.cast<ffi.Int8>();
+        final ptrB = b.pointer.cast<ffi.Int8>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseInt(ptrA[i], ptrB[i], rtol, atol)) return false;
+        }
+        return true;
+      case (DType.uint32, DType.uint32):
+        final ptrA = a.pointer.cast<ffi.Uint32>();
+        final ptrB = b.pointer.cast<ffi.Uint32>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseInt(ptrA[i], ptrB[i], rtol, atol)) return false;
+        }
+        return true;
+      case (DType.uint16, DType.uint16):
+        final ptrA = a.pointer.cast<ffi.Uint16>();
+        final ptrB = b.pointer.cast<ffi.Uint16>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseInt(ptrA[i], ptrB[i], rtol, atol)) return false;
+        }
+        return true;
+      case (DType.uint8, DType.uint8):
+        final ptrA = a.pointer.cast<ffi.Uint8>();
+        final ptrB = b.pointer.cast<ffi.Uint8>();
+        for (var i = 0; i < size; i++) {
+          if (!_isCloseInt(ptrA[i], ptrB[i], rtol, atol)) return false;
+        }
+        return true;
+      default:
+        break;
+    }
+  }
+
   final closeMask = isClose(a, b, rtol: rtol, atol: atol, equalNan: equalNan);
   try {
+    if (closeMask.isContiguous) {
+      final ptr = closeMask.pointer.cast<ffi.Uint8>();
+      final n = closeMask.size;
+      for (var i = 0; i < n; i++) {
+        if (ptr[i] == 0) return false;
+      }
+      return true;
+    }
     for (var i = 0; i < closeMask.size; i++) {
       if (!closeMask.getCellFlat(i)) return false;
     }
