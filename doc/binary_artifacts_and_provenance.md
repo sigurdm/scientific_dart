@@ -58,22 +58,33 @@ You can override the build mode without editing `pubspec.yaml`:
 
 ---
 
-## Releasing New Prebuilt Artifacts with SLSA Provenance
+## Publication Workflow (`pub.dev` & Native Artifacts)
 
-1. **Tag and push an artifact release** (or trigger `.github/workflows/artifacts.yml` via `workflow_dispatch`):
+Because `pub.dev` package tarballs are immutable and must contain the pinned SHA-256 digests (`lib/src/hook_helpers/hashes.dart`) *before* `dart pub publish` is run, the release process depends on whether native code (`hook/` C/C++ sources or OpenBLAS/PocketFFT versions) changed since the last artifact release:
+
+### Case A: Dart-Only Changes (No `hook/` or C/C++ changes)
+**Everything works out of the box—no artifact rebuild needed.**
+- Keep the existing `releaseTag` (e.g., `artifacts-v0.0.2`) and `fileHashes` in `lib/src/hook_helpers/hashes.dart`.
+- Bump the package version in `pubspec.yaml` / `CHANGELOG.md` and run `dart pub publish`. Consumers of the new Dart version will continue fetching and verifying the existing `artifacts-v0.0.2` binaries.
+
+### Case B: Native C/C++ or Build Hook Changes
+When `hook/*.cpp`, `hook/*.c`, `hook/*.h`, or native library versions change, you must build and attest the binaries **before** publishing to `pub.dev`:
+
+1. **Trigger the GitHub Actions Artifact Build**:
+   Either push an `artifacts-v<version>` tag or trigger `.github/workflows/artifacts.yml` via `gh workflow run`:
    ```bash
-   git tag artifacts-v0.0.2
-   git push origin artifacts-v0.0.2
+   git tag artifacts-v0.0.3
+   git push origin artifacts-v0.0.3
+   # Or without creating a git tag first:
+   gh workflow run artifacts.yml -f tag=artifacts-v0.0.3
    ```
-2. **GitHub Actions (`.github/workflows/artifacts.yml`)**:
-   - Compiles the native binaries across `linux-x64`, `linux-arm64`, `macos-arm64`, `macos-x64`, and `windows-x64` using `dart tool/build_artifacts.dart`.
-   - Generates `SHA256SUMS.txt`.
-   - Signs SLSA v1.0 build provenance attestations for all binaries using `actions/attest-build-provenance@v2` (Sigstore/Fulcio) and bundles `provenance.intoto.jsonl`.
-   - Publishes the binaries and provenance bundle to the GitHub Release.
-3. **Verify Provenance & Update Pinned Hashes**:
-   Run `tool/regenerate_hashes.dart`:
+2. **Wait for `.github/workflows/artifacts.yml` to finish (~5 mins)**:
+   - Compiles the 20 native binaries across `linux-x64`, `linux-arm64`, `macos-arm64`, `macos-x64`, and `windows-x64` via `dart tool/build_artifacts.dart`.
+   - Signs SLSA v1.0 build provenance attestations (`actions/attest-build-provenance@v2`) and publishes the GitHub Release `artifacts-v0.0.3` with `SHA256SUMS.txt` and `provenance.intoto.jsonl`.
+3. **Verify SLSA Provenance & Pin SHA-256 Hashes Locally**:
    ```bash
-   dart tool/regenerate_hashes.dart artifacts-v0.0.2
+   dart tool/regenerate_hashes.dart artifacts-v0.0.3
    ```
-   This script downloads every release artifact, runs `gh attestation verify <artifact> --repo sigurdm/scientific_dart` to cryptographically verify its SLSA provenance, computes the SHA-256 digest, and updates `lib/src/hook_helpers/hashes.dart` in `pocketfft`, `ndarray`, and `openblas`.
-4. **Commit the updated `hashes.dart` files** and publish the packages.
+   This downloads all 20 release binaries, runs `gh attestation verify <binary> --repo sigurdm/scientific_dart` on each one, and writes the new `releaseTag` and `fileHashes` into `pkgs/{pocketfft,openblas,ndarray}/lib/src/hook_helpers/hashes.dart`.
+4. **Commit & Publish to `pub.dev`**:
+   Commit the updated `hashes.dart` files, push to `main`, and publish the packages (`dart pub publish`).
