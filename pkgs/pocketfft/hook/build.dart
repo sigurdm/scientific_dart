@@ -289,6 +289,7 @@ final class SourceMode extends BuildMode {
     final compileArgs = isMSVC
         ? <String>[
             '/LD',
+            '/MD',
             '/O2',
             '/EHsc',
             '/Dkiss_fft_scalar=double',
@@ -306,12 +307,14 @@ final class SourceMode extends BuildMode {
             '/EXPORT:kiss_fftri',
             '/EXPORT:kiss_fftnd_alloc',
             '/EXPORT:kiss_fftnd',
+            '/EXPORT:free',
           ]
         : <String>[
             if (os == OS.macOS || os == OS.iOS) ...[
               '-arch',
               arch == Architecture.arm64 ? 'arm64' : 'x86_64',
               '-Wl,-install_name,@rpath/$libName',
+              '-Wl,-headerpad_max_install_names',
             ],
             '-shared',
             '-fPIC',

@@ -17,7 +17,7 @@ const version = 'artifacts-v0.0.2';
 
 /// Combined SHA-256 digest of `hook/` native source files at [version].
 const nativeSourceHash =
-    '2fdee594cd3645c2da8e33b664d8da417e6332f1c80f73545d84bed73ae91be5';
+    '12e4fcf3ef169d05b434a338cd8f01293d57a4adb4c84d2c7ed9d93dad1466fb';
 
 /// Lists the tracked native source files in `hook/` under [packageRoot].
 List<File> nativeSourceFiles(Uri packageRoot) {

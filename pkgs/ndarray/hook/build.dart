@@ -699,6 +699,7 @@ int128_t __divti3(int128_t a, int128_t b) {
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
             '-Wl,-install_name,@rpath/$libName',
+            '-Wl,-headerpad_max_install_names',
           ],
           '-shared',
           '-fPIC',

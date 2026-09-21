@@ -323,6 +323,7 @@ final class SourceMode extends BuildMode {
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
             '-Wl,-install_name,@rpath/libopenblas.dylib',
+            '-Wl,-headerpad_max_install_names',
           ],
           '-dynamiclib',
           '-O3',
@@ -348,6 +349,7 @@ final class SourceMode extends BuildMode {
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
             '-Wl,-install_name,@rpath/libopenblas_extensions.dylib',
+            '-Wl,-headerpad_max_install_names',
           ],
           '-dynamiclib',
           '-O3',
@@ -504,6 +506,17 @@ final class SourceMode extends BuildMode {
         return (openblasUri: dllFile.uri, extensionsUri: extLibFile.uri);
 
       case CompileOpenBlas(:final sourceUrl):
+        if (Platform.environment['OPENBLAS_BUILD_MODE'] != 'source' &&
+            fileHashes[(os, arch, 'openblas')] != null &&
+            fileHashes[(os, arch, 'openblas_extensions')] != null) {
+          try {
+            return await FetchMode(input).build();
+          } catch (e) {
+            print(
+              'Prebuilt OpenBLAS fetch unavailable ($e), falling back to source build...',
+            );
+          }
+        }
         String openBlasTarget = 'GENERIC';
         if (arch == Architecture.arm64) {
           openBlasTarget = 'ARMV8';

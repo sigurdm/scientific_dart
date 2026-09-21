@@ -51,6 +51,7 @@ void main(List<String> args) async {
         compileArgs.add('-ldl');
       } else if (os == OS.macOS) {
         compileArgs.addAll([
+          '-Wl,-headerpad_max_install_names',
           '-framework',
           'CoreAudio',
           '-framework',
