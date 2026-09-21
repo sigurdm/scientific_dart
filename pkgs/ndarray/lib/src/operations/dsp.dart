@@ -34,7 +34,7 @@ typedef Float = double;
 /// ```
 ///
 /// Reference: [NumPy angle](https://numpy.org/doc/stable/reference/generated/numpy.angle.html)
-NDArray<R> angle<T extends Object, R extends Float>(
+NDArray<R> angle<T extends AnyDType, R extends AnyFloat>(
   NDArray<T> a, {
   NDArray<R>? out,
 }) {
@@ -176,7 +176,7 @@ NDArray<R> angle<T extends Object, R extends Float>(
             0,
             0,
             (val) =>
-                Float64((val < 0.0 || identical(val, -0.0)) ? math.pi : 0.0),
+                (val < 0.0 || identical(val, -0.0)) ? math.pi : 0.0,
           );
           final casted = castNDArray<R>(doubleRes, result.dtype);
           casted.copy(out: result);
@@ -217,8 +217,8 @@ NDArray<R> angle<T extends Object, R extends Float>(
 /// ```
 ///
 /// Reference: [NumPy unwrap](https://numpy.org/doc/stable/reference/generated/numpy.unwrap.html)
-NDArray<T> unwrap<T extends num>(
-  NDArray<Object> a, {
+NDArray<T> unwrap<T extends AnyReal>(
+  NDArray<AnyDType> a, {
   double discont = math.pi,
   int axis = -1,
   NDArray<T>? out,
@@ -413,9 +413,9 @@ NDArray<T> unwrap<T extends num>(
 
 /// Internal helper executing direct stencil N-D valid cross-correlation.
 NDArray<R> _correlateValid<
-  T extends Object,
-  K extends Object,
-  R extends Object
+  T extends AnyDType,
+  K extends AnyDType,
+  R extends AnyDType
 >(NDArray<T> in1, NDArray<K> in2, {NDArray<R>? out}) {
   final rank = in1.rank;
   final outShape = List<int>.generate(
@@ -621,7 +621,7 @@ enum ConvMode {
 /// - [NumPy correlate Documentation](https://numpy.org/doc/stable/reference/generated/numpy.correlate.html)
 /// - [SciPy signal.correlate Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate.html)
 /// - [Wikipedia: Cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation)
-NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
+NDArray<R> correlate<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
   NDArray<T> in1,
   NDArray<K> in2, {
   ConvMode mode = ConvMode.valid,
@@ -743,7 +743,7 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
 /// - [NumPy convolve Documentation](https://numpy.org/doc/stable/reference/generated/numpy.convolve.html)
 /// - [SciPy signal.convolve Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.convolve.html)
 /// - [Wikipedia: Convolution](https://en.wikipedia.org/wiki/Convolution)
-NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
+NDArray<R> convolve<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
   NDArray<T> in1,
   NDArray<K> in2, {
   ConvMode mode = ConvMode.full,
@@ -800,7 +800,7 @@ NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
 ///
 /// ### References & Further Reading
 /// - [SciPy signal.convolve2d Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.convolve2d.html)
-NDArray<R> convolve2d<T extends Object, K extends Object, R extends Object>(
+NDArray<R> convolve2d<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
   NDArray<T> in1,
   NDArray<K> in2, {
   ConvMode mode = ConvMode.full,

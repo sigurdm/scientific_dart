@@ -251,7 +251,7 @@ NDArray<Float64> npv(
     final NDArray<Float64> rateExpanded = rate.reshape(rateExpandedShape);
     final NDArray<Float64> valuesExpanded = values.reshape(valuesExpandedShape);
 
-    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
+    final one = NDArray<Float64>.scalar(1.0, dtype: DType.float64);
     final NDArray<Float64> onePlusRate = add(one, rateExpanded);
     final NDArray<Float64> discount = power(onePlusRate, t);
 
@@ -710,11 +710,11 @@ NDArray<Float64> irr(
         );
       }
       if (out != null) {
-        out.setCell([], Float64(double.nan));
+        out.setCell([], double.nan);
         return out;
       }
       final result = NDArray<Float64>.create([], DType.float64);
-      result.setCell([], Float64(double.nan));
+      result.setCell([], double.nan);
       return result.detachToParentScope();
     }
 
@@ -726,11 +726,11 @@ NDArray<Float64> irr(
         );
       }
       if (out != null) {
-        out.setCell([], Float64(double.nan));
+        out.setCell([], double.nan);
         return out;
       }
       final result = NDArray<Float64>.create([], DType.float64);
-      result.setCell([], Float64(double.nan));
+      result.setCell([], double.nan);
       return result.detachToParentScope();
     }
 
@@ -738,11 +738,11 @@ NDArray<Float64> irr(
     for (var j = 0; j < n; j++) {
       companion.setCellFlat(
         j,
-        Float64(-coeffs.getCellFlat(j + 1) / coeffs.getCellFlat(0)),
+        -coeffs.getCellFlat(j + 1) / coeffs.getCellFlat(0),
       );
     }
     for (var i = 1; i < n; i++) {
-      companion.setCellFlat(i * n + i - 1, Float64(1.0));
+      companion.setCellFlat(i * n + i - 1, 1.0);
     }
 
     final eigResult = eig(companion);
@@ -772,11 +772,11 @@ NDArray<Float64> irr(
     }
 
     if (out != null) {
-      out.setCell([], Float64(selectedRate));
+      out.setCell([], selectedRate);
       return out;
     }
     final result = NDArray<Float64>.create([], DType.float64);
-    result.setCell([], Float64(selectedRate));
+    result.setCell([], selectedRate);
     return result.detachToParentScope();
   });
 }

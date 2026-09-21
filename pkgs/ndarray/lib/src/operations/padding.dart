@@ -89,7 +89,7 @@ final class PadWidth {
 }
 
 /// Represents constant padding values for each axis.
-final class PadValues<T> {
+final class PadValues<T extends AnyDType> {
   final (T before, T after)? _uniform;
   final List<(T before, T after)>? _axes;
 
@@ -249,7 +249,7 @@ Object _getDefaultValue(DType dtype) {
 ///
 /// **Example:**
 /// {@example /example/padding_example.dart}
-NDArray<T> pad<T extends Object>(
+NDArray<T> pad<T extends AnyDType>(
   NDArray<T> array,
   PadWidth padWidth, {
   PadMode mode = PadMode.constant,
@@ -393,7 +393,7 @@ ffi.Pointer<ffi.Uint8> _copyUint8s(List<int> list) {
   ffi.Pointer<ffi.Void> constAfterPtr,
   int isUniformConstant,
 )
-_prepareConstants<T extends Object>(
+_prepareConstants<T extends AnyDType>(
   DType dtype,
   List<(T before, T after)> normConstantValues,
   int rank,
@@ -501,7 +501,7 @@ _prepareConstants<T extends Object>(
   return (cbPtr, caPtr, isUniform);
 }
 
-bool _padArgsShareMemoryWithOut<T extends Object>(
+bool _padArgsShareMemoryWithOut<T extends AnyDType>(
   NDArray<T> array,
   NDArray<T> out,
   List<(T before, T after)> normConstantValues,
@@ -521,7 +521,7 @@ bool _padArgsShareMemoryWithOut<T extends Object>(
   return false;
 }
 
-NDArray<T> _padNativeFast<T extends Object>(
+NDArray<T> _padNativeFast<T extends AnyDType>(
   NDArray<T> array,
   List<(int before, int after)> normPadWidths,
   PadMode mode,
@@ -632,7 +632,7 @@ NDArray<T> _padNativeFast<T extends Object>(
   });
 }
 
-NDArray<T> _padAxisByAxis<T extends Object>(
+NDArray<T> _padAxisByAxis<T extends AnyDType>(
   NDArray<T> array,
   List<(int before, int after)> normPadWidths,
   PadMode mode,
@@ -725,7 +725,7 @@ NDArray<T> _padAxisByAxis<T extends Object>(
   });
 }
 
-void _padAxis<T extends Object>(
+void _padAxis<T extends AnyDType>(
   NDArray<T> src,
   NDArray<T> dest,
   int axis,
@@ -1020,10 +1020,10 @@ void _padAxis<T extends Object>(
             padBefore,
             padAfter,
             mode,
-            Float64(toDoubleUnsignedAware(constantBefore)),
-            Float64(toDoubleUnsignedAware(constantAfter)),
-            Float64(toDoubleUnsignedAware(endBefore)),
-            Float64(toDoubleUnsignedAware(endAfter)),
+            toDoubleUnsignedAware(constantBefore),
+            toDoubleUnsignedAware(constantAfter),
+            toDoubleUnsignedAware(endBefore),
+            toDoubleUnsignedAware(endAfter),
             statLengthBefore,
             statLengthAfter,
           );

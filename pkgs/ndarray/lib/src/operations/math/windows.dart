@@ -25,7 +25,7 @@ import '../helpers.dart';
 /// ```dart
 /// final window = hanning(512);
 /// ```
-NDArray<T> hanning<T>(int M, {DType<T>? dtype, NDArray<T>? out}) {
+NDArray<T> hanning<T extends AnyDType>(int M, {DType<T>? dtype, NDArray<T>? out}) {
   if (out != null && out.isDisposed) {
     throw StateError('Cannot execute hanning() on a disposed out buffer.');
   }
@@ -116,7 +116,7 @@ NDArray<T> hanning<T>(int M, {DType<T>? dtype, NDArray<T>? out}) {
 /// ```dart
 /// final window = hamming(512);
 /// ```
-NDArray<T> hamming<T>(int M, {DType<T>? dtype, NDArray<T>? out}) {
+NDArray<T> hamming<T extends AnyDType>(int M, {DType<T>? dtype, NDArray<T>? out}) {
   if (out != null && out.isDisposed) {
     throw StateError('Cannot execute hamming() on a disposed out buffer.');
   }

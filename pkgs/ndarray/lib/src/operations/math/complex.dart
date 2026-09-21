@@ -5,9 +5,9 @@ import "../../ndarray_bindings.dart";
 import "../../scratch_arena.dart";
 import "../helpers.dart";
 
-NDArray<dynamic> _complexPartView(
-  NDArray<dynamic> a,
-  DType<dynamic> floatDType, {
+NDArray<AnyDType> _complexPartView(
+  NDArray<AnyDType> a,
+  DType<AnyDType> floatDType, {
   required bool isImag,
 }) {
   final floatStrides = a.strides.map((s) => s * 2).toList();
@@ -24,7 +24,7 @@ NDArray<dynamic> _complexPartView(
   final ffi.Pointer<ffi.Void> basePtr = floatDType == DType.float64
       ? (a.pointer.cast<ffi.Double>() + elementOffset).cast<ffi.Void>()
       : (a.pointer.cast<ffi.Float>() + elementOffset).cast<ffi.Void>();
-  return NDArray<dynamic>.fromPointer(
+  return NDArray<AnyDType>.fromPointer(
     basePtr,
     a.shape,
     floatDType,
@@ -46,14 +46,14 @@ NDArray<dynamic> _complexPartView(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<Complex>.create([2], DType.complex128);
+/// final a = NDArray<AnyComplex>.create([2], DType.complex128);
 /// a.setCell([0], Complex(3.0, 4.0));
 /// a.setCell([1], Complex(-1.0, 0.0));
 /// final r = real(a); // [3.0, -1.0] (DType.float64)
 /// ```
-NDArray<R> real<T, R>(
+NDArray<R> real<T extends AnyDType, R extends AnyDType>(
   NDArray<T> a, {
-  NDArray<dynamic>? where,
+  NDArray<AnyDType>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -62,7 +62,7 @@ NDArray<R> real<T, R>(
     throw StateError("Cannot execute real() on a disposed array.");
   }
 
-  final DType<dynamic> targetDType;
+  final DType<AnyDType> targetDType;
   switch (a.dtype) {
     case DType.complex64:
       targetDType = DType.float32;
@@ -181,14 +181,14 @@ NDArray<R> real<T, R>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<Complex>.create([2], DType.complex128);
+/// final a = NDArray<AnyComplex>.create([2], DType.complex128);
 /// a.setCell([0], Complex(3.0, 4.0));
 /// a.setCell([1], Complex(-1.0, 0.0));
 /// final im = imag(a); // [4.0, 0.0] (DType.float64)
 /// ```
-NDArray<R> imag<T, R>(
+NDArray<R> imag<T extends AnyDType, R extends AnyDType>(
   NDArray<T> a, {
-  NDArray<dynamic>? where,
+  NDArray<AnyDType>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -197,7 +197,7 @@ NDArray<R> imag<T, R>(
     throw StateError("Cannot execute imag() on a disposed array.");
   }
 
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<AnyDType> targetDType = switch (a.dtype) {
     DType.complex64 => DType.float32,
     _ => DType.float64,
   };
@@ -304,7 +304,7 @@ NDArray<R> imag<T, R>(
 /// final a = NDArray.fromList([Complex(1.0, 2.0)], [1], DType.complex128);
 /// final c = conj(a); // [Complex(1.0, -2.0)]
 /// ```
-NDArray<T> conj<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
+NDArray<T> conj<T extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, NDArray<T>? out}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -426,8 +426,8 @@ NDArray<T> conj<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
 }
 
 /// Alias for [conj].
-NDArray<T> conjugate<T>(
+NDArray<T> conjugate<T extends AnyDType>(
   NDArray<T> a, {
-  NDArray<dynamic>? where,
+  NDArray<AnyDType>? where,
   NDArray<T>? out,
 }) => conj(a, where: where, out: out);

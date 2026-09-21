@@ -15,7 +15,7 @@ import 'sorting.dart';
 /// It is an error if [ar] has an unsupported dtype.
 ///
 /// It is an error if [ar] is disposed.
-dynamic unique<T extends Object>(
+dynamic unique<T extends AnyDType>(
   NDArray<T> ar, {
   bool returnIndex = false,
   bool returnInverse = false,
@@ -60,13 +60,13 @@ dynamic unique<T extends Object>(
 
     final dest = NDArray<T>.create(flat.shape, flat.dtype);
     final outIndex = returnIndex
-        ? NDArray<int>.create([flat.size], DType.int64)
+        ? NDArray<AnyInt>.create([flat.size], DType.int64)
         : null;
     final outInverse = returnInverse
-        ? NDArray<int>.create([flat.size], DType.int64)
+        ? NDArray<AnyInt>.create([flat.size], DType.int64)
         : null;
     final outCounts = returnCounts
-        ? NDArray<int>.create([flat.size], DType.int64)
+        ? NDArray<AnyInt>.create([flat.size], DType.int64)
         : null;
 
     final pIndex = outIndex != null
@@ -100,13 +100,13 @@ dynamic unique<T extends Object>(
         return (
           values: empty,
           index: returnIndex
-              ? (NDArray<int>.create([0], DType.int64)..detachToParentScope())
+              ? (NDArray<AnyInt>.create([0], DType.int64)..detachToParentScope())
               : null,
           inverse: returnInverse
-              ? (NDArray<int>.create([0], DType.int64)..detachToParentScope())
+              ? (NDArray<AnyInt>.create([0], DType.int64)..detachToParentScope())
               : null,
           counts: returnCounts
-              ? (NDArray<int>.create([0], DType.int64)..detachToParentScope())
+              ? (NDArray<AnyInt>.create([0], DType.int64)..detachToParentScope())
               : null,
         );
       }
@@ -126,18 +126,18 @@ dynamic unique<T extends Object>(
       result = validView.copy()..detachToParentScope();
     }
 
-    NDArray<int>? indexResult;
+    NDArray<AnyInt>? indexResult;
     if (outIndex != null) {
       indexResult = outIndex.slice([Slice(start: 0, stop: uniqueCount)]).copy()
         ..detachToParentScope();
     }
 
-    NDArray<int>? inverseResult;
+    NDArray<AnyInt>? inverseResult;
     if (outInverse != null) {
       inverseResult = outInverse.copy()..detachToParentScope();
     }
 
-    NDArray<int>? countsResult;
+    NDArray<AnyInt>? countsResult;
     if (outCounts != null) {
       countsResult = outCounts.slice([
         Slice(start: 0, stop: uniqueCount),
@@ -162,7 +162,7 @@ dynamic unique<T extends Object>(
 /// Returns the sorted, unique values that are in both of the input arrays.
 ///
 /// It is an error if [ar1] or [ar2] is disposed.
-NDArray<T> intersect1d<T extends Object>(
+NDArray<T> intersect1d<T extends AnyDType>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
   bool assumeUnique = false,
@@ -248,7 +248,7 @@ NDArray<T> intersect1d<T extends Object>(
 /// Returns the unique values in [ar1] that are not in [ar2].
 ///
 /// It is an error if [ar1] or [ar2] is disposed.
-NDArray<T> setdiff1d<T extends Object>(
+NDArray<T> setdiff1d<T extends AnyDType>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
   bool assumeUnique = false,
@@ -334,7 +334,7 @@ NDArray<T> setdiff1d<T extends Object>(
 /// Returns the sorted, unique values that are in only one (not both) of the input arrays.
 ///
 /// It is an error if [ar1] or [ar2] is disposed.
-NDArray<T> setxor1d<T extends Object>(
+NDArray<T> setxor1d<T extends AnyDType>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
   bool assumeUnique = false,
@@ -420,7 +420,7 @@ NDArray<T> setxor1d<T extends Object>(
 /// Returns the unique, sorted array of values that are in either of the two input arrays.
 ///
 /// It is an error if [ar1] or [ar2] is disposed.
-NDArray<T> union1d<T extends Object>(
+NDArray<T> union1d<T extends AnyDType>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
   NDArray<T>? out,
@@ -503,12 +503,12 @@ NDArray<T> union1d<T extends Object>(
 /// Returns a boolean array of the same shape as [element] that is `true` where an element of [element] is in [testElements] and `false` otherwise.
 ///
 /// It is an error if [element] or [testElements] is disposed.
-NDArray<bool> isin<T extends Object>(
+NDArray<Boolean> isin<T extends AnyDType>(
   NDArray<T> element,
   NDArray<T> testElements, {
   bool assumeUnique = false,
   bool invert = false,
-  NDArray<bool>? out,
+  NDArray<Boolean>? out,
 }) {
   if (element.isDisposed || testElements.isDisposed) {
     throw StateError('Cannot execute isin on disposed array(s).');
@@ -544,7 +544,7 @@ NDArray<bool> isin<T extends Object>(
 
     final dest = (out != null && !useTempOut)
         ? out
-        : NDArray<bool>.create(element.shape, DType.boolean);
+        : NDArray<Boolean>.create(element.shape, DType.boolean);
 
     if (element.size == 0) {
       // Empty input array, result is empty boolean array.
@@ -592,10 +592,10 @@ NDArray<bool> isin<T extends Object>(
   });
 }
 
-bool _tryIsinTable<T extends Object>(
+bool _tryIsinTable<T extends AnyDType>(
   NDArray<T> contigElement,
   NDArray<T> flatTest,
-  NDArray<bool> dest,
+  NDArray<Boolean> dest,
   DType<T> dtype,
   bool invert,
 ) {
@@ -867,7 +867,7 @@ bool _tryIsinTable<T extends Object>(
   }
 }
 
-(int, int)? _minMaxInt<T extends Object>(NDArray<T> values) {
+(int, int)? _minMaxInt<T extends AnyDType>(NDArray<T> values) {
   final size = values.size;
   if (size == 0) return null;
   final ptr = values.pointer;
@@ -947,7 +947,7 @@ bool _tryIsinTable<T extends Object>(
   }
 }
 
-({NDArray<T> values, NDArray<int>? counts})? _tryUniqueTable<T extends Object>(
+({NDArray<T> values, NDArray<AnyInt>? counts})? _tryUniqueTable<T extends AnyDType>(
   NDArray<T> values, {
   required bool returnCounts,
   NDArray<T>? out,
@@ -1201,7 +1201,7 @@ bool _tryIsinTable<T extends Object>(
       final NDArray<T> res = (out != null && !useTempOut)
           ? out
           : NDArray<T>.create([uniqueCount], values.dtype);
-      final counts = NDArray<int>.create([uniqueCount], DType.int64);
+      final counts = NDArray<AnyInt>.create([uniqueCount], DType.int64);
 
       final resPtr = res.pointer;
       final pCounts = counts.pointer.cast<ffi.Int64>();

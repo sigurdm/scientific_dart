@@ -16,7 +16,7 @@ import 'manipulation.dart';
 ///
 /// Note: To specify spacings for multiple axes in [gradientArray], use a
 /// `List<Spacing>`.
-sealed class Spacing<V extends Object> {
+sealed class Spacing<V extends AnyDType> {
   const Spacing();
 
   /// Constant spacing of value [value] (e.g. [dx]).
@@ -28,13 +28,13 @@ sealed class Spacing<V extends Object> {
 }
 
 /// Constant spacing implementation.
-final class StepSpacing<V extends Object> extends Spacing<V> {
+final class StepSpacing<V extends AnyDType> extends Spacing<V> {
   final V value;
   const StepSpacing(this.value);
 }
 
 /// Variable coordinate spacing implementation.
-final class CoordinateSpacing<V extends Object> extends Spacing<V> {
+final class CoordinateSpacing<V extends AnyDType> extends Spacing<V> {
   final List<V> values;
   const CoordinateSpacing(this.values);
 }
@@ -83,7 +83,7 @@ bool _listEquals(List a, List b) {
 /// final y = NDArray.fromList([1.0, 2.0, 4.0], [3], DType.float64);
 /// final res = trapz(y, spacing: Spacing.step(1.0)); // 4.5
 /// ```
-NDArray<T> trapz<T>(
+NDArray<T> trapz<T extends AnyDType>(
   NDArray y, {
   Spacing spacing = const Spacing.step(1.0),
   int axis = -1,
@@ -342,9 +342,9 @@ NDArray<T> trapz<T>(
                 );
                 dxStruct.ref.r = 1.0;
                 dxStruct.ref.i = 0.0;
-                NDArray<Complex>? spacingArray;
+                NDArray<AnyComplex>? spacingArray;
                 try {
-                  spacingArray = NDArray<Complex>.fromList(complexValues, [
+                  spacingArray = NDArray<AnyComplex>.fromList(complexValues, [
                     N,
                   ], DType.complex128);
                   s_trapz_complex128_all(
@@ -368,9 +368,9 @@ NDArray<T> trapz<T>(
                 );
                 dxStruct.ref.r = 1.0;
                 dxStruct.ref.i = 0.0;
-                NDArray<Complex>? spacingArray;
+                NDArray<AnyComplex>? spacingArray;
                 try {
-                  spacingArray = NDArray<Complex>.fromList(complexValues, [
+                  spacingArray = NDArray<AnyComplex>.fromList(complexValues, [
                     N,
                   ], DType.complex64);
                   s_trapz_complex64_all(
@@ -392,7 +392,7 @@ NDArray<T> trapz<T>(
                 throw ArgumentError('Unsupported DType for trapz: ${y.dtype}');
             }
           } else {
-            NDArray<num>? spacingArray;
+            NDArray<AnyReal>? spacingArray;
             try {
               final bool useFloat =
                   y.dtype == DType.float32 || y.dtype == DType.complex64;
@@ -402,7 +402,7 @@ NDArray<T> trapz<T>(
                 for (final val in values) {
                   spacingArray.setCellFlat(
                     i++,
-                    Float32((val as num).toDouble()),
+                    (val as num).toDouble(),
                   );
                 }
               } else {
@@ -411,7 +411,7 @@ NDArray<T> trapz<T>(
                 for (final val in values) {
                   spacingArray.setCellFlat(
                     i++,
-                    Float64((val as num).toDouble()),
+                    (val as num).toDouble(),
                   );
                 }
               }
@@ -538,7 +538,7 @@ NDArray<T> trapz<T>(
 /// final f = NDArray.fromList([1.0, 2.0, 4.0, 7.0], [4], DType.float64);
 /// final res = gradient(f, spacing: Spacing.step(1.0)); // [1.0, 1.5, 2.5, 3.0]
 /// ```
-NDArray<T> gradient<T>(
+NDArray<T> gradient<T extends AnyDType>(
   NDArray f, {
   Spacing spacing = const Spacing.step(1.0),
   int axis = 0,
@@ -814,9 +814,9 @@ NDArray<T> gradient<T>(
                 );
                 dxStruct.ref.r = 1.0;
                 dxStruct.ref.i = 0.0;
-                NDArray<Complex>? spacingArray;
+                NDArray<AnyComplex>? spacingArray;
                 try {
-                  spacingArray = NDArray<Complex>.fromList(complexValues, [
+                  spacingArray = NDArray<AnyComplex>.fromList(complexValues, [
                     N,
                   ], DType.complex128);
                   s_gradient_complex128_all(
@@ -841,9 +841,9 @@ NDArray<T> gradient<T>(
                 );
                 dxStruct.ref.r = 1.0;
                 dxStruct.ref.i = 0.0;
-                NDArray<Complex>? spacingArray;
+                NDArray<AnyComplex>? spacingArray;
                 try {
-                  spacingArray = NDArray<Complex>.fromList(complexValues, [
+                  spacingArray = NDArray<AnyComplex>.fromList(complexValues, [
                     N,
                   ], DType.complex64);
                   s_gradient_complex64_all(
@@ -868,7 +868,7 @@ NDArray<T> gradient<T>(
                 );
             }
           } else {
-            NDArray<num>? spacingArray;
+            NDArray<AnyReal>? spacingArray;
             try {
               final bool useFloat =
                   f.dtype == DType.float32 || f.dtype == DType.complex64;
@@ -878,7 +878,7 @@ NDArray<T> gradient<T>(
                 for (final val in values) {
                   spacingArray.setCellFlat(
                     i++,
-                    Float32((val as num).toDouble()),
+                    (val as num).toDouble(),
                   );
                 }
               } else {
@@ -887,7 +887,7 @@ NDArray<T> gradient<T>(
                 for (final val in values) {
                   spacingArray.setCellFlat(
                     i++,
-                    Float64((val as num).toDouble()),
+                    (val as num).toDouble(),
                   );
                 }
               }
@@ -1016,7 +1016,7 @@ NDArray<T> gradient<T>(
 /// // Specific per axis:
 /// final grads2 = gradientArray(f, spacings: [Spacing.step(1.0), Spacing.step(2.0)]);
 /// ```
-List<NDArray<T>> gradientArray<T>(
+List<NDArray<T>> gradientArray<T extends AnyDType>(
   NDArray f, {
   Spacing? spacing,
   List<Spacing>? spacings,

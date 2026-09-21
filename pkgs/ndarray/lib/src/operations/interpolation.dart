@@ -52,9 +52,9 @@ void _validateSorted(NDArray<Float64> xp) {
 /// **Example:**
 /// {@example /example/interpolation_example.dart}
 NDArray<Float64> interp(
-  NDArray<num> x,
-  NDArray<num> xp,
-  NDArray<num> fp, {
+  NDArray<AnyReal> x,
+  NDArray<AnyReal> xp,
+  NDArray<AnyReal> fp, {
   double? left,
   double? right,
   InterpolationMethod method = InterpolationMethod.linear,
@@ -282,9 +282,9 @@ NDArray<Float64> interp(
 ///
 /// Alias for [interp].
 NDArray<Float64> interpolate(
-  NDArray<num> x,
-  NDArray<num> xp,
-  NDArray<num> fp, {
+  NDArray<AnyReal> x,
+  NDArray<AnyReal> xp,
+  NDArray<AnyReal> fp, {
   double? left,
   double? right,
   InterpolationMethod method = InterpolationMethod.linear,

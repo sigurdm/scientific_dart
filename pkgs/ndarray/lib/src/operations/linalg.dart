@@ -36,7 +36,7 @@ NDArray _createZeros(List<int> shape, DType dtype) => switch (dtype) {
   DType.uint8 => NDArray<Uint8>.zeros(shape, DType.uint8),
   DType.complex128 => NDArray<Complex128>.zeros(shape, DType.complex128),
   DType.complex64 => NDArray<Complex64>.zeros(shape, DType.complex64),
-  DType.boolean => NDArray<bool>.zeros(shape, DType.boolean),
+  DType.boolean => NDArray<Boolean>.zeros(shape, DType.boolean),
 };
 
 (int, int) _physicalByteSpan(NDArray x) {
@@ -98,7 +98,7 @@ void _matmulUint64(
 }
 
 /// Matrix multiplication using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
-NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+NDArray<R> matmul<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute matmul() on a disposed array.');
   }
@@ -1088,7 +1088,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 /// {@example /example/linalg_multi_dot_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.multi_dot](https://numpy.org/doc/stable/reference/generated/numpy.linalg.multi_dot.html)
-NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
+NDArray<T> multi_dot<T extends AnyDType>(List<NDArray<AnyDType>> arrays, {NDArray<T>? out}) {
   for (final a in arrays) {
     if (a.isDisposed) {
       throw StateError(
@@ -1162,7 +1162,7 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
   }
 
   // Resolve target DType and upcasted type
-  DType<dynamic> targetDType = arrays[0].dtype;
+  DType<AnyDType> targetDType = arrays[0].dtype;
   for (var i = 1; i < n; i++) {
     targetDType = resolveDType(targetDType, arrays[i].dtype);
   }
@@ -1277,7 +1277,7 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
 /// ```
 ///
 /// Reference: [Matrix Inversion](https://en.wikipedia.org/wiki/Invertible_matrix)
-NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> inv<T extends AnyDType>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute inverse of a disposed array.');
   }
@@ -1570,7 +1570,7 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
 ///
 /// Returns a 0-dimensional [NDArray] if [a] is a 2D matrix, or a new [NDArray] with stack dimensions if [a] is a stack of matrices.
-NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> det<T extends AnyDType>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute determinant of a disposed array.');
   }
@@ -1802,7 +1802,7 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// - A record `(sign, logdet)` of two NDArrays, representing the sign (or phase) and log of the absolute determinant.
 ///
 /// Reference: [NumPy linalg.slogdet](https://numpy.org/doc/stable/reference/generated/numpy.linalg.slogdet.html)
-({NDArray<T> sign, NDArray<R> logabsdet}) slogdet<T, R extends num>(
+({NDArray<T> sign, NDArray<R> logabsdet}) slogdet<T, R extends AnyReal>(
   NDArray<T> a, {
   NDArray<T>? outSign,
   NDArray<R>? outLogdet,
@@ -2044,7 +2044,7 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
 }
 
 /// Extension on [slogdet] result record type to support easy disposal of both arrays.
-extension SlogdetRecordDispose<T, R>
+extension SlogdetRecordDispose<T extends AnyDType, R extends AnyDType>
     on ({NDArray<T> sign, NDArray<R> logabsdet}) {
   /// Disposes both [sign] and [logabsdet] arrays simultaneously.
   void dispose() {
@@ -2238,7 +2238,7 @@ void _lapackeSolve(
 ///
 /// **Example:**
 /// {@example /example/linalg_example.dart#solve_system lang=dart}
-NDArray<T> solve<T extends Object>(
+NDArray<T> solve<T extends AnyDType>(
   NDArray<T> a,
   NDArray<T> b, {
   NDArray<T>? out,
@@ -2464,8 +2464,8 @@ NDArray<T> solve<T extends Object>(
 /// Computes the eigenvalues and right eigenvectors of a square array or stack of square arrays.
 ///
 /// Returns a record `(eigenvalues, eigenvectors)` containing:
-/// - **eigenvalues**: An `NDArray<Complex>` of shape `[..., N]` containing the eigenvalues.
-/// - **eigenvectors**: An `NDArray<Complex>` of shape `[..., N, N]` containing the corresponding right eigenvectors as columns.
+/// - **eigenvalues**: An `NDArray<AnyComplex>` of shape `[..., N]` containing the eigenvalues.
+/// - **eigenvectors**: An `NDArray<AnyComplex>` of shape `[..., N, N]` containing the corresponding right eigenvectors as columns.
 ///
 /// Both are returned with `Complex` elements because eigenvalues and eigenvectors can be complex
 /// even for real matrices.
@@ -2475,9 +2475,9 @@ NDArray<T> solve<T extends Object>(
 /// - It is an error if [a] is not square in its last two dimensions or is less than 2-dimensional.
 /// - It is an error if the DType of [a] is not supported.
 /// - It is an error if [out] is provided and has incompatible shape or dtype.
-({NDArray<Complex> eigenvalues, NDArray<Complex> eigenvectors}) eig<T>(
+({NDArray<AnyComplex> eigenvalues, NDArray<AnyComplex> eigenvectors}) eig<T extends AnyDType>(
   NDArray<T> a, {
-  ({NDArray<Complex> eigenvalues, NDArray<Complex> eigenvectors})? out,
+  ({NDArray<AnyComplex> eigenvalues, NDArray<AnyComplex> eigenvectors})? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute eig of a disposed array.');
@@ -2503,8 +2503,8 @@ NDArray<T> solve<T extends Object>(
   final vrShape = [...stackShape, n, n];
 
   return NDArray.scope(() {
-    final NDArray<Complex> w;
-    final NDArray<Complex> vr;
+    final NDArray<AnyComplex> w;
+    final NDArray<AnyComplex> vr;
 
     if (out != null) {
       w = out.eigenvalues;
@@ -2530,8 +2530,8 @@ NDArray<T> solve<T extends Object>(
         return (eigenvalues: w, eigenvectors: vr);
       }
     } else {
-      w = NDArray<Complex>.create(wShape, compDType);
-      vr = NDArray<Complex>.create(vrShape, compDType);
+      w = NDArray<AnyComplex>.create(wShape, compDType);
+      vr = NDArray<AnyComplex>.create(vrShape, compDType);
     }
 
     if (n == 0) {
@@ -2580,8 +2580,8 @@ NDArray<T> solve<T extends Object>(
 
           switch (src.dtype) {
             case DType.complex128:
-              final w2D = NDArray<Complex>.create([n], DType.complex128);
-              final vr2D = NDArray<Complex>.create([n, n], DType.complex128);
+              final w2D = NDArray<AnyComplex>.create([n], DType.complex128);
+              final vr2D = NDArray<AnyComplex>.create([n, n], DType.complex128);
               try {
                 final info = LAPACKE_zgeev(
                   101, // ROW_MAJOR
@@ -2608,7 +2608,7 @@ NDArray<T> solve<T extends Object>(
                   );
                 }
 
-                final wView = NDArray<Complex>.view(
+                final wView = NDArray<AnyComplex>.view(
                   w,
                   shape: [n],
                   strides: w.strides.isEmpty ? [1] : [w.strides.last],
@@ -2617,7 +2617,7 @@ NDArray<T> solve<T extends Object>(
                 w2D.copy(out: wView);
                 wView.dispose();
 
-                final vrView = NDArray<Complex>.view(
+                final vrView = NDArray<AnyComplex>.view(
                   vr,
                   shape: [n, n],
                   strides: vr.strides.sublist(rank - 2),
@@ -2630,8 +2630,8 @@ NDArray<T> solve<T extends Object>(
                 vr2D.dispose();
               }
             case DType.complex64:
-              final w2D = NDArray<Complex>.create([n], DType.complex64);
-              final vr2D = NDArray<Complex>.create([n, n], DType.complex64);
+              final w2D = NDArray<AnyComplex>.create([n], DType.complex64);
+              final vr2D = NDArray<AnyComplex>.create([n, n], DType.complex64);
               try {
                 final info = LAPACKE_cgeev(
                   101, // ROW_MAJOR
@@ -2658,7 +2658,7 @@ NDArray<T> solve<T extends Object>(
                   );
                 }
 
-                final wView = NDArray<Complex>.view(
+                final wView = NDArray<AnyComplex>.view(
                   w,
                   shape: [n],
                   strides: w.strides.isEmpty ? [1] : [w.strides.last],
@@ -2667,7 +2667,7 @@ NDArray<T> solve<T extends Object>(
                 w2D.copy(out: wView);
                 wView.dispose();
 
-                final vrView = NDArray<Complex>.view(
+                final vrView = NDArray<AnyComplex>.view(
                   vr,
                   shape: [n, n],
                   strides: vr.strides.sublist(rank - 2),
@@ -2804,7 +2804,7 @@ NDArray<T> solve<T extends Object>(
 
 /// Extension on eigenvalue decomposition result record type to support easy disposal of both arrays.
 extension EigRecordDispose
-    on ({NDArray<Complex> eigenvalues, NDArray<Complex> eigenvectors}) {
+    on ({NDArray<AnyComplex> eigenvalues, NDArray<AnyComplex> eigenvectors}) {
   /// Disposes both [eigenvalues] and [eigenvectors] simultaneously,
   /// freeing their underlying unmanaged C memory.
   ///
@@ -2826,10 +2826,10 @@ extension EigRecordDispose
 /// - It is an error if [out] is provided and has incompatible shape or dtype.
 ///
 /// **Returns:**
-/// - A contiguous `NDArray<Complex>` containing the computed eigenvalues.
+/// - A contiguous `NDArray<AnyComplex>` containing the computed eigenvalues.
 ///
 /// Reference: [NumPy linalg.eigvals](https://numpy.org/doc/stable/reference/generated/numpy.linalg.eigvals.html)
-NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
+NDArray<AnyComplex> eigvals<T extends AnyDType>(NDArray<T> a, {NDArray<AnyComplex>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute eigvals of a disposed array.');
   }
@@ -2852,7 +2852,7 @@ NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
   final wShape = [...stackShape, n];
 
   return NDArray.scope(() {
-    final NDArray<Complex> w;
+    final NDArray<AnyComplex> w;
 
     if (out != null) {
       w = out;
@@ -2867,7 +2867,7 @@ NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
         return w;
       }
     } else {
-      w = NDArray<Complex>.create(wShape, compDType);
+      w = NDArray<AnyComplex>.create(wShape, compDType);
     }
 
     if (n == 0) {
@@ -2918,7 +2918,7 @@ NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
 
           switch (src.dtype) {
             case DType.complex128:
-              final w2D = NDArray<Complex>.create([n], DType.complex128);
+              final w2D = NDArray<AnyComplex>.create([n], DType.complex128);
               try {
                 final info = LAPACKE_zgeev(
                   101, // ROW_MAJOR
@@ -2945,7 +2945,7 @@ NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
                   );
                 }
 
-                final wView = NDArray<Complex>.view(
+                final wView = NDArray<AnyComplex>.view(
                   w,
                   shape: [n],
                   strides: w.strides.isEmpty ? [1] : [w.strides.last],
@@ -2958,7 +2958,7 @@ NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
               }
 
             case DType.complex64:
-              final w2D = NDArray<Complex>.create([n], DType.complex64);
+              final w2D = NDArray<AnyComplex>.create([n], DType.complex64);
               try {
                 final info = LAPACKE_cgeev(
                   101, // ROW_MAJOR
@@ -2985,7 +2985,7 @@ NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
                   );
                 }
 
-                final wView = NDArray<Complex>.view(
+                final wView = NDArray<AnyComplex>.view(
                   w,
                   shape: [n],
                   strides: w.strides.isEmpty ? [1] : [w.strides.last],
@@ -3114,7 +3114,7 @@ NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
 ///
 /// **Example:**
 /// {@example /example/linalg_premium_example.dart lang=dart}
-NDArray<T> pinv<T extends Object>(
+NDArray<T> pinv<T extends AnyDType>(
   NDArray<T> a, {
   double? rcond,
   NDArray<T>? out,
@@ -3228,7 +3228,7 @@ NDArray<T> pinv<T extends Object>(
 ///
 /// **Example:**
 /// {@example /example/linalg_premium_example.dart lang=dart}
-NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
+NDArray<T> matrix_power<T extends AnyDType>(NDArray<T> a, int n, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute matrix_power() on a disposed array.');
   }
@@ -3357,7 +3357,7 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
 /// {@example /example/linalg_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.cholesky](https://numpy.org/doc/stable/reference/generated/numpy.linalg.cholesky.html)
-NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> cholesky<T extends AnyDType>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cholesky() on a disposed array.');
   }
@@ -3539,7 +3539,7 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 /// final q = res.q;
 /// final r = res.r;
 /// ```
-({NDArray<T> q, NDArray<T> r}) qr<T extends Object>(
+({NDArray<T> q, NDArray<T> r}) qr<T extends AnyDType>(
   NDArray<T> a, {
   ({NDArray<T> q, NDArray<T> r})? out,
 }) {
@@ -3929,7 +3929,7 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 /// final s = res.s;
 /// final vh = res.vh;
 /// ```
-({NDArray<T> u, NDArray<Float64> s, NDArray<T> vh}) svd<T extends Object>(
+({NDArray<T> u, NDArray<Float64> s, NDArray<T> vh}) svd<T extends AnyDType>(
   NDArray<T> a, {
   ({NDArray<T> u, NDArray<Float64> s, NDArray<T> vh})? out,
 }) {
@@ -4050,7 +4050,7 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   return _svd<T>(a, out: out);
 }
 
-({NDArray<T> u, NDArray<Float64> s, NDArray<T> vh}) _svd<T extends Object>(
+({NDArray<T> u, NDArray<Float64> s, NDArray<T> vh}) _svd<T extends AnyDType>(
   NDArray<T> a, {
   ({NDArray<T> u, NDArray<Float64> s, NDArray<T> vh})? out,
 }) {
@@ -4353,7 +4353,7 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   });
 }
 
-NDArray<Float64> _svdVals<T extends Object>(NDArray<T> a) {
+NDArray<Float64> _svdVals<T extends AnyDType>(NDArray<T> a) {
   if (a.dtype == DType.float16 || a.dtype == DType.bfloat16) {
     return NDArray.scope(() {
       final aF64 = castNDArray<Float64>(a, DType.float64);
@@ -4558,11 +4558,11 @@ NDArray<Float64> _svdVals<T extends Object>(NDArray<T> a) {
 /// - [ArgumentError] if [a] has unsupported dtype.
 /// - [ArgumentError] if [outEigenvalues] or [outEigenvectors] are incompatible.
 /// - [StateError] if the LAPACK call fails.
-({NDArray<num> eigenvalues, NDArray<R> eigenvectors})
-eigh<T extends Object, R extends Object>(
+({NDArray<AnyReal> eigenvalues, NDArray<R> eigenvectors})
+eigh<T extends AnyDType, R extends AnyDType>(
   NDArray<T> a, {
   MatrixTriangle uplo = MatrixTriangle.lower,
-  NDArray<num>? outEigenvalues,
+  NDArray<AnyReal>? outEigenvalues,
   NDArray<T>? outEigenvectors,
 }) {
   if (a.isDisposed) {
@@ -4681,11 +4681,11 @@ eigh<T extends Object, R extends Object>(
   }
 
   return NDArray.scope(() {
-    final NDArray<num> wMat;
+    final NDArray<AnyReal> wMat;
     if (outEigenvalues != null) {
       wMat = outEigenvalues;
     } else {
-      wMat = _zerosTyped(eigenvaluesShape, eigenvalueDType) as NDArray<num>;
+      wMat = _zerosTyped(eigenvaluesShape, eigenvalueDType) as NDArray<AnyReal>;
     }
 
     final NDArray vMat;
@@ -4705,7 +4705,7 @@ eigh<T extends Object, R extends Object>(
     final jobzVal = 86; // 'V'
 
     final aCopy2D = _createTyped2D(n, n, targetDType);
-    final w2D = _zerosTyped([n], eigenvalueDType) as NDArray<num>;
+    final w2D = _zerosTyped([n], eigenvalueDType) as NDArray<AnyReal>;
 
     final marker = ScratchArena.marker;
     try {
@@ -4840,8 +4840,8 @@ eigh<T extends Object, R extends Object>(
 }
 
 /// Extension on [eigh] result record type to support easy disposal of both arrays.
-extension EighRecordDispose<T>
-    on ({NDArray<num> eigenvalues, NDArray<T> eigenvectors}) {
+extension EighRecordDispose<T extends AnyDType>
+    on ({NDArray<AnyReal> eigenvalues, NDArray<T> eigenvectors}) {
   /// Disposes both [eigenvalues] and [eigenvectors] simultaneously,
   /// freeing their underlying unmanaged C memory.
   void dispose() {
@@ -4865,10 +4865,10 @@ extension EighRecordDispose<T>
 /// - [ArgumentError] if [a] has unsupported dtype.
 /// - [ArgumentError] if [out] is incompatible.
 /// - [StateError] if the LAPACK call fails.
-NDArray<num> eigvalsh<T>(
+NDArray<AnyReal> eigvalsh<T extends AnyDType>(
   NDArray<T> a, {
   MatrixTriangle uplo = MatrixTriangle.lower,
-  NDArray<num>? out,
+  NDArray<AnyReal>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot calculate eigvalsh on a disposed array.');
@@ -4935,11 +4935,11 @@ NDArray<num> eigvalsh<T>(
   }
 
   return NDArray.scope(() {
-    final NDArray<num> wMat;
+    final NDArray<AnyReal> wMat;
     if (out != null) {
       wMat = out;
     } else {
-      wMat = _zerosTyped(eigenvaluesShape, eigenvalueDType) as NDArray<num>;
+      wMat = _zerosTyped(eigenvaluesShape, eigenvalueDType) as NDArray<AnyReal>;
     }
 
     if (n == 0) {
@@ -4953,7 +4953,7 @@ NDArray<num> eigvalsh<T>(
     final jobzVal = 78; // 'N'
 
     final aCopy2D = _createTyped2D(n, n, targetDType);
-    final w2D = _zerosTyped([n], eigenvalueDType) as NDArray<num>;
+    final w2D = _zerosTyped([n], eigenvalueDType) as NDArray<AnyReal>;
 
     final marker = ScratchArena.marker;
     try {
@@ -5098,7 +5098,7 @@ NDArray<num> eigvalsh<T>(
 ///
 /// **Throws:**
 /// - Throws [LinAlgException] if the QR algorithm fails to compute eigenvalues or if eigenvalues cannot be reordered.
-({NDArray<R> t, NDArray<R> z}) schur<T extends Object, R extends Object>(
+({NDArray<R> t, NDArray<R> z}) schur<T extends AnyDType, R extends AnyDType>(
   NDArray<T> a, {
   SchurForm output = SchurForm.real,
   NDArray<R>? outT,
@@ -5443,7 +5443,7 @@ NDArray<num> eigvalsh<T>(
 ///
 /// **Throws:**
 /// - [StateError] if the LAPACK call fails.
-({NDArray<R> h, NDArray<R> q}) hessenberg<T extends Object, R extends Object>(
+({NDArray<R> h, NDArray<R> q}) hessenberg<T extends AnyDType, R extends AnyDType>(
   NDArray<T> a, {
   NDArray<R>? outH,
   NDArray<R>? outQ,
@@ -5793,7 +5793,7 @@ NDArray _zerosTyped(List<int> shape, DType dtype) {
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy outer](https://numpy.org/doc/stable/reference/generated/numpy.outer.html)
-NDArray<R> outer<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+NDArray<R> outer<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute outer() on a disposed array.');
   }
@@ -5985,7 +5985,7 @@ NDArray<R> outer<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy cross](https://numpy.org/doc/stable/reference/generated/numpy.cross.html)
-NDArray<R> cross<Ta, Tb, R>(
+NDArray<R> cross<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   int? axisa,
@@ -6388,7 +6388,7 @@ enum NormKind {
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.norm](https://numpy.org/doc/stable/reference/generated/numpy.linalg.norm.html)
-NDArray<R> norm<T extends Object, R extends num>(
+NDArray<R> norm<T extends AnyDType, R extends AnyReal>(
   NDArray<T> a, {
   dynamic ord,
   dynamic axis,
@@ -6597,7 +6597,7 @@ NDArray<R> norm<T extends Object, R extends num>(
   });
 }
 
-double _vectorNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
+double _vectorNorm<T extends AnyDType>(NDArray<T> a, dynamic ord, DType targetDType) {
   if (ord is NormKind) {
     ord = switch (ord) {
       NormKind.l1 => 1,
@@ -6720,7 +6720,7 @@ double _vectorNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
   }
 }
 
-double _matrixNorm<T extends Object>(
+double _matrixNorm<T extends AnyDType>(
   NDArray<T> a,
   dynamic ord,
   DType targetDType,
@@ -6845,14 +6845,14 @@ double _matrixNorm<T extends Object>(
   }
 }
 
-extension QRRecordDispose<T> on ({NDArray<T> q, NDArray<T> r}) {
+extension QRRecordDispose<T extends AnyDType> on ({NDArray<T> q, NDArray<T> r}) {
   void dispose() {
     this.q.dispose();
     this.r.dispose();
   }
 }
 
-extension SVDRecordDispose<T, S extends num>
+extension SVDRecordDispose<T, S extends AnyReal>
     on ({NDArray<T> u, NDArray<S> s, NDArray<T> vh}) {
   void dispose() {
     this.u.dispose();
@@ -6861,14 +6861,14 @@ extension SVDRecordDispose<T, S extends num>
   }
 }
 
-extension SchurRecordDispose<T> on ({NDArray<T> t, NDArray<T> z}) {
+extension SchurRecordDispose<T extends AnyDType> on ({NDArray<T> t, NDArray<T> z}) {
   void dispose() {
     this.t.dispose();
     this.z.dispose();
   }
 }
 
-extension HessenbergRecordDispose<T> on ({NDArray<T> h, NDArray<T> q}) {
+extension HessenbergRecordDispose<T extends AnyDType> on ({NDArray<T> h, NDArray<T> q}) {
   void dispose() {
     this.h.dispose();
     this.q.dispose();
@@ -6876,7 +6876,7 @@ extension HessenbergRecordDispose<T> on ({NDArray<T> h, NDArray<T> q}) {
 }
 
 /// Result record of a least-squares linear system solution from [lstsq].
-typedef LstsqResult<T> = ({
+typedef LstsqResult<T extends AnyDType> = ({
   NDArray<T> x,
   NDArray<Float64> residuals,
   int rank,
@@ -6884,7 +6884,7 @@ typedef LstsqResult<T> = ({
 });
 
 /// Extension on [LstsqResult] to support easy disposal of all returned unmanaged buffers.
-extension LstsqResultDispose<T> on LstsqResult<T> {
+extension LstsqResultDispose<T extends AnyDType> on LstsqResult<T> {
   /// Disposes [x], [residuals], and [s] arrays simultaneously.
   void dispose() {
     this.x.dispose();
@@ -6926,7 +6926,7 @@ extension LstsqResultDispose<T> on LstsqResult<T> {
 /// {@example /example/linalg_lstsq_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
-LstsqResult<R> lstsq<Ta, Tb, R>(
+LstsqResult<R> lstsq<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double? rcond,
@@ -7249,7 +7249,7 @@ LstsqResult<R> lstsq<Ta, Tb, R>(
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.cond](https://numpy.org/doc/stable/reference/generated/numpy.linalg.cond.html)
-NDArray<R> cond<T extends Object, R extends num>(
+NDArray<R> cond<T extends AnyDType, R extends AnyReal>(
   NDArray<T> a, {
   dynamic p,
   NDArray<R>? out,
@@ -7324,7 +7324,7 @@ NDArray<R> cond<T extends Object, R extends num>(
   }
 
   return NDArray.scope(() {
-    final NDArray<Object> aUse = switch (a.dtype) {
+    final NDArray<AnyDType> aUse = switch (a.dtype) {
       DType.float64 ||
       DType.float32 ||
       DType.complex64 ||
@@ -7349,7 +7349,7 @@ NDArray<R> cond<T extends Object, R extends num>(
       }
       final aSlice = stackShape.isEmpty
           ? aUse
-          : NDArray<Object>.view(
+          : NDArray<AnyDType>.view(
               aUse,
               shape: [m, n],
               strides: aUse.strides.sublist(rank - 2),

@@ -31,11 +31,11 @@ import 'utility.dart';
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy clip](https://numpy.org/doc/stable/reference/generated/numpy.clip.html)
-NDArray<T> clip<T>(
+NDArray<T> clip<T extends AnyDType>(
   NDArray<T> a, {
   num? min,
   num? max,
-  NDArray<dynamic>? where,
+  NDArray<AnyDType>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -109,7 +109,7 @@ NDArray<T> clip<T>(
       case DType.uint64:
         final mn = _toUint64Bound(min, isMax: false);
         final mx = _toUint64Bound(max, isMax: true);
-        unaryOp<dynamic, dynamic>(
+        unaryOp<AnyDType, AnyDType>(
           result,
           a,
           a.shape,
@@ -130,7 +130,7 @@ NDArray<T> clip<T>(
       case DType.uint8:
         final mn = resolvedMin.toInt();
         final mx = resolvedMax.toInt();
-        unaryOp<dynamic, dynamic>(
+        unaryOp<AnyDType, AnyDType>(
           result,
           a,
           a.shape,
@@ -145,7 +145,7 @@ NDArray<T> clip<T>(
       default:
         final mn = resolvedMin.toDouble();
         final mx = resolvedMax.toDouble();
-        unaryOp<dynamic, dynamic>(
+        unaryOp<AnyDType, AnyDType>(
           result,
           a,
           a.shape,
@@ -195,11 +195,11 @@ NDArray<T> clip<T>(
 /// ```
 ///
 /// Reference: [NumPy clip](https://numpy.org/doc/stable/reference/generated/numpy.clip.html)
-NDArray<T> clipArray<T>(
+NDArray<T> clipArray<T extends AnyDType>(
   NDArray<T> a, {
   NDArray<T>? min,
   NDArray<T>? max,
-  NDArray<dynamic>? where,
+  NDArray<AnyDType>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -398,7 +398,7 @@ NDArray<T> clipArray<T>(
 
       switch (a.dtype) {
         case DType.uint64:
-          ternaryOp<dynamic, dynamic, dynamic, dynamic>(
+          ternaryOp<AnyDType, AnyDType, AnyDType, AnyDType>(
             result,
             broadcastA,
             broadcastMin,
@@ -421,7 +421,7 @@ NDArray<T> clipArray<T>(
             maskHolder.pointer,
           );
         default:
-          ternaryOp<dynamic, dynamic, dynamic, dynamic>(
+          ternaryOp<AnyDType, AnyDType, AnyDType, AnyDType>(
             result,
             broadcastA,
             broadcastMin,

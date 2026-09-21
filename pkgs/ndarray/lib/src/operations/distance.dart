@@ -104,7 +104,7 @@ NDArray<Float64> _promoteToFloat64(NDArray a) {
 /// - Space complexity is $O(M^2)$ for the output array.
 ///
 /// {@example /example/distance_example.dart}
-NDArray<Float64> pdist<T extends Object>(
+NDArray<Float64> pdist<T extends AnyDType>(
   NDArray<T> x, {
   DistanceMetric metric = DistanceMetric.euclidean,
   NDArray<Float64>? out,
@@ -217,7 +217,7 @@ NDArray<Float64> pdist<T extends Object>(
 /// - Space complexity is $O(M K)$ for the output array.
 ///
 /// {@example /example/distance_example.dart}
-NDArray<Float64> cdist<Ta extends Object, Tb extends Object>(
+NDArray<Float64> cdist<Ta extends AnyDType, Tb extends AnyDType>(
   NDArray<Ta> xa,
   NDArray<Tb> xb, {
   DistanceMetric metric = DistanceMetric.euclidean,
@@ -287,8 +287,8 @@ NDArray<Float64> cdist<Ta extends Object, Tb extends Object>(
       }
     }
 
-    NDArray<Object> xaReal = xa;
-    NDArray<Object> xbReal = xb;
+    NDArray<AnyDType> xaReal = xa;
+    NDArray<AnyDType> xbReal = xb;
     if (xa.dtype != xb.dtype) {
       xaReal = _promoteToFloat64(xa);
       xbReal = _promoteToFloat64(xb);
@@ -327,7 +327,7 @@ NDArray<Float64> cdist<Ta extends Object, Tb extends Object>(
 
 /// Helper for optimized Cosine pdist implementation in Dart.
 /// Cosine pdist is implemented using ndarray operations, not in a single intrinsic.
-NDArray<Float64> _pdistCosine<T extends Object>(
+NDArray<Float64> _pdistCosine<T extends AnyDType>(
   NDArray<T> x, {
   NDArray<Float64>? out,
 }) {
@@ -360,7 +360,7 @@ NDArray<Float64> _pdistCosine<T extends Object>(
     );
 
     final NDArray<Float64> div = divide(dot, denom);
-    final one = NDArray<Float64>.fromList([Float64(1.0)], [1], DType.float64);
+    final one = NDArray<Float64>.fromList([1.0], [1], DType.float64);
     final NDArray<Float64> cosDistMatrix = subtract(one, div);
 
     final flatPtr = cosDistMatrix.pointer.cast<ffi.Double>();
@@ -387,7 +387,7 @@ NDArray<Float64> _pdistCosine<T extends Object>(
 
 /// Helper for optimized Cosine cdist implementation in Dart.
 /// Cosine cdist is implemented using ndarray operations, not in a single intrinsic.
-NDArray<Float64> _cdistCosine<Ta extends Object, Tb extends Object>(
+NDArray<Float64> _cdistCosine<Ta extends AnyDType, Tb extends AnyDType>(
   NDArray<Ta> xa,
   NDArray<Tb> xb, {
   NDArray<Float64>? out,
@@ -423,7 +423,7 @@ NDArray<Float64> _cdistCosine<Ta extends Object, Tb extends Object>(
     );
 
     final NDArray<Float64> div = divide(dot, denom);
-    final one = NDArray<Float64>.fromList([Float64(1.0)], [1], DType.float64);
+    final one = NDArray<Float64>.fromList([1.0], [1], DType.float64);
     subtract(one, div, out: result);
 
     if (out != null) {

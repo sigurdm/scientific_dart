@@ -240,7 +240,7 @@ final class NDIter {
 ///   print('coords: ${en.coords}, value: ${en.value}');
 /// }
 /// ```
-final class NDEnumerate<T> {
+final class NDEnumerate<T extends AnyDType> {
   final NDArray<T> _array;
   final NDIter _iter;
 

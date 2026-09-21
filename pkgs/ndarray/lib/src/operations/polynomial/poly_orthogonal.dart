@@ -59,14 +59,14 @@ bool _isZeroScalar(Object a) {
   return (a as num) == 0;
 }
 
-NDArray<R> _ensureDType<T, R>(NDArray<T> a, DType<R> targetDType) {
+NDArray<R> _ensureDType<T extends AnyDType, R extends AnyDType>(NDArray<T> a, DType<R> targetDType) {
   if (a.dtype == targetDType) {
     return a as NDArray<R>;
   }
   return castNDArray(a, targetDType);
 }
 
-void _copyInto<R>(NDArray src, NDArray<R> out) {
+void _copyInto<R extends AnyDType>(NDArray src, NDArray<R> out) {
   src.copy(out: out);
 }
 
@@ -82,7 +82,7 @@ void _copyInto<R>(NDArray src, NDArray<R> out) {
 /// - It is an error if coefficient array is invalid or [out] buffer mismatches.
 ///
 /// Reference: [NumPy chebval](https://numpy.org/doc/stable/reference/generated/numpy.polynomial.chebyshev.chebval.html)
-NDArray<R> chebval<T1, T2, R>(
+NDArray<R> chebval<T1 extends AnyDType, T2 extends AnyDType, R extends AnyDType>(
   NDArray<T1> arg1,
   NDArray<T2> arg2, {
   NDArray<R>? out,
@@ -108,7 +108,7 @@ NDArray<R> chebval<T1, T2, R>(
 /// Supports flexible argument order (c, x) or (x, c).
 ///
 /// Reference: [NumPy legval](https://numpy.org/doc/stable/reference/generated/numpy.polynomial.legendre.legval.html)
-NDArray<R> legval<T1, T2, R>(
+NDArray<R> legval<T1 extends AnyDType, T2 extends AnyDType, R extends AnyDType>(
   NDArray<T1> arg1,
   NDArray<T2> arg2, {
   NDArray<R>? out,
@@ -134,7 +134,7 @@ NDArray<R> legval<T1, T2, R>(
 /// Supports flexible argument order (c, x) or (x, c).
 ///
 /// Reference: [NumPy hermval](https://numpy.org/doc/stable/reference/generated/numpy.polynomial.hermite.hermval.html)
-NDArray<R> hermval<T1, T2, R>(
+NDArray<R> hermval<T1 extends AnyDType, T2 extends AnyDType, R extends AnyDType>(
   NDArray<T1> arg1,
   NDArray<T2> arg2, {
   NDArray<R>? out,
@@ -160,7 +160,7 @@ NDArray<R> hermval<T1, T2, R>(
 /// Supports flexible argument order (c, x) or (x, c).
 ///
 /// Reference: [NumPy lagval](https://numpy.org/doc/stable/reference/generated/numpy.polynomial.laguerre.lagval.html)
-NDArray<R> lagval<T1, T2, R>(
+NDArray<R> lagval<T1 extends AnyDType, T2 extends AnyDType, R extends AnyDType>(
   NDArray<T1> arg1,
   NDArray<T2> arg2, {
   NDArray<R>? out,
@@ -180,7 +180,7 @@ NDArray<R> lagval<T1, T2, R>(
   return _evalClenshaw(cArr, xArr, _OrthoKind.laguerre, out: out);
 }
 
-NDArray<R> _evalClenshaw<Tc, Tx, R>(
+NDArray<R> _evalClenshaw<Tc extends AnyDType, Tx extends AnyDType, R extends AnyDType>(
   NDArray<Tc> c,
   NDArray<Tx> x,
   _OrthoKind kind, {
@@ -629,29 +629,29 @@ NDArray<R> _evalClenshaw<Tc, Tx, R>(
 }
 
 /// Finds roots of a Chebyshev series.
-NDArray<Complex> chebroots<T>(NDArray<T> c, {NDArray<Complex>? out}) {
+NDArray<AnyComplex> chebroots<T extends AnyDType>(NDArray<T> c, {NDArray<AnyComplex>? out}) {
   return _orthoRoots(c, _OrthoKind.chebyshev, out: out);
 }
 
 /// Finds roots of a Legendre series.
-NDArray<Complex> legroots<T>(NDArray<T> c, {NDArray<Complex>? out}) {
+NDArray<AnyComplex> legroots<T extends AnyDType>(NDArray<T> c, {NDArray<AnyComplex>? out}) {
   return _orthoRoots(c, _OrthoKind.legendre, out: out);
 }
 
 /// Finds roots of a Hermite series.
-NDArray<Complex> hermroots<T>(NDArray<T> c, {NDArray<Complex>? out}) {
+NDArray<AnyComplex> hermroots<T extends AnyDType>(NDArray<T> c, {NDArray<AnyComplex>? out}) {
   return _orthoRoots(c, _OrthoKind.hermite, out: out);
 }
 
 /// Finds roots of a Laguerre series.
-NDArray<Complex> lagroots<T>(NDArray<T> c, {NDArray<Complex>? out}) {
+NDArray<AnyComplex> lagroots<T extends AnyDType>(NDArray<T> c, {NDArray<AnyComplex>? out}) {
   return _orthoRoots(c, _OrthoKind.laguerre, out: out);
 }
 
-NDArray<Complex> _orthoRoots<T>(
+NDArray<AnyComplex> _orthoRoots<T extends AnyDType>(
   NDArray<T> c,
   _OrthoKind kind, {
-  NDArray<Complex>? out,
+  NDArray<AnyComplex>? out,
 }) {
   if (c.isDisposed || (out != null && out.isDisposed)) {
     throw StateError("Cannot execute root finding on a disposed array.");
@@ -685,7 +685,7 @@ NDArray<Complex> _orthoRoots<T>(
     }
 
     if (n <= 0) {
-      final res = NDArray<Complex>.zeros([0], targetComplexDType);
+      final res = NDArray<AnyComplex>.zeros([0], targetComplexDType);
       if (out != null) {
         _copyInto(res, out);
         return out;
@@ -712,7 +712,7 @@ NDArray<Complex> _orthoRoots<T>(
       final complexRoot = rootVal is Complex
           ? rootVal
           : Complex((rootVal as num).toDouble(), 0.0);
-      final res = NDArray<Complex>.fromList(
+      final res = NDArray<AnyComplex>.fromList(
         [complexRoot],
         [1],
         targetComplexDType,
@@ -730,7 +730,7 @@ NDArray<Complex> _orthoRoots<T>(
     switch (c.dtype) {
       case DType.complex64:
       case DType.complex128:
-        cMat = NDArray<Complex>.zeros([n, n], c.dtype as DType<Complex>);
+        cMat = NDArray<AnyComplex>.zeros([n, n], c.dtype as DType<Complex>);
         break;
       default:
         cMat = NDArray<Float64>.zeros([n, n], DType.float64);

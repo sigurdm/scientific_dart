@@ -48,7 +48,7 @@ void setNumThreads(int numThreads) {
 /// // ([1, 0], 30)
 /// // ([1, 1], 40)
 /// ```
-Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
+Iterable<(List<int> coordinate, T value)> ndenumerate<T extends AnyDType>(NDArray<T> a) sync* {
   if (a.isDisposed) {
     throw StateError('Cannot execute ndenumerate() on a disposed array.');
   }
@@ -102,7 +102,7 @@ NDArray nan_to_num(
   double nan = 0.0,
   double? posinf,
   double? neginf,
-  NDArray<dynamic>? where,
+  NDArray<AnyDType>? where,
   NDArray? out,
 }) {
   if (a.isDisposed ||

@@ -16,38 +16,91 @@ import 'operations/helpers.dart' as helpers;
 import 'float16_utils.dart';
 import 'sendable_ndarray.dart';
 
-/// Supported data types for the elements of an [NDArray].
-extension type const Float64(double value) implements double {}
+/// The tag type identifying the element dtype of an [NDArray].
+///
+/// Tags are *phantom* types: they are never instantiated, and carry no data.
+/// They exist only so that the dtype of an array is part of its static type
+/// and is reified at runtime, which makes `is` and `as` checks on
+/// `NDArray<...>` meaningful.
+///
+/// The type argument [E] is the Dart type of a single element. It is
+/// recovered at a use site through the [NDArrayElements] extension, so that
+/// `NDArray<Float64>.scalar` has static type `double` without `NDArray`
+/// needing a second type parameter.
+///
+/// See also:
+/// - [DType], the runtime value describing the same information.
+/// - [AnyFloat], [AnyInt], [AnyComplex], [AnyDType] for widened array types.
+sealed class DTypeTag<E> {}
 
-extension type const Float32(double value) implements double {}
+/// An array of any floating-point dtype (`float16`, `bfloat16`, `float32`,
+/// `float64`).
+///
+/// Because generics are covariant, `NDArray<Float32>` and `NDArray<Float64>`
+/// are both subtypes of `NDArray<AnyFloat>`.
+typedef AnyFloat = DTypeTag<double>;
 
-extension type const Float16(double value) implements double {}
+/// An array of any integer dtype (`int8`..`int64`, `uint8`..`uint64`).
+typedef AnyInt = DTypeTag<int>;
 
-extension type const BFloat16(double value) implements double {}
+/// An array of any complex dtype (`complex64`, `complex128`).
+typedef AnyComplex = DTypeTag<Complex>;
 
-extension type const Int64(int value) implements int {}
+/// An array of any real (non-complex, non-boolean) numeric dtype.
+///
+/// This is the union of [AnyFloat] and [AnyInt].
+typedef AnyReal = DTypeTag<num>;
 
-extension type const Int32(int value) implements int {}
+/// An array of any dtype whatsoever. This is the top of the tag hierarchy.
+typedef AnyDType = DTypeTag<Object?>;
 
-extension type const Int16(int value) implements int {}
+/// Tag for the `float64` dtype. Elements are `double`.
+abstract final class Float64 extends DTypeTag<double> {}
 
-extension type const Int8(int value) implements int {}
+/// Tag for the `float32` dtype. Elements are `double`.
+abstract final class Float32 extends DTypeTag<double> {}
 
-extension type const Uint64(int value) implements int {}
+/// Tag for the `float16` dtype. Elements are `double`.
+abstract final class Float16 extends DTypeTag<double> {}
 
-extension type const Uint32(int value) implements int {}
+/// Tag for the `bfloat16` dtype. Elements are `double`.
+abstract final class BFloat16 extends DTypeTag<double> {}
 
-extension type const Uint16(int value) implements int {}
+/// Tag for the `int64` dtype. Elements are `int`.
+abstract final class Int64 extends DTypeTag<int> {}
 
-extension type const Uint8(int value) implements int {}
+/// Tag for the `int32` dtype. Elements are `int`.
+abstract final class Int32 extends DTypeTag<int> {}
 
-extension type const Complex64._(Complex value) implements Complex {
-  Complex64(double real, double imag) : this._(Complex(real, imag));
-}
+/// Tag for the `int16` dtype. Elements are `int`.
+abstract final class Int16 extends DTypeTag<int> {}
 
-extension type const Complex128._(Complex value) implements Complex {
-  Complex128(double real, double imag) : this._(Complex(real, imag));
-}
+/// Tag for the `int8` dtype. Elements are `int`.
+abstract final class Int8 extends DTypeTag<int> {}
+
+/// Tag for the `uint64` dtype. Elements are `int`.
+///
+/// Dart `int` is signed 64-bit; bit patterns with the MSB set represent
+/// negative values. Use [uint64Compare] for unsigned comparisons.
+abstract final class Uint64 extends DTypeTag<int> {}
+
+/// Tag for the `uint32` dtype. Elements are `int`.
+abstract final class Uint32 extends DTypeTag<int> {}
+
+/// Tag for the `uint16` dtype. Elements are `int`.
+abstract final class Uint16 extends DTypeTag<int> {}
+
+/// Tag for the `uint8` dtype. Elements are `int`.
+abstract final class Uint8 extends DTypeTag<int> {}
+
+/// Tag for the `complex64` dtype. Elements are [Complex].
+abstract final class Complex64 extends DTypeTag<Complex> {}
+
+/// Tag for the `complex128` dtype. Elements are [Complex].
+abstract final class Complex128 extends DTypeTag<Complex> {}
+
+/// Tag for the `boolean` dtype. Elements are `bool`.
+abstract final class Boolean extends DTypeTag<bool> {}
 
 /// Supported data types for the elements of an [NDArray].
 
@@ -96,7 +149,12 @@ int _computeCheckedTotalSize(List<int> shape) {
 @internal
 int checkTotalSize(List<int> shape) => _computeCheckedTotalSize(shape);
 
-enum DType<T> {
+/// The runtime description of an [NDArray]'s element type.
+///
+/// The type parameter [T] is the corresponding [DTypeTag], which ties a
+/// `DType` value to the static type of the arrays it can describe: a
+/// `DType<Float64>` can only be used to build an `NDArray<Float64>`.
+enum DType<T extends AnyDType> {
   float64<Float64>('float64', 8, '<f8'),
   float32<Float32>('float32', 4, '<f4'),
   float16<Float16>('float16', 2, '<f2'),
@@ -116,7 +174,7 @@ enum DType<T> {
   uint8<Uint8>('uint8', 1, '|u1'),
   complex128<Complex128>('complex128', 16, '<c16'),
   complex64<Complex64>('complex64', 8, '<c8'),
-  boolean<bool>('boolean', 1, '|b1');
+  boolean<Boolean>('boolean', 1, '|b1');
 
   final String name;
   final int byteWidth;
@@ -197,7 +255,8 @@ enum DType<T> {
 /// // Explicitly free memory when done
 /// a.dispose();
 /// ```
-final class NDArray<T> implements ffi.Finalizable, ScopedResource {
+final class NDArray<T extends AnyDType>
+    implements ffi.Finalizable, ScopedResource {
   /// Pointer to the raw C memory allocated for this array (logical origin).
   final ffi.Pointer<ffi.Void> _pointer;
 
@@ -209,11 +268,15 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// **Restrictions:**
   /// - This list has a fixed length and cannot be resized.
   /// - This list becomes invalid as soon as the underlying C memory is freed (via `dispose()` or garbage collection). Accessing it afterwards leads to undefined behavior or crashes.
-  final List<T> _data;
+  final List<Object?> _data;
 
-  /// A Dart list view of the raw C memory.
+  /// A Dart list view of the raw C memory, with elements untyped.
+  ///
+  /// The tag [T] does not name the element type, so this getter cannot be
+  /// typed. Use [NDArrayElements.data] for a `List<E>` view where `E` is the
+  /// element type implied by the tag.
   @internal
-  List<T> get data {
+  List<Object?> get dataRaw {
     if (isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
     }
@@ -314,7 +377,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// print(a.hasSameShape(b)); // true
   /// print(a.hasSameShape(c)); // false
   /// ```
-  bool hasSameShape(NDArray<dynamic> other) => listEquals(shape, other.shape);
+  bool hasSameShape(NDArray<AnyDType> other) => listEquals(shape, other.shape);
 
   static final _finalizer = ffi.NativeFinalizer(malloc.nativeFree);
 
@@ -347,11 +410,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// `returning` calls [detachToParentScope] on the result. To return a slice or
   /// view of an inner temporary array, return `view.copy()` so that a compact
   /// owning array is promoted and the temporary parent buffer is freed on scope exit.
-  static NDArray<T> returning<T extends Object>(
+  static NDArray<T> returning<T extends AnyDType>(
     NDArray<T> Function() callback,
   ) => ResourceScope.returning(callback);
 
-  static R unmanaged<R>(R Function() callback) =>
+  static R unmanaged<R extends AnyDType>(R Function() callback) =>
       ResourceScope.unmanaged(callback);
 
   static bool _checkContiguous(List<int> shape, List<int> strides) {
@@ -367,7 +430,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// Private factory that ensures the runtime generic type parameter matches [dtype].
   factory NDArray._(
     ffi.Pointer<ffi.Void> pointer,
-    List<T> data,
+    List<Object?> data,
     NDArray? parent, {
     required List<int> shape,
     required List<int> strides,
@@ -547,7 +610,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         isExternallyOwned: isExternallyOwned,
         customNativeFinalizer: customNativeFinalizer,
       ),
-      DType.boolean => NDArray<bool>._raw(
+      DType.boolean => NDArray<Boolean>._raw(
         pointer,
         data as List<bool>,
         parent,
@@ -589,31 +652,6 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
        strides = List<int>.unmodifiable(strides),
        isContiguous = _checkContiguous(shape, strides) {
     _initializeOpenBLASOnce();
-    assert(
-      identical(T, dynamic) ||
-          identical(T, Object) ||
-          identical(T, num) ||
-          identical(T, Float64) ||
-          identical(T, Float32) ||
-          identical(T, Float16) ||
-          identical(T, BFloat16) ||
-          identical(T, Int64) ||
-          identical(T, Int32) ||
-          identical(T, Int16) ||
-          identical(T, Int8) ||
-          identical(T, Uint64) ||
-          identical(T, Uint32) ||
-          identical(T, Uint16) ||
-          identical(T, Uint8) ||
-          identical(T, Complex128) ||
-          identical(T, Complex64) ||
-          identical(T, double) ||
-          identical(T, int) ||
-          identical(T, Complex) ||
-          identical(T, bool),
-      'NDArray cannot be created with type parameter $T. '
-      'Supported types: Float64, Float32, Float16, BFloat16, Int64, Int32, Int16, Int8, Uint64, Uint32, Uint16, Uint8, Complex128, Complex64, double, int, Complex, bool.',
-    );
     if (_parent == null) {
       final ptrToFree = _allocPointer ?? _pointer;
       if (!_isExternallyOwned) {
@@ -763,72 +801,72 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
     final allocator = zeroInit ? calloc : malloc;
     ffi.Pointer<ffi.Void> pointer;
-    List<T> data;
+    List<Object?> data;
 
     switch (dtype) {
       case DType.float64:
         final p = allocator<ffi.Double>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(allocSize) as List<T>;
+        data = p.asTypedList(allocSize);
       case DType.float32:
         final p = allocator<ffi.Float>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(allocSize) as List<T>;
+        data = p.asTypedList(allocSize);
       case DType.float16:
         final p = allocator<ffi.Uint16>(allocSize);
         pointer = p.cast();
-        data = Float16List(p.asTypedList(allocSize)) as List<T>;
+        data = Float16List(p.asTypedList(allocSize));
       case DType.bfloat16:
         final p = allocator<ffi.Uint16>(allocSize);
         pointer = p.cast();
-        data = BFloat16List(p.asTypedList(allocSize)) as List<T>;
+        data = BFloat16List(p.asTypedList(allocSize));
       case DType.int64:
         final p = allocator<ffi.Int64>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(allocSize) as List<T>;
+        data = p.asTypedList(allocSize);
       case DType.int32:
         final p = allocator<ffi.Int32>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(allocSize) as List<T>;
+        data = p.asTypedList(allocSize);
       case DType.int16:
         final p = allocator<ffi.Int16>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(allocSize) as List<T>;
+        data = p.asTypedList(allocSize);
       case DType.int8:
         final p = allocator<ffi.Int8>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(allocSize) as List<T>;
+        data = p.asTypedList(allocSize);
       case DType.uint64:
         final p = allocator<ffi.Uint64>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(allocSize) as List<T>;
+        data = p.asTypedList(allocSize);
       case DType.uint32:
         final p = allocator<ffi.Uint32>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(allocSize) as List<T>;
+        data = p.asTypedList(allocSize);
       case DType.uint16:
         final p = allocator<ffi.Uint16>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(allocSize) as List<T>;
+        data = p.asTypedList(allocSize);
       case DType.uint8:
         final p = allocator<ffi.Uint8>(allocSize);
         pointer = p.cast();
-        data = p.asTypedList(allocSize) as List<T>;
+        data = p.asTypedList(allocSize);
       case DType.complex128:
         final p = allocator<ffi.Double>(allocSize * 2);
         pointer = p.cast();
         final doubleList = p.asTypedList(allocSize * 2);
-        data = ComplexList<Complex128>(doubleList) as List<T>;
+        data = ComplexList(doubleList);
       case DType.complex64:
         final p = allocator<ffi.Float>(allocSize * 2);
         pointer = p.cast();
         final floatList = p.asTypedList(allocSize * 2);
-        data = ComplexList<Complex64>(floatList) as List<T>;
+        data = ComplexList(floatList);
       case DType.boolean:
         final p = allocator<ffi.Uint8>(allocSize);
         pointer = p.cast();
         final uint8List = p.asTypedList(allocSize);
-        data = BoolList(uint8List) as List<T>;
+        data = BoolList(uint8List);
     }
 
     final logicalPointer = initialOffsetElements == 0
@@ -903,7 +941,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       DType.complex128 || DType.complex64 => List<Complex>.from(list),
     };
     for (var i = 0; i < eagerList.length; i++) {
-      arr.setCellRaw(i, eagerList[i] as T);
+      arr.setCellRaw(i, eagerList[i]);
     }
     return arr;
   }
@@ -916,7 +954,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// print(a.shape); // []
   /// print(a.scalar); // 42
   /// ```
-  factory NDArray.scalar(T value, {required DType<T> dtype}) {
+  factory NDArray.scalar(Object? value, {required DType<T> dtype}) {
     return NDArray.fromList([value], [], dtype);
   }
 
@@ -957,13 +995,13 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   factory NDArray.ones(List<int> shape, DType<T> dtype) {
     final arr = NDArray<T>.create(shape, dtype);
     if (dtype.isComplex) {
-      arr.fill(Complex(1.0, 0.0) as T);
+      arr.fill(Complex(1.0, 0.0));
     } else if (dtype == DType.boolean) {
-      arr.fill(true as T);
+      arr.fill(true);
     } else if (dtype.isFloating) {
-      arr.fill(1.0 as T);
+      arr.fill(1.0);
     } else {
-      arr.fill(1 as T);
+      arr.fill(1);
     }
     return arr;
   }
@@ -1011,13 +1049,13 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     for (var i = 0; i < length; i++) {
       final val = start + i * step;
       if (dtype.isComplex) {
-        arr.setCellRaw(i, Complex(val, 0.0) as T);
+        arr.setCellRaw(i, Complex(val, 0.0));
       } else if (dtype.isInteger) {
-        arr.setCellRaw(i, val.toInt() as T);
+        arr.setCellRaw(i, val.toInt());
       } else if (dtype == DType.boolean) {
-        arr.setCellRaw(i, (val != 0.0) as T);
+        arr.setCellRaw(i, (val != 0.0));
       } else {
-        arr.setCellRaw(i, val as T);
+        arr.setCellRaw(i, val);
       }
     }
     return arr;
@@ -1037,13 +1075,13 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     final arr = NDArray<T>.zeros([n, n], dtype);
     for (var i = 0; i < n; i++) {
       if (dtype.isFloating) {
-        arr.setCellRaw(i * n + i, 1.0 as T);
+        arr.setCellRaw(i * n + i, 1.0);
       } else if (dtype.isComplex) {
-        arr.setCellRaw(i * n + i, Complex(1.0, 0.0) as T);
+        arr.setCellRaw(i * n + i, Complex(1.0, 0.0));
       } else if (dtype == DType.boolean) {
-        arr.setCellRaw(i * n + i, true as T);
+        arr.setCellRaw(i * n + i, true);
       } else {
-        arr.setCellRaw(i * n + i, 1 as T);
+        arr.setCellRaw(i * n + i, 1);
       }
     }
     return arr;
@@ -1061,7 +1099,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// - **Shared Mutations**: Modifications to the view affect the parent and vice versa.
   /// - **No Ownership**: Calling `dispose()` on a view does nothing.
   factory NDArray.view(
-    NDArray<dynamic> parent, {
+    NDArray<AnyDType> parent, {
     required List<int> shape,
     required List<int> strides,
     int offsetElements = 0,
@@ -1119,51 +1157,51 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     final int viewSize = isEmpty
         ? 0
         : (maxPhysicalOffset - minPhysicalOffset + 1);
-    final List<T> data;
+    final List<Object?> data;
 
     switch (parent.dtype) {
       case DType.float64:
         data =
-            physicalPointer.cast<ffi.Double>().asTypedList(viewSize) as List<T>;
+            physicalPointer.cast<ffi.Double>().asTypedList(viewSize);
       case DType.float32:
         data =
-            physicalPointer.cast<ffi.Float>().asTypedList(viewSize) as List<T>;
+            physicalPointer.cast<ffi.Float>().asTypedList(viewSize);
       case DType.float16:
         data =
             Float16List(
                   physicalPointer.cast<ffi.Uint16>().asTypedList(viewSize),
                 )
-                as List<T>;
+               ;
       case DType.bfloat16:
         data =
             BFloat16List(
                   physicalPointer.cast<ffi.Uint16>().asTypedList(viewSize),
                 )
-                as List<T>;
+               ;
       case DType.int64:
         data =
-            physicalPointer.cast<ffi.Int64>().asTypedList(viewSize) as List<T>;
+            physicalPointer.cast<ffi.Int64>().asTypedList(viewSize);
       case DType.int32:
         data =
-            physicalPointer.cast<ffi.Int32>().asTypedList(viewSize) as List<T>;
+            physicalPointer.cast<ffi.Int32>().asTypedList(viewSize);
       case DType.int16:
         data =
-            physicalPointer.cast<ffi.Int16>().asTypedList(viewSize) as List<T>;
+            physicalPointer.cast<ffi.Int16>().asTypedList(viewSize);
       case DType.int8:
         data =
-            physicalPointer.cast<ffi.Int8>().asTypedList(viewSize) as List<T>;
+            physicalPointer.cast<ffi.Int8>().asTypedList(viewSize);
       case DType.uint64:
         data =
-            physicalPointer.cast<ffi.Uint64>().asTypedList(viewSize) as List<T>;
+            physicalPointer.cast<ffi.Uint64>().asTypedList(viewSize);
       case DType.uint32:
         data =
-            physicalPointer.cast<ffi.Uint32>().asTypedList(viewSize) as List<T>;
+            physicalPointer.cast<ffi.Uint32>().asTypedList(viewSize);
       case DType.uint16:
         data =
-            physicalPointer.cast<ffi.Uint16>().asTypedList(viewSize) as List<T>;
+            physicalPointer.cast<ffi.Uint16>().asTypedList(viewSize);
       case DType.uint8:
         data =
-            physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize) as List<T>;
+            physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize);
       case DType.complex128:
         final p = _offsetPointer(
           rootPhysicalStart,
@@ -1171,7 +1209,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
           DType.float64,
         );
         final doubleList = p.cast<ffi.Double>().asTypedList(viewSize * 2);
-        data = ComplexList<Complex128>(doubleList) as List<T>;
+        data = ComplexList(doubleList);
       case DType.complex64:
         final p = _offsetPointer(
           rootPhysicalStart,
@@ -1179,11 +1217,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
           DType.float32,
         );
         final floatList = p.cast<ffi.Float>().asTypedList(viewSize * 2);
-        data = ComplexList<Complex64>(floatList) as List<T>;
+        data = ComplexList(floatList);
       case DType.boolean:
         data =
             BoolList(physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize))
-                as List<T>;
+               ;
     }
 
     final viewOffsetElements = isEmpty ? 0 : -minRelativeOffset;
@@ -1260,52 +1298,52 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         ? 0
         : -minRelativeOffset;
 
-    List<T> data;
+    List<Object?> data;
     switch (dtype) {
       case DType.float64:
-        data = pointer.cast<ffi.Double>().asTypedList(allocSize) as List<T>;
+        data = pointer.cast<ffi.Double>().asTypedList(allocSize);
       case DType.float32:
-        data = pointer.cast<ffi.Float>().asTypedList(allocSize) as List<T>;
+        data = pointer.cast<ffi.Float>().asTypedList(allocSize);
       case DType.float16:
         data =
             Float16List(pointer.cast<ffi.Uint16>().asTypedList(allocSize))
-                as List<T>;
+               ;
       case DType.bfloat16:
         data =
             BFloat16List(pointer.cast<ffi.Uint16>().asTypedList(allocSize))
-                as List<T>;
+               ;
       case DType.int64:
-        data = pointer.cast<ffi.Int64>().asTypedList(allocSize) as List<T>;
+        data = pointer.cast<ffi.Int64>().asTypedList(allocSize);
       case DType.int32:
-        data = pointer.cast<ffi.Int32>().asTypedList(allocSize) as List<T>;
+        data = pointer.cast<ffi.Int32>().asTypedList(allocSize);
       case DType.int16:
-        data = pointer.cast<ffi.Int16>().asTypedList(allocSize) as List<T>;
+        data = pointer.cast<ffi.Int16>().asTypedList(allocSize);
       case DType.int8:
-        data = pointer.cast<ffi.Int8>().asTypedList(allocSize) as List<T>;
+        data = pointer.cast<ffi.Int8>().asTypedList(allocSize);
       case DType.uint64:
-        data = pointer.cast<ffi.Uint64>().asTypedList(allocSize) as List<T>;
+        data = pointer.cast<ffi.Uint64>().asTypedList(allocSize);
       case DType.uint32:
-        data = pointer.cast<ffi.Uint32>().asTypedList(allocSize) as List<T>;
+        data = pointer.cast<ffi.Uint32>().asTypedList(allocSize);
       case DType.uint16:
-        data = pointer.cast<ffi.Uint16>().asTypedList(allocSize) as List<T>;
+        data = pointer.cast<ffi.Uint16>().asTypedList(allocSize);
       case DType.uint8:
-        data = pointer.cast<ffi.Uint8>().asTypedList(allocSize) as List<T>;
+        data = pointer.cast<ffi.Uint8>().asTypedList(allocSize);
       case DType.complex128:
         data =
-            ComplexList<Complex128>(
+            ComplexList(
                   pointer.cast<ffi.Double>().asTypedList(allocSize * 2),
                 )
-                as List<T>;
+               ;
       case DType.complex64:
         data =
-            ComplexList<Complex64>(
+            ComplexList(
                   pointer.cast<ffi.Float>().asTypedList(allocSize * 2),
                 )
-                as List<T>;
+               ;
       case DType.boolean:
         data =
             BoolList(pointer.cast<ffi.Uint8>().asTypedList(allocSize))
-                as List<T>;
+               ;
     }
 
     final logicalPointer = initialOffsetElements == 0
@@ -1613,7 +1651,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// final b = a.astype(DType.float64);
   /// print(b.dtype); // DType.float64
   /// ```
-  NDArray<R> astype<R extends Object>(
+  NDArray<R> astype<R extends AnyDType>(
     DType<R> targetDType, {
     bool copy = true,
   }) {
@@ -1855,7 +1893,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// final a = NDArray<Float64>.create([100], DType.float64);
   /// a.fill(42.0);
   /// ```
-  void fill(T value) {
+  void fillUntyped(Object? value) {
     if (isDisposed) {
       throw StateError('Cannot fill an array whose memory has been freed.');
     }
@@ -2131,7 +2169,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// final a = NDArray.scalar(42, dtype: DType.int32);
   /// print(a.scalar); // 42
   /// ```
-  T get scalar {
+  Object? get scalarRaw {
     if (isDisposed) throw StateError('Cannot access a disposed NDArray.');
     if (shape.isNotEmpty) {
       throw StateError(
@@ -2150,7 +2188,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// - [coords] length must match the rank of the array.
   ///
   /// It is an error if coords.length does not match the array rank, or if any coordinate is out of bounds for its dimension.
-  T getCell(List<int> coords) {
+  Object? getCellUntyped(List<int> coords) {
     if (isDisposed) throw StateError('Cannot access a disposed NDArray.');
     if (coords.length != shape.length) {
       throw ArgumentError(
@@ -2171,7 +2209,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       }
       offset += idx * strides[i];
     }
-    return data[offsetElements + offset];
+    return dataRaw[offsetElements + offset];
   }
 
   /// Sets the single scalar element at the specified multi-dimensional [coords] to [value].
@@ -2189,7 +2227,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// final a = NDArray.zeros([2, 2], DType.int32);
   /// a.setCell([0, 1], 42);
   /// ```
-  void setCell(List<int> coords, T value) {
+  void setCellUntyped(List<int> coords, Object? value) {
     if (isDisposed) throw StateError('Cannot access a disposed NDArray.');
     if (coords.length != shape.length) {
       throw ArgumentError(
@@ -2210,24 +2248,24 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       }
       offset += idx * strides[i];
     }
-    data[offsetElements + offset] = value;
+    dataRaw[offsetElements + offset] = value;
   }
 
   /// Internal helper to read the element at a flat index [flatIndex].
   /// Internal helper to read at raw physical storage index [rawOffset].
   @internal
-  T getCellRaw(int rawOffset) => data[rawOffset];
+  Object? getCellRawUntyped(int rawOffset) => dataRaw[rawOffset];
 
   /// Internal helper to write at raw physical storage index [rawOffset].
   @internal
-  void setCellRaw(int rawOffset, T value) {
-    data[rawOffset] = value;
+  void setCellRawUntyped(int rawOffset, Object? value) {
+    dataRaw[rawOffset] = value;
   }
 
   @internal
-  T getCellFlat(int flatIndex) {
+  Object? getCellFlatUntyped(int flatIndex) {
     if (isContiguous) {
-      return data[offsetElements + flatIndex];
+      return dataRaw[offsetElements + flatIndex];
     }
     var offset = offsetElements;
     var rem = flatIndex;
@@ -2235,14 +2273,14 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       offset += (rem % shape[i]) * strides[i];
       rem ~/= shape[i];
     }
-    return data[offset];
+    return dataRaw[offset];
   }
 
   /// Internal helper to write [value] to the element at a flat index [flatIndex].
   @internal
-  void setCellFlat(int flatIndex, T value) {
+  void setCellFlatUntyped(int flatIndex, Object? value) {
     if (isContiguous) {
-      data[offsetElements + flatIndex] = value;
+      dataRaw[offsetElements + flatIndex] = value;
       return;
     }
     var offset = offsetElements;
@@ -2251,7 +2289,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       offset += (rem % shape[i]) * strides[i];
       rem ~/= shape[i];
     }
-    data[offset] = value;
+    dataRaw[offset] = value;
   }
 
   /// Modifies elements where the provided boolean [mask] contains `true`,
@@ -2264,7 +2302,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// - [mask] must share identical dimensions ([shape]) with this array.
   ///
   /// It is an error if [mask] shape does not match this array's shape, or if [values] has fewer elements than the number of true targets in [mask].
-  void setByMask(NDArray<bool> mask, NDArray values) {
+  void setByMask(NDArray<Boolean> mask, NDArray values) {
     if (isDisposed || mask.isDisposed || values.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
     }
@@ -2313,7 +2351,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
               'Source values array contains fewer elements than the mask targets',
             );
           }
-          data[currentOffset] = _coerceScalar(values.getCellFlat(valueIndex++));
+          dataRaw[currentOffset] = _coerceScalar(values.getCellFlat(valueIndex++));
         }
         return;
       }
@@ -2335,7 +2373,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// **Preconditions:**
   /// - [mask] must share identical dimensions ([shape]) with this array.
-  void setByMaskScalar(NDArray<bool> mask, T value) {
+  void setByMaskScalar(NDArray<Boolean> mask, Object? value) {
     if (isDisposed || mask.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
     }
@@ -2355,7 +2393,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     void walk(int dim, int currentOffset, int maskOffset) {
       if (dim == shape.length) {
         if (mask.getCellRaw(maskOffset)) {
-          data[currentOffset] = value;
+          dataRaw[currentOffset] = value;
         }
         return;
       }
@@ -2377,7 +2415,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// **Polymorphic Equivalence:**
   /// When [axis] is `0`, equivalent to calling `this[ [indices] ] = value` (advanced row stack scalar mutation).
   ///
-  void setIndicesScalar(NDArray<int> indices, T value, {int axis = 0}) {
+  void setIndicesScalar(NDArray<AnyInt> indices, Object? value, {int axis = 0}) {
     if (isDisposed || indices.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
     }
@@ -2402,7 +2440,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
       void overwriteSlice(int dim, int currentOffset) {
         if (dim == sliceShape.length) {
-          data[currentOffset] = value;
+          dataRaw[currentOffset] = value;
           return;
         }
         for (var i = 0; i < sliceShape[dim]; i++) {
@@ -2419,7 +2457,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// **Polymorphic Equivalence:**
   /// When [axis] is `0`, equivalent to calling `this[ [indices] ] = values` (advanced row stack array assignment).
   ///
-  void setIndices(NDArray<int> indices, NDArray values, {int axis = 0}) {
+  void setIndices(NDArray<AnyInt> indices, NDArray values, {int axis = 0}) {
     if (isDisposed || indices.isDisposed || values.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
     }
@@ -2477,7 +2515,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
               'Source values array contains fewer elements than required for the advanced index allocation',
             );
           }
-          data[currentOffset] = _coerceScalar(values.getCellFlat(valOffset++));
+          dataRaw[currentOffset] = _coerceScalar(values.getCellFlat(valOffset++));
           return;
         }
         for (var i = 0; i < sliceShape[dim]; i++) {
@@ -2491,17 +2529,16 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
   /// Accesses elements of the array polymorphically based on the runtime type of [spec].
   /// Safely coercing scalar inputs to matching array element type [T].
-  T _coerceScalar(dynamic value) {
+  Object? _coerceScalar(dynamic value) {
     if (value is NDArray && (value.shape.isEmpty || value.size == 1)) {
       value = value.getCellFlat(0);
     }
-    if (value is T) return value;
     switch (dtype) {
       case DType.float64:
       case DType.float32:
       case DType.float16:
       case DType.bfloat16:
-        if (value is num) return value.toDouble() as T;
+        if (value is num) return value.toDouble();
       case DType.int64:
       case DType.int32:
       case DType.int16:
@@ -2510,14 +2547,14 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       case DType.uint32:
       case DType.uint16:
       case DType.uint8:
-        if (value is num) return value.toInt() as T;
+        if (value is num) return value.toInt();
       case DType.complex128:
       case DType.complex64:
-        if (value is num) return Complex(value.toDouble(), 0.0) as T;
+        if (value is num) return Complex(value.toDouble(), 0.0);
       case DType.boolean:
-        if (value is num) return (value != 0) as T;
+        if (value is num) return (value != 0);
     }
-    return value as T;
+    return value;
   }
 
   /// Normalizes heterogeneous selection items into standard [Selector] objects.
@@ -2530,7 +2567,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         return Indices(item.cast<int>());
       }
       if (item.every((e) => e is bool)) {
-        final boolArr = NDArray<bool>.fromList(item.cast<bool>(), [
+        final boolArr = NDArray<Boolean>.fromList(item.cast<bool>(), [
           item.length,
         ], DType.boolean);
         tempAllocations?.add(boolArr);
@@ -2545,7 +2582,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         throw StateError('Cannot access a disposed NDArray.');
       }
       if (item.dtype == DType.boolean) {
-        return Mask(BooleanMask(item as NDArray<bool>));
+        return Mask(BooleanMask(item as NDArray<Boolean>));
       }
       if (item.dtype.isInteger) {
         final intList = <int>[];
@@ -2850,7 +2887,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// - **`List<int>`**: Fetches a single coordinate cell scalar matching array rank.
   /// - **`List<List<int>>`**: Fetches sub-matrix row slices targeting axis 0.
   /// - **`List<dynamic>`**: Multi-dimensional selection objects (e.g. mixed lists of slices, index lists, integers).
-  /// - **`NDArray<bool>`**:
+  /// - **`NDArray<Boolean>`**:
   ///   - Full mask (`spec.shape == shape`): Calls [applyMask].
   ///   - 1D mask along axis 0: Calls [slice].
   /// - **`NDArray` (integer)**: Performs [take] for fancy index selection.
@@ -2916,7 +2953,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       if (spec.isDisposed) {
         throw StateError('Cannot access a disposed NDArray.');
       }
-      final boolMask = spec as NDArray<bool>;
+      final boolMask = spec as NDArray<Boolean>;
       if (listEquals(boolMask.shape, shape)) {
         return applyMask(boolMask);
       } else if (boolMask.shape.length == 1 && boolMask.shape[0] == shape[0]) {
@@ -2974,7 +3011,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// - **`List<int>`**: Modifies a single coordinate cell scalar matching array rank.
   /// - **`List<List<int>>`**: Modifies targeted row slices along axis 0.
   /// - **`List<dynamic>`**: Multi-dimensional selection objects (e.g. mixed lists of slices, index lists, integers).
-  /// - **`NDArray<bool>`**:
+  /// - **`NDArray<Boolean>`**:
   ///   - Full mask (`spec.shape == shape`): Calls [setByMask] or [setByMaskScalar].
   ///   - 1D mask along axis 0: Performs slice assignment along dimension 0.
   /// - **`NDArray` (integer)**: Modifies elements selected by fancy integer array indices.
@@ -2993,7 +3030,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       );
     }
     if (spec is int) {
-      final indices = NDArray<int>.fromList([spec], [1], DType.int32);
+      final indices = NDArray<Int32>.fromList([spec], [1], DType.int32);
       NDArray? broadcastedVal;
       try {
         if (value is NDArray) {
@@ -3033,7 +3070,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         final subList = spec.first as List;
         if (subList.every((e) => e is int)) {
           final intIndices = subList.cast<int>().toList();
-          final indices = NDArray<int>.fromList(intIndices, [
+          final indices = NDArray<Int32>.fromList(intIndices, [
             intIndices.length,
           ], DType.int32);
           NDArray? broadcastedVal;
@@ -3064,7 +3101,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
         if ((shape.length == 1 && spec.length > 1) ||
             (value is NDArray && value.size > 1)) {
           final intIndices = spec.cast<int>();
-          final indices = NDArray<int>.fromList(intIndices, [
+          final indices = NDArray<Int32>.fromList(intIndices, [
             intIndices.length,
           ], DType.int32);
           NDArray? broadcastedVal;
@@ -3116,7 +3153,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       if (spec.isDisposed) {
         throw StateError('Cannot access a disposed NDArray.');
       }
-      final boolMask = spec as NDArray<bool>;
+      final boolMask = spec as NDArray<Boolean>;
       if (listEquals(boolMask.shape, shape)) {
         if (value is NDArray) {
           setByMask(boolMask, value);
@@ -3138,7 +3175,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       for (var i = 0; i < spec.size; i++) {
         intList.add((spec.getCellFlat(i) as num).toInt());
       }
-      final indices = NDArray<int>.fromList(intList, [
+      final indices = NDArray<Int32>.fromList(intList, [
         intList.length,
       ], DType.int32);
       NDArray? broadcastedVal;
@@ -3309,7 +3346,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     );
   }
 
-  R _withWrappedScalar<R>(dynamic other, R Function(NDArray otherArr) fn) {
+  R _withWrappedScalar<R extends AnyDType>(dynamic other, R Function(NDArray otherArr) fn) {
     if (other is NDArray) {
       return fn(other);
     }
@@ -3331,7 +3368,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   NDArray<T> operator &(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_and<T, dynamic, T>(this, otherArr),
+      (otherArr) => ops.bitwise_and<T, AnyDType, T>(this, otherArr),
     );
   }
 
@@ -3339,7 +3376,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   NDArray<T> operator |(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_or<T, dynamic, T>(this, otherArr),
+      (otherArr) => ops.bitwise_or<T, AnyDType, T>(this, otherArr),
     );
   }
 
@@ -3347,7 +3384,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   NDArray<T> operator ^(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_xor<T, dynamic, T>(this, otherArr),
+      (otherArr) => ops.bitwise_xor<T, AnyDType, T>(this, otherArr),
     );
   }
 
@@ -3360,7 +3397,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   NDArray<T> operator <<(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.left_shift<T, dynamic, T>(this, otherArr),
+      (otherArr) => ops.left_shift<T, AnyDType, T>(this, otherArr),
     );
   }
 
@@ -3368,7 +3405,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   NDArray<T> operator >>(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.right_shift<T, dynamic, T>(this, otherArr),
+      (otherArr) => ops.right_shift<T, AnyDType, T>(this, otherArr),
     );
   }
 
@@ -3392,7 +3429,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// {@example /example/comparison_operations_example.dart lang=dart}
   ///
   /// Reference: See NumPy's [greater](https://numpy.org/doc/stable/reference/generated/numpy.greater.html).
-  NDArray<bool> operator >(dynamic other) {
+  NDArray<Boolean> operator >(dynamic other) {
     return _withWrappedScalar(other, (otherArr) => ops.greater(this, otherArr));
   }
 
@@ -3415,7 +3452,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// {@example /example/comparison_operations_example.dart lang=dart}
   ///
   /// Reference: See NumPy's [less](https://numpy.org/doc/stable/reference/generated/numpy.less.html).
-  NDArray<bool> operator <(dynamic other) {
+  NDArray<Boolean> operator <(dynamic other) {
     return _withWrappedScalar(other, (otherArr) => ops.less(this, otherArr));
   }
 
@@ -3438,7 +3475,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// {@example /example/comparison_operations_example.dart lang=dart}
   ///
   /// Reference: See NumPy's [greater_equal](https://numpy.org/doc/stable/reference/generated/numpy.greater_equal.html).
-  NDArray<bool> operator >=(dynamic other) {
+  NDArray<Boolean> operator >=(dynamic other) {
     return _withWrappedScalar(
       other,
       (otherArr) => ops.greaterEqual(this, otherArr),
@@ -3464,7 +3501,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// {@example /example/comparison_operations_example.dart lang=dart}
   ///
   /// Reference: See NumPy's [less_equal](https://numpy.org/doc/stable/reference/generated/numpy.less_equal.html).
-  NDArray<bool> operator <=(dynamic other) {
+  NDArray<Boolean> operator <=(dynamic other) {
     return _withWrappedScalar(
       other,
       (otherArr) => ops.lessEqual(this, otherArr),
@@ -3479,7 +3516,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// Unlike the standard Dart operator `==` which defaults to object identity,
   /// the `==` operator on [NDArray] checks for structural equality of the
   /// arrays themselves (returning a single boolean). In contrast, [eq]
-  /// performs element-wise value comparison and returns an [NDArray<bool>].
+  /// performs element-wise value comparison and returns an [NDArray<Boolean>].
   ///
   /// **Preconditions:**
   /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
@@ -3495,12 +3532,12 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// {@example /example/comparison_operations_example.dart lang=dart}
   ///
   /// Reference: See NumPy's [equal](https://numpy.org/doc/stable/reference/generated/numpy.equal.html).
-  NDArray<bool> eq(dynamic other) {
+  NDArray<Boolean> eq(dynamic other) {
     return _withWrappedScalar(other, (otherArr) => ops.equal(this, otherArr));
   }
 
   /// Element-wise inequality comparison (`ne(other)`) with full broadcasting support.
-  NDArray<bool> ne(dynamic other) {
+  NDArray<Boolean> ne(dynamic other) {
     return _withWrappedScalar(
       other,
       (otherArr) => ops.notEqual(this, otherArr),
@@ -3811,7 +3848,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// Returns a 1D array containing the elements where the mask is true.
   ///
   /// It is an error if [mask] shape does not match the target shape.
-  NDArray<T> applyMask(NDArray<bool> mask) {
+  NDArray<T> applyMask(NDArray<Boolean> mask) {
     if (isDisposed || mask.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
     }
@@ -3852,7 +3889,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Note for [DType.uint64]: Values >= 2^63 are represented as negative integers
   /// in Dart due to Dart's signed 64-bit integer representation.
-  List<T> toList() {
+  List<Object?> toListRaw() {
     if (isDisposed) {
       throw StateError(
         'Cannot access an array or view whose memory has been explicitly freed/disposed!',
@@ -3867,7 +3904,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     NDArray<T> arr,
     List<int> indices,
     int dim,
-    List<T> result,
+    List<Object?> result,
   ) {
     if (dim == arr.shape.length) {
       result.add(arr.getCell(indices));
@@ -4387,8 +4424,8 @@ extension NDArrayFloat64Arithmetic on NDArray<Float64> {
       _withWrappedScalar(
             other,
             (otherArr) => ops.floor_divide(
-              this as NDArray<num>,
-              otherArr as NDArray<num>,
+              this as NDArray<AnyReal>,
+              otherArr as NDArray<AnyReal>,
             ),
           )
           as NDArray<Float64>;
@@ -4398,7 +4435,7 @@ extension NDArrayFloat64Arithmetic on NDArray<Float64> {
       _withWrappedScalar(
             other,
             (otherArr) =>
-                ops.remainder(this as NDArray<num>, otherArr as NDArray<num>),
+                ops.remainder(this as NDArray<AnyReal>, otherArr as NDArray<AnyReal>),
           )
           as NDArray<Float64>;
 }
@@ -4430,8 +4467,8 @@ extension NDArrayFloat32Arithmetic on NDArray<Float32> {
       _withWrappedScalar(
             other,
             (otherArr) => ops.floor_divide(
-              this as NDArray<num>,
-              otherArr as NDArray<num>,
+              this as NDArray<AnyReal>,
+              otherArr as NDArray<AnyReal>,
             ),
           )
           as NDArray<Float32>;
@@ -4441,7 +4478,7 @@ extension NDArrayFloat32Arithmetic on NDArray<Float32> {
       _withWrappedScalar(
             other,
             (otherArr) =>
-                ops.remainder(this as NDArray<num>, otherArr as NDArray<num>),
+                ops.remainder(this as NDArray<AnyReal>, otherArr as NDArray<AnyReal>),
           )
           as NDArray<Float32>;
 }
@@ -4493,7 +4530,7 @@ extension NDArrayComplex64Arithmetic on NDArray<Complex64> {
 }
 
 /// General arithmetic operators for [NDArray].
-extension NDArrayGenericArithmetic<T> on NDArray<T> {
+extension NDArrayGenericArithmetic<T extends AnyDType> on NDArray<T> {
   /// Element-wise addition with full broadcasting support.
   NDArray operator +(dynamic other) =>
       _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr));
@@ -4515,8 +4552,8 @@ extension NDArrayGenericArithmetic<T> on NDArray<T> {
       _withWrappedScalar(
             other,
             (otherArr) => ops.floor_divide(
-              this as NDArray<num>,
-              otherArr as NDArray<num>,
+              this as NDArray<AnyReal>,
+              otherArr as NDArray<AnyReal>,
             ),
           )
           as NDArray<T>;
@@ -4526,7 +4563,7 @@ extension NDArrayGenericArithmetic<T> on NDArray<T> {
       _withWrappedScalar(
             other,
             (otherArr) =>
-                ops.remainder(this as NDArray<num>, otherArr as NDArray<num>),
+                ops.remainder(this as NDArray<AnyReal>, otherArr as NDArray<AnyReal>),
           )
           as NDArray<T>;
 }
@@ -4726,7 +4763,7 @@ bool listEquals<E>(List<E>? a, List<E>? b) {
 /// A wrapper class for boolean masks used in advanced indexing.
 final class BooleanMask {
   /// The underlying boolean array.
-  final NDArray<bool> mask;
+  final NDArray<Boolean> mask;
 
   /// Creates a new boolean mask. Precondition: mask dtype must be `DType.boolean.`
   BooleanMask(this.mask) {
@@ -4851,7 +4888,7 @@ final class Complex {
 }
 
 /// A list view of complex numbers backed by a flat list of doubles.
-final class ComplexList<T extends Complex> extends ListBase<T> {
+final class ComplexList extends ListBase<Complex> {
   final List<double> _list;
   ComplexList(this._list);
 
@@ -4867,12 +4904,12 @@ final class ComplexList<T extends Complex> extends ListBase<T> {
   }
 
   @override
-  T operator [](int index) {
-    return Complex(_list[index * 2], _list[index * 2 + 1]) as T;
+  Complex operator [](int index) {
+    return Complex(_list[index * 2], _list[index * 2 + 1]);
   }
 
   @override
-  void operator []=(int index, T value) {
+  void operator []=(int index, Complex value) {
     _list[index * 2] = value.real;
     _list[index * 2 + 1] = value.imag;
   }
@@ -5046,4 +5083,91 @@ void _initializeOpenBLASOnce() {
   } catch (_) {
     // Silently ignore library load/init errors in non-OpenBLAS environments
   }
+}
+
+/// Typed element access for an [NDArray].
+///
+/// The element type [E] is recovered from the array's dtype tag [T] through
+/// its [DTypeTag] bound, so `NDArray<Float64>.scalar` has static type
+/// `double` and `NDArray<Int32>.scalar` has static type `int`, without
+/// [NDArray] needing a second type parameter.
+///
+/// In code that is generic over all dtypes (`T extends AnyDType`), [E]
+/// resolves to `Object?`, which is the correct answer for dtype-agnostic
+/// operations.
+extension NDArrayElements<T extends DTypeTag<E>, E> on NDArray<T> {
+  /// A Dart list view of the raw C memory, typed as the element type.
+  ///
+  /// **Restrictions:**
+  /// - Fixed length; cannot be resized.
+  /// - Becomes invalid once the backing memory is freed. Accessing it after
+  ///   `dispose()` is undefined behaviour.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity: $O(1)$. No copy is made.
+  List<E> get data => dataRaw as List<E>;
+
+  /// The single value of a 0-dimensional array.
+  ///
+  /// It is an error if the array has any dimensions, or has been disposed.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity: $O(1)$.
+  E get scalar => scalarRaw as E;
+
+  /// The elements of this array as a Dart list, in C (row-major) order.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity: $O(n)$; allocates a new list.
+  List<E> toList() => toListRaw().cast<E>();
+
+  /// The element at the given multi-dimensional [coords].
+  ///
+  /// Negative coordinates index from the end of the corresponding axis.
+  ///
+  /// It is an error if [coords] has a different length than [NDArray.ndim],
+  /// or if any coordinate is out of range.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity: $O(\text{ndim})$.
+  E getCell(List<int> coords) => getCellUntyped(coords) as E;
+
+  /// Writes [value] at the given multi-dimensional [coords].
+  ///
+  /// See [getCell] for the coordinate rules.
+  void setCell(List<int> coords, E value) => setCellUntyped(coords, value);
+
+  /// The element at [rawOffset] elements into the backing buffer.
+  ///
+  /// This bypasses shape and stride arithmetic entirely; [rawOffset] is an
+  /// index into [data], not a logical index. It is an error if the offset is
+  /// out of the buffer's bounds.
+  E getCellRaw(int rawOffset) => getCellRawUntyped(rawOffset) as E;
+
+  /// Writes [value] at [rawOffset] elements into the backing buffer.
+  ///
+  /// See [getCellRaw].
+  void setCellRaw(int rawOffset, E value) => setCellRawUntyped(rawOffset, value);
+
+  /// The element at logical flat index [flatIndex] in C (row-major) order.
+  ///
+  /// Unlike [getCellRaw] this respects the array's shape and strides, so it is
+  /// correct for views and transposes.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity: $O(\text{ndim})$ for a strided array, $O(1)$ when the
+  ///   array is C-contiguous.
+  E getCellFlat(int flatIndex) => getCellFlatUntyped(flatIndex) as E;
+
+  /// Writes [value] at logical flat index [flatIndex] in C (row-major) order.
+  ///
+  /// See [getCellFlat].
+  void setCellFlat(int flatIndex, E value) =>
+      setCellFlatUntyped(flatIndex, value);
+
+  /// Sets every element of this array to [value].
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity: $O(n)$.
+  void fill(E value) => fillUntyped(value);
 }

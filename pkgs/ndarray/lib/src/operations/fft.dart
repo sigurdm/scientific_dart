@@ -24,7 +24,7 @@ NDArray _createZeros(List<int> shape, DType dtype) => switch (dtype) {
   DType.uint8 => NDArray<Uint8>.zeros(shape, DType.uint8),
   DType.complex128 => NDArray<Complex128>.zeros(shape, DType.complex128),
   DType.complex64 => NDArray<Complex64>.zeros(shape, DType.complex64),
-  DType.boolean => NDArray<bool>.zeros(shape, DType.boolean),
+  DType.boolean => NDArray<Boolean>.zeros(shape, DType.boolean),
 };
 
 /// Helper to allocate a KissFFT plan configuration on the ScratchArena stack.
@@ -43,7 +43,7 @@ int _getSignalOffset(int s, List<int> shape, List<int> strides) {
   return offset;
 }
 
-void _loadSignalToKissInput<T>(
+void _loadSignalToKissInput<T extends AnyDType>(
   NDArray<T> inputA,
   int srcStart,
   int copyLen,
@@ -248,7 +248,7 @@ void _loadSignalToKissInput<T>(
   }
 }
 
-void _storeKissOutputToResult<R>(
+void _storeKissOutputToResult<R extends AnyDType>(
   NDArray<R> result,
   int destStart,
   int targetLen,
@@ -331,7 +331,7 @@ kiss_fft_cfg _getKissFFTPlan(int nfft, int inverse_fft) {
 /// {@example /example/fft_example.dart lang=dart}
 ///
 /// Reference: [Cooley-Tukey FFT Algorithm](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm)
-NDArray<R> fft<T, R extends Complex>(
+NDArray<R> fft<T, R extends AnyComplex>(
   NDArray<T> a, {
   int? n,
   int axis = -1,
@@ -546,7 +546,7 @@ NDArray<R> fft<T, R extends Complex>(
 ///
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
-NDArray<R> ifft<T, R extends Complex>(
+NDArray<R> ifft<T, R extends AnyComplex>(
   NDArray<T> a, {
   int? n,
   int axis = -1,
@@ -764,7 +764,7 @@ NDArray<R> ifft<T, R extends Complex>(
 /// {@example /example/fftshift_example.dart lang=dart}
 ///
 /// Reference: [NumPy fftshift](https://numpy.org/doc/stable/reference/generated/numpy.fft.fftshift.html)
-NDArray<T> fftshift<T extends Object>(
+NDArray<T> fftshift<T extends AnyDType>(
   NDArray<T> a, {
   dynamic axes,
   NDArray<T>? out,
@@ -841,7 +841,7 @@ NDArray<T> fftshift<T extends Object>(
 /// {@example /example/fftshift_example.dart lang=dart}
 ///
 /// Reference: [NumPy ifftshift](https://numpy.org/doc/stable/reference/generated/numpy.fft.ifftshift.html)
-NDArray<T> ifftshift<T extends Object>(
+NDArray<T> ifftshift<T extends AnyDType>(
   NDArray<T> a, {
   dynamic axes,
   NDArray<T>? out,
@@ -1101,7 +1101,7 @@ void _copyComplexToDoubleCpx(
   }
 }
 
-NDArray<R> _promoteToComplex<T, R extends Complex>(
+NDArray<R> _promoteToComplex<T, R extends AnyComplex>(
   NDArray<T> a,
   DType<R> targetDType,
 ) {
@@ -1119,7 +1119,7 @@ NDArray<R> _promoteToComplex<T, R extends Complex>(
   return castNDArray(a, targetDType);
 }
 
-NDArray<R> _padOrTruncate<T, R extends Complex>(
+NDArray<R> _padOrTruncate<T, R extends AnyComplex>(
   NDArray<T> arr,
   List<int> s,
   List<int> axes,
@@ -1204,22 +1204,22 @@ NDArray<Float64> fftfreq(int n, {double d = 1.0}) {
     throw ArgumentError('sample spacing d must be non-zero');
   }
   final val = 1.0 / (d * n);
-  final list = List<Float64>.filled(n, Float64(0.0));
+  final list = List<Float64>.filled(n, 0.0);
   if (n % 2 == 0) {
     final half = n ~/ 2;
     for (var i = 0; i < half; i++) {
-      list[i] = Float64(i * val);
+      list[i] = i * val;
     }
     for (var i = half; i < n; i++) {
-      list[i] = Float64((i - n) * val);
+      list[i] = (i - n) * val;
     }
   } else {
     final half = (n - 1) ~/ 2;
     for (var i = 0; i <= half; i++) {
-      list[i] = Float64(i * val);
+      list[i] = i * val;
     }
     for (var i = half + 1; i < n; i++) {
-      list[i] = Float64((i - n) * val);
+      list[i] = (i - n) * val;
     }
   }
   return NDArray<Float64>.fromList(list, [n], DType.float64);
@@ -1253,7 +1253,7 @@ NDArray<Float64> rfftfreq(int n, {double d = 1.0}) {
   }
   final val = 1.0 / (d * n);
   final limit = n ~/ 2 + 1;
-  final list = List<Float64>.generate(limit, (i) => Float64(i * val));
+  final list = List<Float64>.generate(limit, (i) => i * val);
   return NDArray<Float64>.fromList(list, [limit], DType.float64);
 }
 
@@ -1283,7 +1283,7 @@ NDArray<Float64> rfftfreq(int n, {double d = 1.0}) {
 /// - Odd lengths fall back to casting to complex and running standard complex [fft] and slicing.
 ///
 /// Reference: [Real 1D FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.rfft.html)
-NDArray<R> rfft<T, R extends Complex>(
+NDArray<R> rfft<T, R extends AnyComplex>(
   NDArray<T> a, {
   int? n,
   int axis = -1,
@@ -1513,7 +1513,7 @@ NDArray<R> rfft<T, R extends Complex>(
 /// - Odd [n] reconstructs the full conjugate symmetric spectrum, runs complex [ifft], and discards imaginary part.
 ///
 /// Reference: [Inverse Real 1D FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.irfft.html)
-NDArray<R> irfft<T, R extends double>(
+NDArray<R> irfft<T, R extends AnyFloat>(
   NDArray<T> a, {
   int? n,
   int axis = -1,
@@ -1843,7 +1843,7 @@ NDArray<R> irfft<T, R extends double>(
   }
 }
 
-NDArray<R> _fftnND<T, R extends Complex>(
+NDArray<R> _fftnND<T, R extends AnyComplex>(
   NDArray<T> a, {
   List<int>? s,
   List<int>? axes,
@@ -2054,7 +2054,7 @@ NDArray<R> _fftnND<T, R extends Complex>(
 /// - Transposes the array to bring target [axes] to the end before calling native C code, which is fast but might require a copy to make it contiguous.
 ///
 /// Reference: [N-dimensional FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.fftn.html)
-NDArray<R> fftn<T, R extends Complex>(
+NDArray<R> fftn<T, R extends AnyComplex>(
   NDArray<T> a, {
   List<int>? s,
   List<int>? axes,
@@ -2072,7 +2072,7 @@ NDArray<R> fftn<T, R extends Complex>(
 /// - Same as [fftn].
 ///
 /// Reference: [Inverse N-dimensional FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.ifftn.html)
-NDArray<R> ifftn<T, R extends Complex>(
+NDArray<R> ifftn<T, R extends AnyComplex>(
   NDArray<T> a, {
   List<int>? s,
   List<int>? axes,
@@ -2093,7 +2093,7 @@ NDArray<R> ifftn<T, R extends Complex>(
 /// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// Reference: [2-dimensional FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.fft2.html)
-NDArray<R> fft2<T, R extends Complex>(
+NDArray<R> fft2<T, R extends AnyComplex>(
   NDArray<T> a, {
   List<int>? s,
   List<int>? axes = const [-2, -1],
@@ -2120,7 +2120,7 @@ NDArray<R> fft2<T, R extends Complex>(
 /// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// Reference: [Inverse 2-dimensional FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.ifft2.html)
-NDArray<R> ifft2<T, R extends Complex>(
+NDArray<R> ifft2<T, R extends AnyComplex>(
   NDArray<T> a, {
   List<int>? s,
   List<int>? axes = const [-2, -1],

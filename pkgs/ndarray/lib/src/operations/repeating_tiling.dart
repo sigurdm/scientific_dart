@@ -40,7 +40,7 @@ import 'helpers.dart';
 /// final r = repeat(a, [3]);
 /// print(r.toList()); // [1, 1, 1, 2, 2, 2]
 /// ```
-NDArray<T> repeat<T>(
+NDArray<T> repeat<T extends AnyDType>(
   NDArray<T> a,
   Object repeats, {
   int? axis,
@@ -353,7 +353,7 @@ NDArray<T> repeat<T>(
 ///
 /// Refer to the [NumPy tile reference](https://numpy.org/doc/stable/reference/generated/numpy.tile.html)
 /// for details.
-NDArray<T> tile<T extends Object>(
+NDArray<T> tile<T extends AnyDType>(
   NDArray<T> a,
   List<int> reps, {
   NDArray<T>? out,
