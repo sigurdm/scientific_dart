@@ -358,7 +358,7 @@ NDArray<T> bincount<T extends num>(
 ///
 /// Refer to the [NumPy digitize reference](https://numpy.org/doc/stable/reference/generated/numpy.digitize.html)
 /// for details.
-NDArray<int> digitize(
+NDArray<Int32> digitize(
   NDArray<num> x,
   NDArray<num> bins, {
   bool right = false,
@@ -436,15 +436,15 @@ NDArray<int> digitize(
         : castNDArray<Object>(x, commonDType);
 
     final side = right ? SearchSide.left : SearchSide.right;
-    NDArray<int> res;
+    NDArray<Int32> res;
 
     if (increasing) {
       res = searchsorted(commonBins, commonX, side: side);
     } else {
       final flippedBins = flip(commonBins);
       final j = searchsorted(flippedBins, commonX, side: side);
-      final nArr = NDArray<int>.scalar(bins.size, dtype: DType.int32);
-      res = subtract<int, int, int>(nArr, j);
+      final nArr = NDArray<Int32>.scalar(Int32(bins.size), dtype: DType.int32);
+      res = subtract<Int32, Int32, Int32>(nArr, j);
     }
 
     if (out != null) {
@@ -452,7 +452,7 @@ NDArray<int> digitize(
         throw ArgumentError('Incompatible out buffer shape or dtype.');
       }
       _fastCopyAndCast(res, out);
-      return out;
+      return out as NDArray<Int32>;
     }
 
     return res.detachToParentScope();

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <mutex>
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
@@ -45,27 +46,27 @@ static inline uint32_t read_u32_le(const uint8_t* p) {
 // Slicing-by-16 Fast IEEE 802.3 CRC-32
 // ---------------------------------------------------------------------------
 static uint32_t s_crc32_table[16][256];
-static bool s_crc32_table_initialized = false;
+static std::once_flag s_crc32_once;
 
 static void init_crc32_tables(void) {
-    if (s_crc32_table_initialized) return;
-    for (uint32_t i = 0; i < 256; i++) {
-        uint32_t c = i;
-        for (int j = 0; j < 8; j++) {
-            c = (c & 1) ? (0xEDB88320L ^ (c >> 1)) : (c >> 1);
+    std::call_once(s_crc32_once, []() {
+        for (uint32_t i = 0; i < 256; i++) {
+            uint32_t c = i;
+            for (int j = 0; j < 8; j++) {
+                c = (c & 1) ? (0xEDB88320L ^ (c >> 1)) : (c >> 1);
+            }
+            s_crc32_table[0][i] = c;
         }
-        s_crc32_table[0][i] = c;
-    }
-    for (uint32_t i = 0; i < 256; i++) {
-        for (int j = 1; j < 16; j++) {
-            s_crc32_table[j][i] = s_crc32_table[0][s_crc32_table[j - 1][i] & 0xFF] ^ (s_crc32_table[j - 1][i] >> 8);
+        for (uint32_t i = 0; i < 256; i++) {
+            for (int j = 1; j < 16; j++) {
+                s_crc32_table[j][i] = s_crc32_table[0][s_crc32_table[j - 1][i] & 0xFF] ^ (s_crc32_table[j - 1][i] >> 8);
+            }
         }
-    }
-    s_crc32_table_initialized = true;
+    });
 }
 
 static uint32_t npz_fast_crc32(uint32_t initial_crc, const void* buf, size_t len) {
-    if (!s_crc32_table_initialized) init_crc32_tables();
+    init_crc32_tables();
     if (!buf || len == 0) return initial_crc;
 
     uint32_t crc = initial_crc ^ 0xFFFFFFFF;

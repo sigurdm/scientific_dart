@@ -4,6 +4,7 @@ import '../ndarray.dart';
 import '../nditer.dart';
 import 'dart:ffi' as ffi;
 import '../ndarray_bindings.dart';
+import '../ndarray_extensions_bindings.dart';
 import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports
@@ -40,263 +41,23 @@ double _fastContiguousNanminDouble(ffi.Pointer<ffi.Double> ptr, int size) =>
 double _fastContiguousNanmaxDouble(ffi.Pointer<ffi.Double> ptr, int size) =>
     r_nanmax_double(ptr, size);
 
-double _fastContiguousNansumDouble(ffi.Pointer<ffi.Double> ptr, int size) {
-  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
-  var i = 0;
-  final limit = size - 3;
-  for (; i < limit; i += 4) {
-    final v0 = ptr[i];
-    final v1 = ptr[i + 1];
-    final v2 = ptr[i + 2];
-    final v3 = ptr[i + 3];
-    if (!v0.isNaN) sum0 += v0;
-    if (!v1.isNaN) sum1 += v1;
-    if (!v2.isNaN) sum2 += v2;
-    if (!v3.isNaN) sum3 += v3;
-  }
-  for (; i < size; i++) {
-    final v = ptr[i];
-    if (!v.isNaN) sum0 += v;
-  }
-  return (sum0 + sum1) + (sum2 + sum3);
-}
+double _fastContiguousNansumDouble(ffi.Pointer<ffi.Double> ptr, int size) =>
+    r_nansum_double(ptr, size);
 
-double _fastContiguousNansumFloat(ffi.Pointer<ffi.Float> ptr, int size) {
-  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
-  var i = 0;
-  final limit = size - 3;
-  for (; i < limit; i += 4) {
-    final v0 = ptr[i];
-    final v1 = ptr[i + 1];
-    final v2 = ptr[i + 2];
-    final v3 = ptr[i + 3];
-    if (!v0.isNaN) sum0 += v0;
-    if (!v1.isNaN) sum1 += v1;
-    if (!v2.isNaN) sum2 += v2;
-    if (!v3.isNaN) sum3 += v3;
-  }
-  for (; i < size; i++) {
-    final v = ptr[i];
-    if (!v.isNaN) sum0 += v;
-  }
-  return (sum0 + sum1) + (sum2 + sum3);
-}
+double _fastContiguousNansumFloat(ffi.Pointer<ffi.Float> ptr, int size) =>
+    r_nansum_float(ptr, size);
 
-double _fastContiguousNanmeanDouble(ffi.Pointer<ffi.Double> ptr, int size) {
-  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
-  var count = 0;
-  var i = 0;
-  final limit = size - 3;
-  for (; i < limit; i += 4) {
-    final v0 = ptr[i];
-    final v1 = ptr[i + 1];
-    final v2 = ptr[i + 2];
-    final v3 = ptr[i + 3];
-    if (!v0.isNaN) {
-      sum0 += v0;
-      count++;
-    }
-    if (!v1.isNaN) {
-      sum1 += v1;
-      count++;
-    }
-    if (!v2.isNaN) {
-      sum2 += v2;
-      count++;
-    }
-    if (!v3.isNaN) {
-      sum3 += v3;
-      count++;
-    }
-  }
-  for (; i < size; i++) {
-    final v = ptr[i];
-    if (!v.isNaN) {
-      sum0 += v;
-      count++;
-    }
-  }
-  return count == 0 ? double.nan : ((sum0 + sum1) + (sum2 + sum3)) / count;
-}
+double _fastContiguousNanmeanDouble(ffi.Pointer<ffi.Double> ptr, int size) =>
+    r_nanmean_double(ptr, size);
 
-double _fastContiguousNanmeanFloat(ffi.Pointer<ffi.Float> ptr, int size) {
-  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
-  var count = 0;
-  var i = 0;
-  final limit = size - 3;
-  for (; i < limit; i += 4) {
-    final v0 = ptr[i];
-    final v1 = ptr[i + 1];
-    final v2 = ptr[i + 2];
-    final v3 = ptr[i + 3];
-    if (!v0.isNaN) {
-      sum0 += v0;
-      count++;
-    }
-    if (!v1.isNaN) {
-      sum1 += v1;
-      count++;
-    }
-    if (!v2.isNaN) {
-      sum2 += v2;
-      count++;
-    }
-    if (!v3.isNaN) {
-      sum3 += v3;
-      count++;
-    }
-  }
-  for (; i < size; i++) {
-    final v = ptr[i];
-    if (!v.isNaN) {
-      sum0 += v;
-      count++;
-    }
-  }
-  return count == 0 ? double.nan : ((sum0 + sum1) + (sum2 + sum3)) / count;
-}
+double _fastContiguousNanmeanFloat(ffi.Pointer<ffi.Float> ptr, int size) =>
+    r_nanmean_float(ptr, size);
 
-double _fastContiguousNanvarDouble(ffi.Pointer<ffi.Double> ptr, int size) {
-  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
-  var count = 0;
-  var i = 0;
-  final limit = size - 3;
-  for (; i < limit; i += 4) {
-    final v0 = ptr[i];
-    final v1 = ptr[i + 1];
-    final v2 = ptr[i + 2];
-    final v3 = ptr[i + 3];
-    if (!v0.isNaN) {
-      sum0 += v0;
-      count++;
-    }
-    if (!v1.isNaN) {
-      sum1 += v1;
-      count++;
-    }
-    if (!v2.isNaN) {
-      sum2 += v2;
-      count++;
-    }
-    if (!v3.isNaN) {
-      sum3 += v3;
-      count++;
-    }
-  }
-  for (; i < size; i++) {
-    final v = ptr[i];
-    if (!v.isNaN) {
-      sum0 += v;
-      count++;
-    }
-  }
-  if (count == 0) return double.nan;
-  final meanVal = ((sum0 + sum1) + (sum2 + sum3)) / count;
+double _fastContiguousNanvarDouble(ffi.Pointer<ffi.Double> ptr, int size) =>
+    r_nanvar_double(ptr, size);
 
-  var sq0 = 0.0, sq1 = 0.0, sq2 = 0.0, sq3 = 0.0;
-  i = 0;
-  for (; i < limit; i += 4) {
-    final v0 = ptr[i];
-    final v1 = ptr[i + 1];
-    final v2 = ptr[i + 2];
-    final v3 = ptr[i + 3];
-    if (!v0.isNaN) {
-      final d0 = v0 - meanVal;
-      sq0 += d0 * d0;
-    }
-    if (!v1.isNaN) {
-      final d1 = v1 - meanVal;
-      sq1 += d1 * d1;
-    }
-    if (!v2.isNaN) {
-      final d2 = v2 - meanVal;
-      sq2 += d2 * d2;
-    }
-    if (!v3.isNaN) {
-      final d3 = v3 - meanVal;
-      sq3 += d3 * d3;
-    }
-  }
-  for (; i < size; i++) {
-    final v = ptr[i];
-    if (!v.isNaN) {
-      final d = v - meanVal;
-      sq0 += d * d;
-    }
-  }
-  return ((sq0 + sq1) + (sq2 + sq3)) / count;
-}
-
-double _fastContiguousNanvarFloat(ffi.Pointer<ffi.Float> ptr, int size) {
-  var sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
-  var count = 0;
-  var i = 0;
-  final limit = size - 3;
-  for (; i < limit; i += 4) {
-    final v0 = ptr[i];
-    final v1 = ptr[i + 1];
-    final v2 = ptr[i + 2];
-    final v3 = ptr[i + 3];
-    if (!v0.isNaN) {
-      sum0 += v0;
-      count++;
-    }
-    if (!v1.isNaN) {
-      sum1 += v1;
-      count++;
-    }
-    if (!v2.isNaN) {
-      sum2 += v2;
-      count++;
-    }
-    if (!v3.isNaN) {
-      sum3 += v3;
-      count++;
-    }
-  }
-  for (; i < size; i++) {
-    final v = ptr[i];
-    if (!v.isNaN) {
-      sum0 += v;
-      count++;
-    }
-  }
-  if (count == 0) return double.nan;
-  final meanVal = ((sum0 + sum1) + (sum2 + sum3)) / count;
-
-  var sq0 = 0.0, sq1 = 0.0, sq2 = 0.0, sq3 = 0.0;
-  i = 0;
-  for (; i < limit; i += 4) {
-    final v0 = ptr[i];
-    final v1 = ptr[i + 1];
-    final v2 = ptr[i + 2];
-    final v3 = ptr[i + 3];
-    if (!v0.isNaN) {
-      final d0 = v0 - meanVal;
-      sq0 += d0 * d0;
-    }
-    if (!v1.isNaN) {
-      final d1 = v1 - meanVal;
-      sq1 += d1 * d1;
-    }
-    if (!v2.isNaN) {
-      final d2 = v2 - meanVal;
-      sq2 += d2 * d2;
-    }
-    if (!v3.isNaN) {
-      final d3 = v3 - meanVal;
-      sq3 += d3 * d3;
-    }
-  }
-  for (; i < size; i++) {
-    final v = ptr[i];
-    if (!v.isNaN) {
-      final d = v - meanVal;
-      sq0 += d * d;
-    }
-  }
-  return ((sq0 + sq1) + (sq2 + sq3)) / count;
-}
+double _fastContiguousNanvarFloat(ffi.Pointer<ffi.Float> ptr, int size) =>
+    r_nanvar_float(ptr, size);
 
 double _r_stat_scalar_double_fallback<T>(
   NDArray<T> arr,
@@ -2149,19 +1910,80 @@ NDArray<Float64> nanvar<T extends num>(
     return result;
   }
 
-  return NDArray.scope(() {
-    final m = nanmean(a, axis: axis, keepdims: true);
-    final diff = subtract(a, m);
-    final sqDiff = multiply(diff, diff);
+  final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  if (normAxis < 0 || normAxis >= rank) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
 
-    final res = nanmean<Float64>(
-      sqDiff,
-      axis: axis,
-      keepdims: keepdims,
-      out: out,
-    );
-    return out == null ? res.detachToParentScope() : res;
-  });
+  final result =
+      out ??
+      NDArray<Float64>.full(
+        targetShape,
+        Float64(double.nan),
+        dtype: DType.float64,
+      );
+
+  if (a.shape[normAxis] == 0) {
+    if (out != null) {
+      result.fill(Float64(double.nan));
+    }
+    return result;
+  }
+
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+
+  final marker = ScratchArena.marker;
+  try {
+    final cBuffer = ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+    }
+    for (var i = 0; i < squeezedDestStrides.length; i++) {
+      cStridesRes[i] = squeezedDestStrides[i];
+    }
+
+    switch (a.dtype) {
+      case DType.float64:
+        s_nanvar_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+        );
+      case DType.float32:
+        s_nanvar_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+        );
+      default:
+        _s_stat_strided_fallback(
+          a,
+          result,
+          rank,
+          normAxis,
+          squeezedDestStrides,
+          s_nanvar_double,
+        );
+    }
+    return result;
+  } finally {
+    ScratchArena.reset(marker);
+  }
 }
 
 /// Computes the standard deviation along the specified axis, ignoring NaNs.
@@ -3834,58 +3656,106 @@ NDArray<R> nanmean<R extends Object>(
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
+  if (!targetDType.isComplex) {
+    final result =
+        out ??
+        (NDArray<Float64>.full(
+              targetShape,
+              Float64(double.nan),
+              dtype: DType.float64,
+            )
+            as NDArray<R>);
+    if (a.shape[normAxis] == 0) {
+      if (out != null) {
+        result.fill(Float64(double.nan) as R);
+      }
+      return result;
+    }
+
+    final squeezedDestStrides = keepdims
+        ? (List<int>.from(result.strides)..removeAt(normAxis))
+        : result.strides;
+
+    final marker = ScratchArena.marker;
+    try {
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+      }
+      for (var i = 0; i < squeezedDestStrides.length; i++) {
+        cStridesRes[i] = squeezedDestStrides[i];
+      }
+
+      switch (a.dtype) {
+        case DType.float64:
+          s_nanmean_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
+          );
+        case DType.float32:
+          s_nanmean_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
+          );
+        default:
+          _s_stat_strided_fallback(
+            a,
+            result as NDArray<dynamic>,
+            rank,
+            normAxis,
+            squeezedDestStrides,
+            s_nanmean_double,
+          );
+      }
+      return result;
+    } finally {
+      ScratchArena.reset(marker);
+    }
+  }
+
   final NDArray<R> result;
   if (out != null) {
     result = out;
     result.fill(normalizeScalar(0, targetDType) as R);
   } else {
-    if (targetDType.isComplex) {
-      result =
-          NDArray<Complex>.zeros(targetShape, DType.complex128) as NDArray<R>;
-    } else {
-      result = NDArray<Float64>.zeros(targetShape, DType.float64) as NDArray<R>;
-    }
+    result =
+        NDArray<Complex>.zeros(targetShape, DType.complex128) as NDArray<R>;
   }
   final counts = NDArray<int>.zeros(targetShape, DType.int32);
 
-  if (targetDType.isComplex) {
-    final promotedA = a.dtype.isComplex ? a : promoteToComplex(a);
-    nanReduceRecursive<dynamic>(
-      promotedA,
-      result,
-      counts,
-      List<int>.filled(promotedA.shape.length, 0),
-      List<int>.filled(targetShape.length, 0),
-      normAxis,
-      0,
-      keepdims: keepdims,
-    );
-    if (promotedA != a) promotedA.dispose();
-  } else {
-    final promotedA = a.dtype.isFloating ? a : promoteToDouble(a);
-    nanReduceRecursive<dynamic>(
-      promotedA,
-      result,
-      counts,
-      List<int>.filled(promotedA.shape.length, 0),
-      List<int>.filled(targetShape.length, 0),
-      normAxis,
-      0,
-      keepdims: keepdims,
-    );
-    if (promotedA != a) promotedA.dispose();
-  }
+  final promotedA = a.dtype.isComplex ? a : promoteToComplex(a);
+  nanReduceRecursive<dynamic>(
+    promotedA,
+    result,
+    counts,
+    List<int>.filled(promotedA.shape.length, 0),
+    List<int>.filled(targetShape.length, 0),
+    normAxis,
+    0,
+    keepdims: keepdims,
+  );
+  if (!identical(promotedA, a)) promotedA.dispose();
 
   final iter = NDIter.broadcast2(result, counts);
   while (iter.moveNext()) {
     final coords = iter.coords;
     final c = counts.getCell(coords);
     if (c == 0) {
-      result.setCell(
-        coords,
-        (targetDType.isComplex ? Complex(double.nan, double.nan) : double.nan)
-            as R,
-      );
+      result.setCell(coords, Complex(double.nan, double.nan) as R);
     } else {
       result.setCell(coords, ((result.getCell(coords) as dynamic) / c) as R);
     }
@@ -5112,6 +4982,61 @@ NDArray<T> nansum<T extends Object>(
   final squeezedDestStrides = keepdims
       ? (List<int>.from(result.strides)..removeAt(normAxis))
       : result.strides;
+
+  if (!a.dtype.isComplex) {
+    if (a.shape[normAxis] == 0) {
+      return result;
+    }
+    final marker = ScratchArena.marker;
+    try {
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+      }
+      for (var i = 0; i < squeezedDestStrides.length; i++) {
+        cStridesRes[i] = squeezedDestStrides[i];
+      }
+
+      switch (a.dtype) {
+        case DType.float64:
+          s_nansum_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
+          );
+        case DType.float32:
+          s_nansum_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
+          );
+        default:
+          _s_stat_strided_fallback(
+            a,
+            result,
+            rank,
+            normAxis,
+            squeezedDestStrides,
+            s_nansum_double,
+          );
+      }
+      return result;
+    } finally {
+      ScratchArena.reset(marker);
+    }
+  }
 
   reduceRecursive<T, T>(
     a,

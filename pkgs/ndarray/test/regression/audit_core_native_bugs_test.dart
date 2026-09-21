@@ -517,10 +517,10 @@ void main() {
   );
 
   group(
-    'Bug 8: operator == all 15 DTypes, IEEE 754 float equality, & hashCode negative ints',
+    'Bug 8: equals() all 15 DTypes, IEEE 754 float equality, & contentHashCode negative ints',
     () {
       test(
-        'operator == works for float16, bfloat16, int8, uint16, uint32, uint64 on non-contiguous views',
+        'equals() works for float16, bfloat16, int8, uint16, uint32, uint64 on non-contiguous views',
         () {
           for (final dt in [
             DType.float16,
@@ -534,11 +534,15 @@ void main() {
             final b = NDArray.fromList([1, 3, 2, 4], [2, 2], dt);
             try {
               final bT = b.transpose();
-              expect(a == bT, isTrue, reason: 'Failed a == b.T for $dt');
               expect(
-                bT == b.transpose(),
+                a.equals(bT),
                 isTrue,
-                reason: 'Failed b.T == b.T for $dt',
+                reason: 'Failed a.equals(b.T) for $dt',
+              );
+              expect(
+                bT.equals(b.transpose()),
+                isTrue,
+                reason: 'Failed b.T.equals(b.T) for $dt',
               );
             } finally {
               a.dispose();
@@ -549,7 +553,7 @@ void main() {
       );
 
       test(
-        'operator == adheres to IEEE 754 for +0.0 == -0.0 and NaN != NaN across float DTypes',
+        'equals() adheres to IEEE 754 for +0.0 == -0.0 and NaN != NaN across float DTypes',
         () {
           for (final dt in [
             DType.float64,
@@ -563,17 +567,17 @@ void main() {
             final nanArr2 = NDArray.fromList([double.nan], [1], dt);
             try {
               expect(
-                posZero == negZero,
+                posZero.equals(negZero),
                 isTrue,
                 reason: '+0.0 == -0.0 failed for $dt',
               );
               expect(
-                posZero.hashCode,
-                equals(negZero.hashCode),
-                reason: 'hashCode for -0.0 failed for $dt',
+                posZero.contentHashCode,
+                equals(negZero.contentHashCode),
+                reason: 'contentHashCode for -0.0 failed for $dt',
               );
               expect(
-                nanArr1 == nanArr2,
+                nanArr1.equals(nanArr2),
                 isFalse,
                 reason: 'NaN == NaN must be false for $dt',
               );
@@ -588,7 +592,7 @@ void main() {
       );
 
       test(
-        'hashCode does not collide to 0 or NaN canonical bits for negative int64/int32 arrays',
+        'contentHashCode does not collide to 0 or NaN canonical bits for negative int64/int32 arrays',
         () {
           final n1 = NDArray.fromList([-1, -2], [2], DType.int64);
           final n2 = NDArray.fromList([-100, -200], [2], DType.int64);
@@ -603,12 +607,18 @@ void main() {
           final i32Min = NDArray.fromList([-2147483648], [1], DType.int32);
           final i32Zero = NDArray.fromList([0], [1], DType.int32);
           try {
-            expect(n1.hashCode, isNot(equals(0)));
-            expect(n1.hashCode, isNot(equals(n2.hashCode)));
-            expect(i64Min.hashCode, isNot(equals(i64Zero.hashCode)));
-            expect(n3.hashCode, isNot(equals(0)));
-            expect(n3.hashCode, isNot(equals(n4.hashCode)));
-            expect(i32Min.hashCode, isNot(equals(i32Zero.hashCode)));
+            expect(n1.contentHashCode, isNot(equals(0)));
+            expect(n1.contentHashCode, isNot(equals(n2.contentHashCode)));
+            expect(
+              i64Min.contentHashCode,
+              isNot(equals(i64Zero.contentHashCode)),
+            );
+            expect(n3.contentHashCode, isNot(equals(0)));
+            expect(n3.contentHashCode, isNot(equals(n4.contentHashCode)));
+            expect(
+              i32Min.contentHashCode,
+              isNot(equals(i32Zero.contentHashCode)),
+            );
           } finally {
             n1.dispose();
             n2.dispose();

@@ -16864,6 +16864,414 @@ void native_choice_weighted_without_replacement(
     }
 }
 
+double r_nansum_double(const double *src, int size) {
+    if (src == nullptr || size <= 0) return 0.0;
+    double sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+    int i = 0;
+    int limit = size - 3;
+    for (; i < limit; i += 4) {
+        double v0 = src[i];
+        double v1 = src[i + 1];
+        double v2 = src[i + 2];
+        double v3 = src[i + 3];
+        if (!std::isnan(v0)) sum0 += v0;
+        if (!std::isnan(v1)) sum1 += v1;
+        if (!std::isnan(v2)) sum2 += v2;
+        if (!std::isnan(v3)) sum3 += v3;
+    }
+    for (; i < size; i++) {
+        double v = src[i];
+        if (!std::isnan(v)) sum0 += v;
+    }
+    return (sum0 + sum1) + (sum2 + sum3);
+}
+
+double r_nansum_float(const float *src, int size) {
+    if (src == nullptr || size <= 0) return 0.0;
+    double sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+    int i = 0;
+    int limit = size - 3;
+    for (; i < limit; i += 4) {
+        float v0 = src[i];
+        float v1 = src[i + 1];
+        float v2 = src[i + 2];
+        float v3 = src[i + 3];
+        if (!std::isnan(v0)) sum0 += (double)v0;
+        if (!std::isnan(v1)) sum1 += (double)v1;
+        if (!std::isnan(v2)) sum2 += (double)v2;
+        if (!std::isnan(v3)) sum3 += (double)v3;
+    }
+    for (; i < size; i++) {
+        float v = src[i];
+        if (!std::isnan(v)) sum0 += (double)v;
+    }
+    return (sum0 + sum1) + (sum2 + sum3);
+}
+
+double r_nanmean_double(const double *src, int size) {
+    if (src == nullptr || size <= 0) return NAN;
+    double sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+    int count = 0;
+    int i = 0;
+    int limit = size - 3;
+    for (; i < limit; i += 4) {
+        double v0 = src[i];
+        double v1 = src[i + 1];
+        double v2 = src[i + 2];
+        double v3 = src[i + 3];
+        if (!std::isnan(v0)) { sum0 += v0; count++; }
+        if (!std::isnan(v1)) { sum1 += v1; count++; }
+        if (!std::isnan(v2)) { sum2 += v2; count++; }
+        if (!std::isnan(v3)) { sum3 += v3; count++; }
+    }
+    for (; i < size; i++) {
+        double v = src[i];
+        if (!std::isnan(v)) { sum0 += v; count++; }
+    }
+    return count == 0 ? NAN : ((sum0 + sum1) + (sum2 + sum3)) / (double)count;
+}
+
+double r_nanmean_float(const float *src, int size) {
+    if (src == nullptr || size <= 0) return NAN;
+    double sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+    int count = 0;
+    int i = 0;
+    int limit = size - 3;
+    for (; i < limit; i += 4) {
+        float v0 = src[i];
+        float v1 = src[i + 1];
+        float v2 = src[i + 2];
+        float v3 = src[i + 3];
+        if (!std::isnan(v0)) { sum0 += (double)v0; count++; }
+        if (!std::isnan(v1)) { sum1 += (double)v1; count++; }
+        if (!std::isnan(v2)) { sum2 += (double)v2; count++; }
+        if (!std::isnan(v3)) { sum3 += (double)v3; count++; }
+    }
+    for (; i < size; i++) {
+        float v = src[i];
+        if (!std::isnan(v)) { sum0 += (double)v; count++; }
+    }
+    return count == 0 ? NAN : ((sum0 + sum1) + (sum2 + sum3)) / (double)count;
+}
+
+double r_nanvar_double(const double *src, int size) {
+    if (src == nullptr || size <= 0) return NAN;
+    double sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+    int count = 0;
+    int i = 0;
+    int limit = size - 3;
+    for (; i < limit; i += 4) {
+        double v0 = src[i];
+        double v1 = src[i + 1];
+        double v2 = src[i + 2];
+        double v3 = src[i + 3];
+        if (!std::isnan(v0)) { sum0 += v0; count++; }
+        if (!std::isnan(v1)) { sum1 += v1; count++; }
+        if (!std::isnan(v2)) { sum2 += v2; count++; }
+        if (!std::isnan(v3)) { sum3 += v3; count++; }
+    }
+    for (; i < size; i++) {
+        double v = src[i];
+        if (!std::isnan(v)) { sum0 += v; count++; }
+    }
+    if (count == 0) return NAN;
+    double meanVal = ((sum0 + sum1) + (sum2 + sum3)) / (double)count;
+    double sq0 = 0.0, sq1 = 0.0, sq2 = 0.0, sq3 = 0.0;
+    i = 0;
+    for (; i < limit; i += 4) {
+        double v0 = src[i];
+        double v1 = src[i + 1];
+        double v2 = src[i + 2];
+        double v3 = src[i + 3];
+        if (!std::isnan(v0)) { double d0 = v0 - meanVal; sq0 += d0 * d0; }
+        if (!std::isnan(v1)) { double d1 = v1 - meanVal; sq1 += d1 * d1; }
+        if (!std::isnan(v2)) { double d2 = v2 - meanVal; sq2 += d2 * d2; }
+        if (!std::isnan(v3)) { double d3 = v3 - meanVal; sq3 += d3 * d3; }
+    }
+    for (; i < size; i++) {
+        double v = src[i];
+        if (!std::isnan(v)) { double d = v - meanVal; sq0 += d * d; }
+    }
+    return ((sq0 + sq1) + (sq2 + sq3)) / (double)count;
+}
+
+double r_nanvar_float(const float *src, int size) {
+    if (src == nullptr || size <= 0) return NAN;
+    double sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+    int count = 0;
+    int i = 0;
+    int limit = size - 3;
+    for (; i < limit; i += 4) {
+        float v0 = src[i];
+        float v1 = src[i + 1];
+        float v2 = src[i + 2];
+        float v3 = src[i + 3];
+        if (!std::isnan(v0)) { sum0 += (double)v0; count++; }
+        if (!std::isnan(v1)) { sum1 += (double)v1; count++; }
+        if (!std::isnan(v2)) { sum2 += (double)v2; count++; }
+        if (!std::isnan(v3)) { sum3 += (double)v3; count++; }
+    }
+    for (; i < size; i++) {
+        float v = src[i];
+        if (!std::isnan(v)) { sum0 += (double)v; count++; }
+    }
+    if (count == 0) return NAN;
+    double meanVal = ((sum0 + sum1) + (sum2 + sum3)) / (double)count;
+    double sq0 = 0.0, sq1 = 0.0, sq2 = 0.0, sq3 = 0.0;
+    i = 0;
+    for (; i < limit; i += 4) {
+        float v0 = src[i];
+        float v1 = src[i + 1];
+        float v2 = src[i + 2];
+        float v3 = src[i + 3];
+        if (!std::isnan(v0)) { double d0 = (double)v0 - meanVal; sq0 += d0 * d0; }
+        if (!std::isnan(v1)) { double d1 = (double)v1 - meanVal; sq1 += d1 * d1; }
+        if (!std::isnan(v2)) { double d2 = (double)v2 - meanVal; sq2 += d2 * d2; }
+        if (!std::isnan(v3)) { double d3 = (double)v3 - meanVal; sq3 += d3 * d3; }
+    }
+    for (; i < size; i++) {
+        float v = src[i];
+        if (!std::isnan(v)) { double d = (double)v - meanVal; sq0 += d * d; }
+    }
+    return ((sq0 + sq1) + (sq2 + sq3)) / (double)count;
+}
+
+#define DEFINE_S_NANSUM(TYPE, DEST_TYPE) \
+void s_nansum_##TYPE(const TYPE *src, const int *stridesSrc, \
+                     DEST_TYPE *dest, const int *stridesDest, \
+                     const int *shape, int rank, int axis) { \
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return; \
+    int size_axis = shape[axis]; \
+    DECLARE_RANK_BUFFER(int, coord, rank); \
+    int outer_size = 1; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) outer_size *= shape[d]; \
+    } \
+    int stride_axis = stridesSrc[axis]; \
+    for (int o = 0; o < outer_size; o++) { \
+        int offsetRes = 0; \
+        int offsetSrc = 0; \
+        for (int d = 0; d < rank; d++) { \
+            if (d != axis) { \
+                offsetSrc += coord[d] * stridesSrc[d]; \
+                if (rank > 1) { \
+                    int targetD = (d < axis) ? d : (d - 1); \
+                    offsetRes += coord[d] * stridesDest[targetD]; \
+                } \
+            } \
+        } \
+        double sum_acc = 0.0; \
+        for (int i = 0; i < size_axis; i++) { \
+            TYPE val = src[offsetSrc + i * stride_axis]; \
+            if (!std::isnan(val)) sum_acc += (double)val; \
+        } \
+        dest[offsetRes] = (DEST_TYPE)sum_acc; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            if (d == axis) continue; \
+            coord[d]++; \
+            if (coord[d] < shape[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
+}
+
+DEFINE_S_NANSUM(double, double)
+DEFINE_S_NANSUM(float, float)
+#undef DEFINE_S_NANSUM
+
+#define DEFINE_S_NANMEAN(TYPE) \
+void s_nanmean_##TYPE(const TYPE *src, const int *stridesSrc, \
+                      double *dest, const int *stridesDest, \
+                      const int *shape, int rank, int axis) { \
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return; \
+    int size_axis = shape[axis]; \
+    DECLARE_RANK_BUFFER(int, coord, rank); \
+    int outer_size = 1; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) outer_size *= shape[d]; \
+    } \
+    int stride_axis = stridesSrc[axis]; \
+    for (int o = 0; o < outer_size; o++) { \
+        int offsetRes = 0; \
+        int offsetSrc = 0; \
+        for (int d = 0; d < rank; d++) { \
+            if (d != axis) { \
+                offsetSrc += coord[d] * stridesSrc[d]; \
+                if (rank > 1) { \
+                    int targetD = (d < axis) ? d : (d - 1); \
+                    offsetRes += coord[d] * stridesDest[targetD]; \
+                } \
+            } \
+        } \
+        double sum_acc = 0.0; \
+        int count = 0; \
+        for (int i = 0; i < size_axis; i++) { \
+            TYPE val = src[offsetSrc + i * stride_axis]; \
+            if (!std::isnan(val)) { sum_acc += (double)val; count++; } \
+        } \
+        dest[offsetRes] = count == 0 ? NAN : (sum_acc / (double)count); \
+        for (int d = rank - 1; d >= 0; d--) { \
+            if (d == axis) continue; \
+            coord[d]++; \
+            if (coord[d] < shape[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
+}
+
+DEFINE_S_NANMEAN(double)
+DEFINE_S_NANMEAN(float)
+#undef DEFINE_S_NANMEAN
+
+#define DEFINE_S_NANVAR(TYPE) \
+void s_nanvar_##TYPE(const TYPE *src, const int *stridesSrc, \
+                     double *dest, const int *stridesDest, \
+                     const int *shape, int rank, int axis) { \
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return; \
+    int size_axis = shape[axis]; \
+    DECLARE_RANK_BUFFER(int, coord, rank); \
+    int outer_size = 1; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) outer_size *= shape[d]; \
+    } \
+    int stride_axis = stridesSrc[axis]; \
+    for (int o = 0; o < outer_size; o++) { \
+        int offsetRes = 0; \
+        int offsetSrc = 0; \
+        for (int d = 0; d < rank; d++) { \
+            if (d != axis) { \
+                offsetSrc += coord[d] * stridesSrc[d]; \
+                if (rank > 1) { \
+                    int targetD = (d < axis) ? d : (d - 1); \
+                    offsetRes += coord[d] * stridesDest[targetD]; \
+                } \
+            } \
+        } \
+        double sum_acc = 0.0; \
+        int count = 0; \
+        for (int i = 0; i < size_axis; i++) { \
+            TYPE val = src[offsetSrc + i * stride_axis]; \
+            if (!std::isnan(val)) { sum_acc += (double)val; count++; } \
+        } \
+        if (count == 0) { \
+            dest[offsetRes] = NAN; \
+        } else { \
+            double mean_val = sum_acc / (double)count; \
+            double sq_acc = 0.0; \
+            for (int i = 0; i < size_axis; i++) { \
+                TYPE val = src[offsetSrc + i * stride_axis]; \
+                if (!std::isnan(val)) { \
+                    double diff = (double)val - mean_val; \
+                    sq_acc += diff * diff; \
+                } \
+            } \
+            dest[offsetRes] = sq_acc / (double)count; \
+        } \
+        for (int d = rank - 1; d >= 0; d--) { \
+            if (d == axis) continue; \
+            coord[d]++; \
+            if (coord[d] < shape[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
+}
+
+DEFINE_S_NANVAR(double)
+DEFINE_S_NANVAR(float)
+#undef DEFINE_S_NANVAR
+
+} // extern "C"
+
+template <typename T>
+static void copy_strided_impl(
+    const T *src,
+    const int *stridesSrc,
+    T *dest,
+    const int *stridesDest,
+    const int *shape,
+    int rank
+) {
+    if (rank == 0) {
+        dest[0] = src[0];
+        return;
+    }
+    int total = 1;
+    for (int d = 0; d < rank; d++) {
+        if (shape[d] <= 0) return;
+        total *= shape[d];
+    }
+    if (rank == 1) {
+        int sSrc = stridesSrc[0];
+        int sDest = stridesDest[0];
+        int n = shape[0];
+        for (int i = 0; i < n; i++) {
+            dest[i * sDest] = src[i * sSrc];
+        }
+        return;
+    }
+    if (rank == 2) {
+        int n0 = shape[0], n1 = shape[1];
+        int sSrc0 = stridesSrc[0], sSrc1 = stridesSrc[1];
+        int sDest0 = stridesDest[0], sDest1 = stridesDest[1];
+        for (int i = 0; i < n0; i++) {
+            const T *rowSrc = src + i * sSrc0;
+            T *rowDest = dest + i * sDest0;
+            for (int j = 0; j < n1; j++) {
+                rowDest[j * sDest1] = rowSrc[j * sSrc1];
+            }
+        }
+        return;
+    }
+    DECLARE_RANK_BUFFER(int, coord, rank);
+    int offsetSrc = 0;
+    int offsetDest = 0;
+    for (int idx = 0; idx < total; idx++) {
+        dest[offsetDest] = src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            offsetSrc += stridesSrc[d];
+            offsetDest += stridesDest[d];
+            if (coord[d] < shape[d]) break;
+            offsetSrc -= shape[d] * stridesSrc[d];
+            offsetDest -= shape[d] * stridesDest[d];
+            coord[d] = 0;
+        }
+    }
+}
+
+extern "C" {
+
+void native_copy_strided(
+    const void *src,
+    const int *stridesSrc,
+    void *dest,
+    const int *stridesDest,
+    const int *shape,
+    int rank,
+    int itemSize
+) {
+    if (src == nullptr || dest == nullptr || rank < 0) return;
+    switch (itemSize) {
+        case 1:
+            copy_strided_impl<uint8_t>((const uint8_t*)src, stridesSrc, (uint8_t*)dest, stridesDest, shape, rank);
+            break;
+        case 2:
+            copy_strided_impl<uint16_t>((const uint16_t*)src, stridesSrc, (uint16_t*)dest, stridesDest, shape, rank);
+            break;
+        case 4:
+            copy_strided_impl<uint32_t>((const uint32_t*)src, stridesSrc, (uint32_t*)dest, stridesDest, shape, rank);
+            break;
+        case 8:
+            copy_strided_impl<uint64_t>((const uint64_t*)src, stridesSrc, (uint64_t*)dest, stridesDest, shape, rank);
+            break;
+        case 16:
+            copy_strided_impl<Item16>((const Item16*)src, stridesSrc, (Item16*)dest, stridesDest, shape, rank);
+            break;
+        default:
+            break;
+    }
+}
+
 }
 
 

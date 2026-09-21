@@ -248,5 +248,39 @@ void main() {
         expect(res.x.getCell([1]).toDouble(), closeTo(4.0, 1e-4));
       });
     });
+
+    test(
+      'Supports pre-allocated out, outJac, and jacInto without per-iteration leaks',
+      () {
+        NDArray.scope(() {
+          final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
+          final outX = NDArray<Float64>.zeros([2], DType.float64);
+          final outJ = NDArray<Float64>.zeros([2], DType.float64);
+          final res = minimize(
+            (NDArray<Float64> x) {
+              final px = x.getCell([0]).toDouble();
+              final py = x.getCell([1]).toDouble();
+              return (px - 3.0) * (px - 3.0) + (py + 1.0) * (py + 1.0);
+            },
+            x0,
+            method: MinimizeMethod.lbfgs,
+            jacInto: (NDArray<Float64> x, NDArray<Float64> gOut) {
+              final px = x.getCell([0]).toDouble();
+              final py = x.getCell([1]).toDouble();
+              gOut.setCell([0], Float64(2.0 * (px - 3.0)));
+              gOut.setCell([1], Float64(2.0 * (py + 1.0)));
+            },
+            out: outX,
+            outJac: outJ,
+          );
+
+          expect(res.success, isTrue);
+          expect(identical(res.x, outX), isTrue);
+          expect(identical(res.jac, outJ), isTrue);
+          expect(outX.getCell([0]).toDouble(), closeTo(3.0, 1e-4));
+          expect(outX.getCell([1]).toDouble(), closeTo(-1.0, 1e-4));
+        });
+      },
+    );
   });
 }

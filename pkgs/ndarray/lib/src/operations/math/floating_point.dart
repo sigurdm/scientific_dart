@@ -1544,3 +1544,43 @@ extension FrexpRecordExtension<R>
     maskHolder.dispose();
   }
 }
+
+/// Returns `true` if two arrays have the same shape and elements, `false` otherwise.
+///
+/// Reference: [numpy.array_equal](https://numpy.org/doc/stable/reference/generated/numpy.array_equal.html)
+bool array_equal(NDArray a, NDArray b, {bool equalNan = false}) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot execute array_equal() on a disposed array.');
+  }
+  if (!equalNan && a.dtype == b.dtype) {
+    return a.equals(b);
+  }
+  if (!listEquals(a.shape, b.shape)) return false;
+  if (a.size == 0) return true;
+  final iter = NDIter.broadcast2(a, b);
+  while (iter.moveNext()) {
+    final va = a.getCellRaw(iter.getIndex(0));
+    final vb = b.getCellRaw(iter.getIndex(1));
+    if (va == vb) continue;
+    if (va is Complex && vb is Complex) {
+      final rEq =
+          va.real == vb.real || (equalNan && va.real.isNaN && vb.real.isNaN);
+      final iEq =
+          va.imag == vb.imag || (equalNan && va.imag.isNaN && vb.imag.isNaN);
+      if (rEq && iEq) continue;
+      return false;
+    }
+    if (va is num && vb is num) {
+      final da = va.toDouble();
+      final db = vb.toDouble();
+      if (da == db || (equalNan && da.isNaN && db.isNaN)) continue;
+      return false;
+    }
+    return false;
+  }
+  return true;
+}
+
+/// CamelCase alias for [array_equal].
+bool arrayEqual(NDArray a, NDArray b, {bool equalNan = false}) =>
+    array_equal(a, b, equalNan: equalNan);

@@ -121,7 +121,7 @@ NDArray<T> sort<T extends Object>(
       tempResult = src.copy();
       result = tempResult;
     } else if (out != null) {
-      if (out != src) {
+      if (!identical(out, src)) {
         src.copy(out: out);
       }
       result = out;
@@ -225,7 +225,7 @@ NDArray<T> sort<T extends Object>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int> argsort<T extends Object>(
+NDArray<Int32> argsort<T extends Object>(
   NDArray<T> a, {
   int axis = -1,
   SortKind kind = SortKind.quicksort,
@@ -247,16 +247,17 @@ NDArray<int> argsort<T extends Object>(
   if (rank == 0) {
     if (out != null) {
       out.setCellFlat(0, 0);
-      return out;
+      return out as NDArray<Int32>;
     }
-    return NDArray.scalar(0, dtype: DType.int32);
+    return NDArray<Int32>.scalar(Int32(0), dtype: DType.int32);
   }
   final targetAxis = axis < 0 ? rank + axis : axis;
   if (targetAxis < 0 || targetAxis >= rank) {
     throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
   }
   if (a.size == 0) {
-    return out ?? NDArray<int>.create(a.shape, DType.int32);
+    return (out ?? NDArray<Int32>.create(a.shape, DType.int32))
+        as NDArray<Int32>;
   }
 
   if (targetAxis != rank - 1) {
@@ -269,7 +270,7 @@ NDArray<int> argsort<T extends Object>(
       );
       final resultSwapped = sortedIndicesView.swapaxes(targetAxis, rank - 1);
       if (out != null) {
-        resultSwapped.copy(out: out);
+        resultSwapped.copy(out: out as NDArray<Int32>);
         return out;
       }
       final res = resultSwapped.copy();
@@ -287,17 +288,17 @@ NDArray<int> argsort<T extends Object>(
         ? NDArray<int>.create(src.shape, out.dtype)
         : null;
     final NDArray<int> result =
-        tempResult ?? (out ?? NDArray<int>.create(src.shape, DType.int32));
+        tempResult ?? (out ?? NDArray<Int32>.create(src.shape, DType.int32));
 
-    NDArray<int> finish() {
+    NDArray<Int32> finish() {
       if (tempResult != null) {
         tempResult.copy(out: out!);
-        return out;
+        return out as NDArray<Int32>;
       }
       if (out == null) {
         result.detachToParentScope();
       }
-      return result;
+      return result as NDArray<Int32>;
     }
 
     final n = src.shape.last;
@@ -650,7 +651,7 @@ NDArray<T> partition<T extends Object>(
       result = tempResult;
     } else {
       result = out ?? NDArray<T>.create(src.shape, src.dtype);
-      if (result != src) {
+      if (!identical(result, src)) {
         src.copy(out: result);
       }
     }
@@ -820,7 +821,7 @@ NDArray<T> partition<T extends Object>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int> argpartition<T extends Object>(
+NDArray<Int32> argpartition<T extends Object>(
   NDArray<T> a,
   dynamic kth, {
   int axis = -1,
@@ -844,9 +845,9 @@ NDArray<int> argpartition<T extends Object>(
   if (rank == 0) {
     if (out != null) {
       out.setCellFlat(0, 0);
-      return out;
+      return out as NDArray<Int32>;
     }
-    return NDArray.scalar(0, dtype: DType.int32);
+    return NDArray<Int32>.scalar(Int32(0), dtype: DType.int32);
   }
 
   final targetAxis = axis < 0 ? rank + axis : axis;
@@ -891,7 +892,7 @@ NDArray<int> argpartition<T extends Object>(
         rank - 1,
       );
       if (out != null) {
-        resultSwapped.copy(out: out);
+        resultSwapped.copy(out: out as NDArray<Int32>);
         return out;
       }
       final res = resultSwapped.copy();
@@ -911,17 +912,17 @@ NDArray<int> argpartition<T extends Object>(
         ? NDArray<int>.create(src.shape, out.dtype)
         : null;
     final NDArray<int> result =
-        tempResult ?? (out ?? NDArray<int>.create(src.shape, DType.int32));
+        tempResult ?? (out ?? NDArray<Int32>.create(src.shape, DType.int32));
 
-    NDArray<int> finish() {
+    NDArray<Int32> finish() {
       if (tempResult != null) {
         tempResult.copy(out: out!);
-        return out;
+        return out as NDArray<Int32>;
       }
       if (out == null) {
         result.detachToParentScope();
       }
-      return result;
+      return result as NDArray<Int32>;
     }
 
     if (uniqueK.isEmpty) {
@@ -1165,7 +1166,7 @@ NDArray<int> argpartition<T extends Object>(
 ///   print(indices.toList()); // [[1, 2], [0, 3]]
 /// }
 /// ```
-NDArray<int> searchsorted<T extends Object>(
+NDArray<Int32> searchsorted<T extends Object>(
   NDArray<T> a,
   NDArray<T> v, {
   SearchSide side = SearchSide.left,
@@ -1216,7 +1217,7 @@ NDArray<int> searchsorted<T extends Object>(
         final targetOut = NDArray<int>.create(v.shape, out.dtype);
         searchsorted(a, v, side: side, sorter: sorter, out: targetOut);
         targetOut.copy(out: out);
-        return out;
+        return out as NDArray<Int32>;
       });
     }
   }
@@ -1241,13 +1242,13 @@ NDArray<int> searchsorted<T extends Object>(
       }
     }
 
-    final result = out ?? NDArray<int>.create(v.shape, DType.int32);
+    final result = out ?? NDArray<Int32>.create(v.shape, DType.int32);
 
     if (v.size == 0) {
       if (out == null) {
         result.detachToParentScope();
       }
-      return result;
+      return result as NDArray<Int32>;
     }
 
     final NDArray srcA = a.isContiguous ? a : a.copy();
@@ -1465,7 +1466,7 @@ NDArray<int> searchsorted<T extends Object>(
     if (out == null) {
       result.detachToParentScope();
     }
-    return result;
+    return result as NDArray<Int32>;
   });
 }
 
@@ -1735,12 +1736,12 @@ dynamic where<T extends Object>(
 
 /// Returns the indices of the elements that are non-zero.
 ///
-/// Returns a `List<NDArray<int>>` containing 1D integer arrays, one for each dimension
+/// Returns a `List<NDArray<Int32>>` containing 1D integer arrays, one for each dimension
 /// of [a], which give the coordinates of the non-zero elements along that dimension.
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-List<NDArray<int>> nonzero<T extends Object>(NDArray<T> a) {
+List<NDArray<Int32>> nonzero<T extends Object>(NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute nonzero() on a disposed array.');
   }
@@ -1748,7 +1749,7 @@ List<NDArray<int>> nonzero<T extends Object>(NDArray<T> a) {
   final count = count_nonzero<T>(a).scalar;
   final results = List.generate(
     rank,
-    (_) => NDArray<int>.create([count], DType.int32, zeroInit: true),
+    (_) => NDArray<Int32>.create([count], DType.int32, zeroInit: true),
   );
 
   if (count == 0 || rank == 0) {
@@ -1925,7 +1926,7 @@ List<NDArray<int>> nonzero<T extends Object>(NDArray<T> a) {
 /// elements, and `N` is the rank of [a].
 ///
 /// It is an error if [a] is disposed.
-NDArray<int> argwhere<T extends Object>(NDArray<T> a) {
+NDArray<Int32> argwhere<T extends Object>(NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute argwhere() on a disposed array.');
   }
@@ -1936,13 +1937,13 @@ NDArray<int> argwhere<T extends Object>(NDArray<T> a) {
 
     if (rank == 0) {
       if (count > 0) {
-        return NDArray<int>.create([1, 0], DType.int32).detachToParentScope();
+        return NDArray<Int32>.create([1, 0], DType.int32).detachToParentScope();
       } else {
-        return NDArray<int>.create([0, 0], DType.int32).detachToParentScope();
+        return NDArray<Int32>.create([0, 0], DType.int32).detachToParentScope();
       }
     }
 
-    final result = NDArray<int>.create(
+    final result = NDArray<Int32>.create(
       [count, rank],
       DType.int32,
       zeroInit: true,
@@ -2230,7 +2231,7 @@ void _dispatchCountNonzeroFFI(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
+NDArray<Int32> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot count non-zero elements on a disposed array.');
   }
@@ -2262,9 +2263,9 @@ NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
     }
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
-        final temp = NDArray<int>.create(out.shape, out.dtype);
+        final temp = NDArray<Int32>.create(out.shape, DType.int32);
         count_nonzero<T>(a, axis: axis, out: temp);
-        return temp.copy(out: out);
+        return temp.copy(out: out as NDArray<Int32>);
       });
     }
   }
@@ -2293,7 +2294,8 @@ NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
       src = a;
     }
 
-    final result = out ?? NDArray<int>.create([], DType.int32);
+    final result =
+        (out ?? NDArray<Int32>.create([], DType.int32)) as NDArray<Int32>;
     final marker = ScratchArena.marker;
     try {
       final cShape = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
@@ -2323,7 +2325,9 @@ NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
   // Axis reduction
   final targetAxis = normAxis;
 
-  final result = out ?? NDArray<int>.create(targetShape, DType.int32);
+  final result =
+      (out ?? NDArray<Int32>.create(targetShape, DType.int32))
+          as NDArray<Int32>;
 
   final marker = ScratchArena.marker;
   try {
@@ -2471,7 +2475,7 @@ void _dispatchArgMinMaxFFI(
   }
 }
 
-NDArray<int> _uint64ArgMinMax(
+NDArray<Int32> _uint64ArgMinMax(
   NDArray a,
   int? normAxis,
   bool isMax, {
@@ -2479,7 +2483,9 @@ NDArray<int> _uint64ArgMinMax(
   NDArray<int>? out,
   required List<int> targetShape,
 }) {
-  final result = out ?? NDArray<int>.create(targetShape, DType.int32);
+  final result =
+      (out ?? NDArray<Int32>.create(targetShape, DType.int32))
+          as NDArray<Int32>;
   final rank = a.shape.length;
 
   if (normAxis == null) {
@@ -2496,7 +2502,7 @@ NDArray<int> _uint64ArgMinMax(
         bestIdx = i;
       }
     }
-    result.setCellFlat(0, bestIdx);
+    result.setCellFlat(0, Int32(bestIdx));
     return result;
   }
 
@@ -2523,7 +2529,7 @@ NDArray<int> _uint64ArgMinMax(
         bestIdx = i;
       }
     }
-    result.setCellFlat(0, bestIdx);
+    result.setCellFlat(0, Int32(bestIdx));
     return result;
   }
 
@@ -2554,7 +2560,7 @@ NDArray<int> _uint64ArgMinMax(
     for (var d = 0; d < outRank; d++) {
       destOffset += outCoords[d] * squeezedDestStrides[d];
     }
-    result.setCellRaw(destOffset, bestIdx);
+    result.setCellRaw(destOffset, Int32(bestIdx));
 
     for (var d = outRank - 1; d >= 0; d--) {
       outCoords[d]++;
@@ -2566,7 +2572,7 @@ NDArray<int> _uint64ArgMinMax(
   return result;
 }
 
-NDArray<int> _argminmaxFFI<T>(
+NDArray<Int32> _argminmaxFFI<T>(
   NDArray<T> a,
   int? axis,
   bool isMax, {
@@ -2613,9 +2619,9 @@ NDArray<int> _argminmaxFFI<T>(
     }
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
-        final temp = NDArray<int>.create(out.shape, out.dtype);
+        final temp = NDArray<Int32>.create(out.shape, DType.int32);
         _argminmaxFFI<T>(a, axis, isMax, keepdims: keepdims, out: temp);
-        return temp.copy(out: out);
+        return temp.copy(out: out as NDArray<Int32>);
       });
     }
   }
@@ -2654,7 +2660,9 @@ NDArray<int> _argminmaxFFI<T>(
       src = a;
     }
 
-    final result = out ?? NDArray<int>.create(targetShape, DType.int32);
+    final result =
+        (out ?? NDArray<Int32>.create(targetShape, DType.int32))
+            as NDArray<Int32>;
     final marker = ScratchArena.marker;
     try {
       final cShape = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
@@ -2685,7 +2693,9 @@ NDArray<int> _argminmaxFFI<T>(
   // Axis reduction
   final targetAxis = normAxis;
 
-  final result = out ?? NDArray<int>.create(targetShape, DType.int32);
+  final result =
+      (out ?? NDArray<Int32>.create(targetShape, DType.int32))
+          as NDArray<Int32>;
 
   final marker = ScratchArena.marker;
   try {
@@ -2735,7 +2745,7 @@ NDArray<int> _argminmaxFFI<T>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int> argmax<T>(
+NDArray<Int32> argmax<T>(
   NDArray<T> a, {
   int? axis,
   bool keepdims = false,
@@ -2751,7 +2761,7 @@ NDArray<int> argmax<T>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int> argmin<T>(
+NDArray<Int32> argmin<T>(
   NDArray<T> a, {
   int? axis,
   bool keepdims = false,

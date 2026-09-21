@@ -1642,6 +1642,30 @@ void s_nanmin_double(const double *src, const int *stridesSrc, double *dest, con
 void s_nanmax_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_nanmin_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_nanmax_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+double r_nansum_double(const double *src, int size);
+double r_nansum_float(const float *src, int size);
+double r_nanmean_double(const double *src, int size);
+double r_nanmean_float(const float *src, int size);
+double r_nanvar_double(const double *src, int size);
+double r_nanvar_float(const float *src, int size);
+
+void s_nansum_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_nansum_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_nanmean_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_nanmean_float(const float *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_nanvar_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_nanvar_float(const float *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+void native_copy_strided(
+    const void *src,
+    const int *stridesSrc,
+    void *dest,
+    const int *stridesDest,
+    const int *shape,
+    int rank,
+    int itemSize
+);
 int ndarray_find_index(
     int op, int dtype,
     const void *a, const int *stridesA,

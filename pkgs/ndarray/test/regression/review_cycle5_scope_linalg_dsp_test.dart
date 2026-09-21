@@ -120,9 +120,10 @@ void main() {
     );
 
     test(
-      'nested NDArray.scope with detachToParentScope on views of outer arrays',
+      'nested NDArray.scope with views of outer arrays and StateError on view detach',
       () {
         late NDArray<Float64> outerArr;
+        late NDArray<Float64> view;
 
         NDArray.scope(() {
           outerArr = NDArray<Float64>.fromList(
@@ -132,23 +133,31 @@ void main() {
           );
 
           NDArray.scope(() {
-            final view = outerArr.slice([Slice(start: 1, stop: 3)]);
-            // Calling detachToParentScope on a view of an outer array should not double-track
-            // outerArr in the outer scope.
-            view.detachToParentScope();
+            view = outerArr.slice([Slice(start: 1, stop: 3)]);
+            // Views do not own memory; calling detachToParentScope or detachFromScope
+            // on a view throws StateError.
+            expect(() => view.detachToParentScope(), throwsStateError);
+            expect(() => view.detachFromScope(), throwsStateError);
             expect(view.isDisposed, isFalse);
           });
 
+          // Views of outer arrays are not tracked by the inner scope and remain valid
+          // after the inner scope exits without needing detachToParentScope().
           expect(outerArr.isDisposed, isFalse);
-          // Detaching outerArr from the outer scope should remove its only tracking entry.
+          expect(view.isDisposed, isFalse);
+          expect(view.toList(), equals([20.0, 30.0]));
+
+          // Detaching outerArr from the outer scope removes its tracking entry.
           outerArr.detachFromScope();
         });
 
-        // Because outerArr was detached from outer scope, it must remain alive after scope exit.
+        // Because outerArr was detached from outer scope, both outerArr and view remain alive.
         expect(outerArr.isDisposed, isFalse);
+        expect(view.isDisposed, isFalse);
         expect(outerArr.toList(), equals([10.0, 20.0, 30.0, 40.0]));
         outerArr.dispose();
         expect(outerArr.isDisposed, isTrue);
+        expect(view.isDisposed, isTrue);
       },
     );
 

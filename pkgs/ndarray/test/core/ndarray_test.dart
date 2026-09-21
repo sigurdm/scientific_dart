@@ -1322,17 +1322,24 @@ void main() {
     );
 
     test(
-      'NDArray Structural Value Equality operator == and hashCode',
+      'NDArray Identity Equality (operator == / hashCode) and Structural Equality (equals / contentHashCode / arrayEqual)',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
         final b = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
         final c = NDArray.fromList([1.0, 2.0, 9.0], [3], DType.float64);
         final d = NDArray.fromList([1.0, 2.0, 3.0], [1, 3], DType.float64);
 
-        expect(a == b, true);
-        expect(a == c, false);
-        expect(a == d, false); // different shape
-        expect(a.hashCode == b.hashCode, true);
+        // Identity equality & hashCode
+        expect(a == a, true);
+        expect(a == b, false);
+        expect(a.hashCode, identityHashCode(a));
+
+        // Structural content equality & contentHashCode
+        expect(a.equals(b), true);
+        expect(arrayEqual(a, b), true);
+        expect(a.equals(c), false);
+        expect(a.equals(d), false); // different shape
+        expect(a.contentHashCode == b.contentHashCode, true);
 
         // Non-contiguous view comparisons tests (triggering recursive walkers)
         final parent1 = NDArray.fromList(
@@ -1350,12 +1357,13 @@ void main() {
             parent1.transposed; // non-contiguous: [[1.0, 3.0], [2.0, 4.0]]
         expect(viewT1.isContiguous, false);
 
-        // 1. Non-contiguous == contiguous
-        expect(viewT1 == parent2, true);
-        expect(viewT1 == parent1, false);
+        // 1. Non-contiguous equals contiguous
+        expect(viewT1.equals(parent2), true);
+        expect(arrayEqual(viewT1, parent2), true);
+        expect(viewT1.equals(parent1), false);
 
-        // 2. Non-contiguous hashCode
-        expect(viewT1.hashCode == parent2.hashCode, true);
+        // 2. Non-contiguous contentHashCode
+        expect(viewT1.contentHashCode == parent2.contentHashCode, true);
       }),
     );
 
@@ -1528,7 +1536,7 @@ void main() {
     );
 
     test(
-      'FFI native C flatten() and hashCode() correctness and invariants across all DTypes',
+      'FFI native C flatten() and contentHashCode() correctness and invariants across all DTypes',
       () => NDArray.scope(() {
         // 1. Float64
         final f64 = NDArray.fromList(
@@ -1545,8 +1553,8 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        expect(f64T == f64Contig, true);
-        expect(f64T.hashCode == f64Contig.hashCode, true);
+        expect(f64T.equals(f64Contig), true);
+        expect(f64T.contentHashCode == f64Contig.contentHashCode, true);
 
         // 2. Float32
         final f32 = NDArray.fromList(
@@ -1563,8 +1571,8 @@ void main() {
           [2, 2],
           DType.float32,
         );
-        expect(f32T == f32Contig, true);
-        expect(f32T.hashCode == f32Contig.hashCode, true);
+        expect(f32T.equals(f32Contig), true);
+        expect(f32T.contentHashCode == f32Contig.contentHashCode, true);
 
         // 3. Int64
         final i64 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
@@ -1573,8 +1581,8 @@ void main() {
         expect(i64Flat.isContiguous, true);
         expect(i64Flat.toList(), [1, 3, 2, 4]);
         final i64Contig = NDArray.fromList([1, 3, 2, 4], [2, 2], DType.int64);
-        expect(i64T == i64Contig, true);
-        expect(i64T.hashCode == i64Contig.hashCode, true);
+        expect(i64T.equals(i64Contig), true);
+        expect(i64T.contentHashCode == i64Contig.contentHashCode, true);
 
         // 4. Int32
         final i32 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
@@ -1583,8 +1591,8 @@ void main() {
         expect(i32Flat.isContiguous, true);
         expect(i32Flat.toList(), [1, 3, 2, 4]);
         final i32Contig = NDArray.fromList([1, 3, 2, 4], [2, 2], DType.int32);
-        expect(i32T == i32Contig, true);
-        expect(i32T.hashCode == i32Contig.hashCode, true);
+        expect(i32T.equals(i32Contig), true);
+        expect(i32T.contentHashCode == i32Contig.contentHashCode, true);
 
         // 5. Complex128
         final c128 = NDArray<Complex>.fromList(
@@ -1616,8 +1624,8 @@ void main() {
           [2, 2],
           DType.complex128,
         );
-        expect(c128T == c128Contig, true);
-        expect(c128T.hashCode == c128Contig.hashCode, true);
+        expect(c128T.equals(c128Contig), true);
+        expect(c128T.contentHashCode == c128Contig.contentHashCode, true);
 
         // 6. Complex64
         final c64 = NDArray<Complex>.fromList(
@@ -1649,8 +1657,8 @@ void main() {
           [2, 2],
           DType.complex64,
         );
-        expect(c64T == c64Contig, true);
-        expect(c64T.hashCode == c64Contig.hashCode, true);
+        expect(c64T.equals(c64Contig), true);
+        expect(c64T.contentHashCode == c64Contig.contentHashCode, true);
 
         // 7. Boolean
         final b = NDArray.fromList(
@@ -1667,8 +1675,8 @@ void main() {
           [2, 2],
           DType.boolean,
         );
-        expect(bT == bContig, true);
-        expect(bT.hashCode == bContig.hashCode, true);
+        expect(bT.equals(bContig), true);
+        expect(bT.contentHashCode == bContig.contentHashCode, true);
       }),
     );
 
@@ -1688,6 +1696,40 @@ void main() {
           expect(view.isContiguous, true);
         });
       },
+    );
+
+    test(
+      'reshape supports -1 unknown dimension inference and rejects multiple -1s',
+      () => NDArray.scope(() {
+        final a = NDArray<Float64>.arange(0, 12, dtype: DType.float64);
+        final r1 = a.reshape([3, -1]);
+        expect(r1.shape, [3, 4]);
+        final r2 = a.reshape([-1, 2, 2]);
+        expect(r2.shape, [3, 2, 2]);
+        expect(() => a.reshape([-1, -1]), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'detachFromScope and detachToParentScope throw StateError on views',
+      () => NDArray.scope(() {
+        final parent = NDArray<Float64>.arange(0, 100, dtype: DType.float64);
+        final subView = parent.slice([Slice(start: 10, stop: 15)]);
+        expect(() => subView.detachFromScope(), throwsStateError);
+        expect(() => subView.detachToParentScope(), throwsStateError);
+
+        // Explicit copy().detachToParentScope() succeeds and allows parent disposal
+        late NDArray<Float64> innerParent;
+        final ownedCopy = NDArray.scope(() {
+          innerParent = NDArray<Float64>.arange(0, 100, dtype: DType.float64);
+          final innerView = innerParent.slice([Slice(start: 10, stop: 15)]);
+          return innerView.copy().detachToParentScope();
+        });
+        expect(innerParent.isDisposed, true);
+        expect(ownedCopy.isDisposed, false);
+        expect(ownedCopy.isView, false);
+        expect(ownedCopy.toList(), [10.0, 11.0, 12.0, 13.0, 14.0]);
+      }),
     );
   });
 }

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 import 'dart:collection';
 import 'ndarray_bindings.dart';
+import 'ndarray_extensions_bindings.dart';
 import 'scratch_arena.dart';
 import 'package:openblas/openblas.dart' show openblas_set_num_threads;
 import 'package:resource_scope/resource_scope.dart';
@@ -337,6 +338,15 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
   static R scope<R>(R Function() callback) => ResourceScope.scope(callback);
 
+  /// Executes [callback] within an automatic resource management scope and
+  /// promotes the returned owning [NDArray] to the caller's parent scope (or to
+  /// manual ownership if there is no outer scope), while automatically disposing
+  /// all intermediate arrays allocated inside [callback].
+  ///
+  /// It is an error if [callback] returns a view ([isView] is `true`), because
+  /// `returning` calls [detachToParentScope] on the result. To return a slice or
+  /// view of an inner temporary array, return `view.copy()` so that a compact
+  /// owning array is promoted and the temporary parent buffer is freed on scope exit.
   static NDArray<T> returning<T extends Object>(
     NDArray<T> Function() callback,
   ) => ResourceScope.returning(callback);
@@ -354,8 +364,207 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     return true;
   }
 
-  /// Private constructor for internal use and factories.
-  NDArray._(
+  /// Private factory that ensures the runtime generic type parameter matches [dtype].
+  factory NDArray._(
+    ffi.Pointer<ffi.Void> pointer,
+    List<T> data,
+    NDArray? parent, {
+    required List<int> shape,
+    required List<int> strides,
+    required DType dtype,
+    int offsetElements = 0,
+    ffi.Pointer<ffi.Void>? allocPointer,
+    bool isExternallyOwned = false,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>?
+    customNativeFinalizer,
+  }) {
+    final NDArray instance = switch (dtype) {
+      DType.float64 => NDArray<Float64>._raw(
+        pointer,
+        data as List<Float64>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.float64,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.float32 => NDArray<Float32>._raw(
+        pointer,
+        data as List<Float32>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.float32,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.float16 => NDArray<Float16>._raw(
+        pointer,
+        data as List<Float16>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.float16,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.bfloat16 => NDArray<BFloat16>._raw(
+        pointer,
+        data as List<BFloat16>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.bfloat16,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.int64 => NDArray<Int64>._raw(
+        pointer,
+        data as List<Int64>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.int64,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.int32 => NDArray<Int32>._raw(
+        pointer,
+        data as List<Int32>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.int32,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.int16 => NDArray<Int16>._raw(
+        pointer,
+        data as List<Int16>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.int16,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.int8 => NDArray<Int8>._raw(
+        pointer,
+        data as List<Int8>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.int8,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.uint64 => NDArray<Uint64>._raw(
+        pointer,
+        data as List<Uint64>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.uint64,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.uint32 => NDArray<Uint32>._raw(
+        pointer,
+        data as List<Uint32>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.uint32,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.uint16 => NDArray<Uint16>._raw(
+        pointer,
+        data as List<Uint16>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.uint16,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.uint8 => NDArray<Uint8>._raw(
+        pointer,
+        data as List<Uint8>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.uint8,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.complex128 => NDArray<Complex128>._raw(
+        pointer,
+        data as List<Complex128>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.complex128,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.complex64 => NDArray<Complex64>._raw(
+        pointer,
+        data as List<Complex64>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.complex64,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+      DType.boolean => NDArray<bool>._raw(
+        pointer,
+        data as List<bool>,
+        parent,
+        shape: shape,
+        strides: strides,
+        dtype: DType.boolean,
+        offsetElements: offsetElements,
+        allocPointer: allocPointer,
+        isExternallyOwned: isExternallyOwned,
+        customNativeFinalizer: customNativeFinalizer,
+      ),
+    };
+    return instance as NDArray<T>;
+  }
+
+  /// Private generative constructor for internal use.
+  NDArray._raw(
     this._pointer,
     this._data,
     this._parent, {
@@ -425,15 +634,61 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     return current;
   }
 
+  /// Removes this owning array from its current automatic [ResourceScope] so it
+  /// survives beyond the scope's lifetime and must be manually disposed via [dispose].
+  ///
+  /// It is an error if this array is a view ([isView] is `true`), because views
+  /// do not own native memory ([dispose] on a view is a no-op):
+  /// - Untracking `_rootParent` would remove the backing allocation from automatic
+  ///   scope cleanup while leaving the caller with a view whose [dispose] cannot
+  ///   free `_rootParent`.
+  /// - Returning a hidden `copy()` would leave `_rootParent` behind in the current
+  ///   scope (causing a use-after-free if the caller invoked `view.detachFromScope()`
+  ///   as a statement or cascade `..detachFromScope()`).
+  ///
+  /// To escape a scope with a slice/view of an inner temporary array, materialize
+  /// an owning copy explicitly (`view.copy().detachFromScope()`) or detach the
+  /// owning parent array directly.
   @override
   NDArray<T> detachFromScope() {
-    ResourceScope.untrack(_rootParent);
+    if (_parent != null) {
+      throw StateError(
+        'Cannot call detachFromScope() on a view (views do not own memory and '
+        'cannot be disposed). Call view.copy().detachFromScope() or detach the '
+        'owning parent array instead.',
+      );
+    }
+    ResourceScope.untrack(this);
     return this;
   }
 
+  /// Detaches this owning array from the current inner [ResourceScope] and promotes
+  /// it to the parent outer scope (or to manual ownership if there is no outer scope).
+  ///
+  /// It is an error if this array is a view ([isView] is `true`), because views
+  /// do not own native memory ([dispose] on a view is a no-op):
+  /// - Promoting `_rootParent` from a top-level scope (`_parentScope == null`)
+  ///   would leave `_rootParent` un-disposable via `view.dispose()` (leaking native
+  ///   memory and failing `ResourceScope.checkNoLeaks()`), and in nested scopes
+  ///   would silently retain the entire backing allocation of a small slice.
+  /// - Returning a hidden `copy()` would leave `_rootParent` behind in the current
+  ///   scope to be freed on scope exit, causing a use-after-free whenever
+  ///   `detachToParentScope()` is called as a statement or cascade (`..detachToParentScope()`).
+  ///
+  /// To return a slice/view of an inner temporary array from a scope, materialize
+  /// an owning copy explicitly (`view.copy().detachToParentScope()`). If the view's
+  /// parent was already created in an outer scope, the view can be returned directly
+  /// without calling `detachToParentScope()`.
   @override
   NDArray<T> detachToParentScope() {
-    ResourceScope.promoteToParent(_rootParent);
+    if (_parent != null) {
+      throw StateError(
+        'Cannot call detachToParentScope() on a view (views do not own memory). '
+        'Call view.copy().detachToParentScope() to materialize an owning copy, '
+        'or detach the owning parent array instead.',
+      );
+    }
+    ResourceScope.promoteToParent(this);
     return this;
   }
 
@@ -1154,19 +1409,51 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       );
     }
     final oldSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
-    final newSize = _computeCheckedTotalSize(newShape);
+
+    int negOneIdx = -1;
+    int knownProd = 1;
+    for (var i = 0; i < newShape.length; i++) {
+      final d = newShape[i];
+      if (d == -1) {
+        if (negOneIdx != -1) {
+          throw ArgumentError(
+            'Can only specify one unknown dimension (-1) in reshape, got $newShape',
+          );
+        }
+        negOneIdx = i;
+      } else if (d < 0) {
+        throw ArgumentError('Negative dimension size: $d');
+      } else {
+        knownProd *= d;
+      }
+    }
+
+    final List<int> resolvedShape;
+    if (negOneIdx != -1) {
+      if (knownProd == 0 || oldSize % knownProd != 0) {
+        throw ArgumentError(
+          'Cannot reshape array of size $oldSize into shape $newShape',
+        );
+      }
+      resolvedShape = List<int>.from(newShape);
+      resolvedShape[negOneIdx] = oldSize ~/ knownProd;
+    } else {
+      resolvedShape = newShape;
+    }
+
+    final newSize = _computeCheckedTotalSize(resolvedShape);
     if (oldSize != newSize) {
       throw ArgumentError(
         'Total size must not change during reshape (was $oldSize, new is $newSize)',
       );
     }
 
-    if (listEquals(newShape, shape)) {
+    if (listEquals(resolvedShape, shape)) {
       return NDArray._(
         _pointer,
         data,
         _parent ?? this,
-        shape: newShape,
+        shape: resolvedShape,
         strides: strides,
         offsetElements: offsetElements,
         allocPointer: _allocPointer,
@@ -1175,17 +1462,17 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
 
     if (!isContiguous) {
-      final result = NDArray<T>.create(newShape, dtype);
+      final result = NDArray<T>.create(resolvedShape, dtype);
       _copyStridedToContiguous(result);
       return result;
     }
 
-    final newStrides = computeCStrides(newShape);
+    final newStrides = computeCStrides(resolvedShape);
     return NDArray._(
       _pointer,
       data,
       _parent ?? this,
-      shape: newShape,
+      shape: resolvedShape,
       strides: newStrides,
       offsetElements: offsetElements,
       allocPointer: _allocPointer,
@@ -1487,17 +1774,28 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   }
 
   void _copyStrided(NDArray<T> dest) {
-    helpers.unaryOp<dynamic, dynamic>(
-      dest,
-      this,
-      shape,
-      strides,
-      dest.strides,
-      0,
-      offsetElements,
-      dest.offsetElements,
-      (x) => x,
-    );
+    final marker = ScratchArena.marker;
+    try {
+      final rank = shape.length;
+      final cShape = rank == 0 ? ffi.nullptr : ScratchArena.copyInts(shape);
+      final cStridesSrc = rank == 0
+          ? ffi.nullptr
+          : ScratchArena.copyInts(strides);
+      final cStridesDest = rank == 0
+          ? ffi.nullptr
+          : ScratchArena.copyInts(dest.strides);
+      native_copy_strided(
+        pointer,
+        cStridesSrc,
+        dest.pointer,
+        cStridesDest,
+        cShape,
+        rank,
+        dtype.byteWidth,
+      );
+    } finally {
+      ScratchArena.reset(marker);
+    }
   }
 
   /// Returns a flattened one-dimensional view or copy of this array.
@@ -1548,8 +1846,8 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// Fills the array with [value] in-place.
   ///
   /// **Performance considerations:**
-  /// - For contiguous same-type arrays, utilizes native C fill kernels.
-  /// - For strided or non-contiguous views, falls back to sequential element walk mutations.
+  /// - For contiguous arrays, utilizes native C SIMD fill kernels (`v_fill_*`).
+  /// - For strided or non-contiguous views, utilizes native C strided fill kernels (`s_fill_*`).
   /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
   ///
   /// **Example:**
@@ -1562,48 +1860,156 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       throw StateError('Cannot fill an array whose memory has been freed.');
     }
     final size = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    if (size == 0) return;
 
     if (isContiguous) {
       switch (dtype) {
         case DType.float64:
-          if (value is num) {
-            v_fill_double(_pointer.cast(), value.toDouble(), size);
-            return;
-          }
+          v_fill_double(_pointer.cast(), (value as num).toDouble(), size);
         case DType.float32:
-          if (value is num) {
-            v_fill_float(_pointer.cast(), value.toDouble(), size);
-            return;
-          }
-        case DType.int64:
-          if (value is int) {
-            v_fill_int64(_pointer.cast(), value, size);
-            return;
-          }
-        case DType.int32:
-          if (value is int) {
-            v_fill_int32(_pointer.cast(), value, size);
-            return;
-          }
-        default:
-          break;
+          v_fill_float(_pointer.cast(), (value as num).toDouble(), size);
+        case DType.float16:
+          v_fill_int16(
+            _pointer.cast(),
+            Float16Utils.encodeFloat16((value as num).toDouble()),
+            size,
+          );
+        case DType.bfloat16:
+          v_fill_int16(
+            _pointer.cast(),
+            Float16Utils.encodeBFloat16((value as num).toDouble()),
+            size,
+          );
+        case DType.int64 || DType.uint64:
+          v_fill_int64(_pointer.cast(), (value as num).toInt(), size);
+        case DType.int32 || DType.uint32:
+          v_fill_int32(_pointer.cast(), (value as num).toInt(), size);
+        case DType.int16 || DType.uint16:
+          v_fill_int16(_pointer.cast(), (value as num).toInt(), size);
+        case DType.int8 || DType.uint8:
+          v_fill_uint8(_pointer.cast(), (value as num).toInt() & 0xFF, size);
+        case DType.complex128:
+          final c = value is Complex
+              ? value
+              : Complex((value as num).toDouble(), 0.0);
+          v_fill_complex128(_pointer.cast(), c.real, c.imag, size);
+        case DType.complex64:
+          final c = value is Complex
+              ? value
+              : Complex((value as num).toDouble(), 0.0);
+          v_fill_complex64(_pointer.cast(), c.real, c.imag, size);
+        case DType.boolean:
+          v_fill_boolean(_pointer.cast(), (value as bool) ? 1 : 0, size);
       }
+      return;
     }
 
-    // Fallback JIT loop for complex, boolean, or non-contiguous views
-    final targetValue = value;
-
-    void fillWalk(int dim, int currentOffset) {
-      if (dim == shape.length) {
-        data[currentOffset] = targetValue;
-        return;
+    final marker = ScratchArena.marker;
+    try {
+      final rank = shape.length;
+      final cShape = rank == 0 ? ffi.nullptr : ScratchArena.copyInts(shape);
+      final cStrides = rank == 0 ? ffi.nullptr : ScratchArena.copyInts(strides);
+      switch (dtype) {
+        case DType.float64:
+          s_fill_double(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            (value as num).toDouble(),
+          );
+        case DType.float32:
+          s_fill_float(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            (value as num).toDouble(),
+          );
+        case DType.float16:
+          s_fill_int16(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            Float16Utils.encodeFloat16((value as num).toDouble()),
+          );
+        case DType.bfloat16:
+          s_fill_int16(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            Float16Utils.encodeBFloat16((value as num).toDouble()),
+          );
+        case DType.int64 || DType.uint64:
+          s_fill_int64(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            (value as num).toInt(),
+          );
+        case DType.int32 || DType.uint32:
+          s_fill_int32(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            (value as num).toInt(),
+          );
+        case DType.int16 || DType.uint16:
+          s_fill_int16(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            (value as num).toInt(),
+          );
+        case DType.int8 || DType.uint8:
+          s_fill_uint8(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            (value as num).toInt() & 0xFF,
+          );
+        case DType.complex128:
+          final c = value is Complex
+              ? value
+              : Complex((value as num).toDouble(), 0.0);
+          s_fill_complex128(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            c.real,
+            c.imag,
+          );
+        case DType.complex64:
+          final c = value is Complex
+              ? value
+              : Complex((value as num).toDouble(), 0.0);
+          s_fill_complex64(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            c.real,
+            c.imag,
+          );
+        case DType.boolean:
+          s_fill_boolean(
+            _pointer.cast(),
+            cStrides,
+            cShape,
+            rank,
+            (value as bool) ? 1 : 0,
+          );
       }
-      for (var i = 0; i < shape[dim]; i++) {
-        fillWalk(dim + 1, currentOffset + i * strides[dim]);
-      }
+    } finally {
+      ScratchArena.reset(marker);
     }
-
-    fillWalk(0, offsetElements);
   }
 
   /// Transposes the dimensions of this array.
@@ -2803,249 +3209,166 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
   }
 
-  NDArray _wrapScalar(
+  NDArray _wrapScalarArena(
     dynamic value,
     List<int> targetShape, [
     DType? targetDType,
   ]) {
-    final shape1 = List.filled(targetShape.length, 1);
+    final shape1 = List<int>.filled(targetShape.length, 1);
+    final rawPtr = ScratchArena.allocate<ffi.Uint8>(16);
+
+    DType chosenDType;
     if (targetDType != null) {
       if (targetDType.isFloating && value is num) {
         final dVal = value.toDouble();
         if (_scalarDoubleFitsDType(dVal, targetDType)) {
-          switch (targetDType) {
-            case DType.float64:
-              return NDArray<Float64>.fromList(
-                <double>[dVal],
-                shape1,
-                DType.float64,
-              );
-            case DType.float32:
-              return NDArray<Float32>.fromList(
-                <double>[dVal],
-                shape1,
-                DType.float32,
-              );
-            case DType.float16:
-              return NDArray<Float16>.fromList(
-                <double>[dVal],
-                shape1,
-                DType.float16,
-              );
-            case DType.bfloat16:
-              return NDArray<BFloat16>.fromList(
-                <double>[dVal],
-                shape1,
-                DType.bfloat16,
-              );
-            default:
-              break;
-          }
+          chosenDType = targetDType;
+        } else {
+          chosenDType = DType.float64;
         }
-      } else if (targetDType.isInteger && value is int) {
-        if (_scalarIntFitsDType(value, targetDType)) {
-          switch (targetDType) {
-            case DType.int64:
-              return NDArray<Int64>.fromList(<int>[value], shape1, DType.int64);
-            case DType.int32:
-              return NDArray<Int32>.fromList(<int>[value], shape1, DType.int32);
-            case DType.int16:
-              return NDArray<Int16>.fromList(<int>[value], shape1, DType.int16);
-            case DType.int8:
-              return NDArray<Int8>.fromList(<int>[value], shape1, DType.int8);
-            case DType.uint64:
-              return NDArray<Uint64>.fromList(
-                <int>[value],
-                shape1,
-                DType.uint64,
-              );
-            case DType.uint32:
-              return NDArray<Uint32>.fromList(
-                <int>[value],
-                shape1,
-                DType.uint32,
-              );
-            case DType.uint16:
-              return NDArray<Uint16>.fromList(
-                <int>[value],
-                shape1,
-                DType.uint16,
-              );
-            case DType.uint8:
-              return NDArray<Uint8>.fromList(<int>[value], shape1, DType.uint8);
-            default:
-              break;
-          }
-        }
-      } else if (targetDType.isComplex) {
-        final cVal = value is Complex
-            ? value
-            : (value is num ? Complex(value.toDouble(), 0) : null);
-        if (cVal != null) {
-          switch (targetDType) {
-            case DType.complex128:
-              return NDArray<Complex128>.fromList(
-                <Complex>[cVal],
-                shape1,
-                DType.complex128,
-              );
-            case DType.complex64:
-              return NDArray<Complex64>.fromList(
-                <Complex>[cVal],
-                shape1,
-                DType.complex64,
-              );
-            default:
-              break;
-          }
-        }
+      } else if (targetDType.isInteger &&
+          value is int &&
+          _scalarIntFitsDType(value, targetDType)) {
+        chosenDType = targetDType;
+      } else if (targetDType.isComplex && (value is Complex || value is num)) {
+        chosenDType = targetDType;
       } else if (targetDType == DType.boolean && value is bool) {
-        return NDArray<bool>.fromList(<bool>[value], shape1, DType.boolean);
+        chosenDType = DType.boolean;
+      } else if (value is Complex) {
+        chosenDType = DType.complex128;
+      } else if (value is int) {
+        chosenDType = DType.int64;
+      } else if (value is double) {
+        chosenDType = DType.float64;
+      } else if (value is bool) {
+        chosenDType = DType.boolean;
+      } else {
+        throw ArgumentError('Unsupported scalar type: ${value.runtimeType}');
       }
-    }
-
-    if (value is Complex) {
-      return NDArray<Complex128>.fromList(
-        <Complex>[value],
-        shape1,
-        DType.complex128,
-      );
+    } else if (value is Complex) {
+      chosenDType = DType.complex128;
     } else if (value is int) {
-      return NDArray<Int64>.fromList(<int>[value], shape1, DType.int64);
+      chosenDType = DType.int64;
     } else if (value is double) {
-      return NDArray<Float64>.fromList(<double>[value], shape1, DType.float64);
+      chosenDType = DType.float64;
     } else if (value is bool) {
-      return NDArray<bool>.fromList(<bool>[value], shape1, DType.boolean);
+      chosenDType = DType.boolean;
     } else {
       throw ArgumentError('Unsupported scalar type: ${value.runtimeType}');
     }
+
+    switch (chosenDType) {
+      case DType.float64:
+        rawPtr.cast<ffi.Double>()[0] = (value as num).toDouble();
+      case DType.float32:
+        rawPtr.cast<ffi.Float>()[0] = (value as num).toDouble();
+      case DType.float16:
+        rawPtr.cast<ffi.Uint16>()[0] = Float16Utils.encodeFloat16(
+          (value as num).toDouble(),
+        );
+      case DType.bfloat16:
+        rawPtr.cast<ffi.Uint16>()[0] = Float16Utils.encodeBFloat16(
+          (value as num).toDouble(),
+        );
+      case DType.int64:
+        rawPtr.cast<ffi.Int64>()[0] = (value as num).toInt();
+      case DType.int32:
+        rawPtr.cast<ffi.Int32>()[0] = (value as num).toInt();
+      case DType.int16:
+        rawPtr.cast<ffi.Int16>()[0] = (value as num).toInt();
+      case DType.int8:
+        rawPtr.cast<ffi.Int8>()[0] = (value as num).toInt();
+      case DType.uint64:
+        rawPtr.cast<ffi.Uint64>()[0] = (value as num).toInt();
+      case DType.uint32:
+        rawPtr.cast<ffi.Uint32>()[0] = (value as num).toInt();
+      case DType.uint16:
+        rawPtr.cast<ffi.Uint16>()[0] = (value as num).toInt();
+      case DType.uint8:
+        rawPtr.cast<ffi.Uint8>()[0] = (value as num).toInt();
+      case DType.complex128:
+        final c = value is Complex
+            ? value
+            : Complex((value as num).toDouble(), 0.0);
+        final dPtr = rawPtr.cast<ffi.Double>();
+        dPtr[0] = c.real;
+        dPtr[1] = c.imag;
+      case DType.complex64:
+        final c = value is Complex
+            ? value
+            : Complex((value as num).toDouble(), 0.0);
+        final fPtr = rawPtr.cast<ffi.Float>();
+        fPtr[0] = c.real;
+        fPtr[1] = c.imag;
+      case DType.boolean:
+        rawPtr[0] = (value as bool) ? 1 : 0;
+    }
+
+    return ResourceScope.unmanaged(
+      () => NDArray.fromPointer(rawPtr.cast(), shape1, chosenDType),
+    );
   }
 
   R _withWrappedScalar<R>(dynamic other, R Function(NDArray otherArr) fn) {
     if (other is NDArray) {
       return fn(other);
     }
-    final otherArr = _wrapScalar(other, shape, dtype);
+    final marker = ScratchArena.marker;
     try {
+      final otherArr = _wrapScalarArena(other, shape, dtype);
       return fn(otherArr);
     } finally {
-      otherArr.dispose();
+      ScratchArena.reset(marker);
     }
   }
 
-  /// Element-wise addition with full broadcasting support.
-  NDArray operator +(dynamic other) {
-    return _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr));
-  }
-
-  /// Element-wise subtraction with full broadcasting support.
-  NDArray operator -(dynamic other) {
-    return _withWrappedScalar(
-      other,
-      (otherArr) => ops.subtract(this, otherArr),
-    );
-  }
-
-  /// Element-wise multiplication with full broadcasting support.
-  ///
-  /// **Overflow behavior:**
-  /// - **Integer arrays** (`int32`, `int64`, etc.) overflow silently wrapping around via standard two's complement.
-  /// - **Floating-point arrays** (`float32`, `float64`) overflow silently to `double.infinity` or `double.negativeInfinity` per IEEE 754.
-  NDArray operator *(dynamic other) {
-    return _withWrappedScalar(
-      other,
-      (otherArr) => ops.multiply(this, otherArr),
-    );
-  }
-
-  /// Element-wise division with full broadcasting support.
-  ///
-  /// Always upcasts integer operands to [DType.float64] and performs floating-point division.
-  ///
-  /// **Division by Zero:**
-  /// Division by zero is handled silently under IEEE 754 floating-point rules:
-  /// - Dividing a non-zero value by zero results in `double.infinity` or `double.negativeInfinity`.
-  /// - Dividing zero by zero results in `double.nan`.
-  /// No exception is thrown.
-  NDArray operator /(dynamic other) {
-    return _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr));
-  }
-
-  /// Element-wise floor division with full broadcasting support.
-  ///
-  /// **Division by Zero:**
-  /// - **Integer arrays**: It is an error if divisor contains any `0` elements.
-  ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
-  /// - **Floating-point arrays**: Returns `double.nan` silently without throwing exceptions.
-  NDArray operator ~/(dynamic other) {
-    return _withWrappedScalar(
-      other,
-      (otherArr) =>
-          ops.floor_divide(this as NDArray<num>, otherArr as NDArray<num>),
-    );
-  }
-
-  /// Element-wise remainder with full broadcasting support.
-  ///
-  /// **Division by Zero:**
-  /// - **Integer divisor**: It is an error if divisor contains any `0` elements.
-  ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
-  /// - **Floating-point divisor**: Returns `double.nan` silently without throwing exceptions.
-  NDArray operator %(dynamic other) {
-    return _withWrappedScalar(
-      other,
-      (otherArr) =>
-          ops.remainder(this as NDArray<num>, otherArr as NDArray<num>),
-    );
-  }
-
   /// Numerical negative, element-wise.
-  NDArray operator -() {
-    return ops.negative(this);
+  NDArray<T> operator -() {
+    return ops.negative<T>(this);
   }
 
   /// Element-wise bitwise AND with full broadcasting support.
-  NDArray operator &(dynamic other) {
+  NDArray<T> operator &(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_and(this, otherArr),
+      (otherArr) => ops.bitwise_and<T, dynamic, T>(this, otherArr),
     );
   }
 
   /// Element-wise bitwise OR with full broadcasting support.
-  NDArray operator |(dynamic other) {
+  NDArray<T> operator |(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_or(this, otherArr),
+      (otherArr) => ops.bitwise_or<T, dynamic, T>(this, otherArr),
     );
   }
 
   /// Element-wise bitwise XOR with full broadcasting support.
-  NDArray operator ^(dynamic other) {
+  NDArray<T> operator ^(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_xor(this, otherArr),
+      (otherArr) => ops.bitwise_xor<T, dynamic, T>(this, otherArr),
     );
   }
 
   /// Element-wise bitwise NOT.
-  NDArray operator ~() {
-    return ops.invert(this);
+  NDArray<T> operator ~() {
+    return ops.invert<T, T>(this);
   }
 
   /// Element-wise left shift with full broadcasting support.
-  NDArray operator <<(dynamic other) {
+  NDArray<T> operator <<(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.left_shift(this, otherArr),
+      (otherArr) => ops.left_shift<T, dynamic, T>(this, otherArr),
     );
   }
 
   /// Element-wise right shift with full broadcasting support.
-  NDArray operator >>(dynamic other) {
+  NDArray<T> operator >>(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.right_shift(this, otherArr),
+      (otherArr) => ops.right_shift<T, dynamic, T>(this, otherArr),
     );
   }
 
@@ -3828,7 +4151,17 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   }
 
   @override
-  bool operator ==(Object other) {
+  bool operator ==(Object other) => identical(this, other);
+
+  @override
+  int get hashCode => identityHashCode(this);
+
+  /// Structural element-wise equality check across two [NDArray] instances.
+  ///
+  /// Returns `true` if [other] is an [NDArray] with the same [dtype], [shape],
+  /// and equal element values across all coordinates (adhering to IEEE 754
+  /// `+0.0 == -0.0` and `NaN != NaN` semantics for floating-point and complex arrays).
+  bool equals(Object other) {
     if (identical(this, other)) return true;
     if (other is! NDArray) return false;
     if (dtype != other.dtype) return false;
@@ -3870,8 +4203,10 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
   }
 
-  @override
-  int get hashCode {
+  /// Computes an $O(N)$ structural hash code over the array's [dtype], [shape], and element contents.
+  ///
+  /// Consistent with [equals]: if `a.equals(b)` is `true`, then `a.contentHashCode == b.contentHashCode`.
+  int get contentHashCode {
     var baseHash = Object.hash(dtype, Object.hashAll(shape));
 
     final int elementsHash;
@@ -4001,7 +4336,199 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   }
 
   @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.isMethod && invocation.positionalArguments.length == 1) {
+      final arg = invocation.positionalArguments[0];
+      if (invocation.memberName == #+) {
+        return NDArrayGenericArithmetic(this) + arg;
+      } else if (invocation.memberName == #-) {
+        return NDArrayGenericArithmetic(this) - arg;
+      } else if (invocation.memberName == #*) {
+        return NDArrayGenericArithmetic(this) * arg;
+      } else if (invocation.memberName == #/) {
+        return NDArrayGenericArithmetic(this) / arg;
+      } else if (invocation.memberName == #~/) {
+        return NDArrayGenericArithmetic(this) ~/ arg;
+      } else if (invocation.memberName == #%) {
+        return NDArrayGenericArithmetic(this) % arg;
+      }
+    }
+    return super.noSuchMethod(invocation);
+  }
+
+  @override
   String toString() => _ndarrayToString(this);
+}
+
+/// Strongly-typed arithmetic operators for [NDArray] of [Float64].
+extension NDArrayFloat64Arithmetic on NDArray<Float64> {
+  /// Element-wise addition preserving [NDArray<Float64>] when [other] is real/scalar.
+  NDArray<Float64> operator +(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
+          as NDArray<Float64>;
+
+  /// Element-wise subtraction preserving [NDArray<Float64>] when [other] is real/scalar.
+  NDArray<Float64> operator -(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
+          as NDArray<Float64>;
+
+  /// Element-wise multiplication preserving [NDArray<Float64>] when [other] is real/scalar.
+  NDArray<Float64> operator *(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
+          as NDArray<Float64>;
+
+  /// Element-wise division preserving [NDArray<Float64>].
+  NDArray<Float64> operator /(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr))
+          as NDArray<Float64>;
+
+  /// Element-wise floor division preserving [NDArray<Float64>].
+  NDArray<Float64> operator ~/(dynamic other) =>
+      _withWrappedScalar(
+            other,
+            (otherArr) => ops.floor_divide(
+              this as NDArray<num>,
+              otherArr as NDArray<num>,
+            ),
+          )
+          as NDArray<Float64>;
+
+  /// Element-wise remainder preserving [NDArray<Float64>].
+  NDArray<Float64> operator %(dynamic other) =>
+      _withWrappedScalar(
+            other,
+            (otherArr) =>
+                ops.remainder(this as NDArray<num>, otherArr as NDArray<num>),
+          )
+          as NDArray<Float64>;
+}
+
+/// Strongly-typed arithmetic operators for [NDArray] of [Float32].
+extension NDArrayFloat32Arithmetic on NDArray<Float32> {
+  /// Element-wise addition preserving [NDArray<Float32>].
+  NDArray<Float32> operator +(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
+          as NDArray<Float32>;
+
+  /// Element-wise subtraction preserving [NDArray<Float32>].
+  NDArray<Float32> operator -(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
+          as NDArray<Float32>;
+
+  /// Element-wise multiplication preserving [NDArray<Float32>].
+  NDArray<Float32> operator *(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
+          as NDArray<Float32>;
+
+  /// Element-wise division preserving [NDArray<Float32>].
+  NDArray<Float32> operator /(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr))
+          as NDArray<Float32>;
+
+  /// Element-wise floor division preserving [NDArray<Float32>].
+  NDArray<Float32> operator ~/(dynamic other) =>
+      _withWrappedScalar(
+            other,
+            (otherArr) => ops.floor_divide(
+              this as NDArray<num>,
+              otherArr as NDArray<num>,
+            ),
+          )
+          as NDArray<Float32>;
+
+  /// Element-wise remainder preserving [NDArray<Float32>].
+  NDArray<Float32> operator %(dynamic other) =>
+      _withWrappedScalar(
+            other,
+            (otherArr) =>
+                ops.remainder(this as NDArray<num>, otherArr as NDArray<num>),
+          )
+          as NDArray<Float32>;
+}
+
+/// Strongly-typed arithmetic operators for [NDArray] of [Complex128].
+extension NDArrayComplex128Arithmetic on NDArray<Complex128> {
+  /// Element-wise addition preserving [NDArray<Complex128>].
+  NDArray<Complex128> operator +(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
+          as NDArray<Complex128>;
+
+  /// Element-wise subtraction preserving [NDArray<Complex128>].
+  NDArray<Complex128> operator -(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
+          as NDArray<Complex128>;
+
+  /// Element-wise multiplication preserving [NDArray<Complex128>].
+  NDArray<Complex128> operator *(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
+          as NDArray<Complex128>;
+
+  /// Element-wise division preserving [NDArray<Complex128>].
+  NDArray<Complex128> operator /(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr))
+          as NDArray<Complex128>;
+}
+
+/// Strongly-typed arithmetic operators for [NDArray] of [Complex64].
+extension NDArrayComplex64Arithmetic on NDArray<Complex64> {
+  /// Element-wise addition preserving [NDArray<Complex64>].
+  NDArray<Complex64> operator +(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
+          as NDArray<Complex64>;
+
+  /// Element-wise subtraction preserving [NDArray<Complex64>].
+  NDArray<Complex64> operator -(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
+          as NDArray<Complex64>;
+
+  /// Element-wise multiplication preserving [NDArray<Complex64>].
+  NDArray<Complex64> operator *(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
+          as NDArray<Complex64>;
+
+  /// Element-wise division preserving [NDArray<Complex64>].
+  NDArray<Complex64> operator /(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr))
+          as NDArray<Complex64>;
+}
+
+/// General arithmetic operators for [NDArray].
+extension NDArrayGenericArithmetic<T> on NDArray<T> {
+  /// Element-wise addition with full broadcasting support.
+  NDArray operator +(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr));
+
+  /// Element-wise subtraction with full broadcasting support.
+  NDArray operator -(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr));
+
+  /// Element-wise multiplication with full broadcasting support.
+  NDArray operator *(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr));
+
+  /// Element-wise division with full broadcasting support.
+  NDArray operator /(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr));
+
+  /// Element-wise floor division with full broadcasting support.
+  NDArray<T> operator ~/(dynamic other) =>
+      _withWrappedScalar(
+            other,
+            (otherArr) => ops.floor_divide(
+              this as NDArray<num>,
+              otherArr as NDArray<num>,
+            ),
+          )
+          as NDArray<T>;
+
+  /// Element-wise remainder with full broadcasting support.
+  NDArray<T> operator %(dynamic other) =>
+      _withWrappedScalar(
+            other,
+            (otherArr) =>
+                ops.remainder(this as NDArray<num>, otherArr as NDArray<num>),
+          )
+          as NDArray<T>;
 }
 
 String _ndarrayToString(NDArray arr) {
