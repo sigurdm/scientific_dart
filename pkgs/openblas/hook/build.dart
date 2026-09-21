@@ -552,9 +552,13 @@ final class SourceMode extends BuildMode {
 
           print('Building OpenBLAS with target $openBlasTarget...');
           final makeArgs = <String>[
+            'shared',
             '-j${Platform.numberOfProcessors}',
             'TARGET=$openBlasTarget',
-            if (arch == Architecture.x64) 'DYNAMIC_ARCH=1',
+            if (arch == Architecture.x64) ...[
+              'DYNAMIC_ARCH=1',
+              'DYNAMIC_LIST=NEHALEM SANDYBRIDGE HASWELL SKYLAKEX ZEN',
+            ],
             'USE_THREAD=1',
             'FIXED_LIBNAME=1',
             if (os != OS.current || arch != Architecture.current)

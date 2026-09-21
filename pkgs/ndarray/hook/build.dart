@@ -257,6 +257,7 @@ final class SourceMode extends BuildMode {
         'cmake',
         [
           '-DCMAKE_BUILD_TYPE=Release',
+          '-DCMAKE_CXX_STANDARD=17',
           '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
           '-DHWY_ENABLE_TESTS=OFF',
           '-DHWY_ENABLE_EXAMPLES=OFF',
@@ -317,6 +318,7 @@ final class SourceMode extends BuildMode {
 
       var res = await Process.run(cppCompilerPath, [
         '/c',
+        '/std:c++17',
         '/O2',
         '/MD',
         '/EHsc',
@@ -332,6 +334,7 @@ final class SourceMode extends BuildMode {
 
       res = await Process.run(cppCompilerPath, [
         '/c',
+        '/std:c++17',
         '/O2',
         '/MD',
         '/EHsc',
@@ -348,6 +351,7 @@ final class SourceMode extends BuildMode {
 
       res = await Process.run(cppCompilerPath, [
         '/c',
+        '/std:c++17',
         '/O2',
         '/MD',
         '/EHsc',
@@ -375,6 +379,7 @@ final class SourceMode extends BuildMode {
 
       res = await Process.run(cppCompilerPath, [
         '/c',
+        '/std:c++17',
         '/O2',
         '/MD',
         '/EHsc',
@@ -457,6 +462,7 @@ final class SourceMode extends BuildMode {
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
           ],
+          '-std=c++17',
           '-c',
           '-fPIC',
           '-O3',
@@ -479,6 +485,7 @@ final class SourceMode extends BuildMode {
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
           ],
+          '-std=c++17',
           '-c',
           '-fPIC',
           '-O3',
@@ -504,6 +511,7 @@ final class SourceMode extends BuildMode {
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
           ],
+          '-std=c++17',
           '-c',
           '-fPIC',
           '-O3',
@@ -547,6 +555,7 @@ final class SourceMode extends BuildMode {
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
           ],
+          '-std=c++17',
           '-c',
           '-fPIC',
           '-O3',

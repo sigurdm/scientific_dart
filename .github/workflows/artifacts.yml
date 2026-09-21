@@ -72,12 +72,16 @@ jobs:
       - name: Install Dependencies
         run: dart pub get
 
+      - name: Cache Native Build Intermediates
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/artifact_builder/
+          key: artifact-builder-${{ matrix.target_os }}-${{ matrix.target_arch }}-${{ hashFiles('pkgs/*/hook/**') }}
+          restore-keys: |
+            artifact-builder-${{ matrix.target_os }}-${{ matrix.target_arch }}-
+
       - name: Build Native Artifacts
-        run: |
-          dart tool/build_artifacts.dart \
-            --os ${{ matrix.target_os }} \
-            --architecture ${{ matrix.target_arch }} \
-            --output-dir dist
+        run: dart tool/build_artifacts.dart --os ${{ matrix.target_os }} --architecture ${{ matrix.target_arch }} --output-dir dist
 
       - name: Upload Platform Artifacts
         uses: actions/upload-artifact@v4
