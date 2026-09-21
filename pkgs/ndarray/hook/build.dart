@@ -328,15 +328,66 @@ final class SourceMode extends BuildMode {
     final libhwyContrib = resolveHwyLib(hwyContribLibName);
 
     if (isMSVC) {
-      final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.obj').toFilePath();
-      final sortingObj = outputDir.uri
+      final sharedObjDir = Directory.fromUri(
+        input.outputDirectoryShared.resolve(
+          'ndarray-objs-${os.name}-${arch.name}/',
+        ),
+      );
+      if (!sharedObjDir.existsSync()) {
+        sharedObjDir.createSync(recursive: true);
+      }
+      final ufuncsObj = sharedObjDir.uri
+          .resolve('custom_ufuncs.obj')
+          .toFilePath();
+      final sortingObj = sharedObjDir.uri
           .resolve('custom_sorting.obj')
           .toFilePath();
-      final indexingObj = outputDir.uri
+      final indexingObj = sharedObjDir.uri
           .resolve('custom_indexing.obj')
           .toFilePath();
-      final minizObj = outputDir.uri.resolve('miniz.obj').toFilePath();
-      final npzIoObj = outputDir.uri.resolve('npz_io.obj').toFilePath();
+      final minizObj = sharedObjDir.uri.resolve('miniz.obj').toFilePath();
+      final npzIoObj = sharedObjDir.uri.resolve('npz_io.obj').toFilePath();
+      final winBuiltinsSrc = sharedObjDir.uri
+          .resolve('win_builtins.c')
+          .toFilePath();
+      final winBuiltinsObj = sharedObjDir.uri
+          .resolve('win_builtins.obj')
+          .toFilePath();
+
+      await File(winBuiltinsSrc).writeAsString('''
+typedef unsigned __int128 uint128_t;
+typedef __int128 int128_t;
+
+uint128_t __udivti3(uint128_t n, uint128_t d) {
+  if (d == 0) return 0;
+  uint128_t q = 0;
+  uint128_t r = 0;
+  for (int i = 127; i >= 0; i--) {
+    r = (r << 1) | ((n >> i) & 1);
+    if (r >= d) {
+      r -= d;
+      q |= ((uint128_t)1 << i);
+    }
+  }
+  return q;
+}
+
+int128_t __divti3(int128_t a, int128_t b) {
+  int neg = 0;
+  uint128_t ua = (uint128_t)a;
+  uint128_t ub = (uint128_t)b;
+  if (a < 0) {
+    ua = -ua;
+    neg ^= 1;
+  }
+  if (b < 0) {
+    ub = -ub;
+    neg ^= 1;
+  }
+  uint128_t uq = __udivti3(ua, ub);
+  return neg ? -(int128_t)uq : (int128_t)uq;
+}
+''');
 
       Future<void> runMsvcCompile(
         String label,
@@ -417,6 +468,13 @@ final class SourceMode extends BuildMode {
           _root.resolve('hook/npz_io.cpp').toFilePath(),
           '/Fo:$npzIoObj',
         ]),
+        runMsvcCompile('win_builtins', cppCompilerPath, [
+          '/c',
+          '/O2',
+          '/MD',
+          winBuiltinsSrc,
+          '/Fo:$winBuiltinsObj',
+        ]),
       ]);
 
       final allExports = [
@@ -445,6 +503,7 @@ final class SourceMode extends BuildMode {
         indexingObj,
         minizObj,
         npzIoObj,
+        winBuiltinsObj,
         libhwyContrib.path,
         libhwy.path,
         '/Fe:${libFile.path}',
