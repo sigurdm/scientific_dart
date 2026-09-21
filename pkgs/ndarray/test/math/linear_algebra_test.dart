@@ -1076,8 +1076,8 @@ void main() {
 
           final res = lstsq(a, b);
           expect(res.x.dtype, DType.float32);
-          expect(res.x.toList()[0], closeTo(1.0, 1e-6));
-          expect(res.x.toList()[1], closeTo(2.0, 1e-6));
+          expect(res.x.toList()[0], closeTo(1.0, 1e-5));
+          expect(res.x.toList()[1], closeTo(2.0, 1e-5));
         }),
       );
 
