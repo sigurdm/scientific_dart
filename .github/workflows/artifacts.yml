@@ -57,7 +57,13 @@ jobs:
       - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: 3.11.5
+          sdk: stable
+
+      - name: Install Linux Build Dependencies
+        if: matrix.target_os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran build-essential cmake
 
       - name: Set up MSVC Developer Command Prompt
         if: matrix.target_os == 'windows'
@@ -121,7 +127,7 @@ jobs:
       - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: 3.11.5
+          sdk: stable
 
       - name: Smoke Test `regenerate_hashes.dart` & `local` Build Mode
         run: |
