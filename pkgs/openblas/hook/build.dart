@@ -307,9 +307,14 @@ final class SourceMode extends BuildMode {
         final stubFile = File.fromUri(
           outputDir.uri.resolve('accelerate_stub.c'),
         );
-        await stubFile.writeAsString(
-          'void _openblas_accelerate_stub(void) {}\n',
-        );
+        await stubFile.writeAsString('''
+static int _accelerate_num_threads = 1;
+int openblas_get_num_threads(void) { return _accelerate_num_threads; }
+void openblas_set_num_threads(int num_threads) {
+  if (num_threads > 0) _accelerate_num_threads = num_threads;
+}
+const char* openblas_get_config(void) { return "MacOS Accelerate Framework"; }
+''');
 
         final libFile = File.fromUri(
           outputDir.uri.resolve('libopenblas.dylib'),
