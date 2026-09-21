@@ -26,23 +26,23 @@ String openblasArtifactName(OS os, Architecture arch, String libraryKind) {
 /// SHA-256 digests for prebuilt `openblas` binaries indexed by `(OS, Architecture, libraryKind)`.
 const fileHashes = <(OS, Architecture, String), String>{
   (OS.linux, Architecture.x64, 'openblas'):
-      'cbb8821be5909cdb5ff614f088da5648adb0cde33bb335e6c9017c93b63a626b',
+      '89a5bd9a56f29babae59c73f1d37cd961036664ba0b9d7fa55b1dcc29321d535',
   (OS.linux, Architecture.x64, 'openblas_extensions'):
-      '86a826ebdb3a76904cfe465189fb5b592127660acaec757b671cc620a083ace9',
+      '0f56da9a6a34501b1bfe4f68c7028226bd2077c7d9ab0af8b5cca054b04c9a94',
   (OS.linux, Architecture.arm64, 'openblas'):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      'df645117ecf5aadc53aa2d99a6fc72b7fff1bb7efbb3af4c91e8d743c1b3fb06',
   (OS.linux, Architecture.arm64, 'openblas_extensions'):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      '6c9e8411912d2e19299bdb23923c4ed06df7c761b667dd98352aae5aaef85a5a',
   (OS.macOS, Architecture.arm64, 'openblas'):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      '94d92086467a78b1dd92615d03c958b5aefc574ea54809ab28fd7f2deffb87a7',
   (OS.macOS, Architecture.arm64, 'openblas_extensions'):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      '1d8b909bccb3a3d76981c0a66160db997de83a6ea75949f7afe93f2dbc9db0b5',
   (OS.macOS, Architecture.x64, 'openblas'):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      'c06bf9f9c7068840da139a207e9750ab800cb521687c60787e00b511a9af0e65',
   (OS.macOS, Architecture.x64, 'openblas_extensions'):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      '070412ce43b906afd6a139e153619b2f133b12d0b203ce9680422dbbe03175cd',
   (OS.windows, Architecture.x64, 'openblas'):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      'c8b6f93012b81eb5775955006a1a363d720ba2013b5262052944763e0a736346',
   (OS.windows, Architecture.x64, 'openblas_extensions'):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      'cdf4c25f95f2ca28e2218da209524ff82dff145bbdab24ce5cf9921045d5b705',
 };

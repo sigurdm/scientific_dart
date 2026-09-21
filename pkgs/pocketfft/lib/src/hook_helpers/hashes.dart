@@ -24,13 +24,13 @@ String pocketfftArtifactName(OS os, Architecture arch) {
 /// SHA-256 digests for prebuilt `pocketfft` binaries indexed by `(OS, Architecture)`.
 const fileHashes = <(OS, Architecture), String>{
   (OS.linux, Architecture.x64):
-      'f3581010c46b4b76090ad0fd56e85007001b105a6bdde361f2be2baa2287e257',
+      '2ded76508597e001aba11c7680e569ec03d1897645b7893133df48f7ee9befd0',
   (OS.linux, Architecture.arm64):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      '5a5207c46feedc36be4bc0af71fa40fe20d507518c5a07a42767a0f78408a5fc',
   (OS.macOS, Architecture.arm64):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      'c858d52526d87e7092c6a34797bc0257b0c433b78bc5fc7f1b7cdf4c2d236d18',
   (OS.macOS, Architecture.x64):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      'f43b833cce00f1ea46b158c69f17f13f44b495731c6077f68dac477fec4c0d77',
   (OS.windows, Architecture.x64):
-      '0000000000000000000000000000000000000000000000000000000000000000',
+      '7cab00a7da04dbbbad39585448fd52ace6d9a1f58c083da3c190ef874b7abbc6',
 };
