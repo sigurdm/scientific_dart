@@ -5329,6 +5329,12 @@ void v_binomial_int32(int32_t *res, int size, int n, double p, unsigned long lon
 }
 
 #ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 
 typedef LONG (WINAPI *BCryptGenRandomFunc)(

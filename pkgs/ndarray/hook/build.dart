@@ -317,50 +317,62 @@ final class SourceMode extends BuildMode {
       var res = await Process.run(cppCompilerPath, [
         '/c',
         '/std:c++17',
+        '/bigobj',
         '/O2',
         '/MD',
         '/EHsc',
         if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
+        '/DNOMINMAX',
         '/I${_root.toFilePath()}',
         _root.resolve('hook/custom_ufuncs.cpp').toFilePath(),
         '/Fo:$ufuncsObj',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError('Ufuncs compilation failed:\n${res.stderr}');
+        throw StateError(
+          'Ufuncs compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
+        );
       }
 
       res = await Process.run(cppCompilerPath, [
         '/c',
         '/std:c++17',
+        '/bigobj',
         '/O2',
         '/MD',
         '/EHsc',
         if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
+        '/DNOMINMAX',
         '/I${_root.toFilePath()}',
         '/I${_root.resolve('third_party/highway/').toFilePath()}',
         _root.resolve('hook/custom_sorting.cpp').toFilePath(),
         '/Fo:$sortingObj',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError('Sorting compilation failed:\n${res.stderr}');
+        throw StateError(
+          'Sorting compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
+        );
       }
 
       res = await Process.run(cppCompilerPath, [
         '/c',
         '/std:c++17',
+        '/bigobj',
         '/O2',
         '/MD',
         '/EHsc',
         if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
+        '/DNOMINMAX',
         '/I${_root.toFilePath()}',
         _root.resolve('hook/custom_indexing.cpp').toFilePath(),
         '/Fo:$indexingObj',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError('Indexing compilation failed:\n${res.stderr}');
+        throw StateError(
+          'Indexing compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
+        );
       }
 
       res = await Process.run(compilerPath, [
@@ -372,21 +384,27 @@ final class SourceMode extends BuildMode {
         '/Fo:$minizObj',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError('miniz compilation failed:\n${res.stderr}');
+        throw StateError(
+          'miniz compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
+        );
       }
 
       res = await Process.run(cppCompilerPath, [
         '/c',
         '/std:c++17',
+        '/bigobj',
         '/O2',
         '/MD',
         '/EHsc',
+        '/DNOMINMAX',
         '/I${_root.toFilePath()}',
         _root.resolve('hook/npz_io.cpp').toFilePath(),
         '/Fo:$npzIoObj',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError('npz_io compilation failed:\n${res.stderr}');
+        throw StateError(
+          'npz_io compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
+        );
       }
 
       final allExports = [
@@ -422,7 +440,9 @@ final class SourceMode extends BuildMode {
         '/def:${defFile.path}',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError('Linking failed:\n${res.stderr}');
+        throw StateError(
+          'Linking failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
+        );
       }
     } else {
       final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.o').toFilePath();
