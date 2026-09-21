@@ -32,35 +32,23 @@ void main() async {
       c.group('1. Arithmetic: Masked vs Unmasked', () {
         final outRaw = nd.NDArray.create([size], nd.DType.float64);
 
-        c.bench(
-          'Raw NDArray add (out buffer) [$size]',
-          () {
-            nd.add(rawData1, rawData2, out: outRaw);
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('Raw NDArray add (out buffer) [$size]', () {
+          nd.add(rawData1, rawData2, out: outRaw);
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'MaskedArray add (ma1 + ma2) [$size]',
-          () {
-            final res = add(ma1, ma2);
-            blackhole(res);
-            res.data.dispose();
-            res.mask.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('MaskedArray add (ma1 + ma2) [$size]', () {
+          final res = add(ma1, ma2);
+          blackhole(res);
+          res.data.dispose();
+          res.mask.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'MaskedArray multiply (ma1 * ma2) [$size]',
-          () {
-            final res = multiply(ma1, ma2);
-            blackhole(res);
-            res.data.dispose();
-            res.mask.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('MaskedArray multiply (ma1 * ma2) [$size]', () {
+          final res = multiply(ma1, ma2);
+          blackhole(res);
+          res.data.dispose();
+          res.mask.dispose();
+        }, throughput: Throughput.elements(size));
       });
 
       c.group('2. Masked Reductions', () {
@@ -98,35 +86,23 @@ void main() async {
           nd.DType.float64,
         );
 
-        c.bench(
-          'MaskedArray.maskedInvalid() [$size]',
-          () {
-            final res = MaskedArray.maskedInvalid(dataWithInvalid);
-            blackhole(res);
-            res.mask.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('MaskedArray.maskedInvalid() [$size]', () {
+          final res = MaskedArray.maskedInvalid(dataWithInvalid);
+          blackhole(res);
+          res.mask.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'MaskedArray.maskedGreater() [$size]',
-          () {
-            final res = MaskedArray.maskedGreater(rawData1, 50.0);
-            blackhole(res);
-            res.mask.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('MaskedArray.maskedGreater() [$size]', () {
+          final res = MaskedArray.maskedGreater(rawData1, 50.0);
+          blackhole(res);
+          res.mask.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'compressed() (Extract valid elements) [$size]',
-          () {
-            final res = ma1.compressed();
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('compressed() (Extract valid elements) [$size]', () {
+          final res = ma1.compressed();
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
       });
     },
     config: CriterionConfig(

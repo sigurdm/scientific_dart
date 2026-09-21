@@ -7,16 +7,15 @@ void main() {
   final markdownCell = IpynbCell(
     id: 'intro-cell',
     cellType: IpynbCellType.markdown,
-    source: '# Scientific Dart Notebook\nDemonstrating notebook file generation.',
+    source:
+        '# Scientific Dart Notebook\nDemonstrating notebook file generation.',
   );
 
   final codeCell = IpynbCell(
     id: 'code-cell-1',
     cellType: IpynbCellType.code,
     source: 'var a = 21;\nprint("The answer is \${a * 2}");',
-    outputs: [
-      IpynbOutput.stream(text: 'The answer is 42\n'),
-    ],
+    outputs: [IpynbOutput.stream(text: 'The answer is 42\n')],
     executionCount: 1,
   );
 

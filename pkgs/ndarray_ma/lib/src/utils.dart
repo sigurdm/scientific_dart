@@ -30,6 +30,8 @@ dynamic _defaultFillValue(DType dtype) {
   switch (dtype) {
     case DType.float64:
     case DType.float32:
+    case DType.float16:
+    case DType.bfloat16:
       return 1e20;
     case DType.complex128:
     case DType.complex64:
@@ -38,6 +40,10 @@ dynamic _defaultFillValue(DType dtype) {
     case DType.int32:
     case DType.uint8:
     case DType.int16:
+    case DType.int8:
+    case DType.uint64:
+    case DType.uint32:
+    case DType.uint16:
       return 999999;
     case DType.boolean:
       return true;
@@ -82,6 +88,8 @@ dynamic _maxValue(DType dtype) {
   switch (dtype) {
     case DType.float64:
     case DType.float32:
+    case DType.float16:
+    case DType.bfloat16:
       return double.infinity;
     case DType.int64:
       return 9223372036854775807;
@@ -89,6 +97,14 @@ dynamic _maxValue(DType dtype) {
       return 2147483647;
     case DType.int16:
       return 32767;
+    case DType.int8:
+      return 127;
+    case DType.uint64:
+      return -1;
+    case DType.uint32:
+      return 4294967295;
+    case DType.uint16:
+      return 65535;
     case DType.uint8:
       return 255;
     default:
@@ -101,6 +117,8 @@ dynamic _minValue(DType dtype) {
   switch (dtype) {
     case DType.float64:
     case DType.float32:
+    case DType.float16:
+    case DType.bfloat16:
       return double.negativeInfinity;
     case DType.int64:
       return -9223372036854775808;
@@ -108,6 +126,11 @@ dynamic _minValue(DType dtype) {
       return -2147483648;
     case DType.int16:
       return -32768;
+    case DType.int8:
+      return -128;
+    case DType.uint64:
+    case DType.uint32:
+    case DType.uint16:
     case DType.uint8:
       return 0;
     default:
@@ -149,6 +172,10 @@ NDArray<Object> _callGeneric2(
       return ufunc<dynamic, dynamic, Float64>(a, b) as NDArray<Object>;
     case DType.float32:
       return ufunc<dynamic, dynamic, Float32>(a, b) as NDArray<Object>;
+    case DType.float16:
+      return ufunc<dynamic, dynamic, Float16>(a, b) as NDArray<Object>;
+    case DType.bfloat16:
+      return ufunc<dynamic, dynamic, BFloat16>(a, b) as NDArray<Object>;
     case DType.complex128:
       return ufunc<dynamic, dynamic, Complex128>(a, b) as NDArray<Object>;
     case DType.complex64:
@@ -159,6 +186,14 @@ NDArray<Object> _callGeneric2(
       return ufunc<dynamic, dynamic, Int32>(a, b) as NDArray<Object>;
     case DType.int16:
       return ufunc<dynamic, dynamic, Int16>(a, b) as NDArray<Object>;
+    case DType.int8:
+      return ufunc<dynamic, dynamic, Int8>(a, b) as NDArray<Object>;
+    case DType.uint64:
+      return ufunc<dynamic, dynamic, Uint64>(a, b) as NDArray<Object>;
+    case DType.uint32:
+      return ufunc<dynamic, dynamic, Uint32>(a, b) as NDArray<Object>;
+    case DType.uint16:
+      return ufunc<dynamic, dynamic, Uint16>(a, b) as NDArray<Object>;
     case DType.uint8:
       return ufunc<dynamic, dynamic, Uint8>(a, b) as NDArray<Object>;
     case DType.boolean:
@@ -184,6 +219,18 @@ MaskedArray<Object> dispatchCreateMaskedArray(
         data as NDArray<double>,
         mask,
         fillValue: _coerceOrGetDefault(fillValue, DType.float32) as double?,
+      );
+    case DType.float16:
+      return MaskedArray<double>(
+        data as NDArray<double>,
+        mask,
+        fillValue: _coerceOrGetDefault(fillValue, DType.float16) as double?,
+      );
+    case DType.bfloat16:
+      return MaskedArray<double>(
+        data as NDArray<double>,
+        mask,
+        fillValue: _coerceOrGetDefault(fillValue, DType.bfloat16) as double?,
       );
     case DType.complex128:
       return MaskedArray<Complex>(
@@ -214,6 +261,30 @@ MaskedArray<Object> dispatchCreateMaskedArray(
         data as NDArray<int>,
         mask,
         fillValue: _coerceOrGetDefault(fillValue, DType.int16) as int?,
+      );
+    case DType.int8:
+      return MaskedArray<int>(
+        data as NDArray<int>,
+        mask,
+        fillValue: _coerceOrGetDefault(fillValue, DType.int8) as int?,
+      );
+    case DType.uint64:
+      return MaskedArray<int>(
+        data as NDArray<int>,
+        mask,
+        fillValue: _coerceOrGetDefault(fillValue, DType.uint64) as int?,
+      );
+    case DType.uint32:
+      return MaskedArray<int>(
+        data as NDArray<int>,
+        mask,
+        fillValue: _coerceOrGetDefault(fillValue, DType.uint32) as int?,
+      );
+    case DType.uint16:
+      return MaskedArray<int>(
+        data as NDArray<int>,
+        mask,
+        fillValue: _coerceOrGetDefault(fillValue, DType.uint16) as int?,
       );
     case DType.uint8:
       return MaskedArray<int>(

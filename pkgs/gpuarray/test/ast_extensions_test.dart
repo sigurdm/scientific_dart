@@ -37,7 +37,10 @@ void main() {
       expect(wgsl, contains('fn main('));
       expect(wgsl, contains('dst[idx] = result;'));
       expect(wgsl, isNot(contains('@binding(0) var<storage, read> input_')));
-      expect(wgsl, contains('@binding(0) var<storage, read_write> dst: array<f32>;'));
+      expect(
+        wgsl,
+        contains('@binding(0) var<storage, read_write> dst: array<f32>;'),
+      );
 
       // Also verify createBrowserWidget works with no inputArrays passed
       final widget = desc.createBrowserWidget(
@@ -50,181 +53,232 @@ void main() {
   });
 
   group('Feature 2: Graphics & Shader Math Intrinsics', () {
-    test('mix, smoothstep, step, mod, fract, atan2, hypot, sign emit valid WGSL', () {
-      final x = Expr.variable('x');
-      final y = Expr.variable('y');
-      final t = Expr.variable('t');
+    test(
+      'mix, smoothstep, step, mod, fract, atan2, hypot, sign emit valid WGSL',
+      () {
+        final x = Expr.variable('x');
+        final y = Expr.variable('y');
+        final t = Expr.variable('t');
 
-      final mixed = x.mix(y, t);
-      final sstep = x.smoothstep(0.0, 1.0);
-      final stepped = x.step(0.5);
-      final modded = x % y;
-      final fractured = x.fract();
-      final angle = y.atan2(x);
-      final hyp = x.hypot(y);
-      final sgn = x.sign();
-      final hsinh = x.sinh();
-      final hcosh = x.cosh();
+        final mixed = x.mix(y, t);
+        final sstep = x.smoothstep(0.0, 1.0);
+        final stepped = x.step(0.5);
+        final modded = x % y;
+        final fractured = x.fract();
+        final angle = y.atan2(x);
+        final hyp = x.hypot(y);
+        final sgn = x.sign();
+        final hsinh = x.sinh();
+        final hcosh = x.cosh();
 
-      expect(mixed.toWgsl(), equals('mix(x_val, y_val, t_val)'));
-      expect(sstep.toWgsl(), equals('smoothstep(0.0f, 1.0f, x_val)'));
-      expect(stepped.toWgsl(), contains('step(0.5f, x_val)'));
-      expect(modded.toWgsl(), contains('x_val % y_val'));
-      expect(fractured.toWgsl(), equals('fract((x_val))'));
-      expect(angle.toWgsl(), contains('atan2(y_val, x_val)'));
-      expect(hyp.toWgsl(), contains('sqrt((x_val * x_val) + (y_val * y_val))'));
-      expect(sgn.toWgsl(), equals('sign((x_val))'));
-      expect(hsinh.toWgsl(), equals('sinh((x_val))'));
-      expect(hcosh.toWgsl(), equals('cosh((x_val))'));
+        expect(mixed.toWgsl(), equals('mix(x_val, y_val, t_val)'));
+        expect(sstep.toWgsl(), equals('smoothstep(0.0f, 1.0f, x_val)'));
+        expect(stepped.toWgsl(), contains('step(0.5f, x_val)'));
+        expect(modded.toWgsl(), contains('x_val % y_val'));
+        expect(fractured.toWgsl(), equals('fract((x_val))'));
+        expect(angle.toWgsl(), contains('atan2(y_val, x_val)'));
+        expect(
+          hyp.toWgsl(),
+          contains('sqrt((x_val * x_val) + (y_val * y_val))'),
+        );
+        expect(sgn.toWgsl(), equals('sign((x_val))'));
+        expect(hsinh.toWgsl(), equals('sinh((x_val))'));
+        expect(hcosh.toWgsl(), equals('cosh((x_val))'));
 
-      final desc = FusedKernelDescriptor(
-        name: 'shader_intrinsics_kernel',
-        outputExpr: mixed + sstep + stepped + modded + fractured + angle + hyp + sgn + hsinh + hcosh,
-      );
-      final wgsl = desc.generateWgslSource();
-      WgslSyntaxValidator.validate(wgsl);
-    });
+        final desc = FusedKernelDescriptor(
+          name: 'shader_intrinsics_kernel',
+          outputExpr:
+              mixed +
+              sstep +
+              stepped +
+              modded +
+              fractured +
+              angle +
+              hyp +
+              sgn +
+              hsinh +
+              hcosh,
+        );
+        final wgsl = desc.generateWgslSource();
+        WgslSyntaxValidator.validate(wgsl);
+      },
+    );
   });
 
   group('Feature 3: Logical Operators & Boolean Combinators', () {
-    test('Logical and (&), or (|), not (~) emit valid WGSL select predicates', () {
-      final a = Expr.variable('a');
-      final b = Expr.variable('b');
+    test(
+      'Logical and (&), or (|), not (~) emit valid WGSL select predicates',
+      () {
+        final a = Expr.variable('a');
+        final b = Expr.variable('b');
 
-      final andExpr = a & b;
-      final orExpr = a | b;
-      final notExpr = ~a;
-      final fluentAnd = a.and(b);
-      final fluentOr = a.or(b);
-      final fluentNot = a.not();
+        final andExpr = a & b;
+        final orExpr = a | b;
+        final notExpr = ~a;
+        final fluentAnd = a.and(b);
+        final fluentOr = a.or(b);
+        final fluentNot = a.not();
 
-      expect(andExpr.toWgsl(), contains('(a_val > 0.0) && (b_val > 0.0)'));
-      expect(orExpr.toWgsl(), contains('(a_val > 0.0) || (b_val > 0.0)'));
-      expect(notExpr.toWgsl(), contains('select(0.0, 1.0, (a_val) <= 0.0)'));
-      expect(fluentAnd.toWgsl(), equals(andExpr.toWgsl()));
-      expect(fluentOr.toWgsl(), equals(orExpr.toWgsl()));
-      expect(fluentNot.toWgsl(), equals(notExpr.toWgsl()));
+        expect(andExpr.toWgsl(), contains('(a_val > 0.0) && (b_val > 0.0)'));
+        expect(orExpr.toWgsl(), contains('(a_val > 0.0) || (b_val > 0.0)'));
+        expect(notExpr.toWgsl(), contains('select(0.0, 1.0, (a_val) <= 0.0)'));
+        expect(fluentAnd.toWgsl(), equals(andExpr.toWgsl()));
+        expect(fluentOr.toWgsl(), equals(orExpr.toWgsl()));
+        expect(fluentNot.toWgsl(), equals(notExpr.toWgsl()));
 
-      // Composite condition: (a > 0 && b > 0) || !(a < 5)
-      final cond = (a.greaterThan(0.0) & b.greaterThan(0.0)) | ~(a.lessThan(5.0));
-      final desc = FusedKernelDescriptor(
-        name: 'logical_kernel',
-        outputExpr: cond.where(10.0, -10.0),
-      );
-      final wgsl = desc.generateWgslSource();
-      WgslSyntaxValidator.validate(wgsl);
-      expect(wgsl, contains('select('));
-    });
+        // Composite condition: (a > 0 && b > 0) || !(a < 5)
+        final cond =
+            (a.greaterThan(0.0) & b.greaterThan(0.0)) | ~(a.lessThan(5.0));
+        final desc = FusedKernelDescriptor(
+          name: 'logical_kernel',
+          outputExpr: cond.where(10.0, -10.0),
+        );
+        final wgsl = desc.generateWgslSource();
+        WgslSyntaxValidator.validate(wgsl);
+        expect(wgsl, contains('select('));
+      },
+    );
   });
 
-  group('Feature 4: Local Variables & Common Subexpression Elimination (CSE)', () {
-    test('Expr.let binds and evaluates local variables in WGSL', () {
-      final x = Expr.variable('x');
-      final letExpr = Expr.let(x * x + 2.0, (val) => val * val + val);
+  group(
+    'Feature 4: Local Variables & Common Subexpression Elimination (CSE)',
+    () {
+      test('Expr.let binds and evaluates local variables in WGSL', () {
+        final x = Expr.variable('x');
+        final letExpr = Expr.let(x * x + 2.0, (val) => val * val + val);
 
-      final desc = FusedKernelDescriptor(
-        name: 'let_test_kernel',
-        outputExpr: letExpr,
+        final desc = FusedKernelDescriptor(
+          name: 'let_test_kernel',
+          outputExpr: letExpr,
+        );
+        final wgsl = desc.generateWgslSource();
+        WgslSyntaxValidator.validate(wgsl);
+
+        expect(wgsl, contains('let _let_0 = ((x_val * x_val) + 2.0f);'));
+        expect(wgsl, contains('(_let_0 * _let_0) + _let_0'));
+      });
+
+      test(
+        'eliminateCommonSubexpressions automatically hoists repeated subexpressions',
+        () {
+          final x = Expr.variable('x');
+          final y = Expr.variable('y');
+
+          // (x * y + 3.0) repeated three times
+          final term = x * y + 3.0;
+          final expr = term * term + term.sqrt();
+
+          final optimized = expr.eliminateCommonSubexpressions();
+          expect(optimized, isA<LetExpr>());
+
+          final desc = FusedKernelDescriptor(
+            name: 'cse_kernel',
+            outputExpr: expr,
+          );
+          final wgsl = desc.generateWgslSource(enableCse: true);
+          WgslSyntaxValidator.validate(wgsl);
+
+          expect(wgsl, contains('let _cse_'));
+          expect(wgsl, contains('(x_val * y_val)'));
+          expect(wgsl, contains('_cse_0'));
+        },
       );
-      final wgsl = desc.generateWgslSource();
-      WgslSyntaxValidator.validate(wgsl);
-
-      expect(wgsl, contains('let _let_0 = ((x_val * x_val) + 2.0f);'));
-      expect(wgsl, contains('(_let_0 * _let_0) + _let_0'));
-    });
-
-    test('eliminateCommonSubexpressions automatically hoists repeated subexpressions', () {
-      final x = Expr.variable('x');
-      final y = Expr.variable('y');
-
-      // (x * y + 3.0) repeated three times
-      final term = x * y + 3.0;
-      final expr = term * term + term.sqrt();
-
-      final optimized = expr.eliminateCommonSubexpressions();
-      expect(optimized, isA<LetExpr>());
-
-      final desc = FusedKernelDescriptor(
-        name: 'cse_kernel',
-        outputExpr: expr,
-      );
-      final wgsl = desc.generateWgslSource(enableCse: true);
-      WgslSyntaxValidator.validate(wgsl);
-
-      expect(wgsl, contains('let _cse_'));
-      expect(wgsl, contains('(x_val * y_val)'));
-      expect(wgsl, contains('_cse_0'));
-    });
-  });
+    },
+  );
 
   group('Feature 5: Stencil & Neighborhood Sampling', () {
-    test('OffsetVarExpr generates clamp, wrap, and zero boundary helper functions', () {
-      final grid = Expr.variable('grid');
-      final leftClamp = grid.offset([0, -1], shape: [64, 64], boundary: BoundaryMode.clamp);
-      final topWrap = grid.offset([-1, 0], shape: [64, 64], boundary: BoundaryMode.wrap);
-      final cornerZero = grid.offset([1, 1], shape: [64, 64], boundary: BoundaryMode.zero);
+    test(
+      'OffsetVarExpr generates clamp, wrap, and zero boundary helper functions',
+      () {
+        final grid = Expr.variable('grid');
+        final leftClamp = grid.offset(
+          [0, -1],
+          shape: [64, 64],
+          boundary: BoundaryMode.clamp,
+        );
+        final topWrap = grid.offset(
+          [-1, 0],
+          shape: [64, 64],
+          boundary: BoundaryMode.wrap,
+        );
+        final cornerZero = grid.offset(
+          [1, 1],
+          shape: [64, 64],
+          boundary: BoundaryMode.zero,
+        );
 
-      final laplacian = leftClamp + topWrap + cornerZero - grid * 3.0;
-      final desc = FusedKernelDescriptor(
-        name: 'stencil_kernel',
-        outputExpr: laplacian,
-      );
+        final laplacian = leftClamp + topWrap + cornerZero - grid * 3.0;
+        final desc = FusedKernelDescriptor(
+          name: 'stencil_kernel',
+          outputExpr: laplacian,
+        );
 
-      final wgsl = desc.generateWgslSource();
-      WgslSyntaxValidator.validate(wgsl);
+        final wgsl = desc.generateWgslSource();
+        WgslSyntaxValidator.validate(wgsl);
 
-      expect(wgsl, contains('fn stencil_grid_p0_m1_clamp('));
-      expect(wgsl, contains('fn stencil_grid_m1_p0_wrap('));
-      expect(wgsl, contains('fn stencil_grid_p1_p1_zero('));
-      expect(wgsl, contains('clamp(c + (-1), 0, i32(W - 1u))'));
-      expect(wgsl, contains('((r + (-1)) % i32(H) + i32(H)) % i32(H)'));
-      expect(wgsl, contains('return 0.0f;'));
-    });
+        expect(wgsl, contains('fn stencil_grid_p0_m1_clamp('));
+        expect(wgsl, contains('fn stencil_grid_m1_p0_wrap('));
+        expect(wgsl, contains('fn stencil_grid_p1_p1_zero('));
+        expect(wgsl, contains('clamp(c + (-1), 0, i32(W - 1u))'));
+        expect(wgsl, contains('((r + (-1)) % i32(H) + i32(H)) % i32(H)'));
+        expect(wgsl, contains('return 0.0f;'));
+      },
+    );
 
-    test('Conway Game of Life 9-point neighborhood stencil compiles cleanly', () {
-      final board = Expr.variable('board');
-      const shape = [128, 128];
-      const wrap = BoundaryMode.wrap;
+    test(
+      'Conway Game of Life 9-point neighborhood stencil compiles cleanly',
+      () {
+        final board = Expr.variable('board');
+        const shape = [128, 128];
+        const wrap = BoundaryMode.wrap;
 
-      final neighbors =
-          board.offset([-1, -1], shape: shape, boundary: wrap) +
-          board.offset([-1,  0], shape: shape, boundary: wrap) +
-          board.offset([-1,  1], shape: shape, boundary: wrap) +
-          board.offset([ 0, -1], shape: shape, boundary: wrap) +
-          board.offset([ 0,  1], shape: shape, boundary: wrap) +
-          board.offset([ 1, -1], shape: shape, boundary: wrap) +
-          board.offset([ 1,  0], shape: shape, boundary: wrap) +
-          board.offset([ 1,  1], shape: shape, boundary: wrap);
+        final neighbors =
+            board.offset([-1, -1], shape: shape, boundary: wrap) +
+            board.offset([-1, 0], shape: shape, boundary: wrap) +
+            board.offset([-1, 1], shape: shape, boundary: wrap) +
+            board.offset([0, -1], shape: shape, boundary: wrap) +
+            board.offset([0, 1], shape: shape, boundary: wrap) +
+            board.offset([1, -1], shape: shape, boundary: wrap) +
+            board.offset([1, 0], shape: shape, boundary: wrap) +
+            board.offset([1, 1], shape: shape, boundary: wrap);
 
-      // Alive if neighbors == 3 or (board == 1 and neighbors == 2)
-      final willLive = neighbors.equal(3.0) | (board.equal(1.0) & neighbors.equal(2.0));
-      final nextState = willLive.where(1.0, 0.0);
+        // Alive if neighbors == 3 or (board == 1 and neighbors == 2)
+        final willLive =
+            neighbors.equal(3.0) | (board.equal(1.0) & neighbors.equal(2.0));
+        final nextState = willLive.where(1.0, 0.0);
 
-      final desc = FusedKernelDescriptor(
-        name: 'game_of_life',
-        outputExpr: nextState,
-      );
-      final wgsl = desc.generateWgslSource();
-      WgslSyntaxValidator.validate(wgsl);
+        final desc = FusedKernelDescriptor(
+          name: 'game_of_life',
+          outputExpr: nextState,
+        );
+        final wgsl = desc.generateWgslSource();
+        WgslSyntaxValidator.validate(wgsl);
 
-      expect(wgsl, contains('stencil_board_m1_m1_wrap'));
-      expect(wgsl, contains('stencil_board_p1_p1_wrap'));
-    });
+        expect(wgsl, contains('stencil_board_m1_m1_wrap'));
+        expect(wgsl, contains('stencil_board_p1_p1_wrap'));
+      },
+    );
   });
 
   group('Feature 6: Symbolic Auto-Diff on Expr AST', () {
-    test('Polynomial differentiation matches calculus: d/dx(x^3 + 2x) = 3x^2 + 2', () {
-      final x = Expr.variable('x');
-      final poly = x.pow(3.0) + x * 2.0;
-      final dpoly = poly.grad(x);
+    test(
+      'Polynomial differentiation matches calculus: d/dx(x^3 + 2x) = 3x^2 + 2',
+      () {
+        final x = Expr.variable('x');
+        final poly = x.pow(3.0) + x * 2.0;
+        final dpoly = poly.grad(x);
 
-      expect(dpoly.toFingerprint(), contains('pow'));
-      expect(dpoly.toFingerprint(), contains('3.0'));
+        expect(dpoly.toFingerprint(), contains('pow'));
+        expect(dpoly.toFingerprint(), contains('3.0'));
 
-      final desc = FusedKernelDescriptor(name: 'poly_grad', outputExpr: dpoly);
-      final wgsl = desc.generateWgslSource();
-      WgslSyntaxValidator.validate(wgsl);
-    });
+        final desc = FusedKernelDescriptor(
+          name: 'poly_grad',
+          outputExpr: dpoly,
+        );
+        final wgsl = desc.generateWgslSource();
+        WgslSyntaxValidator.validate(wgsl);
+      },
+    );
 
     test('Quotient rule: d/dx(x / (x + 1)) = 1 / (x + 1)^2', () {
       final x = Expr.variable('x');
@@ -236,26 +290,32 @@ void main() {
       WgslSyntaxValidator.validate(wgsl);
     });
 
-    test('Activation derivatives (sin, cos, exp, log, silu, sigmoid, tanh, relu)', () {
-      final x = Expr.variable('x');
+    test(
+      'Activation derivatives (sin, cos, exp, log, silu, sigmoid, tanh, relu)',
+      () {
+        final x = Expr.variable('x');
 
-      final funcs = <String, Expr>{
-        'sin': x.sin().grad(x),
-        'cos': x.cos().grad(x),
-        'exp': x.exp().grad(x),
-        'log': x.log().grad(x),
-        'sigmoid': x.sigmoid().grad(x),
-        'silu': x.silu().grad(x),
-        'tanh': x.tanh().grad(x),
-        'relu': x.relu().grad(x),
-      };
+        final funcs = <String, Expr>{
+          'sin': x.sin().grad(x),
+          'cos': x.cos().grad(x),
+          'exp': x.exp().grad(x),
+          'log': x.log().grad(x),
+          'sigmoid': x.sigmoid().grad(x),
+          'silu': x.silu().grad(x),
+          'tanh': x.tanh().grad(x),
+          'relu': x.relu().grad(x),
+        };
 
-      for (final entry in funcs.entries) {
-        final desc = FusedKernelDescriptor(name: '${entry.key}_grad', outputExpr: entry.value);
-        final wgsl = desc.generateWgslSource();
-        WgslSyntaxValidator.validate(wgsl);
-      }
-    });
+        for (final entry in funcs.entries) {
+          final desc = FusedKernelDescriptor(
+            name: '${entry.key}_grad',
+            outputExpr: entry.value,
+          );
+          final wgsl = desc.generateWgslSource();
+          WgslSyntaxValidator.validate(wgsl);
+        }
+      },
+    );
 
     test('Multi-variable partial derivatives df/dx and df/dy', () {
       final x = Expr.variable('x', bindingIndex: 0);
@@ -275,18 +335,23 @@ void main() {
       WgslSyntaxValidator.validate(descY.generateWgslSource());
     });
 
-    test('Numerical finite difference verification of analytical gradients', () {
-      final xVal = 1.25;
-      final eps = 1e-5;
+    test(
+      'Numerical finite difference verification of analytical gradients',
+      () {
+        final xVal = 1.25;
+        final eps = 1e-5;
 
-      double evaluate(double val) {
-        return math.exp(math.sin(val)) + val * val;
-      }
+        double evaluate(double val) {
+          return math.exp(math.sin(val)) + val * val;
+        }
 
-      final numericalGrad = (evaluate(xVal + eps) - evaluate(xVal - eps)) / (2.0 * eps);
-      final analyticalGrad = math.cos(xVal) * math.exp(math.sin(xVal)) + 2.0 * xVal;
+        final numericalGrad =
+            (evaluate(xVal + eps) - evaluate(xVal - eps)) / (2.0 * eps);
+        final analyticalGrad =
+            math.cos(xVal) * math.exp(math.sin(xVal)) + 2.0 * xVal;
 
-      expect(analyticalGrad, closeTo(numericalGrad, 1e-4));
-    });
+        expect(analyticalGrad, closeTo(numericalGrad, 1e-4));
+      },
+    );
   });
 }

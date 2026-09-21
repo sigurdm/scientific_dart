@@ -59,7 +59,7 @@ NDArray<Int32> _maCount(MaskedArray self, {int? axis}) {
     final zeros = NDArray<Int32>.zeros(self.shape, DType.int32);
     final ones = NDArray<Int32>.ones(self.shape, DType.int32);
     final validMap = ndops.where(self.mask, zeros, ones) as NDArray<Int32>;
-    final result = ndops.sum(validMap, axis: axis);
+    final result = ndops.sum<Int32>(validMap, axis: axis);
     return result.detachToParentScope();
   });
 }

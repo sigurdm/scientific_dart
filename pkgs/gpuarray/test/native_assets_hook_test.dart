@@ -41,40 +41,49 @@ void main() {
         expect(
           sha256Regex.hasMatch(entry.value),
           isTrue,
-          reason: 'Hash for ${entry.key} must be valid 64-character lowercase hex',
+          reason:
+              'Hash for ${entry.key} must be valid 64-character lowercase hex',
         );
       }
     });
 
-    test('Live download and SHA-256 verification of Linux x64 wgpu-native release', () async {
-      final url =
-          'https://github.com/gfx-rs/wgpu-native/releases/download/v29.0.1.1/wgpu-linux-x86_64-release.zip';
-      final expectedSha =
-          '95a4d90c071005a98d03eab348beaa6b07e16eb00d1dcdb9f8348f75eb97ec5a';
+    test(
+      'Live download and SHA-256 verification of Linux x64 wgpu-native release',
+      () async {
+        final url =
+            'https://github.com/gfx-rs/wgpu-native/releases/download/v29.0.1.1/wgpu-linux-x86_64-release.zip';
+        final expectedSha =
+            '95a4d90c071005a98d03eab348beaa6b07e16eb00d1dcdb9f8348f75eb97ec5a';
 
-      final client = HttpClient();
-      try {
-        var currentUrl = Uri.parse(url);
-        for (var i = 0; i < 5; i++) {
-          final req = await client.getUrl(currentUrl);
-          final res = await req.close();
-          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.value(HttpHeaders.locationHeader) != null) {
-            currentUrl = currentUrl.resolve(res.headers.value(HttpHeaders.locationHeader)!);
-            continue;
+        final client = HttpClient();
+        try {
+          var currentUrl = Uri.parse(url);
+          for (var i = 0; i < 5; i++) {
+            final req = await client.getUrl(currentUrl);
+            final res = await req.close();
+            if (res.statusCode >= 300 &&
+                res.statusCode < 400 &&
+                res.headers.value(HttpHeaders.locationHeader) != null) {
+              currentUrl = currentUrl.resolve(
+                res.headers.value(HttpHeaders.locationHeader)!,
+              );
+              continue;
+            }
+            expect(res.statusCode, equals(200));
+            final builder = BytesBuilder();
+            await for (final chunk in res) {
+              builder.add(chunk);
+            }
+            final bytes = builder.toBytes();
+            final computedHash = sha256.convert(bytes).toString().toLowerCase();
+            expect(computedHash, equals(expectedSha));
+            break;
           }
-          expect(res.statusCode, equals(200));
-          final builder = BytesBuilder();
-          await for (final chunk in res) {
-            builder.add(chunk);
-          }
-          final bytes = builder.toBytes();
-          final computedHash = sha256.convert(bytes).toString().toLowerCase();
-          expect(computedHash, equals(expectedSha));
-          break;
+        } finally {
+          client.close();
         }
-      } finally {
-        client.close();
-      }
-    }, timeout: const Timeout(Duration(minutes: 2)));
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
   });
 }
