@@ -304,7 +304,11 @@ NDArray<R> imag<T extends AnyDType, R extends AnyDType>(
 /// final a = NDArray.fromList([Complex(1.0, 2.0)], [1], DType.complex128);
 /// final c = conj(a); // [Complex(1.0, -2.0)]
 /// ```
-NDArray<T> conj<T extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, NDArray<T>? out}) {
+NDArray<T> conj<T extends AnyDType>(
+  NDArray<T> a, {
+  NDArray<AnyDType>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {

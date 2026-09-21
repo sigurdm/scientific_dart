@@ -43,13 +43,7 @@ void main() {
     // 3. Net Present Value (npv)
     // Cash flows: invest 100, then withdraw 39, 59, 55, 20
     final NDArray<Float64> cashFlows = NDArray.fromList(
-      <Float64>[
-        -100.0,
-        39.0,
-        59.0,
-        55.0,
-        20.0,
-      ],
+      <double>[-100.0, 39.0, 59.0, 55.0, 20.0],
       [5],
       DType.float64,
     );

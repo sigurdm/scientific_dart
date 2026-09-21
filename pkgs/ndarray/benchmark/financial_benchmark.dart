@@ -9,19 +9,19 @@ void main() async {
     'NDArray Quantitative Financial Operations Benchmark Suite',
     (c) {
       final rate =
-          linspace<double>(0.01, 0.15, nSims, dtype: DType.float64)
+          linspace<AnyFloat>(0.01, 0.15, nSims, dtype: DType.float64)
               as NDArray<Float64>;
       final nper =
-          linspace<double>(1.0, 30.0, nSims, dtype: DType.float64)
+          linspace<AnyFloat>(1.0, 30.0, nSims, dtype: DType.float64)
               as NDArray<Float64>;
       final pmt =
-          linspace<double>(-1000.0, -100.0, nSims, dtype: DType.float64)
+          linspace<AnyFloat>(-1000.0, -100.0, nSims, dtype: DType.float64)
               as NDArray<Float64>;
       final pvVal =
-          linspace<double>(10000.0, 100000.0, nSims, dtype: DType.float64)
+          linspace<AnyFloat>(10000.0, 100000.0, nSims, dtype: DType.float64)
               as NDArray<Float64>;
       final fvVal =
-          linspace<double>(0.0, 50000.0, nSims, dtype: DType.float64)
+          linspace<AnyFloat>(0.0, 50000.0, nSims, dtype: DType.float64)
               as NDArray<Float64>;
 
       c.group('1. Time Value of Money (10k parameter simulations)', () {
@@ -40,12 +40,9 @@ void main() async {
 
       c.group('2. Cash Flow Discounting & Returns', () {
         const nPeriods = 10000;
-        final singleRate = NDArray<Float64>.scalar(
-          0.05,
-          dtype: DType.float64,
-        );
+        final singleRate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
         final cashFlows =
-            linspace<double>(-1000.0, 500.0, nPeriods, dtype: DType.float64)
+            linspace<AnyFloat>(-1000.0, 500.0, nPeriods, dtype: DType.float64)
                 as NDArray<Float64>;
 
         c.bench('npv(rate=0.05, cashflows=[10k])', () {

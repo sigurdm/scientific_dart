@@ -25,7 +25,11 @@ import 'arithmetic.dart';
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Sine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<R> sin<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, NDArray<R>? out}) {
+NDArray<R> sin<T extends AnyDType, R extends AnyDType>(
+  NDArray<T> a, {
+  NDArray<AnyDType>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -372,7 +376,11 @@ NDArray<R> sinc<T extends AnyDType, R extends AnyDType>(
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Cosine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<R> cos<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, NDArray<R>? out}) {
+NDArray<R> cos<T extends AnyDType, R extends AnyDType>(
+  NDArray<T> a, {
+  NDArray<AnyDType>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -536,7 +544,11 @@ NDArray<R> cos<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<An
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<R> tan<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, NDArray<R>? out}) {
+NDArray<R> tan<T extends AnyDType, R extends AnyDType>(
+  NDArray<T> a, {
+  NDArray<AnyDType>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -2300,11 +2312,11 @@ NDArray<R> atanh<T extends AnyDType, R extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<Float64> atan2<Ty extends AnyDType, Tx extends AnyDType>(
+NDArray<AnyFloat> atan2<Ty extends AnyDType, Tx extends AnyDType>(
   NDArray<Ty> y,
   NDArray<Tx> x, {
   NDArray<AnyDType>? where,
-  NDArray<Float64>? out,
+  NDArray<AnyFloat>? out,
 }) {
   if (y.isDisposed ||
       x.isDisposed ||
@@ -2358,11 +2370,11 @@ NDArray<Float64> atan2<Ty extends AnyDType, Tx extends AnyDType>(
   final maskHolder = prepareMask(where, shape);
 
   try {
-    final NDArray<Float64> result =
+    final NDArray<AnyFloat> result =
         out ??
-        NDArray<Float64>.create(
+        NDArray<AnyFloat>.create(
           shape,
-          targetDType as DType<Float64>,
+          targetDType as DType<AnyFloat>,
           zeroInit: where != null,
         );
     // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays

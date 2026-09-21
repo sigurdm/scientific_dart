@@ -56,7 +56,11 @@ void main() {
         );
         final a = aFull.slice([Slice(start: 0, stop: 4, step: 2)]);
         final out = NDArray<Float64>.fromList([99.0, 99.0], [2], DType.float64);
-        final mask = NDArray<Boolean>.fromList([true, false], [2], DType.boolean);
+        final mask = NDArray<Boolean>.fromList(
+          [true, false],
+          [2],
+          DType.boolean,
+        );
 
         sin(a, out: out, where: mask);
 
@@ -181,7 +185,11 @@ void main() {
           [2],
           DType.complex128,
         );
-        final mask = NDArray<Boolean>.fromList([true, false], [2], DType.boolean);
+        final mask = NDArray<Boolean>.fromList(
+          [true, false],
+          [2],
+          DType.boolean,
+        );
 
         divide(a, b, out: out, where: mask);
 

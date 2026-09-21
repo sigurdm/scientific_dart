@@ -112,7 +112,11 @@ NDArray<Float64> _generate1DCoordinate(GridRange range, DType<Float64> dtype) {
 ///
 /// Refer to the [NumPy as_strided reference](https://numpy.org/doc/stable/reference/generated/numpy.lib.stride_tricks.as_strided.html)
 /// for details.
-NDArray<T> asStrided<T extends AnyDType>(NDArray<T> x, {List<int>? shape, List<int>? strides}) {
+NDArray<T> asStrided<T extends AnyDType>(
+  NDArray<T> x, {
+  List<int>? shape,
+  List<int>? strides,
+}) {
   if (x.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }

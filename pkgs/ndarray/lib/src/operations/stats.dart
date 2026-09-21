@@ -1410,20 +1410,13 @@ NDArray<R> mean<R extends AnyDType, T extends AnyDType>(
                   dtype: DType.complex128,
                 )
                 as NDArray<R>
-          : NDArray<Float64>.full(
-                  targetShape,
-                  double.nan,
-                  dtype: DType.float64,
-                )
+          : NDArray<Float64>.full(targetShape, double.nan, dtype: DType.float64)
                 as NDArray<R>);
 
   if (a.shape[normAxis] == 0) {
     if (out != null) {
       result.fill(
-        (targetDType.isComplex
-                ? Complex(double.nan, double.nan)
-                : double.nan)
-           ,
+        (targetDType.isComplex ? Complex(double.nan, double.nan) : double.nan),
       );
     }
     return result;
@@ -1614,11 +1607,7 @@ NDArray<Float64> std<T extends AnyReal>(
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final result =
         out ??
-        NDArray<Float64>.full(
-          targetShape,
-          double.nan,
-          dtype: DType.float64,
-        );
+        NDArray<Float64>.full(targetShape, double.nan, dtype: DType.float64);
     if (size <= ddof || size == 0) {
       if (out != null) {
         result.setCellFlat(0, double.nan);
@@ -1706,11 +1695,7 @@ NDArray<Float64> std<T extends AnyReal>(
 
   final result =
       out ??
-      NDArray<Float64>.full(
-        targetShape,
-        double.nan,
-        dtype: DType.float64,
-      );
+      NDArray<Float64>.full(targetShape, double.nan, dtype: DType.float64);
 
   if (a.shape[normAxis] <= ddof || a.shape[normAxis] == 0) {
     if (out != null) {
@@ -1918,11 +1903,7 @@ NDArray<Float64> nanvar<T extends AnyReal>(
 
   final result =
       out ??
-      NDArray<Float64>.full(
-        targetShape,
-        double.nan,
-        dtype: DType.float64,
-      );
+      NDArray<Float64>.full(targetShape, double.nan, dtype: DType.float64);
 
   if (a.shape[normAxis] == 0) {
     if (out != null) {
@@ -2961,7 +2942,11 @@ NDArray<T> nanmax<T extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<R> cumsum<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
+NDArray<R> cumsum<T extends AnyDType, R extends AnyDType>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumsum() on a disposed array.');
   }
@@ -3038,7 +3023,11 @@ NDArray<R> cumsum<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {int? ax
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<R> cumprod<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
+NDArray<R> cumprod<T extends AnyDType, R extends AnyDType>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumprod() on a disposed array.');
   }
@@ -3115,7 +3104,11 @@ NDArray<R> cumprod<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {int? a
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<T> cummin<T extends AnyDType>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+NDArray<T> cummin<T extends AnyDType>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cummin() on a disposed array.');
   }
@@ -3187,7 +3180,11 @@ NDArray<T> cummin<T extends AnyDType>(NDArray<T> a, {int? axis, NDArray<T>? out}
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<T> cummax<T extends AnyDType>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+NDArray<T> cummax<T extends AnyDType>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cummax() on a disposed array.');
   }
@@ -3300,11 +3297,7 @@ NDArray<Float64> variance<T extends AnyReal>(
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final result =
         out ??
-        NDArray<Float64>.full(
-          targetShape,
-          double.nan,
-          dtype: DType.float64,
-        );
+        NDArray<Float64>.full(targetShape, double.nan, dtype: DType.float64);
     if (size <= ddof || size == 0) {
       if (out != null) {
         result.setCellFlat(0, double.nan);
@@ -3392,11 +3385,7 @@ NDArray<Float64> variance<T extends AnyReal>(
 
   final result =
       out ??
-      NDArray<Float64>.full(
-        targetShape,
-        double.nan,
-        dtype: DType.float64,
-      );
+      NDArray<Float64>.full(targetShape, double.nan, dtype: DType.float64);
 
   if (a.shape[normAxis] <= ddof || a.shape[normAxis] == 0) {
     if (out != null) {
@@ -3641,8 +3630,7 @@ NDArray<R> nanmean<R extends AnyDType>(
     if (count == 0) {
       result.setCellFlat(
         0,
-        (targetDType.isComplex ? Complex(double.nan, double.nan) : double.nan)
-           ,
+        (targetDType.isComplex ? Complex(double.nan, double.nan) : double.nan),
       );
     } else {
       result.setCellFlat(0, (sumVal / count));
@@ -3659,11 +3647,7 @@ NDArray<R> nanmean<R extends AnyDType>(
   if (!targetDType.isComplex) {
     final result =
         out ??
-        (NDArray<Float64>.full(
-              targetShape,
-              double.nan,
-              dtype: DType.float64,
-            )
+        (NDArray<Float64>.full(targetShape, double.nan, dtype: DType.float64)
             as NDArray<R>);
     if (a.shape[normAxis] == 0) {
       if (out != null) {
@@ -4604,7 +4588,11 @@ average<T extends AnyReal, W extends AnyReal, R extends AnyReal>(
     final weighted_a = multiply<T, W, AnyReal>(a, broadcastedWeights);
     final weighted_sum = sum<AnyReal>(weighted_a, axis: resolvedAxis);
     final sum_of_weights = sum<AnyReal>(broadcastedWeights, axis: resolvedAxis);
-    final avg = divide<AnyReal, AnyReal, R>(weighted_sum, sum_of_weights, out: out);
+    final avg = divide<AnyReal, AnyReal, R>(
+      weighted_sum,
+      sum_of_weights,
+      out: out,
+    );
 
     NDArray<R>? sumOfWeightsResult;
     if (returned) {
@@ -4790,10 +4778,7 @@ NDArray<Float64> cov<T extends AnyReal>(
       fact = v1Num / denominator;
     }
 
-    final factArr = NDArray<Float64>.scalar(
-      fact,
-      dtype: DType.float64,
-    );
+    final factArr = NDArray<Float64>.scalar(fact, dtype: DType.float64);
     final result = multiply<Float64, Float64, Float64>(dotVal, factArr);
 
     final squeezed = result.squeeze();

@@ -38,7 +38,7 @@ void main() {
         return val;
       });
 
-      final dtObj = dt as DType<Object>;
+      final dtObj = dt;
       if (strided) {
         final flatArr = NDArray<AnyDType>.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];

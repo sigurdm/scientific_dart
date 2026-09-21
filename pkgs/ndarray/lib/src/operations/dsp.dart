@@ -624,7 +624,8 @@ enum ConvMode {
 /// - [NumPy correlate Documentation](https://numpy.org/doc/stable/reference/generated/numpy.correlate.html)
 /// - [SciPy signal.correlate Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate.html)
 /// - [Wikipedia: Cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation)
-NDArray<R> correlate<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
+NDArray<R>
+correlate<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
   NDArray<T> in1,
   NDArray<K> in2, {
   ConvMode mode = ConvMode.valid,
@@ -803,7 +804,8 @@ NDArray<R> convolve<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
 ///
 /// ### References & Further Reading
 /// - [SciPy signal.convolve2d Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.convolve2d.html)
-NDArray<R> convolve2d<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
+NDArray<R>
+convolve2d<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
   NDArray<T> in1,
   NDArray<K> in2, {
   ConvMode mode = ConvMode.full,

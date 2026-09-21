@@ -41,7 +41,11 @@ void main() {
     print('Union: ${union.toList()}'); // [1, 2, 3, 4, 5]
 
     print('\n=== isin ===');
-    final element = NDArray<AnyInt>.fromList([1, 2, 3, 4, 2, 1], [6], DType.int32);
+    final element = NDArray<AnyInt>.fromList(
+      [1, 2, 3, 4, 2, 1],
+      [6],
+      DType.int32,
+    );
     final testElements = NDArray<AnyInt>.fromList([2, 4], [2], DType.int32);
     final mask = isin(element, testElements);
     print('Element: ${element.toList()}');

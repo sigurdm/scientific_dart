@@ -135,14 +135,14 @@ void main() {
           expect(q.shape, [2, 2]);
           expect(r.shape, [2, 2]);
 
-          final r10 = r.getCell([1, 0]) as Complex;
+          final r10 = r.getCell([1, 0]);
           expect(r10.real.abs(), lessThan(1e-12));
           expect(r10.imag.abs(), lessThan(1e-12));
 
           final qConj = NDArray<AnyComplex>.zeros([2, 2], DType.complex128);
           for (var i = 0; i < 2; i++) {
             for (var j = 0; j < 2; j++) {
-              final val = q.getCell([j, i]) as Complex;
+              final val = q.getCell([j, i]);
               qConj.setCell([i, j], Complex(val.real, -val.imag));
             }
           }
@@ -165,7 +165,7 @@ void main() {
           for (var i = 0; i < 2; i++) {
             for (var j = 0; j < 2; j++) {
               final prodVal = qrProd.getCell([i, j]) as Complex;
-              final aVal = a.getCell([i, j]) as Complex;
+              final aVal = a.getCell([i, j]);
               expect(prodVal.real, closeTo(aVal.real, 1e-12));
               expect(prodVal.imag, closeTo(aVal.imag, 1e-12));
             }
@@ -194,7 +194,7 @@ void main() {
           for (var i = 0; i < 2; i++) {
             for (var j = 0; j < 2; j++) {
               final prodVal = qrProd.getCell([i, j]) as Complex;
-              final aVal = a.getCell([i, j]) as Complex;
+              final aVal = a.getCell([i, j]);
               expect(prodVal.real, closeTo(aVal.real, 1e-5));
               expect(prodVal.imag, closeTo(aVal.imag, 1e-5));
             }
@@ -225,7 +225,7 @@ void main() {
           for (var i = 0; i < 3; i++) {
             for (var j = 0; j < 2; j++) {
               final prodVal = qrProd.getCell([i, j]) as Complex;
-              final aVal = a.getCell([i, j]) as Complex;
+              final aVal = a.getCell([i, j]);
               expect(prodVal.real, closeTo(aVal.real, 1e-12));
               expect(prodVal.imag, closeTo(aVal.imag, 1e-12));
             }
@@ -259,7 +259,7 @@ void main() {
             for (var i = 0; i < 2; i++) {
               for (var j = 0; j < 2; j++) {
                 final prodVal = qrProd.getCell([b, i, j]) as Complex;
-                final aVal = a.getCell([b, i, j]) as Complex;
+                final aVal = a.getCell([b, i, j]);
                 expect(prodVal.real, closeTo(aVal.real, 1e-12));
                 expect(prodVal.imag, closeTo(aVal.imag, 1e-12));
               }
@@ -450,8 +450,8 @@ void main() {
           );
 
           final res = sqrt(a, where: mask, out: out);
-          final r0 = res.getCell([0]) as Complex;
-          final r1 = res.getCell([1]) as Complex;
+          final r0 = res.getCell([0]);
+          final r1 = res.getCell([1]);
           expect(r0.real, closeTo(2.0, 1e-9));
           expect(r0.imag, closeTo(0.0, 1e-9));
           expect(r1.real, 99.0);

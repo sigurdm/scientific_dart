@@ -285,8 +285,10 @@ NDArray<T> pad<T extends AnyDType>(
   final defaultValue = _getDefaultValue(array.dtype);
   final normConstantValues = (constantValues ?? PadValues<T>.all(defaultValue))
       .normalize(rank, defaultValue);
-  final normEndValues = (endValues ?? PadValues<T>.all(defaultValue))
-      .normalize(rank, defaultValue);
+  final normEndValues = (endValues ?? PadValues<T>.all(defaultValue)).normalize(
+    rank,
+    defaultValue,
+  );
   final normStatLengths =
       statLength?.normalize(array.shape) ??
       List.generate(rank, (i) => (array.shape[i], array.shape[i]));

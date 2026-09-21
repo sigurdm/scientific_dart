@@ -97,22 +97,10 @@ void main() {
     group('2. fv(), pv(), npv(), and irr() with explicit out: buffer', () {
       test('fv, pv, npv, irr with out: outside and inside NDArray.scope', () {
         // Test outside NDArray.scope
-        final rate = NDArray<Float64>.scalar(
-          0.05,
-          dtype: DType.float64,
-        );
-        final nper = NDArray<Float64>.scalar(
-          10.0,
-          dtype: DType.float64,
-        );
-        final pmt = NDArray<Float64>.scalar(
-          -100.0,
-          dtype: DType.float64,
-        );
-        final pvVal = NDArray<Float64>.scalar(
-          -1000.0,
-          dtype: DType.float64,
-        );
+        final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
+        final nper = NDArray<Float64>.scalar(10.0, dtype: DType.float64);
+        final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+        final pvVal = NDArray<Float64>.scalar(-1000.0, dtype: DType.float64);
         final outScalar = NDArray<Float64>.create([], DType.float64);
         final cashflows = NDArray<Float64>.fromList(
           [-100.0, 39.0, 59.0, 55.0, 20.0],
@@ -194,7 +182,7 @@ void main() {
               DType.float64,
             );
 
-            final res = lstsq<int, int, Float64>(
+            final res = lstsq<AnyInt, AnyInt, Float64>(
               aEmptyRows,
               bEmptyRows,
               out: outBuf,
@@ -258,7 +246,11 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final badIndices = NDArray<AnyInt>.fromList([0, 5], [1, 2], DType.int32);
+          final badIndices = NDArray<AnyInt>.fromList(
+            [0, 5],
+            [1, 2],
+            DType.int32,
+          );
           try {
             expect(
               () => take_along_axis(arr, badIndices, 0),

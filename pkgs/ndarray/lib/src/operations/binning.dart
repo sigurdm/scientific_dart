@@ -131,7 +131,11 @@ NDArray<T> bincount<T extends AnyReal>(
             sharesMemory(x, out) ||
             (weights != null && sharesMemory(weights, out)));
     if (aliasesInput) {
-      final temp = bincount<AnyReal>(x, weights: weights, minlength: out.shape[0]);
+      final temp = bincount<AnyReal>(
+        x,
+        weights: weights,
+        minlength: out.shape[0],
+      );
       _fastCopyAndCast(temp, out);
       return out;
     }
@@ -358,7 +362,7 @@ NDArray<T> bincount<T extends AnyReal>(
 ///
 /// Refer to the [NumPy digitize reference](https://numpy.org/doc/stable/reference/generated/numpy.digitize.html)
 /// for details.
-NDArray<Int32> digitize(
+NDArray<AnyInt> digitize(
   NDArray<AnyReal> x,
   NDArray<AnyReal> bins, {
   bool right = false,
@@ -436,7 +440,7 @@ NDArray<Int32> digitize(
         : castNDArray<AnyDType>(x, commonDType);
 
     final side = right ? SearchSide.left : SearchSide.right;
-    NDArray<Int32> res;
+    NDArray<AnyInt> res;
 
     if (increasing) {
       res = searchsorted(commonBins, commonX, side: side);
@@ -444,7 +448,7 @@ NDArray<Int32> digitize(
       final flippedBins = flip(commonBins);
       final j = searchsorted(flippedBins, commonX, side: side);
       final nArr = NDArray<Int32>.scalar(bins.size, dtype: DType.int32);
-      res = subtract<Int32, Int32, Int32>(nArr, j);
+      res = subtract<Int32, AnyInt, Int32>(nArr, j);
     }
 
     if (out != null) {
@@ -452,7 +456,7 @@ NDArray<Int32> digitize(
         throw ArgumentError('Incompatible out buffer shape or dtype.');
       }
       _fastCopyAndCast(res, out);
-      return out as NDArray<Int32>;
+      return out;
     }
 
     return res.detachToParentScope();
@@ -624,7 +628,9 @@ NDArray<Int32> digitize(
       _ => DType.float64,
     };
 
-    final NDArray<AnyReal> hist = NDArray<AnyReal>.zeros([nbins], computeHistDType);
+    final NDArray<AnyReal> hist = NDArray<AnyReal>.zeros([
+      nbins,
+    ], computeHistDType);
 
     final pSrc = flatX.pointer.cast<ffi.Void>();
     final pWeights = flatWeights != null

@@ -234,12 +234,7 @@ void main() {
 
     // Measurement noise covariance R (GPS-like, stddev = 2.0, var = 4.0)
     final R = NDArray<Float64>.fromList(
-      ([
-        4.0,
-        0.0,
-        0.0,
-        4.0,
-      ]).map((e) => (e as num).toDouble()).toList(),
+      ([4.0, 0.0, 0.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
       [2, 2],
       DType.float64,
     );
@@ -248,24 +243,14 @@ void main() {
 
     // True initial state (start at origin, moving at velocity (1, 1))
     var trueState = NDArray<Float64>.fromList(
-      ([
-        0.0,
-        0.0,
-        1.0,
-        1.0,
-      ]).map((e) => (e as num).toDouble()).toList(),
+      ([0.0, 0.0, 1.0, 1.0]).map((e) => (e as num).toDouble()).toList(),
       [4, 1],
       DType.float64,
     );
 
     // Initial estimated state (slightly off, high covariance)
     final estState = NDArray<Float64>.fromList(
-      ([
-        0.5,
-        -0.5,
-        0.0,
-        0.0,
-      ]).map((e) => (e as num).toDouble()).toList(),
+      ([0.5, -0.5, 0.0, 0.0]).map((e) => (e as num).toDouble()).toList(),
       [4, 1],
       DType.float64,
     );

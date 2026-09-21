@@ -141,7 +141,11 @@ void main() {
     test(
       'ndenumerate on 0-D view with non-zero offsetElements reads correct element without RangeError',
       () {
-        final base = NDArray<AnyInt>.fromList([100, 200, 300], [3], DType.int64);
+        final base = NDArray<AnyInt>.fromList(
+          [100, 200, 300],
+          [3],
+          DType.int64,
+        );
         final flipped = flip(base); // offsetElements = 2, first element is 300
         final scalarView = asStrided(
           flipped,
@@ -316,16 +320,8 @@ void main() {
       test(
         'binary fallback ufuncs preserve out values when where == false and handle strided out',
         () {
-          final a = NDArray<Float16>.fromList(
-            [10.0, 20.0],
-            [2],
-            DType.float16,
-          );
-          final b = NDArray<Float16>.fromList(
-            [1.0, 2.0],
-            [2],
-            DType.float16,
-          );
+          final a = NDArray<Float16>.fromList([10.0, 20.0], [2], DType.float16);
+          final b = NDArray<Float16>.fromList([1.0, 2.0], [2], DType.float16);
           final mask = NDArray<Boolean>.fromList(
             [true, false],
             [2],
@@ -379,11 +375,11 @@ void main() {
         () {
           final list = List<bool>.filled(256, true);
           final b = NDArray<Boolean>.fromList(list, [256], DType.boolean);
-          final s = sum<bool>(b, dtype: DType.boolean);
+          final s = sum<Boolean>(b, dtype: DType.boolean);
           expect(s.scalar, isTrue);
 
           final b2 = NDArray<Boolean>.fromList(list, [1, 256], DType.boolean);
-          final sAxis = sum<bool>(b2, axis: 1, dtype: DType.boolean);
+          final sAxis = sum<Boolean>(b2, axis: 1, dtype: DType.boolean);
           expect(sAxis.getCell([0]), isTrue);
 
           b.dispose();
@@ -396,7 +392,11 @@ void main() {
       test('floatPower promotes integer inputs to float64', () {
         final a = NDArray<AnyInt>.fromList([2, 4], [2], DType.int64);
         final b = NDArray<AnyInt>.fromList([-1, -2], [2], DType.int64);
-        final res = binaryUfunc<int, double>(a, b, op: BinaryOp.floatPower);
+        final res = binaryUfunc<AnyInt, AnyFloat>(
+          a,
+          b,
+          op: BinaryOp.floatPower,
+        );
         expect(res.toList(), equals([0.5, 0.0625]));
 
         a.dispose();
@@ -418,7 +418,7 @@ void main() {
             DType.float64,
           );
 
-          final minRes = binaryUfunc<double, double>(
+          final minRes = binaryUfunc<AnyFloat, AnyFloat>(
             a,
             b,
             op: BinaryOp.minimum,
@@ -426,7 +426,11 @@ void main() {
           expect(minRes.getCell([0]).isNaN, isTrue);
           expect(minRes.getCell([1]).isNaN, isTrue);
 
-          final fminRes = binaryUfunc<double, double>(a, b, op: BinaryOp.fmin);
+          final fminRes = binaryUfunc<AnyFloat, AnyFloat>(
+            a,
+            b,
+            op: BinaryOp.fmin,
+          );
           expect(fminRes.toList(), equals([1.0, 2.0]));
 
           a.dispose();
@@ -551,11 +555,7 @@ void main() {
       test(
         'put_along_axis casts values when runtime extension types erase to double',
         () {
-          final arr = NDArray<Float16>.fromList(
-            [0.0, 0.0],
-            [2],
-            DType.float16,
-          );
+          final arr = NDArray<Float16>.fromList([0.0, 0.0], [2], DType.float16);
           final indices = NDArray<AnyInt>.fromList([0, 1], [2], DType.int64);
           final values = NDArray<Float64>.fromList(
             [3.5, 7.25],
@@ -577,7 +577,7 @@ void main() {
         'choose infers integer dtype for integer scalars and casts mixed choices',
         () {
           final a = NDArray<AnyInt>.fromList([0, 1], [2], DType.int64);
-          final resInt = choose<int>(a, [10, 20]);
+          final resInt = choose<AnyInt>(a, [10, 20]);
           expect(resInt.dtype, equals(DType.int64));
           expect(resInt.toList(), equals([10, 20]));
 
@@ -633,7 +633,7 @@ void main() {
     test(
       'linspaceWithStep and linspaceGridWithStep with numSamples == 0 on integer dtype do not crash',
       () {
-        final res = linspaceWithStep<int>(0, 10, 0, dtype: DType.int64);
+        final res = linspaceWithStep<AnyInt>(0, 10, 0, dtype: DType.int64);
         expect(res.samples.shape, equals([0]));
         expect(res.step, equals(0));
         res.samples.dispose();
@@ -643,11 +643,7 @@ void main() {
     test('logspaceGrid with axis != 0 and base array broadcasts properly', () {
       final start = NDArray<AnyFloat>.fromList([0.0, 1.0], [2], DType.float64);
       final stop = NDArray<AnyFloat>.fromList([1.0, 2.0], [2], DType.float64);
-      final base = NDArray<Float64>.fromList(
-        [10.0, 2.0],
-        [2],
-        DType.float64,
-      );
+      final base = NDArray<Float64>.fromList([10.0, 2.0], [2], DType.float64);
 
       final res = logspaceGrid(start, stop, 3, base: base, axis: 1);
       expect(res.shape, equals([2, 3]));
@@ -663,7 +659,11 @@ void main() {
     });
 
     test('geomspaceGrid supports negative start and stop with same sign', () {
-      final start = NDArray<AnyFloat>.fromList([-1.0, -10.0], [2], DType.float64);
+      final start = NDArray<AnyFloat>.fromList(
+        [-1.0, -10.0],
+        [2],
+        DType.float64,
+      );
       final stop = NDArray<AnyFloat>.fromList(
         [-100.0, -1000.0],
         [2],
@@ -794,7 +794,7 @@ void main() {
           [1],
           DType.complex64,
         );
-        final res = binaryUfunc<Complex, Complex>(
+        final res = binaryUfunc<AnyComplex, AnyComplex>(
           c,
           p,
           op: BinaryOp.floatPower,
@@ -821,7 +821,7 @@ void main() {
             DType.complex128,
           );
 
-          final minRes = binaryUfunc<Complex, Complex>(
+          final minRes = binaryUfunc<AnyComplex, AnyComplex>(
             a,
             b,
             op: BinaryOp.minimum,
@@ -829,7 +829,7 @@ void main() {
           expect(minRes.getCell([0]).real, equals(1.0));
           expect(minRes.getCell([0]).imag.isNaN, isTrue);
 
-          final fminRes = binaryUfunc<Complex, Complex>(
+          final fminRes = binaryUfunc<AnyComplex, AnyComplex>(
             a,
             b,
             op: BinaryOp.fmin,
@@ -844,7 +844,11 @@ void main() {
       );
 
       test('bincount with non-contiguous out view writes accurately', () {
-        final x = NDArray<AnyInt>.fromList([0, 1, 1, 2, 2, 2], [6], DType.int32);
+        final x = NDArray<AnyInt>.fromList(
+          [0, 1, 1, 2, 2, 2],
+          [6],
+          DType.int32,
+        );
         final outBase = NDArray<AnyInt>.zeros([2, 3], DType.int64);
         final outStrided = outBase.slice([Index(1), Slice()]);
         bincount(x, out: outStrided);

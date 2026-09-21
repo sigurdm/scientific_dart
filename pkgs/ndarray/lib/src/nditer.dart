@@ -281,3 +281,8 @@ extension NDEnumerateElements<T extends DTypeTag<E>, E> on NDEnumerate<T> {
   E get value => valueRaw as E;
 }
 
+/// Element access for an [NDEnumerate] whose dtype tag is widened to [AnyDType].
+extension NDEnumerateAnyDTypeElements on NDEnumerate<AnyDType> {
+  /// The current element value.
+  dynamic get value => valueRaw;
+}

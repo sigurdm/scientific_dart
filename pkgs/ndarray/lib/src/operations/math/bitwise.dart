@@ -30,12 +30,11 @@ import '../helpers.dart';
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy bitwise_and](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_and.html)
-NDArray<Tr> bitwise_and<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
-  NDArray<Tr>? out,
-}) {
+NDArray<Tr> bitwise_and<
+  Ta extends AnyDType,
+  Tb extends AnyDType,
+  Tr extends AnyDType
+>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<AnyDType>? where, NDArray<Tr>? out}) {
   if (a.isDisposed ||
       b.isDisposed ||
       (out != null && out.isDisposed) ||
@@ -213,12 +212,11 @@ NDArray<Tr> bitwise_and<Ta extends AnyDType, Tb extends AnyDType, Tr extends Any
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy bitwise_or](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_or.html)
-NDArray<Tr> bitwise_or<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
-  NDArray<Tr>? out,
-}) {
+NDArray<Tr> bitwise_or<
+  Ta extends AnyDType,
+  Tb extends AnyDType,
+  Tr extends AnyDType
+>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<AnyDType>? where, NDArray<Tr>? out}) {
   if (a.isDisposed ||
       b.isDisposed ||
       (out != null && out.isDisposed) ||
@@ -396,12 +394,11 @@ NDArray<Tr> bitwise_or<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyD
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy bitwise_xor](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_xor.html)
-NDArray<Tr> bitwise_xor<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
-  NDArray<Tr>? out,
-}) {
+NDArray<Tr> bitwise_xor<
+  Ta extends AnyDType,
+  Tb extends AnyDType,
+  Tr extends AnyDType
+>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<AnyDType>? where, NDArray<Tr>? out}) {
   if (a.isDisposed ||
       b.isDisposed ||
       (out != null && out.isDisposed) ||
@@ -579,12 +576,11 @@ NDArray<Tr> bitwise_xor<Ta extends AnyDType, Tb extends AnyDType, Tr extends Any
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy left_shift](https://numpy.org/doc/stable/reference/generated/numpy.left_shift.html)
-NDArray<Tr> left_shift<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
-  NDArray<Tr>? out,
-}) {
+NDArray<Tr> left_shift<
+  Ta extends AnyDType,
+  Tb extends AnyDType,
+  Tr extends AnyDType
+>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<AnyDType>? where, NDArray<Tr>? out}) {
   if (a.isDisposed ||
       b.isDisposed ||
       (out != null && out.isDisposed) ||
@@ -781,12 +777,11 @@ int _rightShiftScalar(int a, int b, DType dtype) {
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy right_shift](https://numpy.org/doc/stable/reference/generated/numpy.right_shift.html)
-NDArray<Tr> right_shift<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
-  NDArray<Tr>? out,
-}) {
+NDArray<Tr> right_shift<
+  Ta extends AnyDType,
+  Tb extends AnyDType,
+  Tr extends AnyDType
+>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<AnyDType>? where, NDArray<Tr>? out}) {
   if (a.isDisposed ||
       b.isDisposed ||
       (out != null && out.isDisposed) ||
@@ -1148,7 +1143,11 @@ NDArray<Tr> invert<Ta extends AnyDType, Tr extends AnyDType>(
   bool isContig,
   MaskHolder maskHolder,
 })
-_prepareBinaryBitwise<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType>(
+_prepareBinaryBitwise<
+  Ta extends AnyDType,
+  Tb extends AnyDType,
+  Tr extends AnyDType
+>(
   NDArray<Ta> a,
   NDArray<Tb> b,
   NDArray<AnyDType>? where,

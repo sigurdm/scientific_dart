@@ -636,11 +636,11 @@ NDArray<R> log1p<T extends AnyDType, R extends AnyDType>(
 }
 
 /// Computes $\log(e^{x_1} + e^{x_2})$ element-wise.
-NDArray<Float64> logaddexp<T1 extends AnyDType, T2 extends AnyDType>(
+NDArray<AnyFloat> logaddexp<T1 extends AnyDType, T2 extends AnyDType>(
   NDArray<T1> x1,
   NDArray<T2> x2, {
   NDArray<AnyDType>? where,
-  NDArray<Float64>? out,
+  NDArray<AnyFloat>? out,
 }) {
   if (x1.isDisposed ||
       x2.isDisposed ||
@@ -671,11 +671,11 @@ NDArray<Float64> logaddexp<T1 extends AnyDType, T2 extends AnyDType>(
 
   final maskHolder = prepareMask(where, shape);
   try {
-    final NDArray<Float64> result =
+    final NDArray<AnyFloat> result =
         out ??
-        NDArray<Float64>.create(
+        NDArray<AnyFloat>.create(
           shape,
-          targetDType as DType<Float64>,
+          targetDType as DType<AnyFloat>,
           zeroInit: where != null,
         );
     if (x1.isContiguous &&
@@ -776,11 +776,11 @@ NDArray<Float64> logaddexp<T1 extends AnyDType, T2 extends AnyDType>(
 }
 
 /// Computes $\log_2(2^{x_1} + 2^{x_2})$ element-wise.
-NDArray<Float64> logaddexp2<T1 extends AnyDType, T2 extends AnyDType>(
+NDArray<AnyFloat> logaddexp2<T1 extends AnyDType, T2 extends AnyDType>(
   NDArray<T1> x1,
   NDArray<T2> x2, {
   NDArray<AnyDType>? where,
-  NDArray<Float64>? out,
+  NDArray<AnyFloat>? out,
 }) {
   if (x1.isDisposed ||
       x2.isDisposed ||
@@ -811,11 +811,11 @@ NDArray<Float64> logaddexp2<T1 extends AnyDType, T2 extends AnyDType>(
 
   final maskHolder = prepareMask(where, shape);
   try {
-    final NDArray<Float64> result =
+    final NDArray<AnyFloat> result =
         out ??
-        NDArray<Float64>.create(
+        NDArray<AnyFloat>.create(
           shape,
-          targetDType as DType<Float64>,
+          targetDType as DType<AnyFloat>,
           zeroInit: where != null,
         );
     if (x1.isContiguous &&
@@ -1203,7 +1203,11 @@ NDArray<R> fix<T extends AnyDType, R extends AnyDType>(
 /// final a = NDArray.fromList([2.0, 3.0], [2], DType.float64);
 /// final b = square(a); // [4.0, 9.0]
 /// ```
-NDArray<T> square<T extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, NDArray<T>? out}) {
+NDArray<T> square<T extends AnyDType>(
+  NDArray<T> a, {
+  NDArray<AnyDType>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -3667,7 +3671,11 @@ NDArray<T> heaviside<T extends AnyDType>(
   }
 }
 
-NDArray<R> abs<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, NDArray<R>? out}) {
+NDArray<R> abs<T extends AnyDType, R extends AnyDType>(
+  NDArray<T> a, {
+  NDArray<AnyDType>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -5855,7 +5863,11 @@ NDArray<R> add<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
     final cpxA = castNDArray(a, DType.complex128);
     final cpxB = castNDArray(b, DType.complex128);
-    final cpxRes = add<Complex128, Complex128, Complex128>(cpxA, cpxB, where: where);
+    final cpxRes = add<Complex128, Complex128, Complex128>(
+      cpxA,
+      cpxB,
+      where: where,
+    );
     final casted = castNDArray(cpxRes, result.dtype);
     _copyMaskedResult(casted, result, where);
     if (!identical(cpxA, a)) cpxA.dispose();
@@ -5882,12 +5894,11 @@ NDArray<R> add<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
 }
 
 /// Element-wise subtraction of two arrays.
-NDArray<R> subtract<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
-  NDArray<R>? out,
-}) {
+NDArray<R> subtract<
+  Ta extends AnyDType,
+  Tb extends AnyDType,
+  R extends AnyDType
+>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<AnyDType>? where, NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute subtract() on a disposed array.');
   }
@@ -7429,12 +7440,11 @@ NDArray<R> subtract<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType
 /// **Overflow behavior:**
 /// - **Integer arrays** (`int32`, `int64`, etc.) overflow silently wrapping around via standard two's complement.
 /// - **Floating-point arrays** (`float32`, `float64`) overflow silently to `double.infinity` or `double.negativeInfinity` per IEEE 754.
-NDArray<R> multiply<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
-  NDArray<R>? out,
-}) {
+NDArray<R> multiply<
+  Ta extends AnyDType,
+  Tb extends AnyDType,
+  R extends AnyDType
+>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<AnyDType>? where, NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute multiply() on a disposed array.');
   }
@@ -10504,7 +10514,11 @@ NDArray<R> divide<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
     final cpxA = castNDArray(a, DType.complex128);
     final cpxB = castNDArray(b, DType.complex128);
-    final cpxRes = divide<Complex128, Complex128, Complex128>(cpxA, cpxB, where: where);
+    final cpxRes = divide<Complex128, Complex128, Complex128>(
+      cpxA,
+      cpxB,
+      where: where,
+    );
     final casted = castNDArray(cpxRes, result.dtype);
     _copyMaskedResult(casted, result, where);
     if (!identical(cpxA, a)) cpxA.dispose();

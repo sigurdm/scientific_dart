@@ -10,9 +10,9 @@ void main() async {
   await criterion(
     'NDArray Statistics & Reductions Benchmark Suite',
     (c) {
-      final vec1d = linspace<double>(0.0, 100.0, size, dtype: DType.float64);
+      final vec1d = linspace<AnyFloat>(0.0, 100.0, size, dtype: DType.float64);
 
-      final mat2d = linspace<double>(
+      final mat2d = linspace<AnyFloat>(
         0.0,
         1000.0,
         matrixRows * matrixCols,
@@ -47,7 +47,12 @@ void main() async {
           blackhole(res);
         }, throughput: Throughput.elements(size));
 
-        final weights = linspace<double>(1.0, 10.0, size, dtype: DType.float64);
+        final weights = linspace<AnyFloat>(
+          1.0,
+          10.0,
+          size,
+          dtype: DType.float64,
+        );
         c.bench('average(vec, weights=w) [100k]', () {
           final res = average(vec1d, weights: weights);
           blackhole(res);
@@ -80,7 +85,7 @@ void main() async {
       c.group('3. Covariance & Correlation', () {
         const nVars = 50;
         const nObs = 500;
-        final obsMat = linspace<double>(
+        final obsMat = linspace<AnyFloat>(
           0.0,
           100.0,
           nVars * nObs,

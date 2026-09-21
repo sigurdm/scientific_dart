@@ -5,15 +5,15 @@ void main() {
   group('Review Cycle 11 Regression Tests: pad, findIndex, argpartition', () {
     group('1. pad with PaddingMode.constant on float16 and bfloat16', () {
       for (final dtype in [
-        DType.float16 as DType<double>,
-        DType.bfloat16 as DType<double>,
+        DType.float16 as DType<AnyFloat>,
+        DType.bfloat16 as DType<AnyFloat>,
       ]) {
         test('1D constant padding (uniform and per-axis) on $dtype', () {
           NDArray.scope(() {
             final a = NDArray<AnyFloat>.fromList([1.0, 2.0, 3.0], [3], dtype);
 
             // Uniform constant value
-            final paddedUniform = pad<double>(
+            final paddedUniform = pad<AnyFloat>(
               a,
               PadWidth.all(2, 1),
               mode: PaddingMode.constant,
@@ -24,7 +24,7 @@ void main() {
             expect(paddedUniform.toList(), [5.5, 5.5, 1.0, 2.0, 3.0, 5.5]);
 
             // Per-axis (before, after) constant values
-            final paddedPerAxis = pad<double>(
+            final paddedPerAxis = pad<AnyFloat>(
               a,
               PadWidth.axes([(1, 2)]),
               mode: PaddingMode.constant,
@@ -45,7 +45,7 @@ void main() {
             );
 
             // Uniform constant value (hits native_pad_2d with isUniform = 1)
-            final paddedUniform = pad<double>(
+            final paddedUniform = pad<AnyFloat>(
               a,
               PadWidth.all(1, 1),
               mode: PaddingMode.constant,
@@ -73,7 +73,7 @@ void main() {
             ]);
 
             // Per-axis constant values (hits native_pad_2d with isUniform = 0)
-            final paddedPerAxis = pad<double>(
+            final paddedPerAxis = pad<AnyFloat>(
               a,
               PadWidth.axes([(1, 1), (2, 1)]),
               mode: PaddingMode.constant,
@@ -111,7 +111,7 @@ void main() {
             final a = NDArray<AnyFloat>.fromList([1.0, 2.0], [1, 1, 2], dtype);
 
             // Uniform constant value (hits native_pad_nd with isUniform = 1)
-            final paddedUniform = pad<double>(
+            final paddedUniform = pad<AnyFloat>(
               a,
               PadWidth.axes([(1, 0), (0, 1), (1, 1)]),
               mode: PaddingMode.constant,
@@ -139,7 +139,7 @@ void main() {
             ]);
 
             // Per-axis constant values (hits native_pad_nd with isUniform = 0)
-            final paddedPerAxis = pad<double>(
+            final paddedPerAxis = pad<AnyFloat>(
               a,
               PadWidth.axes([(1, 1), (1, 0), (1, 1)]),
               mode: PaddingMode.constant,
@@ -172,24 +172,24 @@ void main() {
             DType.int8,
           );
 
-          expect(findIndex<int>(a, CompareOp.equal, -5), [1, 1]);
-          expect(findIndex<int>(a, CompareOp.notEqual, -10), [0, 1]);
-          expect(findIndex<int>(a, CompareOp.greater, 15), [1, 0]);
-          expect(findIndex<int>(a, CompareOp.greaterEqual, 15), [0, 2]);
-          expect(findIndex<int>(a, CompareOp.less, -10), isNull);
-          expect(findIndex<int>(a, CompareOp.less, -9), [0, 0]);
-          expect(findIndex<int>(a, CompareOp.lessEqual, -10), [0, 0]);
+          expect(findIndex<AnyInt>(a, CompareOp.equal, -5), [1, 1]);
+          expect(findIndex<AnyInt>(a, CompareOp.notEqual, -10), [0, 1]);
+          expect(findIndex<AnyInt>(a, CompareOp.greater, 15), [1, 0]);
+          expect(findIndex<AnyInt>(a, CompareOp.greaterEqual, 15), [0, 2]);
+          expect(findIndex<AnyInt>(a, CompareOp.less, -10), isNull);
+          expect(findIndex<AnyInt>(a, CompareOp.less, -9), [0, 0]);
+          expect(findIndex<AnyInt>(a, CompareOp.lessEqual, -10), [0, 0]);
           expect(
-            findIndex<int>(a, CompareOp.greater, 10, directions: [-1, -1]),
+            findIndex<AnyInt>(a, CompareOp.greater, 10, directions: [-1, -1]),
             [1, 2],
           );
         });
       });
 
       for (final dtype in [
-        DType.uint16 as DType<int>,
-        DType.uint32 as DType<int>,
-        DType.uint64 as DType<int>,
+        DType.uint16 as DType<AnyInt>,
+        DType.uint32 as DType<AnyInt>,
+        DType.uint64 as DType<AnyInt>,
       ]) {
         test('findIndex on $dtype', () {
           NDArray.scope(() {
@@ -199,14 +199,19 @@ void main() {
               dtype,
             );
 
-            expect(findIndex<int>(a, CompareOp.equal, 400), [1, 0]);
-            expect(findIndex<int>(a, CompareOp.equal, 999), isNull);
-            expect(findIndex<int>(a, CompareOp.notEqual, 10), [0, 1]);
-            expect(findIndex<int>(a, CompareOp.greater, 300), [1, 0]);
-            expect(findIndex<int>(a, CompareOp.greaterEqual, 300), [0, 2]);
-            expect(findIndex<int>(a, CompareOp.less, 50), [0, 0]);
+            expect(findIndex<AnyInt>(a, CompareOp.equal, 400), [1, 0]);
+            expect(findIndex<AnyInt>(a, CompareOp.equal, 999), isNull);
+            expect(findIndex<AnyInt>(a, CompareOp.notEqual, 10), [0, 1]);
+            expect(findIndex<AnyInt>(a, CompareOp.greater, 300), [1, 0]);
+            expect(findIndex<AnyInt>(a, CompareOp.greaterEqual, 300), [0, 2]);
+            expect(findIndex<AnyInt>(a, CompareOp.less, 50), [0, 0]);
             expect(
-              findIndex<int>(a, CompareOp.lessEqual, 50, startCoords: [0, 1]),
+              findIndex<AnyInt>(
+                a,
+                CompareOp.lessEqual,
+                50,
+                startCoords: [0, 1],
+              ),
               [1, 1],
             );
           });
@@ -214,8 +219,8 @@ void main() {
       }
 
       for (final dtype in [
-        DType.float16 as DType<double>,
-        DType.bfloat16 as DType<double>,
+        DType.float16 as DType<AnyFloat>,
+        DType.bfloat16 as DType<AnyFloat>,
       ]) {
         test('findIndex on $dtype', () {
           NDArray.scope(() {
@@ -225,14 +230,14 @@ void main() {
               dtype,
             );
 
-            expect(findIndex<double>(a, CompareOp.equal, -1.0), [1, 1]);
-            expect(findIndex<double>(a, CompareOp.equal, 99.0), isNull);
-            expect(findIndex<double>(a, CompareOp.notEqual, -2.5), [0, 1]);
-            expect(findIndex<double>(a, CompareOp.greater, 1.5), [1, 0]);
-            expect(findIndex<double>(a, CompareOp.greaterEqual, 1.5), [0, 2]);
-            expect(findIndex<double>(a, CompareOp.less, -1.0), [0, 0]);
+            expect(findIndex<AnyFloat>(a, CompareOp.equal, -1.0), [1, 1]);
+            expect(findIndex<AnyFloat>(a, CompareOp.equal, 99.0), isNull);
+            expect(findIndex<AnyFloat>(a, CompareOp.notEqual, -2.5), [0, 1]);
+            expect(findIndex<AnyFloat>(a, CompareOp.greater, 1.5), [1, 0]);
+            expect(findIndex<AnyFloat>(a, CompareOp.greaterEqual, 1.5), [0, 2]);
+            expect(findIndex<AnyFloat>(a, CompareOp.less, -1.0), [0, 0]);
             expect(
-              findIndex<double>(
+              findIndex<AnyFloat>(
                 a,
                 CompareOp.lessEqual,
                 -1.0,
@@ -261,8 +266,8 @@ void main() {
       }
 
       for (final dtype in [
-        DType.float16 as DType<double>,
-        DType.bfloat16 as DType<double>,
+        DType.float16 as DType<AnyFloat>,
+        DType.bfloat16 as DType<AnyFloat>,
       ]) {
         test('argpartition on $dtype (default, int32 out, int64 out)', () {
           NDArray.scope(() {
@@ -291,9 +296,9 @@ void main() {
       }
 
       for (final dtype in [
-        DType.int8 as DType<int>,
-        DType.uint16 as DType<int>,
-        DType.uint32 as DType<int>,
+        DType.int8 as DType<AnyInt>,
+        DType.uint16 as DType<AnyInt>,
+        DType.uint32 as DType<AnyInt>,
       ]) {
         test('argpartition on $dtype (default, int32 out, int64 out)', () {
           NDArray.scope(() {

@@ -16,6 +16,18 @@ import 'operations/helpers.dart' as helpers;
 import 'float16_utils.dart';
 import 'sendable_ndarray.dart';
 
+/// An array of any dtype whatsoever. This is the top of the tag hierarchy.
+sealed class AnyDType {
+  const AnyDType();
+}
+
+/// An array of any real (non-complex, non-boolean) numeric dtype.
+///
+/// This is the least upper bound of [AnyFloat] and [AnyInt].
+sealed class AnyReal extends AnyDType {
+  const AnyReal();
+}
+
 /// The tag type identifying the element dtype of an [NDArray].
 ///
 /// Tags are *phantom* types: they are never instantiated, and carry no data.
@@ -30,68 +42,70 @@ import 'sendable_ndarray.dart';
 ///
 /// See also:
 /// - [DType], the runtime value describing the same information.
-/// - [AnyFloat], [AnyInt], [AnyComplex], [AnyDType] for widened array types.
-sealed class DTypeTag<E> {}
+/// - [AnyFloat], [AnyInt], [AnyComplex], [AnyReal], [AnyDType] for widened
+///   array types.
+sealed class DTypeTag<E> extends AnyDType {
+  const DTypeTag();
+}
+
+/// The tag type identifying a real numeric (`double` or `int`) dtype of an
+/// [NDArray].
+sealed class RealDTypeTag<E extends num> extends AnyReal
+    implements DTypeTag<E> {
+  const RealDTypeTag();
+}
 
 /// An array of any floating-point dtype (`float16`, `bfloat16`, `float32`,
 /// `float64`).
 ///
 /// Because generics are covariant, `NDArray<Float32>` and `NDArray<Float64>`
 /// are both subtypes of `NDArray<AnyFloat>`.
-typedef AnyFloat = DTypeTag<double>;
+typedef AnyFloat = RealDTypeTag<double>;
 
 /// An array of any integer dtype (`int8`..`int64`, `uint8`..`uint64`).
-typedef AnyInt = DTypeTag<int>;
+typedef AnyInt = RealDTypeTag<int>;
 
 /// An array of any complex dtype (`complex64`, `complex128`).
 typedef AnyComplex = DTypeTag<Complex>;
 
-/// An array of any real (non-complex, non-boolean) numeric dtype.
-///
-/// This is the union of [AnyFloat] and [AnyInt].
-typedef AnyReal = DTypeTag<num>;
-
-/// An array of any dtype whatsoever. This is the top of the tag hierarchy.
-typedef AnyDType = DTypeTag<Object?>;
-
 /// Tag for the `float64` dtype. Elements are `double`.
-abstract final class Float64 extends DTypeTag<double> {}
+abstract final class Float64 extends RealDTypeTag<double> {}
 
 /// Tag for the `float32` dtype. Elements are `double`.
-abstract final class Float32 extends DTypeTag<double> {}
+abstract final class Float32 extends RealDTypeTag<double> {}
 
 /// Tag for the `float16` dtype. Elements are `double`.
-abstract final class Float16 extends DTypeTag<double> {}
+abstract final class Float16 extends RealDTypeTag<double> {}
 
 /// Tag for the `bfloat16` dtype. Elements are `double`.
-abstract final class BFloat16 extends DTypeTag<double> {}
+abstract final class BFloat16 extends RealDTypeTag<double> {}
 
 /// Tag for the `int64` dtype. Elements are `int`.
-abstract final class Int64 extends DTypeTag<int> {}
+abstract final class Int64 extends RealDTypeTag<int> {}
 
 /// Tag for the `int32` dtype. Elements are `int`.
-abstract final class Int32 extends DTypeTag<int> {}
+abstract final class Int32 extends RealDTypeTag<int> {}
 
 /// Tag for the `int16` dtype. Elements are `int`.
-abstract final class Int16 extends DTypeTag<int> {}
+abstract final class Int16 extends RealDTypeTag<int> {}
 
 /// Tag for the `int8` dtype. Elements are `int`.
-abstract final class Int8 extends DTypeTag<int> {}
+abstract final class Int8 extends RealDTypeTag<int> {}
 
 /// Tag for the `uint64` dtype. Elements are `int`.
 ///
 /// Dart `int` is signed 64-bit; bit patterns with the MSB set represent
 /// negative values. Use [uint64Compare] for unsigned comparisons.
-abstract final class Uint64 extends DTypeTag<int> {}
+abstract final class Uint64 extends RealDTypeTag<int> {}
 
 /// Tag for the `uint32` dtype. Elements are `int`.
-abstract final class Uint32 extends DTypeTag<int> {}
+abstract final class Uint32 extends RealDTypeTag<int> {}
 
 /// Tag for the `uint16` dtype. Elements are `int`.
-abstract final class Uint16 extends DTypeTag<int> {}
+abstract final class Uint16 extends RealDTypeTag<int> {}
 
 /// Tag for the `uint8` dtype. Elements are `int`.
-abstract final class Uint8 extends DTypeTag<int> {}
+abstract final class Uint8 extends RealDTypeTag<int> {}
 
 /// Tag for the `complex64` dtype. Elements are [Complex].
 abstract final class Complex64 extends DTypeTag<Complex> {}
@@ -444,7 +458,7 @@ final class NDArray<T extends AnyDType>
     final NDArray instance = switch (dtype) {
       DType.float64 => NDArray<Float64>._raw(
         pointer,
-        data as List<Float64>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -456,7 +470,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.float32 => NDArray<Float32>._raw(
         pointer,
-        data as List<Float32>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -468,7 +482,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.float16 => NDArray<Float16>._raw(
         pointer,
-        data as List<Float16>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -480,7 +494,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.bfloat16 => NDArray<BFloat16>._raw(
         pointer,
-        data as List<BFloat16>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -492,7 +506,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.int64 => NDArray<Int64>._raw(
         pointer,
-        data as List<Int64>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -504,7 +518,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.int32 => NDArray<Int32>._raw(
         pointer,
-        data as List<Int32>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -516,7 +530,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.int16 => NDArray<Int16>._raw(
         pointer,
-        data as List<Int16>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -528,7 +542,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.int8 => NDArray<Int8>._raw(
         pointer,
-        data as List<Int8>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -540,7 +554,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.uint64 => NDArray<Uint64>._raw(
         pointer,
-        data as List<Uint64>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -552,7 +566,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.uint32 => NDArray<Uint32>._raw(
         pointer,
-        data as List<Uint32>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -564,7 +578,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.uint16 => NDArray<Uint16>._raw(
         pointer,
-        data as List<Uint16>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -576,7 +590,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.uint8 => NDArray<Uint8>._raw(
         pointer,
-        data as List<Uint8>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -588,7 +602,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.complex128 => NDArray<Complex128>._raw(
         pointer,
-        data as List<Complex128>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -600,7 +614,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.complex64 => NDArray<Complex64>._raw(
         pointer,
-        data as List<Complex64>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -612,7 +626,7 @@ final class NDArray<T extends AnyDType>
       ),
       DType.boolean => NDArray<Boolean>._raw(
         pointer,
-        data as List<bool>,
+        data,
         parent,
         shape: shape,
         strides: strides,
@@ -1161,47 +1175,33 @@ final class NDArray<T extends AnyDType>
 
     switch (parent.dtype) {
       case DType.float64:
-        data =
-            physicalPointer.cast<ffi.Double>().asTypedList(viewSize);
+        data = physicalPointer.cast<ffi.Double>().asTypedList(viewSize);
       case DType.float32:
-        data =
-            physicalPointer.cast<ffi.Float>().asTypedList(viewSize);
+        data = physicalPointer.cast<ffi.Float>().asTypedList(viewSize);
       case DType.float16:
-        data =
-            Float16List(
-                  physicalPointer.cast<ffi.Uint16>().asTypedList(viewSize),
-                )
-               ;
+        data = Float16List(
+          physicalPointer.cast<ffi.Uint16>().asTypedList(viewSize),
+        );
       case DType.bfloat16:
-        data =
-            BFloat16List(
-                  physicalPointer.cast<ffi.Uint16>().asTypedList(viewSize),
-                )
-               ;
+        data = BFloat16List(
+          physicalPointer.cast<ffi.Uint16>().asTypedList(viewSize),
+        );
       case DType.int64:
-        data =
-            physicalPointer.cast<ffi.Int64>().asTypedList(viewSize);
+        data = physicalPointer.cast<ffi.Int64>().asTypedList(viewSize);
       case DType.int32:
-        data =
-            physicalPointer.cast<ffi.Int32>().asTypedList(viewSize);
+        data = physicalPointer.cast<ffi.Int32>().asTypedList(viewSize);
       case DType.int16:
-        data =
-            physicalPointer.cast<ffi.Int16>().asTypedList(viewSize);
+        data = physicalPointer.cast<ffi.Int16>().asTypedList(viewSize);
       case DType.int8:
-        data =
-            physicalPointer.cast<ffi.Int8>().asTypedList(viewSize);
+        data = physicalPointer.cast<ffi.Int8>().asTypedList(viewSize);
       case DType.uint64:
-        data =
-            physicalPointer.cast<ffi.Uint64>().asTypedList(viewSize);
+        data = physicalPointer.cast<ffi.Uint64>().asTypedList(viewSize);
       case DType.uint32:
-        data =
-            physicalPointer.cast<ffi.Uint32>().asTypedList(viewSize);
+        data = physicalPointer.cast<ffi.Uint32>().asTypedList(viewSize);
       case DType.uint16:
-        data =
-            physicalPointer.cast<ffi.Uint16>().asTypedList(viewSize);
+        data = physicalPointer.cast<ffi.Uint16>().asTypedList(viewSize);
       case DType.uint8:
-        data =
-            physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize);
+        data = physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize);
       case DType.complex128:
         final p = _offsetPointer(
           rootPhysicalStart,
@@ -1219,9 +1219,9 @@ final class NDArray<T extends AnyDType>
         final floatList = p.cast<ffi.Float>().asTypedList(viewSize * 2);
         data = ComplexList(floatList);
       case DType.boolean:
-        data =
-            BoolList(physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize))
-               ;
+        data = BoolList(
+          physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize),
+        );
     }
 
     final viewOffsetElements = isEmpty ? 0 : -minRelativeOffset;
@@ -1305,13 +1305,9 @@ final class NDArray<T extends AnyDType>
       case DType.float32:
         data = pointer.cast<ffi.Float>().asTypedList(allocSize);
       case DType.float16:
-        data =
-            Float16List(pointer.cast<ffi.Uint16>().asTypedList(allocSize))
-               ;
+        data = Float16List(pointer.cast<ffi.Uint16>().asTypedList(allocSize));
       case DType.bfloat16:
-        data =
-            BFloat16List(pointer.cast<ffi.Uint16>().asTypedList(allocSize))
-               ;
+        data = BFloat16List(pointer.cast<ffi.Uint16>().asTypedList(allocSize));
       case DType.int64:
         data = pointer.cast<ffi.Int64>().asTypedList(allocSize);
       case DType.int32:
@@ -1329,21 +1325,15 @@ final class NDArray<T extends AnyDType>
       case DType.uint8:
         data = pointer.cast<ffi.Uint8>().asTypedList(allocSize);
       case DType.complex128:
-        data =
-            ComplexList(
-                  pointer.cast<ffi.Double>().asTypedList(allocSize * 2),
-                )
-               ;
+        data = ComplexList(
+          pointer.cast<ffi.Double>().asTypedList(allocSize * 2),
+        );
       case DType.complex64:
-        data =
-            ComplexList(
-                  pointer.cast<ffi.Float>().asTypedList(allocSize * 2),
-                )
-               ;
+        data = ComplexList(
+          pointer.cast<ffi.Float>().asTypedList(allocSize * 2),
+        );
       case DType.boolean:
-        data =
-            BoolList(pointer.cast<ffi.Uint8>().asTypedList(allocSize))
-               ;
+        data = BoolList(pointer.cast<ffi.Uint8>().asTypedList(allocSize));
     }
 
     final logicalPointer = initialOffsetElements == 0
@@ -2351,7 +2341,9 @@ final class NDArray<T extends AnyDType>
               'Source values array contains fewer elements than the mask targets',
             );
           }
-          dataRaw[currentOffset] = _coerceScalar(values.getCellFlat(valueIndex++));
+          dataRaw[currentOffset] = _coerceScalar(
+            values.getCellFlat(valueIndex++),
+          );
         }
         return;
       }
@@ -2415,7 +2407,11 @@ final class NDArray<T extends AnyDType>
   /// **Polymorphic Equivalence:**
   /// When [axis] is `0`, equivalent to calling `this[ [indices] ] = value` (advanced row stack scalar mutation).
   ///
-  void setIndicesScalar(NDArray<AnyInt> indices, Object? value, {int axis = 0}) {
+  void setIndicesScalar(
+    NDArray<AnyInt> indices,
+    Object? value, {
+    int axis = 0,
+  }) {
     if (isDisposed || indices.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
     }
@@ -2515,7 +2511,9 @@ final class NDArray<T extends AnyDType>
               'Source values array contains fewer elements than required for the advanced index allocation',
             );
           }
-          dataRaw[currentOffset] = _coerceScalar(values.getCellFlat(valOffset++));
+          dataRaw[currentOffset] = _coerceScalar(
+            values.getCellFlat(valOffset++),
+          );
           return;
         }
         for (var i = 0; i < sliceShape[dim]; i++) {
@@ -3895,7 +3893,7 @@ final class NDArray<T extends AnyDType>
         'Cannot access an array or view whose memory has been explicitly freed/disposed!',
       );
     }
-    final result = <T>[];
+    final result = <Object?>[];
     _fillListRecursive(this, List<int>.filled(shape.length, 0), 0, result);
     return result;
   }
@@ -4390,6 +4388,34 @@ final class NDArray<T extends AnyDType>
         return NDArrayGenericArithmetic(this) % arg;
       }
     }
+    if (invocation.isGetter) {
+      if (invocation.memberName == #scalar) return scalarRaw;
+      if (invocation.memberName == #data) return dataRaw;
+    } else if (invocation.isMethod) {
+      final args = invocation.positionalArguments;
+      switch (invocation.memberName) {
+        case #toList:
+          return toListRaw();
+        case #getCell:
+          return getCellUntyped((args[0] as List).cast<int>());
+        case #setCell:
+          setCellUntyped((args[0] as List).cast<int>(), args[1]);
+          return null;
+        case #getCellFlat:
+          return getCellFlatUntyped(args[0] as int);
+        case #setCellFlat:
+          setCellFlatUntyped(args[0] as int, args[1]);
+          return null;
+        case #getCellRaw:
+          return getCellRawUntyped(args[0] as int);
+        case #setCellRaw:
+          setCellRawUntyped(args[0] as int, args[1]);
+          return null;
+        case #fill:
+          fillUntyped(args[0]);
+          return null;
+      }
+    }
     return super.noSuchMethod(invocation);
   }
 
@@ -4434,8 +4460,10 @@ extension NDArrayFloat64Arithmetic on NDArray<Float64> {
   NDArray<Float64> operator %(dynamic other) =>
       _withWrappedScalar(
             other,
-            (otherArr) =>
-                ops.remainder(this as NDArray<AnyReal>, otherArr as NDArray<AnyReal>),
+            (otherArr) => ops.remainder(
+              this as NDArray<AnyReal>,
+              otherArr as NDArray<AnyReal>,
+            ),
           )
           as NDArray<Float64>;
 }
@@ -4477,8 +4505,10 @@ extension NDArrayFloat32Arithmetic on NDArray<Float32> {
   NDArray<Float32> operator %(dynamic other) =>
       _withWrappedScalar(
             other,
-            (otherArr) =>
-                ops.remainder(this as NDArray<AnyReal>, otherArr as NDArray<AnyReal>),
+            (otherArr) => ops.remainder(
+              this as NDArray<AnyReal>,
+              otherArr as NDArray<AnyReal>,
+            ),
           )
           as NDArray<Float32>;
 }
@@ -4562,8 +4592,10 @@ extension NDArrayGenericArithmetic<T extends AnyDType> on NDArray<T> {
   NDArray<T> operator %(dynamic other) =>
       _withWrappedScalar(
             other,
-            (otherArr) =>
-                ops.remainder(this as NDArray<AnyReal>, otherArr as NDArray<AnyReal>),
+            (otherArr) => ops.remainder(
+              this as NDArray<AnyReal>,
+              otherArr as NDArray<AnyReal>,
+            ),
           )
           as NDArray<T>;
 }
@@ -5147,7 +5179,8 @@ extension NDArrayElements<T extends DTypeTag<E>, E> on NDArray<T> {
   /// Writes [value] at [rawOffset] elements into the backing buffer.
   ///
   /// See [getCellRaw].
-  void setCellRaw(int rawOffset, E value) => setCellRawUntyped(rawOffset, value);
+  void setCellRaw(int rawOffset, E value) =>
+      setCellRawUntyped(rawOffset, value);
 
   /// The element at logical flat index [flatIndex] in C (row-major) order.
   ///
@@ -5170,4 +5203,79 @@ extension NDArrayElements<T extends DTypeTag<E>, E> on NDArray<T> {
   /// **Performance considerations:**
   /// - Time complexity: $O(n)$.
   void fill(E value) => fillUntyped(value);
+}
+
+/// Typed element access (`num`) for an [NDArray] whose dtype tag is [AnyReal].
+extension NDArrayAnyRealElements on NDArray<AnyReal> {
+  /// A Dart list view of the raw C memory, typed as `List<num>`.
+  List<num> get data => dataRaw as List<num>;
+
+  /// The single value of a 0-dimensional real array.
+  num get scalar => scalarRaw as num;
+
+  /// The elements of this array as a `List<num>`, in C (row-major) order.
+  List<num> toList() => toListRaw().cast<num>();
+
+  /// The element at the given multi-dimensional [coords].
+  num getCell(List<int> coords) => getCellUntyped(coords) as num;
+
+  /// Writes [value] at the given multi-dimensional [coords].
+  void setCell(List<int> coords, num value) => setCellUntyped(coords, value);
+
+  /// The element at [rawOffset] elements into the backing buffer.
+  num getCellRaw(int rawOffset) => getCellRawUntyped(rawOffset) as num;
+
+  /// Writes [value] at [rawOffset] elements into the backing buffer.
+  void setCellRaw(int rawOffset, num value) =>
+      setCellRawUntyped(rawOffset, value);
+
+  /// The element at logical flat index [flatIndex] in C (row-major) order.
+  num getCellFlat(int flatIndex) => getCellFlatUntyped(flatIndex) as num;
+
+  /// Writes [value] at logical flat index [flatIndex] in C (row-major) order.
+  void setCellFlat(int flatIndex, num value) =>
+      setCellFlatUntyped(flatIndex, value);
+
+  /// Sets every element of this array to [value].
+  void fill(num value) => fillUntyped(value);
+}
+
+/// Element access for an [NDArray] whose dtype tag is widened to [AnyDType].
+///
+/// When an array has a more specific [DTypeTag] (such as [Float64] or
+/// [AnyFloat]), [NDArrayElements] is strictly more specific and is selected by
+/// Dart's extension resolution rules instead.
+extension NDArrayAnyDTypeElements on NDArray<AnyDType> {
+  /// A Dart list view of the raw C memory.
+  List<dynamic> get data => dataRaw;
+
+  /// The single value of a 0-dimensional array.
+  dynamic get scalar => scalarRaw;
+
+  /// The elements of this array as a Dart list, in C (row-major) order.
+  List<dynamic> toList() => toListRaw();
+
+  /// The element at the given multi-dimensional [coords].
+  dynamic getCell(List<int> coords) => getCellUntyped(coords);
+
+  /// Writes [value] at the given multi-dimensional [coords].
+  void setCell(List<int> coords, Object? value) =>
+      setCellUntyped(coords, value);
+
+  /// The element at [rawOffset] elements into the backing buffer.
+  dynamic getCellRaw(int rawOffset) => getCellRawUntyped(rawOffset);
+
+  /// Writes [value] at [rawOffset] elements into the backing buffer.
+  void setCellRaw(int rawOffset, Object? value) =>
+      setCellRawUntyped(rawOffset, value);
+
+  /// The element at logical flat index [flatIndex] in C (row-major) order.
+  dynamic getCellFlat(int flatIndex) => getCellFlatUntyped(flatIndex);
+
+  /// Writes [value] at logical flat index [flatIndex] in C (row-major) order.
+  void setCellFlat(int flatIndex, Object? value) =>
+      setCellFlatUntyped(flatIndex, value);
+
+  /// Sets every element of this array to [value].
+  void fill(Object? value) => fillUntyped(value);
 }

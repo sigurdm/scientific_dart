@@ -793,7 +793,11 @@ NDArray<T> copy<T extends AnyDType>(NDArray<T> a, {NDArray<T>? out}) {
 /// {@example /example/diag_example.dart lang=dart}
 ///
 /// Reference: [Diagonal Matrix](https://en.wikipedia.org/wiki/Diagonal_matrix)
-NDArray<T> diag<T extends AnyDType>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
+NDArray<T> diag<T extends AnyDType>(
+  NDArray<T> v, {
+  int k = 0,
+  NDArray<T>? out,
+}) {
   if (v.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute diag() on a disposed array.');
   }
@@ -908,7 +912,11 @@ NDArray<T> diag<T extends AnyDType>(NDArray<T> v, {int k = 0, NDArray<T>? out}) 
 ///
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
-NDArray<T> tril<T extends AnyDType>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
+NDArray<T> tril<T extends AnyDType>(
+  NDArray<T> a, {
+  int k = 0,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute tril() on a disposed array.');
   }
@@ -1016,7 +1024,11 @@ NDArray<T> tril<T extends AnyDType>(NDArray<T> a, {int k = 0, NDArray<T>? out}) 
 ///
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
-NDArray<T> triu<T extends AnyDType>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
+NDArray<T> triu<T extends AnyDType>(
+  NDArray<T> a, {
+  int k = 0,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute triu() on a disposed array.');
   }
@@ -1128,7 +1140,12 @@ NDArray<T> triu<T extends AnyDType>(NDArray<T> a, {int k = 0, NDArray<T>? out}) 
 /// final a = NDArray.fromList([1, 2, 4, 7, 0], [5], DType.int32);
 /// final res = diff(a); // [1, 2, 3, -7]
 /// ```
-NDArray<T> diff<T extends AnyDType>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
+NDArray<T> diff<T extends AnyDType>(
+  NDArray<T> a, {
+  int n = 1,
+  int axis = -1,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute diff() on a disposed array.');
   }

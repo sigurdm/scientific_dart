@@ -23,10 +23,7 @@ void main() {
                 src,
                 PadWidth.all(1),
                 mode: PadMode.constant,
-                constantValues: PadValues.all(
-                  vEndBefore,
-                  vEndAfter,
-                ),
+                constantValues: PadValues.all(vEndBefore, vEndAfter),
               );
               expect([
                 for (var i = 0; i < pConst.size; i++) pConst.getCell([i]),

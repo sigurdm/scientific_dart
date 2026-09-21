@@ -10,20 +10,20 @@ void main() async {
     (c) {
       c.group('1. DSP Windowing Functions (100k points)', () {
         c.bench('hanning(100k)', () {
-          final res = hanning<double>(size);
+          final res = hanning<AnyFloat>(size);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
 
         c.bench('hamming(100k)', () {
-          final res = hamming<double>(size);
+          final res = hamming<AnyFloat>(size);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
       });
 
       c.group('2. Special Mathematical Functions (100k elements)', () {
-        final floatVec = linspace<double>(
+        final floatVec = linspace<AnyFloat>(
           0.0,
           10.0,
           size,
@@ -31,22 +31,24 @@ void main() async {
         );
 
         c.bench('i0(x) (Bessel I0) [100k]', () {
-          final res = i0<double, double>(floatVec);
+          final res = i0<AnyFloat, AnyFloat>(floatVec);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
 
         c.bench('sinc(x) (Normalized Sinc) [100k]', () {
-          final res = sinc<double, double>(floatVec);
+          final res = sinc<AnyFloat, AnyFloat>(floatVec);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
       });
 
       c.group('3. Bitwise Integer Operations (100k elements)', () {
-        final intA = NDArray<AnyInt>.fromList(List.generate(size, (i) => i * 13), [
-          size,
-        ], DType.int32);
+        final intA = NDArray<AnyInt>.fromList(
+          List.generate(size, (i) => i * 13),
+          [size],
+          DType.int32,
+        );
         final intB = NDArray<AnyInt>.fromList(
           List.generate(size, (i) => i * 7 + 1),
           [size],

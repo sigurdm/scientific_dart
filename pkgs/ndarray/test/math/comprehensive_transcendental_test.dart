@@ -75,7 +75,9 @@ void main() {
         final aC128 = NDArray<AnyComplex>.fromList(c128List, [
           4,
         ], DType.complex128);
-        final aC64 = NDArray<AnyComplex>.fromList(c128List, [4], DType.complex64);
+        final aC64 = NDArray<AnyComplex>.fromList(c128List, [
+          4,
+        ], DType.complex64);
 
         // Sin complex: sin(x + iy) = sin(x)cosh(y) + i cos(x)sinh(y)
         final sC128 = sin(aC128);
@@ -403,7 +405,9 @@ void main() {
             Complex(1.0, math.pi / 4),
             Complex(-0.5, 0.5),
           ];
-          final a128 = NDArray<AnyComplex>.fromList(cVals, [3], DType.complex128);
+          final a128 = NDArray<AnyComplex>.fromList(cVals, [
+            3,
+          ], DType.complex128);
           final a64 = NDArray<AnyComplex>.fromList(cVals, [3], DType.complex64);
 
           final s = sinh(a128);
@@ -467,7 +471,9 @@ void main() {
 
           // Complex inverse hyperbolic
           final cVals = [Complex(1.0, 0.5), Complex(0.0, 2.0)];
-          final cArr = NDArray<AnyComplex>.fromList(cVals, [2], DType.complex128);
+          final cArr = NDArray<AnyComplex>.fromList(cVals, [
+            2,
+          ], DType.complex128);
           expect(asinh(cArr).dtype, DType.complex128);
           expect(acosh(cArr).dtype, DType.complex128);
           expect(atanh(cArr).dtype, DType.complex128);
@@ -679,8 +685,12 @@ void main() {
             Complex(0.0, math.pi / 2),
             Complex(2.0, 1.0),
           ];
-          final aC128 = NDArray<AnyComplex>.fromList(cVals, [4], DType.complex128);
-          final aC64 = NDArray<AnyComplex>.fromList(cVals, [4], DType.complex64);
+          final aC128 = NDArray<AnyComplex>.fromList(cVals, [
+            4,
+          ], DType.complex128);
+          final aC64 = NDArray<AnyComplex>.fromList(cVals, [
+            4,
+          ], DType.complex64);
 
           // exp(0) = 1, exp(1 + i*pi) = -e, exp(i*pi/2) = i
           final expC = exp(aC128);
@@ -740,7 +750,9 @@ void main() {
             Complex(1e-10, 1e-10),
             Complex(1.0, 1.0),
           ];
-          final aCpx = NDArray<AnyComplex>.fromList(cList, [3], DType.complex128);
+          final aCpx = NDArray<AnyComplex>.fromList(cList, [
+            3,
+          ], DType.complex128);
           final expm1C = expm1(aCpx);
           final log1pC = log1p(aCpx);
           expect(expm1C.getCell([0]).real, closeTo(0.0, 1e-14));

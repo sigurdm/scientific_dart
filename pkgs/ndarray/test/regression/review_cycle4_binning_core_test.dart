@@ -180,8 +180,8 @@ void main() {
             a,
             b,
           );
-          final NDArray<Float64> residuals = res.residuals;
-          final NDArray<Float64> s = res.s;
+          final NDArray<AnyFloat> residuals = res.residuals;
+          final NDArray<AnyFloat> s = res.s;
 
           expect(residuals, isA<NDArray<Float64>>());
           expect(s, isA<NDArray<Float64>>());

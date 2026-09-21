@@ -83,10 +83,7 @@ void main() {
             empty2D,
             PadWidth.all(1),
             mode: PadMode.constant,
-            constantValues: PadValues.axes([
-              (10.0, 11.0),
-              (20.0, 21.0),
-            ]),
+            constantValues: PadValues.axes([(10.0, 11.0), (20.0, 21.0)]),
           );
           expect(res2D.shape, equals([2, 4]));
           expect([

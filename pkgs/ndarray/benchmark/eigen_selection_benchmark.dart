@@ -42,18 +42,8 @@ void main() async {
 
       final innerA = NDArray<Float64>.ones([200, 100], DType.float64);
       final innerB = NDArray<Float64>.ones([200, 100], DType.float64);
-      final vdotA = linspace<Float64>(
-        0.0,
-        10.0,
-        size,
-        dtype: DType.float64,
-      );
-      final vdotB = linspace<Float64>(
-        1.0,
-        11.0,
-        size,
-        dtype: DType.float64,
-      );
+      final vdotA = linspace<Float64>(0.0, 10.0, size, dtype: DType.float64);
+      final vdotB = linspace<Float64>(1.0, 11.0, size, dtype: DType.float64);
 
       c.group('1. Eigenvalues, Condition Numbers & Matrix Chains', () {
         c.bench('eigh(A) [100x100 symmetric]', () {

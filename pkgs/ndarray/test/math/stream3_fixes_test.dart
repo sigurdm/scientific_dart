@@ -12,7 +12,7 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        final res = einsum<Object, Float64>(
+        final res = einsum<AnyDType, Float64>(
           EinsumSubscripts.parse('ij,jk->ik'),
           [aInt, bFloat],
         );
@@ -27,7 +27,7 @@ void main() {
 
         // User-supplied out buffer in einsum
         final outBuf = NDArray<Float64>.zeros([2, 2], DType.float64);
-        final outRes = einsum<Object, Float64>(
+        final outRes = einsum<AnyDType, Float64>(
           EinsumSubscripts.parse('ij,jk->ik'),
           [aInt, bFloat],
           out: outBuf,
@@ -460,8 +460,8 @@ void main() {
           );
 
           // eigh return generic <T> check
-          ({NDArray<AnyReal> eigenvalues, NDArray<Float64> eigenvectors}) resEigh =
-              eigh<Float64, Float64>(mat);
+          ({NDArray<AnyReal> eigenvalues, NDArray<Float64> eigenvectors})
+          resEigh = eigh<Float64, Float64>(mat);
           expect(resEigh.eigenvectors.dtype, equals(DType.float64));
 
           // hessenberg return generic <T> check

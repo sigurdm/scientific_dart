@@ -204,7 +204,8 @@ NDArray<T> linspaceGrid<T extends AnyDType>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates new arrays on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-({NDArray<T> samples, NDArray<T> step}) linspaceGridWithStep<T extends AnyDType>(
+({NDArray<T> samples, NDArray<T> step})
+linspaceGridWithStep<T extends AnyDType>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -229,7 +230,8 @@ NDArray<T> linspaceGrid<T extends AnyDType>(
   );
 }
 
-({NDArray<T> samples, NDArray<T> step}) _linspaceGridInternal<T extends AnyDType>(
+({NDArray<T> samples, NDArray<T> step})
+_linspaceGridInternal<T extends AnyDType>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {

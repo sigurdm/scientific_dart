@@ -51,7 +51,11 @@ void main() {
         [2, 3],
         DType.float64,
       );
-      final x = NDArray<AnyFloat>.fromList([0.5, -1.0, 2.0], [3], DType.float64);
+      final x = NDArray<AnyFloat>.fromList(
+        [0.5, -1.0, 2.0],
+        [3],
+        DType.float64,
+      );
 
       final y = matmul(a, x);
       expect(y.shape, equals([2]));
@@ -158,7 +162,11 @@ void main() {
         [2, 2, 3],
         DType.float64,
       );
-      final x = NDArray<AnyFloat>.fromList([1.0, 0.0, -1.0], [3], DType.float64);
+      final x = NDArray<AnyFloat>.fromList(
+        [1.0, 0.0, -1.0],
+        [3],
+        DType.float64,
+      );
 
       final y = matmul(a, x);
       expect(y.shape, equals([2, 2]));

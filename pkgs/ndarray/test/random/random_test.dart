@@ -524,7 +524,8 @@ void main() {
           // Out buffer mismatch
           final outBad = NDArray<AnyInt>.create([4], DType.int32);
           expect(() => choice(a, size: [3], out: outBad), throwsArgumentError);
-          final outDisposed = NDArray<AnyInt>.create([3], DType.int32)..dispose();
+          final outDisposed = NDArray<AnyInt>.create([3], DType.int32)
+            ..dispose();
           expect(
             () => choice(a, size: [3], out: outDisposed),
             throwsStateError,

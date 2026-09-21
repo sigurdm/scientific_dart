@@ -57,8 +57,9 @@ void main() async {
             res.dispose();
             arr.dispose();
           },
-          setup: () =>
-              NDArray<AnyFloat>.fromList(templateContig, [30000], DType.float64),
+          setup: () => NDArray<AnyFloat>.fromList(templateContig, [
+            30000,
+          ], DType.float64),
           batchSize: BatchSize.largeInput,
           throughput: Throughput.elements(30000),
         );
@@ -71,8 +72,9 @@ void main() async {
             res.dispose();
             arr.dispose();
           },
-          setup: () =>
-              NDArray<AnyFloat>.fromList(templateRandom, [30000], DType.float64),
+          setup: () => NDArray<AnyFloat>.fromList(templateRandom, [
+            30000,
+          ], DType.float64),
           batchSize: BatchSize.largeInput,
           throughput: Throughput.elements(30000),
         );
@@ -95,8 +97,9 @@ void main() async {
             indices.dispose();
             arr.dispose();
           },
-          setup: () =>
-              NDArray<AnyFloat>.fromList(templateContig, [30000], DType.float64),
+          setup: () => NDArray<AnyFloat>.fromList(templateContig, [
+            30000,
+          ], DType.float64),
           batchSize: BatchSize.largeInput,
           throughput: Throughput.elements(30000),
         );
@@ -129,9 +132,7 @@ void main() async {
             for (var j = 0; j < 30; j++) {
               qrA.data[i * 30 + j] = (i + j + 1.0) / 10.0;
               if (i == j) {
-                qrA.data[i * 30 + j] = 
-                  qrA.data[i * 30 + j].toDouble() + 1.0,
-                ;
+                qrA.data[i * 30 + j] = qrA.data[i * 30 + j].toDouble() + 1.0;
               }
             }
           }
@@ -160,9 +161,8 @@ void main() async {
             for (var j = 0; j < 30; j++) {
               cholA.data[i * 30 + j] = (i + j + 1.0) / 10.0;
               if (i == j) {
-                cholA.data[i * 30 + j] = 
-                  cholA.data[i * 30 + j].toDouble() + 30.0,
-                ;
+                cholA.data[i * 30 + j] =
+                    cholA.data[i * 30 + j].toDouble() + 30.0;
               }
             }
           }

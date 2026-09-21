@@ -11,10 +11,7 @@ void main() {
       s.dispose();
 
       final a2 = NDArray.fromList([2.0, 4.0], [2], DType.float64);
-      final outStd = NDArray<Float64>.scalar(
-        0.0,
-        dtype: DType.float64,
-      );
+      final outStd = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
       std(a2, out: outStd);
       expect(outStd.scalar, closeTo(1.0, 1e-6));
       outStd.dispose();

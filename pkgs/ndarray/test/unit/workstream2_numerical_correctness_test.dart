@@ -52,7 +52,7 @@ void main() {
           );
           final res = a * Complex(2.0, 0.0);
           expect(res.dtype, equals(DType.complex64));
-          final c = res.getCellFlat(0) as Complex;
+          final c = res.getCellFlat(0);
           expect(c.real, closeTo(2.0, 1e-5));
           expect(c.imag, closeTo(4.0, 1e-5));
         });
@@ -339,7 +339,11 @@ void main() {
           );
           final v = NDArray<Float64>.fromList([15.0], [1], DType.float64);
 
-          final oobSorter1 = NDArray<AnyInt>.fromList([1, 2, 5], [3], DType.int32);
+          final oobSorter1 = NDArray<AnyInt>.fromList(
+            [1, 2, 5],
+            [3],
+            DType.int32,
+          );
           expect(
             () => searchsorted(a, v, sorter: oobSorter1),
             throwsArgumentError,

@@ -172,10 +172,7 @@ void main() {
 
             expect(() => irr(singleVal, out: badOut), throwsArgumentError);
 
-            final validOut = NDArray<Float64>.scalar(
-              0.0,
-              dtype: DType.float64,
-            );
+            final validOut = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
             final res = irr(singleVal, out: validOut);
             expect(identical(res, validOut), isTrue);
             expect(validOut.scalar.isNaN, isTrue);
@@ -204,7 +201,9 @@ void main() {
             expect(() => roots(pDeg0, out: badOut0), throwsArgumentError);
 
             // Invalid out dtype for degree 0 (complex128 instead of complex64)
-            final badDTypeOut0 = NDArray<AnyComplex>.zeros([0], DType.complex128);
+            final badDTypeOut0 = NDArray<AnyComplex>.zeros([
+              0,
+            ], DType.complex128);
             expect(() => roots(pDeg0, out: badDTypeOut0), throwsArgumentError);
 
             // Degree 1: 2x - 6 = 0 => x = 3
@@ -224,7 +223,9 @@ void main() {
             expect(() => roots(pDeg1, out: badOut1), throwsArgumentError);
 
             // Invalid out dtype for degree 1 (complex128 instead of complex64)
-            final badDTypeOut1 = NDArray<AnyComplex>.zeros([1], DType.complex128);
+            final badDTypeOut1 = NDArray<AnyComplex>.zeros([
+              1,
+            ], DType.complex128);
             expect(() => roots(pDeg1, out: badDTypeOut1), throwsArgumentError);
 
             // Aliased out sharing memory with pDeg1
@@ -263,7 +264,9 @@ void main() {
             expect(() => chebroots(cDeg0, out: badOut0), throwsArgumentError);
 
             // Invalid out dtype for degree 0
-            final badDTypeOut0 = NDArray<AnyComplex>.zeros([0], DType.complex128);
+            final badDTypeOut0 = NDArray<AnyComplex>.zeros([
+              0,
+            ], DType.complex128);
             expect(
               () => chebroots(cDeg0, out: badDTypeOut0),
               throwsArgumentError,
@@ -286,7 +289,9 @@ void main() {
             expect(() => chebroots(cDeg1, out: badOut1), throwsArgumentError);
 
             // Invalid out dtype for degree 1
-            final badDTypeOut1 = NDArray<AnyComplex>.zeros([1], DType.complex128);
+            final badDTypeOut1 = NDArray<AnyComplex>.zeros([
+              1,
+            ], DType.complex128);
             expect(
               () => chebroots(cDeg1, out: badDTypeOut1),
               throwsArgumentError,

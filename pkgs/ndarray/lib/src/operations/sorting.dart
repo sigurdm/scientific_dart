@@ -225,7 +225,7 @@ NDArray<T> sort<T extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<Int32> argsort<T extends AnyDType>(
+NDArray<AnyInt> argsort<T extends AnyDType>(
   NDArray<T> a, {
   int axis = -1,
   SortKind kind = SortKind.quicksort,
@@ -247,7 +247,7 @@ NDArray<Int32> argsort<T extends AnyDType>(
   if (rank == 0) {
     if (out != null) {
       out.setCellFlat(0, 0);
-      return out as NDArray<Int32>;
+      return out;
     }
     return NDArray<Int32>.scalar(0, dtype: DType.int32);
   }
@@ -290,15 +290,15 @@ NDArray<Int32> argsort<T extends AnyDType>(
     final NDArray<AnyInt> result =
         tempResult ?? (out ?? NDArray<Int32>.create(src.shape, DType.int32));
 
-    NDArray<Int32> finish() {
+    NDArray<AnyInt> finish() {
       if (tempResult != null) {
         tempResult.copy(out: out!);
-        return out as NDArray<Int32>;
+        return out;
       }
       if (out == null) {
         result.detachToParentScope();
       }
-      return result as NDArray<Int32>;
+      return result;
     }
 
     final n = src.shape.last;
@@ -821,7 +821,7 @@ NDArray<T> partition<T extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<Int32> argpartition<T extends AnyDType>(
+NDArray<AnyInt> argpartition<T extends AnyDType>(
   NDArray<T> a,
   dynamic kth, {
   int axis = -1,
@@ -845,7 +845,7 @@ NDArray<Int32> argpartition<T extends AnyDType>(
   if (rank == 0) {
     if (out != null) {
       out.setCellFlat(0, 0);
-      return out as NDArray<Int32>;
+      return out;
     }
     return NDArray<Int32>.scalar(0, dtype: DType.int32);
   }
@@ -914,15 +914,15 @@ NDArray<Int32> argpartition<T extends AnyDType>(
     final NDArray<AnyInt> result =
         tempResult ?? (out ?? NDArray<Int32>.create(src.shape, DType.int32));
 
-    NDArray<Int32> finish() {
+    NDArray<AnyInt> finish() {
       if (tempResult != null) {
         tempResult.copy(out: out!);
-        return out as NDArray<Int32>;
+        return out;
       }
       if (out == null) {
         result.detachToParentScope();
       }
-      return result as NDArray<Int32>;
+      return result;
     }
 
     if (uniqueK.isEmpty) {
@@ -1166,7 +1166,7 @@ NDArray<Int32> argpartition<T extends AnyDType>(
 ///   print(indices.toList()); // [[1, 2], [0, 3]]
 /// }
 /// ```
-NDArray<Int32> searchsorted<T extends AnyDType>(
+NDArray<AnyInt> searchsorted<T extends AnyDType>(
   NDArray<T> a,
   NDArray<T> v, {
   SearchSide side = SearchSide.left,
@@ -1217,7 +1217,7 @@ NDArray<Int32> searchsorted<T extends AnyDType>(
         final targetOut = NDArray<AnyInt>.create(v.shape, out.dtype);
         searchsorted(a, v, side: side, sorter: sorter, out: targetOut);
         targetOut.copy(out: out);
-        return out as NDArray<Int32>;
+        return out;
       });
     }
   }
@@ -1248,7 +1248,7 @@ NDArray<Int32> searchsorted<T extends AnyDType>(
       if (out == null) {
         result.detachToParentScope();
       }
-      return result as NDArray<Int32>;
+      return result;
     }
 
     final NDArray srcA = a.isContiguous ? a : a.copy();
@@ -1466,7 +1466,7 @@ NDArray<Int32> searchsorted<T extends AnyDType>(
     if (out == null) {
       result.detachToParentScope();
     }
-    return result as NDArray<Int32>;
+    return result;
   });
 }
 
@@ -2231,7 +2231,11 @@ void _dispatchCountNonzeroFFI(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<Int32> count_nonzero<T extends AnyDType>(NDArray<T> a, {int? axis, NDArray<AnyInt>? out}) {
+NDArray<Int32> count_nonzero<T extends AnyDType>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<AnyInt>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot count non-zero elements on a disposed array.');
   }

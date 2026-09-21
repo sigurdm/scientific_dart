@@ -299,18 +299,9 @@ void main() {
         // Direct verification of low-level rank == 0 strided C functions
         final marker = ScratchArena.marker;
         try {
-          final aD = NDArray<Float64>.scalar(
-            9.0,
-            dtype: DType.float64,
-          );
-          final bD = NDArray<Float64>.scalar(
-            3.0,
-            dtype: DType.float64,
-          );
-          final resD = NDArray<Float64>.scalar(
-            0.0,
-            dtype: DType.float64,
-          );
+          final aD = NDArray<Float64>.scalar(9.0, dtype: DType.float64);
+          final bD = NDArray<Float64>.scalar(3.0, dtype: DType.float64);
+          final resD = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
 
           bindings.s_add_double(
             aD.pointer.cast(),

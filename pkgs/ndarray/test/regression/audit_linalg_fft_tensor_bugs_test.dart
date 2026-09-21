@@ -634,7 +634,7 @@ void main() {
           );
           final expected = fft2(refFloat);
 
-          final dtypesToTest = <DType<Object>>[
+          final dtypesToTest = <DType<AnyDType>>[
             DType.int8,
             DType.uint16,
             DType.uint32,

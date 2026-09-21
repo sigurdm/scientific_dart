@@ -1896,7 +1896,7 @@ void main() {
           DType.complex128,
         );
 
-        final d = det<Complex>(a);
+        final d = det<AnyComplex>(a);
 
         expect(d.shape, []);
         expect(d.scalar.real, closeTo(-4.0, 1e-9));
@@ -1920,7 +1920,7 @@ void main() {
           DType.complex64,
         );
 
-        final d = det<Complex>(a);
+        final d = det<AnyComplex>(a);
 
         expect(d.shape, [2]);
         final dList = d.toList();

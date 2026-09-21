@@ -6,7 +6,11 @@ void main() {
     test(
       '1D Contiguous array constant spacing dx=1.0',
       () => NDArray.scope(() {
-        final y = NDArray<AnyFloat>.fromList([1.0, 2.0, 4.0], [3], DType.float64);
+        final y = NDArray<AnyFloat>.fromList(
+          [1.0, 2.0, 4.0],
+          [3],
+          DType.float64,
+        );
         final res = trapz(y); // Default step(1.0)
         expect(res.shape, []);
         expect(
@@ -19,7 +23,11 @@ void main() {
     test(
       '1D Contiguous array custom constant spacing dx=2.0',
       () => NDArray.scope(() {
-        final y = NDArray<AnyFloat>.fromList([1.0, 2.0, 4.0], [3], DType.float64);
+        final y = NDArray<AnyFloat>.fromList(
+          [1.0, 2.0, 4.0],
+          [3],
+          DType.float64,
+        );
         final res = trapz(y, spacing: Spacing.step(2.0));
         expect(res.shape, []);
         expect(res.toList()[0], closeTo(9.0, 1e-9));
@@ -29,7 +37,11 @@ void main() {
     test(
       '1D Contiguous array non-uniform (variable) spacing using coordinates array',
       () => NDArray.scope(() {
-        final y = NDArray<AnyFloat>.fromList([1.0, 2.0, 4.0], [3], DType.float64);
+        final y = NDArray<AnyFloat>.fromList(
+          [1.0, 2.0, 4.0],
+          [3],
+          DType.float64,
+        );
         final x = [0.0, 2.0, 3.0];
         final res = trapz(y, spacing: Spacing.coordinates(x));
         expect(res.shape, []);

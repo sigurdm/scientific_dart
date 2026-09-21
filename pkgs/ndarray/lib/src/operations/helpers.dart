@@ -369,7 +369,8 @@ NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
   });
 }
 
-void elementWiseOp<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType>(
+void
+elementWiseOp<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType>(
   NDArray<Tr> result,
   NDArray<Ta> a,
   NDArray<Tb> b,
@@ -381,7 +382,7 @@ void elementWiseOp<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType
   int offsetA,
   int offsetB,
   int offsetResult,
-  Object? Function(Object?, Object?) op, [
+  dynamic Function(dynamic, dynamic) op, [
   ffi.Pointer<ffi.Uint8>? whereMask,
   int flatIndex = 0,
 ]) {
@@ -655,7 +656,7 @@ void reduceRecursive<S extends AnyDType, D extends AnyDType>(
   List<int> destPos,
   int targetAxis,
   int currentDim,
-  Object? Function(Object? acc, Object? val) op, {
+  dynamic Function(dynamic acc, dynamic val) op, {
   List<int>? destStrides,
 }) {
   if (currentDim == src.shape.length) {
@@ -708,7 +709,7 @@ void unaryOp<Ta extends AnyDType, Tr extends AnyDType>(
   int dim,
   int offsetA,
   int offsetResult,
-  Object? Function(Object?) op, [
+  dynamic Function(dynamic) op, [
   ffi.Pointer<ffi.Uint8>? whereMask,
   int flatIndex = 0,
 ]) {
@@ -793,7 +794,12 @@ void unaryOp<Ta extends AnyDType, Tr extends AnyDType>(
   }
 }
 
-void ternaryOp<Ta extends AnyDType, Tb extends AnyDType, Tc extends AnyDType, Tr extends AnyDType>(
+void ternaryOp<
+  Ta extends AnyDType,
+  Tb extends AnyDType,
+  Tc extends AnyDType,
+  Tr extends AnyDType
+>(
   NDArray<Tr> result,
   NDArray<Ta> a,
   NDArray<Tb> b,
@@ -808,7 +814,7 @@ void ternaryOp<Ta extends AnyDType, Tb extends AnyDType, Tc extends AnyDType, Tr
   int offsetB,
   int offsetC,
   int offsetResult,
-  Object? Function(Object?, Object?, Object?) op, [
+  dynamic Function(dynamic, dynamic, dynamic) op, [
   ffi.Pointer<ffi.Uint8>? whereMask,
   int flatIndex = 0,
 ]) {

@@ -32,7 +32,7 @@ void main() {
         return val;
       });
 
-      return NDArray<AnyDType>.fromList(rawList, shape, dt as DType<Object>);
+      return NDArray<AnyDType>.fromList(rawList, shape, dt);
     }
 
     test(

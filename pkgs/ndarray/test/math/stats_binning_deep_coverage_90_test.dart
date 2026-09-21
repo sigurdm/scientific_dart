@@ -3,7 +3,7 @@ import 'package:ndarray/ndarray.dart';
 import 'package:test/test.dart';
 
 void main() {
-  final allDTypes = <DType<Object>>[
+  final allDTypes = <DType<AnyDType>>[
     DType.float64,
     DType.float32,
     DType.float16,
@@ -21,7 +21,7 @@ void main() {
     DType.boolean,
   ];
 
-  final numericDTypes = <DType<num>>[
+  final numericDTypes = <DType<AnyReal>>[
     DType.float64,
     DType.float32,
     DType.float16,
@@ -36,7 +36,7 @@ void main() {
     DType.uint8,
   ];
 
-  final integerDTypes = <DType<int>>[
+  final integerDTypes = <DType<AnyInt>>[
     DType.int64,
     DType.int32,
     DType.int16,
@@ -132,7 +132,11 @@ void main() {
           'bincount with custom target output DTypes and out buffer recycling',
           () {
             NDArray.scope(() {
-              final arr = NDArray<AnyInt>.fromList([1, 3, 1, 2], [4], DType.int32);
+              final arr = NDArray<AnyInt>.fromList(
+                [1, 3, 1, 2],
+                [4],
+                DType.int32,
+              );
 
               // Out buffer with int32
               final out32 = NDArray<AnyInt>.zeros([5], DType.int32);
@@ -232,7 +236,11 @@ void main() {
             );
             expect(() => bincount(xNegative), throwsArgumentError);
 
-            final xValid = NDArray<AnyInt>.fromList([1, 2, 3], [3], DType.int32);
+            final xValid = NDArray<AnyInt>.fromList(
+              [1, 2, 3],
+              [3],
+              DType.int32,
+            );
             expect(() => bincount(xValid, minlength: -1), throwsArgumentError);
 
             final wDisposed = NDArray<Float64>.fromList(
@@ -255,7 +263,8 @@ void main() {
               throwsArgumentError,
             );
 
-            final outDisposed = NDArray<AnyInt>.zeros([4], DType.int64)..dispose();
+            final outDisposed = NDArray<AnyInt>.zeros([4], DType.int64)
+              ..dispose();
             expect(() => bincount(xValid, out: outDisposed), throwsStateError);
 
             final outTooSmall = NDArray<AnyInt>.zeros([2], DType.int64);
@@ -328,7 +337,11 @@ void main() {
             expect(res.shape, equals([2, 2]));
             expect(res.toList(), equals([0, 1, 2, 3]));
 
-            final binsInt = NDArray<AnyInt>.fromList([1, 3, 10], [3], DType.int64);
+            final binsInt = NDArray<AnyInt>.fromList(
+              [1, 3, 10],
+              [3],
+              DType.int64,
+            );
             final resInt = digitize(x2D, binsInt);
             expect(resInt.toList(), equals([0, 1, 2, 3]));
           });
@@ -384,7 +397,8 @@ void main() {
               throwsA(anything),
             );
 
-            final outDisposed = NDArray<AnyInt>.zeros([2], DType.int32)..dispose();
+            final outDisposed = NDArray<AnyInt>.zeros([2], DType.int32)
+              ..dispose();
             expect(() => digitize(x, bins, out: outDisposed), throwsStateError);
 
             final outBadShape = NDArray<AnyInt>.zeros([3], DType.int32);
@@ -650,7 +664,7 @@ void main() {
                 ? NDArray<AnyComplex>.fromList(
                     [Complex(1, 2), Complex(3, 4), Complex(5, 6)],
                     [3],
-                    dt as DType<Complex>,
+                    dt as DType<AnyComplex>,
                   )
                 : dt == DType.boolean
                 ? NDArray<Boolean>.fromList(
@@ -687,7 +701,7 @@ void main() {
         NDArray.scope(() {
           for (final dt in allDTypes) {
             final NDArray<AnyDType> empty = dt.isComplex
-                ? NDArray<AnyComplex>.fromList([], [0], dt as DType<Complex>)
+                ? NDArray<AnyComplex>.fromList([], [0], dt as DType<AnyComplex>)
                 : dt == DType.boolean
                 ? NDArray<Boolean>.fromList([], [0], DType.boolean)
                 : NDArray.fromList([], [0], dt);
@@ -706,10 +720,14 @@ void main() {
                 ? NDArray<AnyComplex>.fromList(
                     [Complex(1, 1), Complex(2, 0)],
                     [2],
-                    dt as DType<Complex>,
+                    dt as DType<AnyComplex>,
                   )
                 : dt == DType.boolean
-                ? NDArray<Boolean>.fromList([true, true, true], [3], DType.boolean)
+                ? NDArray<Boolean>.fromList(
+                    [true, true, true],
+                    [3],
+                    DType.boolean,
+                  )
                 : NDArray.fromList([2, 3, 4], [3], dt);
             final res = prod(arr);
             if (dt.isComplex) {
@@ -741,7 +759,7 @@ void main() {
                         Complex(4, 4),
                       ],
                       [2, 2],
-                      dt as DType<Complex>,
+                      dt as DType<AnyComplex>,
                     )
                   : NDArray.fromList([1, 2, 3, 4], [2, 2], dt);
 
@@ -761,7 +779,7 @@ void main() {
                 final numArr = NDArray.fromList(
                   [1, 2, 3, 4],
                   [2, 2],
-                  dt as DType<num>,
+                  dt as DType<AnyReal>,
                 );
                 // Variance
                 final v = variance(numArr, axis: 0);
@@ -961,7 +979,7 @@ void main() {
                       Complex(6, 6),
                     ],
                     [2, 3],
-                    dt as DType<Complex>,
+                    dt as DType<AnyComplex>,
                   )
                 : dt == DType.boolean
                 ? NDArray<Boolean>.fromList(
@@ -1187,7 +1205,7 @@ void main() {
               [3],
               DType.complex128,
             );
-            final cpxMean = nanmean<Complex>(cpx);
+            final cpxMean = nanmean<AnyComplex>(cpx);
             final c = cpxMean.scalar;
             expect(c.real, closeTo(2.0, 1e-9));
             expect(c.imag, closeTo(4.0, 1e-9));
@@ -1617,7 +1635,7 @@ void main() {
           expect(pwAxes.normalize(2), equals([(1, 2), (3, 4)]));
           expect(() => pwAxes.normalize(3), throwsArgumentError);
 
-          final pv = PadValues<double>.all(1.0, 2.0);
+          final pv = PadValues<AnyFloat>.all(1.0, 2.0);
           expect(pv.normalize(2, 0.0), equals([(1.0, 2.0), (1.0, 2.0)]));
 
           final sl = StatLength.all(3, 4);
@@ -1696,7 +1714,11 @@ void main() {
     group('6. Stats Error Paths & Out Buffers Deep Coverage', () {
       test('all and any error paths and out buffer validation', () {
         NDArray.scope(() {
-          final a = NDArray<Boolean>.fromList([true, false], [2], DType.boolean);
+          final a = NDArray<Boolean>.fromList(
+            [true, false],
+            [2],
+            DType.boolean,
+          );
           final aDisp = NDArray<Boolean>.fromList([true], [1], DType.boolean)
             ..dispose();
           expect(() => all(aDisp), throwsStateError);
@@ -1785,7 +1807,8 @@ void main() {
           expect(() => ptp(empty), throwsArgumentError);
 
           final a = NDArray<AnyInt>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-          final aDisp = NDArray<AnyInt>.fromList([1], [1], DType.int32)..dispose();
+          final aDisp = NDArray<AnyInt>.fromList([1], [1], DType.int32)
+            ..dispose();
           expect(() => min(aDisp), throwsStateError);
           expect(() => max(aDisp), throwsStateError);
           expect(() => ptp(aDisp), throwsStateError);
@@ -1817,7 +1840,8 @@ void main() {
       test('cumsum, cumprod, cummin, cummax error paths and out buffers', () {
         NDArray.scope(() {
           final a = NDArray<AnyInt>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-          final aDisp = NDArray<AnyInt>.fromList([1], [1], DType.int32)..dispose();
+          final aDisp = NDArray<AnyInt>.fromList([1], [1], DType.int32)
+            ..dispose();
 
           expect(() => cumsum(aDisp), throwsStateError);
           expect(() => cumprod(aDisp), throwsStateError);
@@ -2007,7 +2031,7 @@ void main() {
     // =========================================================================
     group('7. Padding & Calculus Advanced Corner Cases', () {
       test('PadValues and StatLength constructors and edge validations', () {
-        final pvAxes = PadValues<double>.axes([(1.0, 2.0), (3.0, 4.0)]);
+        final pvAxes = PadValues<AnyFloat>.axes([(1.0, 2.0), (3.0, 4.0)]);
         expect(pvAxes.normalize(2, 0.0), equals([(1.0, 2.0), (3.0, 4.0)]));
         expect(() => pvAxes.normalize(3, 0.0), throwsArgumentError);
 
@@ -2169,7 +2193,9 @@ void main() {
       test('empty array reductions across all DTypes', () {
         NDArray.scope(() {
           // Complex sum & mean on empty
-          final emptyCpx = NDArray<AnyComplex>.fromList([], [0], DType.complex128);
+          final emptyCpx = NDArray<AnyComplex>.fromList([], [
+            0,
+          ], DType.complex128);
           final sCpx = sum(emptyCpx);
           expect(sCpx.scalar, equals(Complex(0.0, 0.0)));
           final mCpx = mean(emptyCpx);
@@ -2185,7 +2211,7 @@ void main() {
           final sFloat = sum(emptyFloat);
           expect(sFloat.scalar, equals(0.0));
           final mFloat = mean(emptyFloat);
-          expect((mFloat.scalar as Float64).value.isNaN, isTrue);
+          expect((mFloat.scalar as double).isNaN, isTrue);
 
           // Int sum on empty
           final emptyInt = NDArray<AnyInt>.fromList([], [0], DType.int32);
@@ -2206,8 +2232,11 @@ void main() {
             final cInt = cov(intArr);
             expect(cInt.shape, [2, 2]);
 
-            final fweightsDisp = NDArray<AnyInt>.fromList([1, 2], [2], DType.int32)
-              ..dispose();
+            final fweightsDisp = NDArray<AnyInt>.fromList(
+              [1, 2],
+              [2],
+              DType.int32,
+            )..dispose();
             expect(() => cov(intArr, fweights: fweightsDisp), throwsStateError);
 
             final aweightsDisp = NDArray<Float64>.fromList(
@@ -2446,7 +2475,11 @@ void main() {
           final res = cov(m, y: y);
           expect(res.shape, [4, 4]);
 
-          final fweightsBad = NDArray<AnyInt>.fromList([1, 2], [2], DType.int32);
+          final fweightsBad = NDArray<AnyInt>.fromList(
+            [1, 2],
+            [2],
+            DType.int32,
+          );
           expect(() => cov(m, fweights: fweightsBad), throwsArgumentError);
         });
       });
@@ -2504,7 +2537,7 @@ void main() {
                     Complex(99, 99),
                   ],
                   [6],
-                  dt as DType<Complex>,
+                  dt as DType<AnyComplex>,
                 );
               } else if (dt == DType.boolean) {
                 arrFull = NDArray<Boolean>.fromList(
@@ -2535,7 +2568,7 @@ void main() {
                 final numArr = NDArray.fromList(
                   [1, 99, 2, 99, 3, 99],
                   [6],
-                  dt as DType<num>,
+                  dt as DType<AnyReal>,
                 ).slice([Slice(start: 0, stop: 6, step: 2)]);
                 final v = variance(numArr);
                 expect(v.shape, <int>[]);
@@ -2608,10 +2641,10 @@ void main() {
             DType.complex128,
           );
 
-          final nmAx0 = nanmean<Complex>(cpx2D, axis: 0);
+          final nmAx0 = nanmean<AnyComplex>(cpx2D, axis: 0);
           expect(nmAx0.shape, [2]);
 
-          final nmAx1 = nanmean<Complex>(cpx2D, axis: 1);
+          final nmAx1 = nanmean<AnyComplex>(cpx2D, axis: 1);
           expect(nmAx1.shape, [2]);
         });
       });
@@ -2675,7 +2708,7 @@ void main() {
                       Complex(4, 4),
                     ],
                     [2, 2],
-                    dt as DType<Complex>,
+                    dt as DType<AnyComplex>,
                   )
                 : dt == DType.boolean
                 ? NDArray<Boolean>.fromList(
@@ -2754,18 +2787,19 @@ void _runPadTestsForDType<T extends AnyDType>(DType<T> dt) {
       ? NDArray<AnyComplex>.fromList(
               [Complex(1, 2), Complex(3, 4)],
               [2],
-              dt as DType<Complex>,
+              dt as DType<AnyComplex>,
             )
             as NDArray<T>
       : dt == DType.boolean
-      ? NDArray<Boolean>.fromList([true, false], [2], DType.boolean) as NDArray<T>
+      ? NDArray<Boolean>.fromList([true, false], [2], DType.boolean)
+            as NDArray<T>
       : NDArray.fromList([1, 2], [2], dt);
 
   final NDArray<T> arr2D = dt.isComplex
       ? NDArray<AnyComplex>.fromList(
               [Complex(1, 1), Complex(2, 2), Complex(3, 3), Complex(4, 4)],
               [2, 2],
-              dt as DType<Complex>,
+              dt as DType<AnyComplex>,
             )
             as NDArray<T>
       : dt == DType.boolean
@@ -2809,7 +2843,7 @@ void _runFallbackPadTestsForDType<T extends AnyDType>(DType<T> dt) {
       ? NDArray<AnyComplex>.fromList(
               [Complex(1, 2), Complex(3, 4), Complex(5, 6)],
               [3],
-              dt as DType<Complex>,
+              dt as DType<AnyComplex>,
             )
             as NDArray<T>
       : dt == DType.boolean

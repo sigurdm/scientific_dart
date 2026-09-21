@@ -31,7 +31,7 @@ extension UfuncNDArrayExtension<T extends AnyDType> on NDArray<T> {
     int? axis,
     bool keepdims = false,
     NDArray<T>? out,
-    T? initial,
+    Object? initial,
   }) => reduceUfunc(
     this,
     op: op,
@@ -84,8 +84,11 @@ extension UfuncNDArrayExtension<T extends AnyDType> on NDArray<T> {
   ///
   /// **Preconditions:**
   /// - It is an error if this array, [indices], or [b] is disposed.
-  void at(NDArray<AnyInt> indices, NDArray<AnyDType> b, {required BinaryOp op}) =>
-      atUfunc(this, indices, b, op: op);
+  void at(
+    NDArray<AnyInt> indices,
+    NDArray<AnyDType> b, {
+    required BinaryOp op,
+  }) => atUfunc(this, indices, b, op: op);
 }
 
 NDArray<U> _asView<U extends AnyDType>(NDArray a) {
@@ -203,7 +206,12 @@ NDArray<R> binaryUfunc<T extends AnyDType, R extends AnyDType>(
       final res = multiply(a, b, where: where, out: _asViewNullable<T>(out));
       return out ?? _asView<R>(res);
     case BinaryOp.divide:
-      final res = divide(a, b, where: where, out: _asViewNullable<Float64>(out));
+      final res = divide(
+        a,
+        b,
+        where: where,
+        out: _asViewNullable<Float64>(out),
+      );
       return out ?? _asView<R>(res);
     case BinaryOp.floorDivide:
       final res = floor_divide(
@@ -519,7 +527,7 @@ NDArray<T> reduce<T extends AnyDType>(
   int? axis,
   bool keepdims = false,
   NDArray<T>? out,
-  T? initial,
+  Object? initial,
 }) => reduceUfunc(
   a,
   op: op,
@@ -576,7 +584,7 @@ NDArray<T> reduceUfunc<T extends AnyDType>(
   int? axis,
   bool keepdims = false,
   NDArray<T>? out,
-  T? initial,
+  Object? initial,
 }) {
   if (!op.isReducible) {
     throw ArgumentError('Operation ${op.name} is not reducible.');
@@ -3212,7 +3220,11 @@ NDArray<R> unaryUfunc<T extends AnyDType, R extends AnyDType>(
       final res = deg2rad(x, where: where, out: _asViewNullable<Float64>(out));
       return out ?? _asView<R>(res);
     case UnaryOp.logicalNot:
-      final res = logical_not(x, where: where, out: _asViewNullable<Boolean>(out));
+      final res = logical_not(
+        x,
+        where: where,
+        out: _asViewNullable<Boolean>(out),
+      );
       return out ?? _asView<R>(res);
     case UnaryOp.isnan:
       final res = isnan(x, where: where, out: _asViewNullable<Boolean>(out));

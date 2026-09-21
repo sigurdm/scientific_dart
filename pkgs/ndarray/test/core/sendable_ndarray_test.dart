@@ -57,11 +57,7 @@ void main() {
               final workerArr = sendable.materialize();
               final doubled = multiply(
                 workerArr,
-                NDArray<Float32>.full(
-                  [2, 3],
-                  2.0,
-                  dtype: DType.float32,
-                ),
+                NDArray<Float32>.full([2, 3], 2.0, dtype: DType.float32),
               );
               return doubled.toSendable();
             });

@@ -43,7 +43,11 @@ NDArray<Boolean> isnan<T extends AnyDType>(
   try {
     final NDArray<Boolean> result =
         out ??
-        NDArray<Boolean>.create(a.shape, DType.boolean, zeroInit: where != null);
+        NDArray<Boolean>.create(
+          a.shape,
+          DType.boolean,
+          zeroInit: where != null,
+        );
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -229,7 +233,11 @@ NDArray<Boolean> isinf<T extends AnyDType>(
   try {
     final NDArray<Boolean> result =
         out ??
-        NDArray<Boolean>.create(a.shape, DType.boolean, zeroInit: where != null);
+        NDArray<Boolean>.create(
+          a.shape,
+          DType.boolean,
+          zeroInit: where != null,
+        );
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -415,7 +423,11 @@ NDArray<Boolean> isfinite<T extends AnyDType>(
   try {
     final NDArray<Boolean> result =
         out ??
-        NDArray<Boolean>.create(a.shape, DType.boolean, zeroInit: where != null);
+        NDArray<Boolean>.create(
+          a.shape,
+          DType.boolean,
+          zeroInit: where != null,
+        );
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -1262,7 +1274,8 @@ extension FrexpRecordExtension<R extends AnyDType>
 /// shapes/dtypes or alias each other (throws [ArgumentError]).
 ///
 /// Reference: [NumPy modf](https://numpy.org/doc/stable/reference/generated/numpy.modf.html)
-({NDArray<R> fractional, NDArray<R> integral}) modf<T extends AnyDType, R extends AnyDType>(
+({NDArray<R> fractional, NDArray<R> integral})
+modf<T extends AnyDType, R extends AnyDType>(
   NDArray<T> x, {
   NDArray<AnyDType>? where,
   NDArray<R>? out1,
@@ -1399,7 +1412,8 @@ extension FrexpRecordExtension<R extends AnyDType>
 /// with the mantissa in the open interval $(-1, -0.5]$ or $[0.5, 1)$ (or $0$ when $x = 0$).
 ///
 /// Reference: [NumPy frexp](https://numpy.org/doc/stable/reference/generated/numpy.frexp.html)
-({NDArray<R> mantissa, NDArray<Int32> exponent}) frexp<T extends AnyDType, R extends AnyDType>(
+({NDArray<R> mantissa, NDArray<Int32> exponent})
+frexp<T extends AnyDType, R extends AnyDType>(
   NDArray<T> x, {
   NDArray<AnyDType>? where,
   NDArray<R>? out1,

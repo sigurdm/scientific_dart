@@ -26,7 +26,8 @@ void main() {
           DType.int64,
         );
         final idxSlice =
-            idx2D[[const Slice(), 0]] as NDArray<AnyInt>; // non-contiguous [1, 3]
+            idx2D[[const Slice(), 0]]
+                as NDArray<AnyInt>; // non-contiguous [1, 3]
         final b2 = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
 
         atUfunc(a, idxSlice, b2, op: BinaryOp.add);

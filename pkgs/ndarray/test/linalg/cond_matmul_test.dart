@@ -179,10 +179,7 @@ void main() {
             [2, 2],
             DType.float32,
           );
-          final out32 = NDArray<Float32>.scalar(
-            0.0,
-            dtype: DType.float32,
-          );
+          final out32 = NDArray<Float32>.scalar(0.0, dtype: DType.float32);
           final res32 = cond(a32, out: out32);
           expect(identical(res32, out32), isTrue);
           expect(res32.dtype, equals(DType.float32));

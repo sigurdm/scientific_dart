@@ -71,13 +71,13 @@ void main() {
         final baseVal = nonZero ? ((i + seed) % 5) + 2 : ((i + seed) % 5);
         return baseVal.toDouble();
       });
-      return NDArray<AnyFloat>.fromList(raw, shape, dt as DType<double>);
+      return NDArray<AnyFloat>.fromList(raw, shape, dt as DType<AnyFloat>);
     }
     final raw = List<int>.generate(size, (i) {
       final baseVal = nonZero ? ((i + seed) % 5) + 2 : ((i + seed) % 5);
       return baseVal;
     });
-    return NDArray<AnyInt>.fromList(raw, shape, dt as DType<int>);
+    return NDArray<AnyInt>.fromList(raw, shape, dt as DType<AnyInt>);
   }
 
   void testUnaryHelper<T extends AnyDType>(
@@ -233,7 +233,7 @@ void main() {
             final conj2 = conjugate(aTrans as NDArray<Boolean>, where: mask);
             expect(conj2.shape, [2, 3]);
           } else if (dt.isComplex) {
-            testUnaryHelper<Complex>(
+            testUnaryHelper<AnyComplex>(
               aContig as NDArray<AnyComplex>,
               aTrans as NDArray<AnyComplex>,
               mask,
@@ -246,7 +246,7 @@ void main() {
             expect(() => trunc(aContig), throwsUnsupportedError);
             expect(() => fix(aContig), throwsUnsupportedError);
           } else if (floatDTypes.contains(dt)) {
-            testUnaryHelper<double>(
+            testUnaryHelper<AnyFloat>(
               aContig as NDArray<AnyFloat>,
               aTrans as NDArray<AnyFloat>,
               mask,
@@ -256,7 +256,7 @@ void main() {
               testExpm1Log1p: true,
             );
           } else {
-            testUnaryHelper<int>(
+            testUnaryHelper<AnyInt>(
               aContig as NDArray<AnyInt>,
               aTrans as NDArray<AnyInt>,
               mask,
@@ -272,7 +272,11 @@ void main() {
 
     test('Unary operations error handling & invalid buffer checks', () {
       NDArray.scope(() {
-        final a = NDArray<AnyFloat>.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final a = NDArray<AnyFloat>.fromList(
+          [1.0, 2.0, 3.0],
+          [3],
+          DType.float64,
+        );
         final badOutShape = NDArray<AnyFloat>.zeros([4], DType.float64);
         final badOutDType = NDArray<AnyFloat>.zeros([3], DType.float32);
 
@@ -548,8 +552,16 @@ void main() {
 
     test('Binary operations error cases & unsupported operands', () {
       NDArray.scope(() {
-        final aFloat = NDArray<AnyFloat>.fromList([1.0, 2.0], [2], DType.float64);
-        final bFloat = NDArray<AnyFloat>.fromList([3.0, 4.0], [2], DType.float64);
+        final aFloat = NDArray<AnyFloat>.fromList(
+          [1.0, 2.0],
+          [2],
+          DType.float64,
+        );
+        final bFloat = NDArray<AnyFloat>.fromList(
+          [3.0, 4.0],
+          [2],
+          DType.float64,
+        );
         final cCplx = NDArray<AnyComplex>.fromList(
           [Complex(1.0, 2.0)],
           [1],

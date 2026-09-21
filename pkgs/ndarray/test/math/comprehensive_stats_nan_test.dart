@@ -280,7 +280,7 @@ void main() {
               [3],
               DType.complex128,
             );
-            final mC128 = mean<Complex, Complex>(c128);
+            final mC128 = mean<AnyComplex, AnyComplex>(c128);
             expect(mC128.dtype, DType.complex128);
             expect(mC128.scalar.real, closeTo(3.0, 1e-9));
             expect(mC128.scalar.imag, closeTo(4.0, 1e-9));
@@ -290,7 +290,7 @@ void main() {
               [2],
               DType.complex64,
             );
-            final mC64 = mean<Complex, Complex>(c64);
+            final mC64 = mean<AnyComplex, AnyComplex>(c64);
             expect(mC64.dtype, DType.complex128);
             expect(mC64.scalar.real, closeTo(3.0, 1e-6));
             expect(mC64.scalar.imag, closeTo(1.0, 1e-6));
@@ -592,7 +592,9 @@ void main() {
             expect(sum(empty).scalar, 0.0);
             expect(prod(empty).scalar, 1.0);
 
-            final emptyComplex = NDArray<AnyComplex>.zeros([0], DType.complex128);
+            final emptyComplex = NDArray<AnyComplex>.zeros([
+              0,
+            ], DType.complex128);
             expect(sum(emptyComplex).scalar, Complex(0.0, 0.0));
             expect(prod(emptyComplex).scalar, Complex(1.0, 0.0));
           });
@@ -787,7 +789,7 @@ void main() {
               [3],
               DType.complex128,
             );
-            final m = nanmean<Complex>(c);
+            final m = nanmean<AnyComplex>(c);
             expect(m.dtype, DType.complex128);
             expect(m.scalar.real, closeTo(2.0, 1e-9));
             expect(m.scalar.imag, closeTo(4.0, 1e-9));

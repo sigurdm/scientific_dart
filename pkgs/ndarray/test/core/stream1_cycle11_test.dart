@@ -36,7 +36,7 @@ void main() {
     });
 
     test('NDArray.fill() strided dispatch for all DTypes', () {
-      void checkStridedFill<T>(
+      void checkStridedFill<T extends AnyDType>(
         DType<T> dtype,
         dynamic fillVal,
         dynamic expectedVal,

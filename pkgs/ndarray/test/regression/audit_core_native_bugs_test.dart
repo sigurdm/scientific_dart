@@ -676,11 +676,11 @@ void main() {
           final b = NDArray.fromList([2, 3, 4], [3], DType.int16);
           final equalA = NDArray.fromList([1, 2, 3], [3], DType.int8);
           try {
-            final inter = intersect1d<Object>(a, b);
-            final uni = union1d<Object>(a, b);
-            final diff = setdiff1d<Object>(a, b);
-            final xor = setxor1d<Object>(a, b);
-            final inMask = isin<Object>(a, b);
+            final inter = intersect1d<AnyDType>(a, b);
+            final uni = union1d<AnyDType>(a, b);
+            final diff = setdiff1d<AnyDType>(a, b);
+            final xor = setxor1d<AnyDType>(a, b);
+            final inMask = isin<AnyDType>(a, b);
             final sameInter = intersect1d(a, equalA);
             try {
               expect(inter.toList(), equals([2, 3]));

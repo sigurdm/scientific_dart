@@ -69,14 +69,16 @@ void main() {
     test(
       'Matrix Multiplication (OpenBLAS)',
       () => NDArray.scope(() {
-        final a = NDArray<AnyFloat>.fromList(Float64List.fromList([1, 2, 3, 4]), [
-          2,
-          2,
-        ], DType.float64);
-        final b = NDArray<AnyFloat>.fromList(Float64List.fromList([5, 6, 7, 8]), [
-          2,
-          2,
-        ], DType.float64);
+        final a = NDArray<AnyFloat>.fromList(
+          Float64List.fromList([1, 2, 3, 4]),
+          [2, 2],
+          DType.float64,
+        );
+        final b = NDArray<AnyFloat>.fromList(
+          Float64List.fromList([5, 6, 7, 8]),
+          [2, 2],
+          DType.float64,
+        );
         final c = matmul(a, b);
         expect(c.shape, [2, 2]);
         expect(c.data, [19.0, 22.0, 43.0, 50.0]);
@@ -195,7 +197,7 @@ void main() {
     test(
       'Linspace Factory',
       () => NDArray.scope(() {
-        final a = linspace<double>(0.0, 1.0, 5, dtype: DType.float64);
+        final a = linspace<AnyFloat>(0.0, 1.0, 5, dtype: DType.float64);
         expect(a.shape, [5]);
         expect(a.data, [0.0, 0.25, 0.5, 0.75, 1.0]);
       }),
@@ -959,10 +961,7 @@ void main() {
             expected = [true, false, true, false];
           } else if (dtype == DType.int32 || dtype == DType.int64) {
             a = NDArray.fromList(
-              (dtype == DType.int32
-                      ? [1, 2, 3, 4]
-                      : [1, 2, 3, 4])
-                  as dynamic,
+              (dtype == DType.int32 ? [1, 2, 3, 4] : [1, 2, 3, 4]) as dynamic,
               [2, 2],
               dtype as dynamic,
             );
@@ -971,12 +970,7 @@ void main() {
             a = NDArray.fromList(
               (dtype == DType.float32
                       ? [1.0, 2.0, 3.0, 4.0]
-                      : [
-                          1.0,
-                          2.0,
-                          3.0,
-                          4.0,
-                        ])
+                      : [1.0, 2.0, 3.0, 4.0])
                   as dynamic,
               [2, 2],
               dtype as dynamic,
@@ -1226,15 +1220,8 @@ void main() {
             throwsRangeError,
           );
 
-          final badIndices = NDArray<Int32>.fromList(
-            [5],
-            [1],
-            DType.int32,
-          );
-          expect(
-            () => a.setIndicesScalar(badIndices, 1.0),
-            throwsRangeError,
-          );
+          final badIndices = NDArray<Int32>.fromList([5], [1], DType.int32);
+          expect(() => a.setIndicesScalar(badIndices, 1.0), throwsRangeError);
 
           final val = NDArray.zeros([1], DType.float64);
           expect(() => a.setIndices(badIndices, val), throwsRangeError);
@@ -1407,7 +1394,7 @@ void main() {
     test(
       'linspace() with num == 1 coverage',
       () => NDArray.scope(() {
-        final a = linspace<double>(5.0, 10.0, 1, dtype: DType.float64);
+        final a = linspace<AnyFloat>(5.0, 10.0, 1, dtype: DType.float64);
         expect(a.shape, [1]);
         expect(a.toList(), [5.0]);
       }),
@@ -1508,7 +1495,7 @@ void main() {
         expect(a64.toList(), [Complex(1.0, 0.0), Complex(2.0, 0.0)]);
 
         // 3. linspace with complex128
-        final l128 = linspace<Complex>(
+        final l128 = linspace<AnyComplex>(
           Complex(1.0, 0.0),
           Complex(2.0, 0.0),
           3,
@@ -1523,7 +1510,7 @@ void main() {
         ]);
 
         // 4. linspace with single-element num == 1 and complex64
-        final l64 = linspace<Complex>(
+        final l64 = linspace<AnyComplex>(
           Complex(5.0, 0.0),
           Complex(10.0, 0.0),
           1,

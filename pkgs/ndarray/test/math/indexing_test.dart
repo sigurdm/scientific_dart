@@ -52,7 +52,11 @@ void main() {
             DType.int64,
           );
           final view = a.swapaxes(0, 1); // shape [4, 2], strided view
-          final idx = NDArray<AnyInt>.fromList([1, 0, 1, 0], [4, 1], DType.int64);
+          final idx = NDArray<AnyInt>.fromList(
+            [1, 0, 1, 0],
+            [4, 1],
+            DType.int64,
+          );
           final res = take_along_axis(view, idx, 1);
           expect(res.shape, [4, 1]);
           expect(res.toList(), [5, 2, 7, 4]);
@@ -148,7 +152,11 @@ void main() {
             [4],
             DType.float64,
           );
-          final idx1d = NDArray<AnyInt>.fromList([3, 1, -1, 0], [4], DType.int32);
+          final idx1d = NDArray<AnyInt>.fromList(
+            [3, 1, -1, 0],
+            [4],
+            DType.int32,
+          );
           final res1d = take_along_axis(a1d, idx1d, 0);
           expect(res1d.toList(), [400.0, 200.0, 400.0, 100.0]);
 
@@ -252,7 +260,11 @@ void main() {
         () => NDArray.scope(() {
           final a = NDArray<AnyInt>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
           final indices = NDArray<AnyInt>.fromList([1, 0], [2, 1], DType.int32);
-          final values = NDArray<AnyInt>.fromList([10, 20], [2, 1], DType.int32);
+          final values = NDArray<AnyInt>.fromList(
+            [10, 20],
+            [2, 1],
+            DType.int32,
+          );
           final out = NDArray<AnyInt>.create([2, 2], DType.int32);
           final res = put_along_axis(a, indices, values, 1, out: out);
           expect(identical(res, out), true);
@@ -269,10 +281,18 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final indices = NDArray<AnyInt>.fromList([10, 0], [2, 1], DType.int32);
+          final indices = NDArray<AnyInt>.fromList(
+            [10, 0],
+            [2, 1],
+            DType.int32,
+          );
           final values = NDArray.fromList([9.0, 8.0], [2, 1], DType.float64);
           expect(() => put_along_axis(a, indices, values, 1), throwsRangeError);
-          final idxNeg = NDArray<AnyInt>.fromList([-10, 0], [2, 1], DType.int32);
+          final idxNeg = NDArray<AnyInt>.fromList(
+            [-10, 0],
+            [2, 1],
+            DType.int32,
+          );
           expect(() => put_along_axis(a, idxNeg, values, 1), throwsRangeError);
         }),
       );
@@ -374,7 +394,11 @@ void main() {
             [2, 1],
             DType.boolean,
           );
-          final choice1 = NDArray<AnyInt>.fromList([10, 20], [2, 1], DType.int32);
+          final choice1 = NDArray<AnyInt>.fromList(
+            [10, 20],
+            [2, 1],
+            DType.int32,
+          );
           final choice2 = NDArray<AnyInt>.fromList(
             [100, 200],
             [1, 2],

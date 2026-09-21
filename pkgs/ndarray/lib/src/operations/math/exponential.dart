@@ -22,7 +22,11 @@ import '../helpers.dart';
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Exponential Function](https://en.wikipedia.org/wiki/Exponential_function)
-NDArray<R> exp<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, NDArray<R>? out}) {
+NDArray<R> exp<T extends AnyDType, R extends AnyDType>(
+  NDArray<T> a, {
+  NDArray<AnyDType>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -193,7 +197,11 @@ NDArray<R> exp<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<An
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Natural Logarithm](https://en.wikipedia.org/wiki/Natural_logarithm)
-NDArray<R> log<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, NDArray<R>? out}) {
+NDArray<R> log<T extends AnyDType, R extends AnyDType>(
+  NDArray<T> a, {
+  NDArray<AnyDType>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {

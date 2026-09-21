@@ -13,18 +13,9 @@ void main() {
         group('Future Value (fv)', () {
           test('calculates fv with zero interest rate (fv_zero branch)', () {
             NDArray.scope(() {
-              final rate = NDArray<Float64>.scalar(
-                0.0,
-                dtype: DType.float64,
-              );
-              final nper = NDArray<Float64>.scalar(
-                10.0,
-                dtype: DType.float64,
-              );
-              final pmt = NDArray<Float64>.scalar(
-                -100.0,
-                dtype: DType.float64,
-              );
+              final rate = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
+              final nper = NDArray<Float64>.scalar(10.0, dtype: DType.float64);
+              final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
               final pvVal = NDArray<Float64>.scalar(
                 -1000.0,
                 dtype: DType.float64,
@@ -32,31 +23,22 @@ void main() {
 
               final res = fv(rate, nper, pmt, pvVal);
               // fv_zero = - (pv + pmt * nper) = - (-1000 + (-100 * 10)) = 2000.0
-              expect(res.scalar.value, closeTo(2000.0, 1e-9));
+              expect(res.scalar, closeTo(2000.0, 1e-9));
             });
           });
 
           test('calculates fv with non-zero rate and end/begin payments', () {
             NDArray.scope(() {
-              final rate = NDArray<Float64>.scalar(
-                0.05,
-                dtype: DType.float64,
-              );
-              final nper = NDArray<Float64>.scalar(
-                10.0,
-                dtype: DType.float64,
-              );
-              final pmt = NDArray<Float64>.scalar(
-                -100.0,
-                dtype: DType.float64,
-              );
+              final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
+              final nper = NDArray<Float64>.scalar(10.0, dtype: DType.float64);
+              final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
               final pvVal = NDArray<Float64>.scalar(
                 -1000.0,
                 dtype: DType.float64,
               );
 
               final resEnd = fv(rate, nper, pmt, pvVal, when: PaymentDue.end);
-              expect(resEnd.scalar.value, closeTo(2886.68388, 1e-4));
+              expect(resEnd.scalar, closeTo(2886.68388, 1e-4));
 
               final resBegin = fv(
                 rate,
@@ -65,24 +47,15 @@ void main() {
                 pvVal,
                 when: PaymentDue.begin,
               );
-              expect(resBegin.scalar.value, closeTo(2949.57334, 1e-4));
+              expect(resBegin.scalar, closeTo(2949.57334, 1e-4));
             });
           });
 
           test('supports PaymentDue enum for when parameter', () {
             NDArray.scope(() {
-              final rate = NDArray<Float64>.scalar(
-                0.05,
-                dtype: DType.float64,
-              );
-              final nper = NDArray<Float64>.scalar(
-                5.0,
-                dtype: DType.float64,
-              );
-              final pmt = NDArray<Float64>.scalar(
-                -50.0,
-                dtype: DType.float64,
-              );
+              final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
+              final nper = NDArray<Float64>.scalar(5.0, dtype: DType.float64);
+              final pmt = NDArray<Float64>.scalar(-50.0, dtype: DType.float64);
               final pvVal = NDArray<Float64>.scalar(
                 -500.0,
                 dtype: DType.float64,
@@ -96,8 +69,8 @@ void main() {
                 pvVal,
                 when: PaymentDue.begin,
               );
-              expect(resEnd.scalar.value, greaterThan(0.0));
-              expect(resEnd.scalar.value, lessThan(resBegin.scalar.value));
+              expect(resEnd.scalar, greaterThan(0.0));
+              expect(resEnd.scalar, lessThan(resBegin.scalar));
             });
           });
 
@@ -113,36 +86,21 @@ void main() {
                 [1, 3],
                 DType.float64,
               );
-              final pmt = NDArray<Float64>.scalar(
-                -100.0,
-                dtype: DType.float64,
-              );
-              final pvVal = NDArray<Float64>.scalar(
-                0.0,
-                dtype: DType.float64,
-              );
+              final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+              final pvVal = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
 
               final out = NDArray<Float64>.zeros([2, 3], DType.float64);
               final res = fv(rate, nper, pmt, pvVal, out: out);
               expect(identical(res, out), isTrue);
               expect(res.shape, [2, 3]);
-              expect(res.getCell([0, 0]).value, closeTo(552.563125, 1e-4));
+              expect(res.getCell([0, 0]), closeTo(552.563125, 1e-4));
             });
           });
 
           test('throws on disposed inputs', () {
-            final rate = NDArray<Float64>.scalar(
-              0.05,
-              dtype: DType.float64,
-            );
-            final nper = NDArray<Float64>.scalar(
-              10.0,
-              dtype: DType.float64,
-            );
-            final pmt = NDArray<Float64>.scalar(
-              -100.0,
-              dtype: DType.float64,
-            );
+            final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
+            final nper = NDArray<Float64>.scalar(10.0, dtype: DType.float64);
+            final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
             final pvVal = NDArray<Float64>.scalar(
               -1000.0,
               dtype: DType.float64,
@@ -159,18 +117,9 @@ void main() {
         group('Present Value (pv)', () {
           test('calculates pv with zero interest rate (pv_zero branch)', () {
             NDArray.scope(() {
-              final rate = NDArray<Float64>.scalar(
-                0.0,
-                dtype: DType.float64,
-              );
-              final nper = NDArray<Float64>.scalar(
-                10.0,
-                dtype: DType.float64,
-              );
-              final pmt = NDArray<Float64>.scalar(
-                -100.0,
-                dtype: DType.float64,
-              );
+              final rate = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
+              final nper = NDArray<Float64>.scalar(10.0, dtype: DType.float64);
+              final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
               final fvVal = NDArray<Float64>.scalar(
                 2000.0,
                 dtype: DType.float64,
@@ -178,31 +127,22 @@ void main() {
 
               final res = pv(rate, nper, pmt, fvVal);
               // pv_zero = - (fv + pmt * nper) = - (2000 + (-100 * 10)) = -1000.0
-              expect(res.scalar.value, closeTo(-1000.0, 1e-9));
+              expect(res.scalar, closeTo(-1000.0, 1e-9));
             });
           });
 
           test('calculates pv with non-zero rate and end/begin payments', () {
             NDArray.scope(() {
-              final rate = NDArray<Float64>.scalar(
-                0.05,
-                dtype: DType.float64,
-              );
-              final nper = NDArray<Float64>.scalar(
-                10.0,
-                dtype: DType.float64,
-              );
-              final pmt = NDArray<Float64>.scalar(
-                -100.0,
-                dtype: DType.float64,
-              );
+              final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
+              final nper = NDArray<Float64>.scalar(10.0, dtype: DType.float64);
+              final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
               final fvVal = NDArray<Float64>.scalar(
                 2886.68388,
                 dtype: DType.float64,
               );
 
               final resEnd = pv(rate, nper, pmt, fvVal, when: PaymentDue.end);
-              expect(resEnd.scalar.value, closeTo(-1000.0, 1e-4));
+              expect(resEnd.scalar, closeTo(-1000.0, 1e-4));
 
               final resBegin = pv(
                 rate,
@@ -211,24 +151,15 @@ void main() {
                 fvVal,
                 when: PaymentDue.begin,
               );
-              expect(resBegin.scalar.value, closeTo(-961.3913, 1e-3));
+              expect(resBegin.scalar, closeTo(-961.3913, 1e-3));
             });
           });
 
           test('supports PaymentDue enum for when and out buffer', () {
             NDArray.scope(() {
-              final rate = NDArray<Float64>.scalar(
-                0.05,
-                dtype: DType.float64,
-              );
-              final nper = NDArray<Float64>.scalar(
-                5.0,
-                dtype: DType.float64,
-              );
-              final pmt = NDArray<Float64>.scalar(
-                -50.0,
-                dtype: DType.float64,
-              );
+              final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
+              final nper = NDArray<Float64>.scalar(5.0, dtype: DType.float64);
+              final pmt = NDArray<Float64>.scalar(-50.0, dtype: DType.float64);
               final fvVal = NDArray<Float64>.scalar(
                 1000.0,
                 dtype: DType.float64,
@@ -248,22 +179,10 @@ void main() {
           });
 
           test('throws on disposed inputs', () {
-            final rate = NDArray<Float64>.scalar(
-              0.05,
-              dtype: DType.float64,
-            );
-            final nper = NDArray<Float64>.scalar(
-              10.0,
-              dtype: DType.float64,
-            );
-            final pmt = NDArray<Float64>.scalar(
-              -100.0,
-              dtype: DType.float64,
-            );
-            final fvVal = NDArray<Float64>.scalar(
-              1000.0,
-              dtype: DType.float64,
-            );
+            final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
+            final nper = NDArray<Float64>.scalar(10.0, dtype: DType.float64);
+            final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+            final fvVal = NDArray<Float64>.scalar(1000.0, dtype: DType.float64);
 
             fvVal.dispose();
             expect(() => pv(rate, nper, pmt, fvVal), throwsStateError);
@@ -276,10 +195,7 @@ void main() {
         group('Net Present Value (npv)', () {
           test('calculates npv for 1D cash flows', () {
             NDArray.scope(() {
-              final rate = NDArray<Float64>.scalar(
-                0.281,
-                dtype: DType.float64,
-              );
+              final rate = NDArray<Float64>.scalar(0.281, dtype: DType.float64);
               final values = NDArray<Float64>.fromList(
                 [-100.0, 39.0, 59.0, 55.0, 20.0],
                 [5],
@@ -288,7 +204,7 @@ void main() {
 
               final res = npv(rate, values);
               expect(res.shape, <int>[]);
-              expect(res.scalar.value, closeTo(-0.008, 1e-2));
+              expect(res.scalar, closeTo(-0.008, 1e-2));
             });
           });
 
@@ -317,10 +233,7 @@ void main() {
 
           test('throws for 0D values and disposed arrays', () {
             NDArray.scope(() {
-              final rate = NDArray<Float64>.scalar(
-                0.05,
-                dtype: DType.float64,
-              );
+              final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
               final scalarValues = NDArray<Float64>.scalar(
                 100.0,
                 dtype: DType.float64,
@@ -328,10 +241,7 @@ void main() {
               expect(() => npv(rate, scalarValues), throwsArgumentError);
             });
 
-            final rate = NDArray<Float64>.scalar(
-              0.05,
-              dtype: DType.float64,
-            );
+            final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
             final values = NDArray<Float64>.fromList(
               [100.0, 200.0],
               [2],
@@ -354,7 +264,7 @@ void main() {
 
               final res = irr(values);
               expect(res.shape, <int>[]);
-              expect(res.scalar.value, closeTo(0.28095, 1e-4));
+              expect(res.scalar, closeTo(0.28095, 1e-4));
             });
           });
 
@@ -367,7 +277,7 @@ void main() {
               );
 
               final res = irr(values);
-              expect(res.scalar.value, closeTo(0.28095, 1e-4));
+              expect(res.scalar, closeTo(0.28095, 1e-4));
             });
           });
 
@@ -382,7 +292,7 @@ void main() {
                   DType.float64,
                 );
                 final resZeros = irr(allZeros);
-                expect(resZeros.scalar.value.isNaN, isTrue);
+                expect(resZeros.scalar.isNaN, isTrue);
                 expect(
                   () => irr(allZeros, raiseExceptions: true),
                   throwsA(isA<NoRealSolutionException>()),
@@ -395,7 +305,7 @@ void main() {
                   DType.float64,
                 );
                 final resPos = irr(allPos);
-                expect(resPos.scalar.value.isNaN, isTrue);
+                expect(resPos.scalar.isNaN, isTrue);
                 expect(
                   () => irr(allPos, raiseExceptions: true),
                   throwsA(isA<NoRealSolutionException>()),
@@ -408,7 +318,7 @@ void main() {
                   DType.float64,
                 );
                 final resNeg = irr(allNeg);
-                expect(resNeg.scalar.value.isNaN, isTrue);
+                expect(resNeg.scalar.isNaN, isTrue);
                 expect(
                   () => irr(allNeg, raiseExceptions: true),
                   throwsA(isA<NoRealSolutionException>()),
@@ -420,7 +330,7 @@ void main() {
                   [2],
                   DType.float64,
                 );
-                expect(irr(singleNonZero).scalar.value.isNaN, isTrue);
+                expect(irr(singleNonZero).scalar.isNaN, isTrue);
               });
             },
           );
@@ -436,8 +346,8 @@ void main() {
                   DType.float64,
                 );
                 final res = irr(values);
-                expect(res.scalar.value, isNotNull);
-                expect(res.scalar.value.isNaN, isFalse);
+                expect(res.scalar, isNotNull);
+                expect(res.scalar.isNaN, isFalse);
               });
             },
           );
@@ -454,7 +364,7 @@ void main() {
                 final out = NDArray<Float64>.create([], DType.float64);
                 final res = irr(values, out: out);
                 expect(identical(res, out), isTrue);
-                expect(res.scalar.value, closeTo(0.2, 1e-6));
+                expect(res.scalar, closeTo(0.2, 1e-6));
 
                 final matrix2D = NDArray<Float64>.zeros([2, 2], DType.float64);
                 expect(() => irr(matrix2D), throwsArgumentError);
@@ -494,7 +404,7 @@ void main() {
               final out = NDArray<Float64>.zeros([2, 2], DType.float64);
               final resOut = matrix_power(a, 0, out: out);
               expect(identical(resOut, out), isTrue);
-              expect(out.getCell([0, 0]).value, 1.0);
+              expect(out.getCell([0, 0]), 1.0);
             });
           });
 
@@ -920,11 +830,7 @@ void main() {
               for (var b = 0; b < 2; b++) {
                 for (var i = 0; i < 3; i++) {
                   for (var j = 0; j < 2; j++) {
-                    batch3D.setCell([
-                      b,
-                      i,
-                      j,
-                    ], (i + j + b + 1).toDouble());
+                    batch3D.setCell([b, i, j], (i + j + b + 1).toDouble());
                   }
                 }
               }
@@ -968,11 +874,7 @@ void main() {
               for (var b = 0; b < 2; b++) {
                 for (var i = 0; i < 3; i++) {
                   for (var j = 0; j < 2; j++) {
-                    batchA.setCell([
-                      b,
-                      i,
-                      j,
-                    ], (i * 2 + j + 1).toDouble());
+                    batchA.setCell([b, i, j], (i * 2 + j + 1).toDouble());
                   }
                 }
               }

@@ -281,7 +281,11 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
         final w = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
-        final res = average<int, int, double>(a, weights: w, returned: true);
+        final res = average<AnyInt, AnyInt, AnyFloat>(
+          a,
+          weights: w,
+          returned: true,
+        );
 
         expect(res.average.dtype, DType.float64);
         expect(res.average.scalar, 3.0);

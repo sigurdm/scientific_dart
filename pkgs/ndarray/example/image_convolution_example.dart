@@ -226,39 +226,19 @@ void main() {
 
     print('Defining Sobel kernels...');
     final sobelX = NDArray<Float64>.fromList(
-      <Float64>[
-        -1.0,
-        0.0,
-        1.0,
-        -2.0,
-        0.0,
-        2.0,
-        -1.0,
-        0.0,
-        1.0,
-      ],
+      <double>[-1.0, 0.0, 1.0, -2.0, 0.0, 2.0, -1.0, 0.0, 1.0],
       [3, 3],
       DType.float64,
     );
 
     final sobelY = NDArray<Float64>.fromList(
-      <Float64>[
-        -1.0,
-        -2.0,
-        -1.0,
-        0.0,
-        0.0,
-        0.0,
-        1.0,
-        2.0,
-        1.0,
-      ],
+      <double>[-1.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0],
       [3, 3],
       DType.float64,
     );
 
     final constantTwo = NDArray<Float64>.fromList(
-      <Float64>[2.0],
+      <double>[2.0],
       [1],
       DType.float64,
     );

@@ -543,7 +543,7 @@ void main() {
     test('NDEnumerate coordinates and values', () {
       NDArray.scope(() {
         final a = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int32);
-        final en = NDEnumerate<int>(a);
+        final en = NDEnumerate<AnyInt>(a);
         final collected = <int>[];
         while (en.moveNext()) {
           collected.add(en.value);

@@ -49,7 +49,7 @@ void main() {
 
     // 2. Initialize PageRank vector v (uniform distribution).
     var v = NDArray<Float64>.fromList(
-      List<Float64>.generate(n, (_) => 1.0 / n),
+      List<double>.generate(n, (_) => 1.0 / n),
       [n],
       DType.float64,
     );

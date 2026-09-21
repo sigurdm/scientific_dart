@@ -294,7 +294,8 @@ void main() {
           final dispX = NDArray.fromList([1.0], [1], DType.float64)..dispose();
           expect(() => polyval(validC, dispX), throwsStateError);
 
-          final dispOut = NDArray<AnyFloat>.zeros([2], DType.float64)..dispose();
+          final dispOut = NDArray<AnyFloat>.zeros([2], DType.float64)
+            ..dispose();
           expect(() => polyval(validC, validX, out: dispOut), throwsStateError);
 
           final c2D = NDArray.zeros([2, 2], DType.float64);
@@ -541,7 +542,8 @@ void main() {
             ..dispose();
           expect(() => polyfit(x, y, 1, w: dispW), throwsStateError);
 
-          final dispOut = NDArray<AnyFloat>.zeros([2], DType.float64)..dispose();
+          final dispOut = NDArray<AnyFloat>.zeros([2], DType.float64)
+            ..dispose();
           expect(() => polyfit(x, y, 1, out: dispOut), throwsStateError);
 
           final x2d = NDArray.zeros([2, 2], DType.float64);
@@ -1174,7 +1176,8 @@ void main() {
           expect(() => hermval(c, dispX), throwsStateError);
           expect(() => lagval(c, dispX), throwsStateError);
 
-          final dispOut = NDArray<AnyFloat>.zeros([2], DType.float64)..dispose();
+          final dispOut = NDArray<AnyFloat>.zeros([2], DType.float64)
+            ..dispose();
           expect(() => chebval(c, x, out: dispOut), throwsStateError);
 
           final c2D = NDArray.zeros([2, 2], DType.float64);

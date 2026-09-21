@@ -32,7 +32,10 @@ bool _isZeroScalar(Object a) {
   return (a as num) == 0;
 }
 
-NDArray<R> _ensureDType<T extends AnyDType, R extends AnyDType>(NDArray<T> a, DType<R> targetDType) {
+NDArray<R> _ensureDType<T extends AnyDType, R extends AnyDType>(
+  NDArray<T> a,
+  DType<R> targetDType,
+) {
   if (a.dtype == targetDType) {
     return a as NDArray<R>;
   }
@@ -57,7 +60,11 @@ void _copyInto<R extends AnyDType>(NDArray src, NDArray<R> out) {
 /// - It is an error if [out] shape or dtype is incompatible with [x].
 ///
 /// Reference: [NumPy polyval](https://numpy.org/doc/stable/reference/generated/numpy.polyval.html)
-NDArray<R> polyval<Tc extends AnyDType, Tx extends AnyDType, R extends AnyDType>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
+NDArray<R> polyval<
+  Tc extends AnyDType,
+  Tx extends AnyDType,
+  R extends AnyDType
+>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
   if (c.isDisposed || x.isDisposed || (out != null && out.isDisposed)) {
     throw StateError("Cannot execute polyval() on a disposed array.");
   }
@@ -240,7 +247,12 @@ NDArray<R> polyval<Tc extends AnyDType, Tx extends AnyDType, R extends AnyDType>
 /// - It is an error if [out] shape or dtype is incompatible.
 ///
 /// Reference: [NumPy polyfit](https://numpy.org/doc/stable/reference/generated/numpy.polyfit.html)
-NDArray<R> polyfit<Tx extends AnyDType, Ty extends AnyDType, Tw extends AnyDType, R extends AnyDType>(
+NDArray<R> polyfit<
+  Tx extends AnyDType,
+  Ty extends AnyDType,
+  Tw extends AnyDType,
+  R extends AnyDType
+>(
   NDArray<Tx> x,
   NDArray<Ty> y,
   int deg, {
@@ -660,7 +672,10 @@ NDArray<R> polyfit<Tx extends AnyDType, Ty extends AnyDType, Tw extends AnyDType
 /// - It is an error if [p] is not 1-dimensional.
 ///
 /// Reference: [NumPy roots](https://numpy.org/doc/stable/reference/generated/numpy.roots.html)
-NDArray<AnyComplex> roots<T extends AnyDType>(NDArray<T> p, {NDArray<AnyComplex>? out}) {
+NDArray<AnyComplex> roots<T extends AnyDType>(
+  NDArray<T> p, {
+  NDArray<AnyComplex>? out,
+}) {
   if (p.isDisposed || (out != null && out.isDisposed)) {
     throw StateError("Cannot execute roots() on a disposed array.");
   }
@@ -733,7 +748,10 @@ NDArray<AnyComplex> roots<T extends AnyDType>(NDArray<T> p, {NDArray<AnyComplex>
     switch (p.dtype) {
       case DType.complex64:
       case DType.complex128:
-        aMat = NDArray<AnyComplex>.zeros([deg, deg], p.dtype as DType<AnyComplex>);
+        aMat = NDArray<AnyComplex>.zeros([
+          deg,
+          deg,
+        ], p.dtype as DType<AnyComplex>);
         break;
       default:
         aMat = NDArray<Float64>.zeros([deg, deg], DType.float64);

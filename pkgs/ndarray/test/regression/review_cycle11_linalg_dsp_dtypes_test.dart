@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('Review Cycle 11 Finding #4: Linalg Float16 & BFloat16 Promotion', () {
-    for (final dtype in <DType<double>>[DType.float16, DType.bfloat16]) {
+    for (final dtype in <DType<AnyFloat>>[DType.float16, DType.bfloat16]) {
       group('dtype=${dtype.name}', () {
         test('eig and eigvals promote to float64 / complex128', () {
           NDArray.scope(() {
@@ -88,7 +88,7 @@ void main() {
               [2, 2],
               dtype,
             );
-            final res = eigh<double, double>(a);
+            final res = eigh<AnyFloat, AnyFloat>(a);
             expect(res.eigenvalues.dtype, equals(DType.float64));
             expect(res.eigenvectors.dtype, equals(DType.float64));
             expect(res.eigenvalues.getCell([0]), closeTo(1.0, 1e-2));
@@ -108,11 +108,14 @@ void main() {
               [2, 2],
               dtype,
             );
-            final realRes = schur<double, double>(a, output: SchurForm.real);
+            final realRes = schur<AnyFloat, AnyFloat>(
+              a,
+              output: SchurForm.real,
+            );
             expect(realRes.t.dtype, equals(DType.float64));
             expect(realRes.z.dtype, equals(DType.float64));
 
-            final complexRes = schur<double, Complex128>(
+            final complexRes = schur<AnyFloat, Complex128>(
               a,
               output: SchurForm.complex,
             );
@@ -173,7 +176,7 @@ void main() {
             final cVal = cond(a);
             expect(cVal.scalar, greaterThan(1.0));
 
-            final lsq = lstsq<double, double, double>(a, b);
+            final lsq = lstsq<AnyFloat, AnyFloat, AnyFloat>(a, b);
             expect(lsq.rank, equals(2));
             expect(lsq.x.dtype, equals(DType.float64));
             expect(lsq.x.getCell([0]), closeTo(0.1, 1e-2));
@@ -185,7 +188,7 @@ void main() {
   });
 
   group('Review Cycle 11 Finding #5: DSP correlate & convolve DTypes', () {
-    final intDTypes = <DType<int>>[
+    final intDTypes = <DType<AnyInt>>[
       DType.int8,
       DType.int16,
       DType.uint8,
@@ -201,7 +204,7 @@ void main() {
           final v = NDArray<AnyInt>.fromList([1, 2], [2], dtype);
 
           // correlate valid: [1*1 + 2*2, 2*1 + 3*2, 3*1 + 4*2] = [5, 8, 11]
-          final corrValid = correlate<int, int, int>(
+          final corrValid = correlate<AnyInt, AnyInt, AnyInt>(
             a,
             v,
             mode: ConvMode.valid,
@@ -213,7 +216,11 @@ void main() {
           expect(corrValid.getCell([2]), equals(11));
 
           // correlate same: length 4 -> [2, 5, 8, 11]
-          final corrSame = correlate<int, int, int>(a, v, mode: ConvMode.same);
+          final corrSame = correlate<AnyInt, AnyInt, AnyInt>(
+            a,
+            v,
+            mode: ConvMode.same,
+          );
           expect(corrSame.dtype, equals(dtype));
           expect(corrSame.shape, equals([4]));
           expect(corrSame.getCell([0]), equals(2));
@@ -222,7 +229,11 @@ void main() {
           expect(corrSame.getCell([3]), equals(11));
 
           // correlate full: length 5 -> [2, 5, 8, 11, 4]
-          final corrFull = correlate<int, int, int>(a, v, mode: ConvMode.full);
+          final corrFull = correlate<AnyInt, AnyInt, AnyInt>(
+            a,
+            v,
+            mode: ConvMode.full,
+          );
           expect(corrFull.dtype, equals(dtype));
           expect(corrFull.shape, equals([5]));
           expect(corrFull.getCell([0]), equals(2));
@@ -232,7 +243,11 @@ void main() {
           expect(corrFull.getCell([4]), equals(4));
 
           // convolve valid: v reversed is [2, 1] -> [1*2+2*1, 2*2+3*1, 3*2+4*1] = [4, 7, 10]
-          final convValid = convolve<int, int, int>(a, v, mode: ConvMode.valid);
+          final convValid = convolve<AnyInt, AnyInt, AnyInt>(
+            a,
+            v,
+            mode: ConvMode.valid,
+          );
           expect(convValid.dtype, equals(dtype));
           expect(convValid.shape, equals([3]));
           expect(convValid.getCell([0]), equals(4));
@@ -240,7 +255,11 @@ void main() {
           expect(convValid.getCell([2]), equals(10));
 
           // convolve full: [1, 4, 7, 10, 8]
-          final convFull = convolve<int, int, int>(a, v, mode: ConvMode.full);
+          final convFull = convolve<AnyInt, AnyInt, AnyInt>(
+            a,
+            v,
+            mode: ConvMode.full,
+          );
           expect(convFull.dtype, equals(dtype));
           expect(convFull.shape, equals([5]));
           expect(convFull.getCell([0]), equals(1));
@@ -252,13 +271,17 @@ void main() {
       });
     }
 
-    for (final dtype in <DType<double>>[DType.float16, DType.bfloat16]) {
+    for (final dtype in <DType<AnyFloat>>[DType.float16, DType.bfloat16]) {
       test('correlate and convolve support half-float dtype=${dtype.name}', () {
         NDArray.scope(() {
-          final a = NDArray<AnyFloat>.fromList([1.0, 2.0, 3.0, 4.0], [4], dtype);
+          final a = NDArray<AnyFloat>.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [4],
+            dtype,
+          );
           final v = NDArray<AnyFloat>.fromList([1.0, 2.0], [2], dtype);
 
-          final corrValid = correlate<double, double, double>(
+          final corrValid = correlate<AnyFloat, AnyFloat, AnyFloat>(
             a,
             v,
             mode: ConvMode.valid,
@@ -269,7 +292,7 @@ void main() {
           expect(corrValid.getCell([1]), closeTo(8.0, 1e-2));
           expect(corrValid.getCell([2]), closeTo(11.0, 1e-2));
 
-          final convFull = convolve<double, double, double>(
+          final convFull = convolve<AnyFloat, AnyFloat, AnyFloat>(
             a,
             v,
             mode: ConvMode.full,

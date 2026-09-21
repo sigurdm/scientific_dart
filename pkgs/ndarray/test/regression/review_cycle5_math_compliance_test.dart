@@ -106,8 +106,8 @@ void main() {
             DType.complex128,
           );
           final stridedC128 = flip(c128);
-          final r128 = real<Complex, Float64>(stridedC128);
-          final i128 = imag<Complex, Float64>(stridedC128);
+          final r128 = real<AnyComplex, Float64>(stridedC128);
+          final i128 = imag<AnyComplex, Float64>(stridedC128);
           expect(r128.toList(), equals([4.0, 3.0, 2.0, 1.0]));
           expect(i128.toList(), equals([40.0, 30.0, 20.0, 10.0]));
 
@@ -117,8 +117,8 @@ void main() {
             DType.complex64,
           );
           final stridedC64 = flip(c64);
-          final r64 = real<Complex, Float32>(stridedC64);
-          final i64 = imag<Complex, Float32>(stridedC64);
+          final r64 = real<AnyComplex, Float32>(stridedC64);
+          final i64 = imag<AnyComplex, Float32>(stridedC64);
           expect(r64.toList(), equals([3.5, 2.5, 1.5]));
           expect(i64.toList(), equals([-3.5, -2.5, -1.5]));
 

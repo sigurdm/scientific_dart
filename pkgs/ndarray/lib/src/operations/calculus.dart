@@ -400,19 +400,13 @@ NDArray<T> trapz<T extends AnyDType>(
                 spacingArray = NDArray<Float32>.create([N], DType.float32);
                 var i = 0;
                 for (final val in values) {
-                  spacingArray.setCellFlat(
-                    i++,
-                    (val as num).toDouble(),
-                  );
+                  spacingArray.setCellFlat(i++, (val as num).toDouble());
                 }
               } else {
                 spacingArray = NDArray<Float64>.create([N], DType.float64);
                 var i = 0;
                 for (final val in values) {
-                  spacingArray.setCellFlat(
-                    i++,
-                    (val as num).toDouble(),
-                  );
+                  spacingArray.setCellFlat(i++, (val as num).toDouble());
                 }
               }
 
@@ -876,19 +870,13 @@ NDArray<T> gradient<T extends AnyDType>(
                 spacingArray = NDArray<Float32>.create([N], DType.float32);
                 var i = 0;
                 for (final val in values) {
-                  spacingArray.setCellFlat(
-                    i++,
-                    (val as num).toDouble(),
-                  );
+                  spacingArray.setCellFlat(i++, (val as num).toDouble());
                 }
               } else {
                 spacingArray = NDArray<Float64>.create([N], DType.float64);
                 var i = 0;
                 for (final val in values) {
-                  spacingArray.setCellFlat(
-                    i++,
-                    (val as num).toDouble(),
-                  );
+                  spacingArray.setCellFlat(i++, (val as num).toDouble());
                 }
               }
               final dtype = f.dtype;

@@ -174,16 +174,8 @@ void main() {
 
   group('Phase 3 Type Safety Tests', () {
     test('floor_divide with uint8/int16', () {
-      final a = NDArray<Uint8>.fromList(
-        [4, 5, 6],
-        [3],
-        DType.uint8,
-      );
-      final b = NDArray<Int16>.fromList(
-        [2, 2, 2],
-        [3],
-        DType.int16,
-      );
+      final a = NDArray<Uint8>.fromList([4, 5, 6], [3], DType.uint8);
+      final b = NDArray<Int16>.fromList([2, 2, 2], [3], DType.int16);
 
       // This should not crash
       final c = floor_divide(a, b);
@@ -195,16 +187,8 @@ void main() {
     });
 
     test('floor_divide with uint8/float64', () {
-      final a = NDArray<Uint8>.fromList(
-        [5, 6, 7],
-        [3],
-        DType.uint8,
-      );
-      final b = NDArray<Float64>.fromList(
-        [2.0, 2.0, 2.0],
-        [3],
-        DType.float64,
-      );
+      final a = NDArray<Uint8>.fromList([5, 6, 7], [3], DType.uint8);
+      final b = NDArray<Float64>.fromList([2.0, 2.0, 2.0], [3], DType.float64);
 
       // This should not crash
       final c = floor_divide(a, b);
@@ -213,16 +197,8 @@ void main() {
     });
 
     test('remainder with uint8/int16', () {
-      final a = NDArray<Uint8>.fromList(
-        [5, 6, 7],
-        [3],
-        DType.uint8,
-      );
-      final b = NDArray<Int16>.fromList(
-        [3, 3, 3],
-        [3],
-        DType.int16,
-      );
+      final a = NDArray<Uint8>.fromList([5, 6, 7], [3], DType.uint8);
+      final b = NDArray<Int16>.fromList([3, 3, 3], [3], DType.int16);
 
       // This should not crash
       final c = remainder(a, b);
@@ -231,16 +207,8 @@ void main() {
     });
 
     test('remainder with uint8/float64', () {
-      final a = NDArray<Uint8>.fromList(
-        [5, 6, 7],
-        [3],
-        DType.uint8,
-      );
-      final b = NDArray<Float64>.fromList(
-        [3.0, 3.0, 3.0],
-        [3],
-        DType.float64,
-      );
+      final a = NDArray<Uint8>.fromList([5, 6, 7], [3], DType.uint8);
+      final b = NDArray<Float64>.fromList([3.0, 3.0, 3.0], [3], DType.float64);
 
       // This should not crash
       final c = remainder(a, b);
@@ -249,42 +217,26 @@ void main() {
     });
 
     test('sin with uint8/int16', () {
-      final a = NDArray<Uint8>.fromList(
-        [0, 30, 90],
-        [3],
-        DType.uint8,
-      );
+      final a = NDArray<Uint8>.fromList([0, 30, 90], [3], DType.uint8);
       // This should not crash
       final c = sin(a);
       expect(c.dtype, DType.float64); // default float type for sin on int
     });
 
     test('abs with uint8/int16', () {
-      final a = NDArray<Int16>.fromList(
-        [-1, -2, 3],
-        [3],
-        DType.int16,
-      );
+      final a = NDArray<Int16>.fromList([-1, -2, 3], [3], DType.int16);
       final c = abs(a);
       expect(c.toList(), [1, 2, 3]);
       expect(c.dtype, DType.int16);
     });
 
     test('negative with uint8/int16', () {
-      final a = NDArray<Int16>.fromList(
-        [1, 2, 3],
-        [3],
-        DType.int16,
-      );
+      final a = NDArray<Int16>.fromList([1, 2, 3], [3], DType.int16);
       final b = negative(a);
       expect(b.toList(), [-1, -2, -3]);
       expect(b.dtype, DType.int16);
 
-      final c = NDArray<Uint8>.fromList(
-        [1, 2, 3],
-        [3],
-        DType.uint8,
-      );
+      final c = NDArray<Uint8>.fromList([1, 2, 3], [3], DType.uint8);
       final d = negative(c);
       expect(d.toList(), [255, 254, 253]); // wrap around for uint8
       expect(d.dtype, DType.uint8);
@@ -302,11 +254,7 @@ void main() {
     });
 
     test('svd and qr throw ArgumentError for integer inputs', () {
-      final a = NDArray<Int32>.fromList(
-        [1, 2, 3, 4],
-        [2, 2],
-        DType.int32,
-      );
+      final a = NDArray<Int32>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
       expect(() => svd(a), throwsArgumentError);
       expect(() => qr(a), throwsArgumentError);
     });
@@ -343,10 +291,10 @@ void main() {
 
       final invA = pinv(a);
       expect(invA.dtype, DType.complex128);
-      expect((invA.getCell([0, 0]) as Complex).real, closeTo(0.4, 1e-5));
-      expect((invA.getCell([0, 0]) as Complex).imag, closeTo(-0.2, 1e-5));
-      expect((invA.getCell([1, 1]) as Complex).real, closeTo(0.3, 1e-5));
-      expect((invA.getCell([1, 1]) as Complex).imag, closeTo(0.1, 1e-5));
+      expect((invA.getCell([0, 0])).real, closeTo(0.4, 1e-5));
+      expect((invA.getCell([0, 0])).imag, closeTo(-0.2, 1e-5));
+      expect((invA.getCell([1, 1])).real, closeTo(0.3, 1e-5));
+      expect((invA.getCell([1, 1])).imag, closeTo(0.1, 1e-5));
     });
   });
 

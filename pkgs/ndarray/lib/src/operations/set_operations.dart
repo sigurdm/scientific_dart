@@ -100,13 +100,16 @@ dynamic unique<T extends AnyDType>(
         return (
           values: empty,
           index: returnIndex
-              ? (NDArray<AnyInt>.create([0], DType.int64)..detachToParentScope())
+              ? (NDArray<AnyInt>.create([0], DType.int64)
+                  ..detachToParentScope())
               : null,
           inverse: returnInverse
-              ? (NDArray<AnyInt>.create([0], DType.int64)..detachToParentScope())
+              ? (NDArray<AnyInt>.create([0], DType.int64)
+                  ..detachToParentScope())
               : null,
           counts: returnCounts
-              ? (NDArray<AnyInt>.create([0], DType.int64)..detachToParentScope())
+              ? (NDArray<AnyInt>.create([0], DType.int64)
+                  ..detachToParentScope())
               : null,
         );
       }
@@ -947,11 +950,9 @@ bool _tryIsinTable<T extends AnyDType>(
   }
 }
 
-({NDArray<T> values, NDArray<AnyInt>? counts})? _tryUniqueTable<T extends AnyDType>(
-  NDArray<T> values, {
-  required bool returnCounts,
-  NDArray<T>? out,
-}) {
+({NDArray<T> values, NDArray<AnyInt>? counts})? _tryUniqueTable<
+  T extends AnyDType
+>(NDArray<T> values, {required bool returnCounts, NDArray<T>? out}) {
   final mm = _minMaxInt(values);
   if (mm == null) return null;
   final (minVal, maxVal) = mm;

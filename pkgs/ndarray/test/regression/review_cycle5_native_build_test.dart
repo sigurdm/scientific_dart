@@ -25,7 +25,7 @@ void main() {
             );
             final res64 = divide<Complex64, Complex64, Complex64>(num64, den64);
             for (var i = 0; i < length; i++) {
-              final val = res64.getCell([i]).value;
+              final val = res64.getCell([i]);
               expect(val.real.isNaN, isFalse, reason: 'len=$length idx=$i');
               expect(val.imag.isNaN, isFalse, reason: 'len=$length idx=$i');
               expect(
@@ -52,7 +52,7 @@ void main() {
               ffi.nullptr,
             );
             for (var i = 0; i < length; i++) {
-              final val = nativeRes64.getCell([i]).value;
+              final val = nativeRes64.getCell([i]);
               expect(
                 val.real.isNaN,
                 isFalse,
@@ -76,7 +76,7 @@ void main() {
               den128,
             );
             for (var i = 0; i < length; i++) {
-              final val = res128.getCell([i]).value;
+              final val = res128.getCell([i]);
               expect(val.real.isNaN, isFalse, reason: 'len=$length idx=$i');
               expect(val.imag.isNaN, isFalse, reason: 'len=$length idx=$i');
               expect(
@@ -103,7 +103,7 @@ void main() {
               ffi.nullptr,
             );
             for (var i = 0; i < length; i++) {
-              final val = nativeRes128.getCell([i]).value;
+              final val = nativeRes128.getCell([i]);
               expect(
                 val.real.isNaN,
                 isFalse,
@@ -145,11 +145,11 @@ void main() {
           );
           for (var i = 0; i < 16; i++) {
             expect(
-              out128.getCell([i]).value.real,
+              out128.getCell([i]).real,
               closeTo(expectedAdd128[i].real, 1e-12),
             );
             expect(
-              out128.getCell([i]).value.imag,
+              out128.getCell([i]).imag,
               closeTo(expectedAdd128[i].imag, 1e-12),
             );
           }
@@ -175,10 +175,7 @@ void main() {
             ffi.nullptr,
           );
           for (var i = 0; i < 16; i++) {
-            expect(
-              outDiv128.getCell([i]).value.real,
-              closeTo((i + 2) / 2.0, 1e-12),
-            );
+            expect(outDiv128.getCell([i]).real, closeTo((i + 2) / 2.0, 1e-12));
           }
 
           // Complex64 add & div native overlap
@@ -200,7 +197,7 @@ void main() {
             ffi.nullptr,
           );
           for (var i = 0; i < 16; i++) {
-            expect(out64.getCell([i]).value.real, closeTo((i + 1) * 2.0, 1e-5));
+            expect(out64.getCell([i]).real, closeTo((i + 1) * 2.0, 1e-5));
           }
         });
       },
@@ -226,7 +223,7 @@ void main() {
             ffi.nullptr,
           );
           for (var i = 0; i < 16; i++) {
-            expect(outSin.getCell([i]).value, closeTo(expectedSin[i], 1e-5));
+            expect(outSin.getCell([i]), closeTo(expectedSin[i], 1e-5));
           }
 
           // Float32 atan2 native overlap
@@ -252,10 +249,7 @@ void main() {
             ffi.nullptr,
           );
           for (var i = 0; i < 16; i++) {
-            expect(
-              outAtan2.getCell([i]).value,
-              closeTo(expectedAtan2[i], 1e-5),
-            );
+            expect(outAtan2.getCell([i]), closeTo(expectedAtan2[i], 1e-5));
           }
 
           // Float64 clip native overlap
@@ -276,7 +270,7 @@ void main() {
           );
           for (var i = 0; i < 16; i++) {
             final expected = i.toDouble().clamp(3.0, 12.0);
-            expect(outClip64.getCell([i]).value, closeTo(expected, 1e-12));
+            expect(outClip64.getCell([i]), closeTo(expected, 1e-12));
           }
 
           // Float32 clip native overlap
@@ -297,7 +291,7 @@ void main() {
           );
           for (var i = 0; i < 16; i++) {
             final expected = i.toDouble().clamp(3.0, 12.0);
-            expect(outClip32.getCell([i]).value, closeTo(expected, 1e-5));
+            expect(outClip32.getCell([i]), closeTo(expected, 1e-5));
           }
         });
       },
@@ -316,9 +310,9 @@ void main() {
           final v = base.slice([const Slice(start: 0, stop: 6, step: 2)]);
           roll<Float64>(v, 1, axis: 0, out: v);
           // Expected rolled v: [50.0, 10.0, 30.0]
-          expect(v.getCell([0]).value, closeTo(50.0, 1e-12));
-          expect(v.getCell([1]).value, closeTo(10.0, 1e-12));
-          expect(v.getCell([2]).value, closeTo(30.0, 1e-12));
+          expect(v.getCell([0]), closeTo(50.0, 1e-12));
+          expect(v.getCell([1]), closeTo(10.0, 1e-12));
+          expect(v.getCell([2]), closeTo(30.0, 1e-12));
 
           // Also test direct native_roll_nd on strided view in-place
           final baseNative = NDArray<Float64>.fromList(
@@ -353,9 +347,9 @@ void main() {
           } finally {
             ScratchArena.reset(marker);
           }
-          expect(vNative.getCell([0]).value, closeTo(50.0, 1e-12));
-          expect(vNative.getCell([1]).value, closeTo(10.0, 1e-12));
-          expect(vNative.getCell([2]).value, closeTo(30.0, 1e-12));
+          expect(vNative.getCell([0]), closeTo(50.0, 1e-12));
+          expect(vNative.getCell([1]), closeTo(10.0, 1e-12));
+          expect(vNative.getCell([2]), closeTo(30.0, 1e-12));
 
           // Overlapping contiguous slices: roll(base.slice([Slice(start: 0, stop: 5)]), 2, out: base.slice([Slice(start: 1, stop: 6)]))
           final baseOverlap = NDArray<Float64>.fromList(
@@ -367,11 +361,11 @@ void main() {
           final dstSlice = baseOverlap.slice([const Slice(start: 1, stop: 6)]);
           roll<Float64>(srcSlice, 2, out: dstSlice);
           // srcSlice was [1, 2, 3, 4, 5], rolled by 2 is [4, 5, 1, 2, 3]
-          expect(dstSlice.getCell([0]).value, closeTo(4.0, 1e-12));
-          expect(dstSlice.getCell([1]).value, closeTo(5.0, 1e-12));
-          expect(dstSlice.getCell([2]).value, closeTo(1.0, 1e-12));
-          expect(dstSlice.getCell([3]).value, closeTo(2.0, 1e-12));
-          expect(dstSlice.getCell([4]).value, closeTo(3.0, 1e-12));
+          expect(dstSlice.getCell([0]), closeTo(4.0, 1e-12));
+          expect(dstSlice.getCell([1]), closeTo(5.0, 1e-12));
+          expect(dstSlice.getCell([2]), closeTo(1.0, 1e-12));
+          expect(dstSlice.getCell([3]), closeTo(2.0, 1e-12));
+          expect(dstSlice.getCell([4]), closeTo(3.0, 1e-12));
 
           // Direct native_roll_1d overlapping contiguous call
           final baseOverlapNative = NDArray<Float64>.fromList(
@@ -392,11 +386,11 @@ void main() {
             2,
             dstNative.pointer.cast(),
           );
-          expect(dstNative.getCell([0]).value, closeTo(4.0, 1e-12));
-          expect(dstNative.getCell([1]).value, closeTo(5.0, 1e-12));
-          expect(dstNative.getCell([2]).value, closeTo(1.0, 1e-12));
-          expect(dstNative.getCell([3]).value, closeTo(2.0, 1e-12));
-          expect(dstNative.getCell([4]).value, closeTo(3.0, 1e-12));
+          expect(dstNative.getCell([0]), closeTo(4.0, 1e-12));
+          expect(dstNative.getCell([1]), closeTo(5.0, 1e-12));
+          expect(dstNative.getCell([2]), closeTo(1.0, 1e-12));
+          expect(dstNative.getCell([3]), closeTo(2.0, 1e-12));
+          expect(dstNative.getCell([4]), closeTo(3.0, 1e-12));
         });
       },
     );
@@ -428,7 +422,7 @@ void main() {
           for (var r = 0; r < 3; r++) {
             for (var c = 0; c < 3; c++) {
               expect(
-                a.getCell([r, c]).value,
+                a.getCell([r, c]),
                 closeTo(expected[r][c], 1e-12),
                 reason: 'high-level clipArray at ($r, $c)',
               );
@@ -494,7 +488,7 @@ void main() {
           for (var r = 0; r < 3; r++) {
             for (var c = 0; c < 3; c++) {
               expect(
-                aNative.getCell([r, c]).value,
+                aNative.getCell([r, c]),
                 closeTo(expected[r][c], 1e-12),
                 reason: 'native s_clip_double at ($r, $c)',
               );

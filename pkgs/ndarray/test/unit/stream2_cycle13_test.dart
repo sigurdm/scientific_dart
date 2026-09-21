@@ -57,7 +57,11 @@ void main() {
           atUfunc(aInt, idx, bInt, op: BinaryOp.floorDivide);
           expect(aInt.toList(), equals([3, 6, 15]));
 
-          final aIntMod = NDArray<AnyInt>.fromList([10, 20, 30], [3], DType.int32);
+          final aIntMod = NDArray<AnyInt>.fromList(
+            [10, 20, 30],
+            [3],
+            DType.int32,
+          );
           atUfunc(aIntMod, idx, bInt, op: BinaryOp.remainder);
           expect(aIntMod.toList(), equals([1, 2, 0]));
 

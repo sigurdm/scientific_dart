@@ -1436,7 +1436,11 @@ NDArray<T> choice<T extends AnyDType>(
 /// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 /// shuffle(a); // a is now shuffled in-place, e.g., [2.0, 1.0, 3.0]
 /// ```
-void shuffle<T extends AnyDType>(NDArray<T> a, {int? seed, bool secure = false}) {
+void shuffle<T extends AnyDType>(
+  NDArray<T> a, {
+  int? seed,
+  bool secure = false,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot shuffle a disposed array.');
   }

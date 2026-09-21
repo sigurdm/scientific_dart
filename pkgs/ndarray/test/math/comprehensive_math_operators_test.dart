@@ -301,7 +301,11 @@ void main() {
             [2, 2],
             DType.boolean,
           );
-          final row = NDArray<Boolean>.fromList([true, true], [2], DType.boolean);
+          final row = NDArray<Boolean>.fromList(
+            [true, true],
+            [2],
+            DType.boolean,
+          );
 
           final res = logical_and(mat, row);
           expect(res.shape, equals([2, 2]));

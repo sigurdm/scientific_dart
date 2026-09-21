@@ -124,7 +124,7 @@ void main() {
   );
 
   group('Review Cycle 16 — Issue #2: All 8 Integer DTypes in Bitwise Operations', () {
-    final intDTypes = <DType<int>>[
+    final intDTypes = <DType<AnyInt>>[
       DType.int8,
       DType.int16,
       DType.int32,
@@ -312,10 +312,14 @@ void main() {
             final a = NDArray<AnyInt>.fromList([7, 3, 5, 1], [4], dt);
             final b = NDArray<AnyInt>.fromList([6, 2, 4, 1], [4], dt);
 
-            final bAnd = binaryUfunc<int, int>(a, b, op: BinaryOp.bitwiseAnd);
+            final bAnd = binaryUfunc<AnyInt, AnyInt>(
+              a,
+              b,
+              op: BinaryOp.bitwiseAnd,
+            );
             expect(bAnd.toList(), equals([6, 2, 4, 1]));
 
-            final uInv = unaryUfunc<int, int>(a, op: UnaryOp.invert);
+            final uInv = unaryUfunc<AnyInt, AnyInt>(a, op: UnaryOp.invert);
             expect(uInv.getCell([0]), equals(invert(a).getCell([0])));
 
             final redAnd = reduceUfunc(a, op: BinaryOp.bitwiseAnd);

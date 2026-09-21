@@ -45,11 +45,9 @@ void main() {
       });
 
       test('choice with multi-dimensional shape and p array', () {
-        final a = NDArray<Int32>.fromList(
-          [1, 2, 3].map((e) => e).toList(),
-          [3],
-          DType.int32,
-        );
+        final a = NDArray<Int32>.fromList([1, 2, 3].map((e) => e).toList(), [
+          3,
+        ], DType.int32);
         final p = NDArray<Float64>.fromList(
           [0.1, 0.7, 0.2].map((e) => e).toList(),
           [3],
@@ -62,11 +60,9 @@ void main() {
       });
 
       test('choice scalar (empty size)', () {
-        final a = NDArray<Int32>.fromList(
-          [5, 10, 15].map((e) => e).toList(),
-          [3],
-          DType.int32,
-        );
+        final a = NDArray<Int32>.fromList([5, 10, 15].map((e) => e).toList(), [
+          3,
+        ], DType.int32);
         final sampled = choice(a, size: [], seed: 7);
         expect(sampled.rank, 0);
         expect([5, 10, 15].contains(sampled.scalar.toInt()), true);
@@ -75,11 +71,9 @@ void main() {
 
     group('manipulation data access & copy', () {
       test('diag with 1D input and out buffer', () {
-        final v = NDArray<Int32>.fromList(
-          [1, 2, 3].map((e) => e).toList(),
-          [3],
-          DType.int32,
-        );
+        final v = NDArray<Int32>.fromList([1, 2, 3].map((e) => e).toList(), [
+          3,
+        ], DType.int32);
         final out = NDArray<Int32>.ones([3, 3], DType.int32);
         final d = diag(v, out: out);
         expect(identical(d, out), true);
@@ -136,11 +130,9 @@ void main() {
 
     group('stats ScratchArena and Float64 return types', () {
       test('std and variance Float64 typing', () {
-        final a = NDArray<Int32>.fromList(
-          [1, 2, 3, 4].map((e) => e).toList(),
-          [4],
-          DType.int32,
-        );
+        final a = NDArray<Int32>.fromList([1, 2, 3, 4].map((e) => e).toList(), [
+          4,
+        ], DType.int32);
 
         final NDArray<Float64> v = variance(a);
         expect(v.scalar.toDouble(), closeTo(1.25, 1e-9));
@@ -229,11 +221,9 @@ void main() {
       });
 
       test('choose and select', () {
-        final a = NDArray<Int32>.fromList(
-          [0, 1, 0].map((e) => e).toList(),
-          [3],
-          DType.int32,
-        );
+        final a = NDArray<Int32>.fromList([0, 1, 0].map((e) => e).toList(), [
+          3,
+        ], DType.int32);
         final c0 = NDArray<Float64>.fromList(
           [10.0, 20.0, 30.0].map((e) => e).toList(),
           [3],
@@ -246,7 +236,7 @@ void main() {
         );
 
         final chosen = choose(a, [c0, c1]);
-        expect(chosen.toList().map((e) => (e as Float64).toDouble()).toList(), [
+        expect(chosen.toList().map((e) => (e as double).toDouble()).toList(), [
           10.0,
           200.0,
           30.0,
@@ -262,11 +252,7 @@ void main() {
           [3],
           DType.boolean,
         );
-        final selected = select(
-          [cond1, cond2],
-          [c0, c1],
-          defaultValue: 999.0,
-        );
+        final selected = select([cond1, cond2], [c0, c1], defaultValue: 999.0);
         expect(selected.toList().map((e) => (e as num).toDouble()).toList(), [
           10.0,
           200.0,

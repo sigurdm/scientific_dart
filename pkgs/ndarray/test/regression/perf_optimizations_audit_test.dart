@@ -228,14 +228,8 @@ void main() {
             [1, 3],
             DType.float64,
           );
-          final pmtVal = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
-          final pvVal = NDArray<Float64>.scalar(
-            -1000.0,
-            dtype: DType.float64,
-          );
+          final pmtVal = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+          final pvVal = NDArray<Float64>.scalar(-1000.0, dtype: DType.float64);
           final out = NDArray<Float64>.zeros([2, 3], DType.float64);
 
           final res = fv(rate, nper, pmtVal, pvVal, out: out);
@@ -250,10 +244,7 @@ void main() {
           );
           final cfSliced = cfFull.slice([Slice.all(), Slice.all(), Index(0)]);
           expect(cfSliced.isContiguous, isFalse);
-          final scalarRate = NDArray<Float64>.scalar(
-            0.1,
-            dtype: DType.float64,
-          );
+          final scalarRate = NDArray<Float64>.scalar(0.1, dtype: DType.float64);
           final npvOut = NDArray<Float64>.zeros([1], DType.float64);
           npv(scalarRate, cfSliced, out: npvOut);
           expect(

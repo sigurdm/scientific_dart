@@ -73,11 +73,7 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        final res = a.reduce(
-          op: BinaryOp.add,
-          keepdims: true,
-          initial: 10.0,
-        );
+        final res = a.reduce(op: BinaryOp.add, keepdims: true, initial: 10.0);
         expect(res.shape, equals([1, 1]));
         expect(res.getCell([0, 0]), equals(20.0));
       });
@@ -194,7 +190,11 @@ void main() {
           [8],
           DType.float64,
         );
-        final indices = NDArray<AnyInt>.fromList([0, 4, 1, 5], [4], DType.int64);
+        final indices = NDArray<AnyInt>.fromList(
+          [0, 4, 1, 5],
+          [4],
+          DType.int64,
+        );
         // Step 0: slice [0:4] -> sum(0..3) = 6.0
         // Step 1: slice [4:1] (start >= end) -> element a[4] = 4.0
         // Step 2: slice [1:5] -> sum(1..4) = 10.0

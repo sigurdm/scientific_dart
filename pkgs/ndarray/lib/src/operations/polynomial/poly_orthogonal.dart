@@ -59,7 +59,10 @@ bool _isZeroScalar(Object a) {
   return (a as num) == 0;
 }
 
-NDArray<R> _ensureDType<T extends AnyDType, R extends AnyDType>(NDArray<T> a, DType<R> targetDType) {
+NDArray<R> _ensureDType<T extends AnyDType, R extends AnyDType>(
+  NDArray<T> a,
+  DType<R> targetDType,
+) {
   if (a.dtype == targetDType) {
     return a as NDArray<R>;
   }
@@ -82,11 +85,11 @@ void _copyInto<R extends AnyDType>(NDArray src, NDArray<R> out) {
 /// - It is an error if coefficient array is invalid or [out] buffer mismatches.
 ///
 /// Reference: [NumPy chebval](https://numpy.org/doc/stable/reference/generated/numpy.polynomial.chebyshev.chebval.html)
-NDArray<R> chebval<T1 extends AnyDType, T2 extends AnyDType, R extends AnyDType>(
-  NDArray<T1> arg1,
-  NDArray<T2> arg2, {
-  NDArray<R>? out,
-}) {
+NDArray<R> chebval<
+  T1 extends AnyDType,
+  T2 extends AnyDType,
+  R extends AnyDType
+>(NDArray<T1> arg1, NDArray<T2> arg2, {NDArray<R>? out}) {
   if (arg1.isDisposed || arg2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -134,11 +137,11 @@ NDArray<R> legval<T1 extends AnyDType, T2 extends AnyDType, R extends AnyDType>(
 /// Supports flexible argument order (c, x) or (x, c).
 ///
 /// Reference: [NumPy hermval](https://numpy.org/doc/stable/reference/generated/numpy.polynomial.hermite.hermval.html)
-NDArray<R> hermval<T1 extends AnyDType, T2 extends AnyDType, R extends AnyDType>(
-  NDArray<T1> arg1,
-  NDArray<T2> arg2, {
-  NDArray<R>? out,
-}) {
+NDArray<R> hermval<
+  T1 extends AnyDType,
+  T2 extends AnyDType,
+  R extends AnyDType
+>(NDArray<T1> arg1, NDArray<T2> arg2, {NDArray<R>? out}) {
   if (arg1.isDisposed || arg2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -180,12 +183,11 @@ NDArray<R> lagval<T1 extends AnyDType, T2 extends AnyDType, R extends AnyDType>(
   return _evalClenshaw(cArr, xArr, _OrthoKind.laguerre, out: out);
 }
 
-NDArray<R> _evalClenshaw<Tc extends AnyDType, Tx extends AnyDType, R extends AnyDType>(
-  NDArray<Tc> c,
-  NDArray<Tx> x,
-  _OrthoKind kind, {
-  NDArray<R>? out,
-}) {
+NDArray<R> _evalClenshaw<
+  Tc extends AnyDType,
+  Tx extends AnyDType,
+  R extends AnyDType
+>(NDArray<Tc> c, NDArray<Tx> x, _OrthoKind kind, {NDArray<R>? out}) {
   if (c.isDisposed || x.isDisposed || (out != null && out.isDisposed)) {
     throw StateError("Cannot execute series evaluation on a disposed array.");
   }
@@ -629,22 +631,34 @@ NDArray<R> _evalClenshaw<Tc extends AnyDType, Tx extends AnyDType, R extends Any
 }
 
 /// Finds roots of a Chebyshev series.
-NDArray<AnyComplex> chebroots<T extends AnyDType>(NDArray<T> c, {NDArray<AnyComplex>? out}) {
+NDArray<AnyComplex> chebroots<T extends AnyDType>(
+  NDArray<T> c, {
+  NDArray<AnyComplex>? out,
+}) {
   return _orthoRoots(c, _OrthoKind.chebyshev, out: out);
 }
 
 /// Finds roots of a Legendre series.
-NDArray<AnyComplex> legroots<T extends AnyDType>(NDArray<T> c, {NDArray<AnyComplex>? out}) {
+NDArray<AnyComplex> legroots<T extends AnyDType>(
+  NDArray<T> c, {
+  NDArray<AnyComplex>? out,
+}) {
   return _orthoRoots(c, _OrthoKind.legendre, out: out);
 }
 
 /// Finds roots of a Hermite series.
-NDArray<AnyComplex> hermroots<T extends AnyDType>(NDArray<T> c, {NDArray<AnyComplex>? out}) {
+NDArray<AnyComplex> hermroots<T extends AnyDType>(
+  NDArray<T> c, {
+  NDArray<AnyComplex>? out,
+}) {
   return _orthoRoots(c, _OrthoKind.hermite, out: out);
 }
 
 /// Finds roots of a Laguerre series.
-NDArray<AnyComplex> lagroots<T extends AnyDType>(NDArray<T> c, {NDArray<AnyComplex>? out}) {
+NDArray<AnyComplex> lagroots<T extends AnyDType>(
+  NDArray<T> c, {
+  NDArray<AnyComplex>? out,
+}) {
   return _orthoRoots(c, _OrthoKind.laguerre, out: out);
 }
 

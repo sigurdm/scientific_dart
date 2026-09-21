@@ -228,11 +228,11 @@ void main() {
       test(
         'multi_dot error conditions',
         () => NDArray.scope(() {
-          expect(() => multi_dot<double>([]), throwsArgumentError);
+          expect(() => multi_dot<AnyFloat>([]), throwsArgumentError);
           final m = NDArray<AnyFloat>.ones([2, 2], DType.float64);
-          expect(() => multi_dot<double>([m]), throwsArgumentError);
+          expect(() => multi_dot<AnyFloat>([m]), throwsArgumentError);
           final m3d = NDArray<AnyFloat>.ones([2, 2, 2], DType.float64);
-          expect(() => multi_dot<double>([m, m3d]), throwsArgumentError);
+          expect(() => multi_dot<AnyFloat>([m, m3d]), throwsArgumentError);
         }),
       );
     });
@@ -902,9 +902,7 @@ void main() {
 
           final nNuc = norm(m, ord: 'nuc');
           final svdRes = svd(m);
-          final expectedNuc = svdRes.s.toList().reduce(
-            (a, b) => a + b,
-          );
+          final expectedNuc = svdRes.s.toList().reduce((a, b) => a + b);
           expect(nNuc.scalar, closeTo(expectedNuc, 1e-5));
           svdRes.dispose();
 
@@ -1077,16 +1075,19 @@ void main() {
       test(
         'flip, fliplr, flipud across 1D, 2D, 3D',
         () => NDArray.scope(() {
-          final a1d = NDArray<AnyInt>.fromList(Int32List.fromList([1, 2, 3, 4]), [
-            4,
-          ], DType.int32);
+          final a1d = NDArray<AnyInt>.fromList(
+            Int32List.fromList([1, 2, 3, 4]),
+            [4],
+            DType.int32,
+          );
           final f1d = flip(a1d);
           expect(f1d.toList(), [4, 3, 2, 1]);
 
-          final a2d = NDArray<AnyInt>.fromList(Int32List.fromList([1, 2, 3, 4]), [
-            2,
-            2,
-          ], DType.int32);
+          final a2d = NDArray<AnyInt>.fromList(
+            Int32List.fromList([1, 2, 3, 4]),
+            [2, 2],
+            DType.int32,
+          );
           expect(fliplr(a2d).toList(), [2, 1, 4, 3]);
           expect(flipud(a2d).toList(), [3, 4, 1, 2]);
           expect(flip(a2d).toList(), [4, 3, 2, 1]);
@@ -1152,9 +1153,11 @@ void main() {
       test(
         'broadcastTo and broadcast',
         () => NDArray.scope(() {
-          final v = NDArray<AnyFloat>.fromList(Float64List.fromList([1.0, 2.0]), [
-            2,
-          ], DType.float64);
+          final v = NDArray<AnyFloat>.fromList(
+            Float64List.fromList([1.0, 2.0]),
+            [2],
+            DType.float64,
+          );
           final b2d = broadcastTo(v, [3, 2]);
           expect(b2d.shape, [3, 2]);
           expect(b2d.toList(), [1.0, 2.0, 1.0, 2.0, 1.0, 2.0]);
@@ -1257,9 +1260,11 @@ void main() {
       test(
         'slidingWindowView on 1D and 2D arrays',
         () => NDArray.scope(() {
-          final a = NDArray<AnyInt>.fromList(Int32List.fromList([1, 2, 3, 4, 5]), [
-            5,
-          ], DType.int32);
+          final a = NDArray<AnyInt>.fromList(
+            Int32List.fromList([1, 2, 3, 4, 5]),
+            [5],
+            DType.int32,
+          );
           final sw = slidingWindowView(a, [3]);
           expect(sw.shape, [3, 3]);
           expect(sw.toList(), [1, 2, 3, 2, 3, 4, 3, 4, 5]);
@@ -1338,9 +1343,11 @@ void main() {
       test(
         'hsplit, vsplit, dsplit across 1D, 2D, 3D',
         () => NDArray.scope(() {
-          final v1d = NDArray<AnyInt>.fromList(Int32List.fromList([1, 2, 3, 4]), [
-            4,
-          ], DType.int32);
+          final v1d = NDArray<AnyInt>.fromList(
+            Int32List.fromList([1, 2, 3, 4]),
+            [4],
+            DType.int32,
+          );
           final hs1 = hsplit(v1d, 2);
           expect(hs1.length, 2);
           expect(hs1[0].toList(), [1, 2]);
@@ -1440,14 +1447,16 @@ void main() {
           expect(vd.scalar.real, closeTo(70.0, 1e-6));
           expect(vd.scalar.imag, closeTo(-8.0, 1e-6));
 
-          final k1 = NDArray<AnyInt>.fromList(Int32List.fromList([1, 2, 3, 4]), [
-            2,
-            2,
-          ], DType.int32);
-          final k2 = NDArray<AnyInt>.fromList(Int32List.fromList([0, 5, 6, 7]), [
-            2,
-            2,
-          ], DType.int32);
+          final k1 = NDArray<AnyInt>.fromList(
+            Int32List.fromList([1, 2, 3, 4]),
+            [2, 2],
+            DType.int32,
+          );
+          final k2 = NDArray<AnyInt>.fromList(
+            Int32List.fromList([0, 5, 6, 7]),
+            [2, 2],
+            DType.int32,
+          );
           final kr = kron(k1, k2);
           expect(kr.shape, [4, 4]);
           expect(kr.getCell([0, 0]), equals(0));
@@ -1497,10 +1506,11 @@ void main() {
           sEmpty.dispose();
 
           // 1x1 matrix
-          final one2d = NDArray<AnyFloat>.fromList(Float64List.fromList([42.0]), [
-            1,
-            1,
-          ], DType.float64);
+          final one2d = NDArray<AnyFloat>.fromList(
+            Float64List.fromList([42.0]),
+            [1, 1],
+            DType.float64,
+          );
           final dOne = det(one2d);
           expect(dOne.scalar, closeTo(42.0, 1e-6));
 
@@ -1534,7 +1544,11 @@ void main() {
             DType.float64,
           );
           final outVals = NDArray<AnyComplex>.zeros([2, 2], DType.complex128);
-          final outVecs = NDArray<AnyComplex>.zeros([2, 2, 2], DType.complex128);
+          final outVecs = NDArray<AnyComplex>.zeros([
+            2,
+            2,
+            2,
+          ], DType.complex128);
           final resEig = eig(
             batch,
             out: (eigenvalues: outVals, eigenvectors: outVecs),
@@ -1685,10 +1699,11 @@ void main() {
       test(
         'manipulation roll with axis null (flattened) and 3D tensors',
         () => NDArray.scope(() {
-          final m2d = NDArray<AnyInt>.fromList(Int32List.fromList([1, 2, 3, 4]), [
-            2,
-            2,
-          ], DType.int32);
+          final m2d = NDArray<AnyInt>.fromList(
+            Int32List.fromList([1, 2, 3, 4]),
+            [2, 2],
+            DType.int32,
+          );
           final rFlat = roll(m2d, 1); // axis is null -> rolls flattened
           expect(rFlat.shape, [2, 2]);
           expect(rFlat.toList(), [4, 1, 2, 3]);
@@ -1761,10 +1776,11 @@ void main() {
           expect(outProd.toList(), [3, 4, 6, 8]);
 
           // Diagonal extraction: 'ii->i'
-          final mat = NDArray<AnyInt>.fromList(Int32List.fromList([1, 2, 3, 4]), [
-            2,
-            2,
-          ], DType.int32);
+          final mat = NDArray<AnyInt>.fromList(
+            Int32List.fromList([1, 2, 3, 4]),
+            [2, 2],
+            DType.int32,
+          );
           final dExt = einsum(EinsumSubscripts.parse('ii->i'), [mat]);
           expect(dExt.shape, [2]);
           expect(dExt.toList(), [1, 4]);

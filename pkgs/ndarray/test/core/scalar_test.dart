@@ -27,10 +27,7 @@ void main() {
 
     test("Int64 scalar", () {
       NDArray.scope(() {
-        final a = NDArray.scalar(
-          9223372036854775807,
-          dtype: DType.int64,
-        );
+        final a = NDArray.scalar(9223372036854775807, dtype: DType.int64);
         expect(a.shape, <int>[]);
         expect(a.rank, 0);
         expect(a.size, 1);
@@ -133,16 +130,10 @@ void main() {
         expect(aComplex.dtype, DType.complex128);
         expect(aComplex.scalar.real, 1.0);
 
-        final aF64 = NDArray<Float64>.scalar(
-          3.14159,
-          dtype: DType.float64,
-        );
+        final aF64 = NDArray<Float64>.scalar(3.14159, dtype: DType.float64);
         expect(aF64.dtype, DType.float64);
 
-        final aF32 = NDArray<Float32>.scalar(
-          1.5,
-          dtype: DType.float32,
-        );
+        final aF32 = NDArray<Float32>.scalar(1.5, dtype: DType.float32);
         expect(aF32.dtype, DType.float32);
 
         final aI64 = NDArray<Int64>.scalar(999, dtype: DType.int64);
@@ -173,10 +164,7 @@ void main() {
 
     test("DType preservation regression test (extension type erasure fix)", () {
       NDArray.scope(() {
-        final f32Scalar = NDArray<Float32>.scalar(
-          1.5,
-          dtype: DType.float32,
-        );
+        final f32Scalar = NDArray<Float32>.scalar(1.5, dtype: DType.float32);
         expect(f32Scalar.dtype, DType.float32);
         expect(f32Scalar.scalar, closeTo(1.5, 1e-5));
 
@@ -203,11 +191,7 @@ void main() {
           [2],
           DType.float32,
         );
-        final stop = NDArray<Float32>.fromList(
-          [1.0, 11.0],
-          [2],
-          DType.float32,
-        );
+        final stop = NDArray<Float32>.fromList([1.0, 11.0], [2], DType.float32);
         final grid = linspaceGrid(start, stop, 3);
         expect(grid.dtype, DType.float32);
         expect(grid.shape, [3, 2]);

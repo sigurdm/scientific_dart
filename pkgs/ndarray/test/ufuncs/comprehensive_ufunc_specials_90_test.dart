@@ -1166,20 +1166,12 @@ void main() {
 
             // Complex truthy/falsy
             final cA = NDArray<Complex128>.fromList(
-              [
-                Complex(0.0, 0.0),
-                Complex(1.0, 0.0),
-                Complex(0.0, 1.0),
-              ],
+              [Complex(0.0, 0.0), Complex(1.0, 0.0), Complex(0.0, 1.0)],
               [3],
               DType.complex128,
             );
             final cB = NDArray<Complex128>.fromList(
-              [
-                Complex(0.0, 0.0),
-                Complex(0.0, 0.0),
-                Complex(2.0, 2.0),
-              ],
+              [Complex(0.0, 0.0), Complex(0.0, 0.0), Complex(2.0, 2.0)],
               [3],
               DType.complex128,
             );
@@ -1558,11 +1550,7 @@ void main() {
           NDArray.scope(() {
             // Complex arrays
             final cArr = NDArray<Complex128>.fromList(
-              [
-                Complex(3.0, 4.0),
-                Complex(-5.0, 12.0),
-                Complex(0.0, -1.0),
-              ],
+              [Complex(3.0, 4.0), Complex(-5.0, 12.0), Complex(0.0, -1.0)],
               [3],
               DType.complex128,
             );

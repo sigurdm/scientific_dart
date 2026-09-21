@@ -5,7 +5,12 @@ import 'helpers.dart';
 // Standalone operational relative cross-imports
 
 /// Helper to slice an array along a specific axis between [start] and [stop].
-NDArray<T> _sliceAlongAxis<T extends AnyDType>(NDArray<T> a, int axis, int start, int stop) {
+NDArray<T> _sliceAlongAxis<T extends AnyDType>(
+  NDArray<T> a,
+  int axis,
+  int start,
+  int stop,
+) {
   final selectors = List<Selector>.filled(a.shape.length, Slice.all());
   selectors[axis] = Slice(start: start, stop: stop);
   return a.slice(selectors);

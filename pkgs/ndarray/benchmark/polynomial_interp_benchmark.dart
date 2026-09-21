@@ -10,7 +10,12 @@ void main() async {
     'NDArray Polynomial Fitting & 1D Interpolation Benchmark Suite',
     (c) {
       final rand = math.Random(42);
-      final xPoints = linspace<double>(-10.0, 10.0, size, dtype: DType.float64);
+      final xPoints = linspace<AnyFloat>(
+        -10.0,
+        10.0,
+        size,
+        dtype: DType.float64,
+      );
       final coeffs5 = NDArray<AnyFloat>.fromList(
         [1.0, -2.5, 0.4, 3.2, -1.1, 0.5],
         [6],
@@ -29,7 +34,7 @@ void main() async {
           [5],
           DType.float64,
         );
-        final xNorm = linspace<double>(-1.0, 1.0, size, dtype: DType.float64);
+        final xNorm = linspace<AnyFloat>(-1.0, 1.0, size, dtype: DType.float64);
 
         c.bench('chebval(deg=4, x) [size=100,000]', () {
           final y = chebval(xNorm, chebCoeffs);
@@ -40,7 +45,7 @@ void main() async {
 
       c.group('2. Least-Squares Polynomial Fitting (polyfit)', () {
         const fitN = 10000;
-        final xFit = linspace<double>(0.0, 10.0, fitN, dtype: DType.float64);
+        final xFit = linspace<AnyFloat>(0.0, 10.0, fitN, dtype: DType.float64);
         final yFit = NDArray<AnyFloat>.fromList(
           List.generate(
             fitN,
@@ -65,13 +70,23 @@ void main() async {
 
       c.group('3. 1D Piecewise Linear Interpolation', () {
         const numKnots = 1000;
-        final xp = linspace<double>(0.0, 100.0, numKnots, dtype: DType.float64);
+        final xp = linspace<AnyFloat>(
+          0.0,
+          100.0,
+          numKnots,
+          dtype: DType.float64,
+        );
         final fp = NDArray<AnyFloat>.fromList(
           List.generate(numKnots, (i) => math.sin(i * 0.1)),
           [numKnots],
           DType.float64,
         );
-        final xQuery = linspace<double>(0.0, 100.0, size, dtype: DType.float64);
+        final xQuery = linspace<AnyFloat>(
+          0.0,
+          100.0,
+          size,
+          dtype: DType.float64,
+        );
 
         c.bench(
           'interp(xQuery, xp, fp) [100,000 queries across 1,000 knots]',

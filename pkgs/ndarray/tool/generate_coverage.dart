@@ -2,11 +2,11 @@ import 'dart:io';
 
 void main() async {
   print(
-    '============================================================================',
+    '============================================================================'
   );
   print('         ndarray AUTOMATED TEST COVERAGE INFRASTRUCTURE TOOL');
   print(
-    '============================================================================',
+    '============================================================================'
   );
 
   final rawCoverageDir = Directory('coverage/raw');
@@ -16,7 +16,7 @@ void main() async {
   }
 
   print(
-    '\nStep 1: Executing full unit test suite and collecting raw JSON V8 traces...',
+    '\nStep 1: Executing full unit test suite and collecting raw JSON V8 traces...'
   );
   final testProcess = await Process.run(Platform.executable, [
     'test',
@@ -26,14 +26,14 @@ void main() async {
 
   if (testProcess.exitCode != 0) {
     stderr.writeln(
-      'Error: dart test coverage execution failed!\n${testProcess.stdout}\n${testProcess.stderr}',
+      'Error: dart test coverage execution failed!\n${testProcess.stdout}\n${testProcess.stderr}'
     );
     exit(testProcess.exitCode);
   }
   print('Unit tests suite executed perfectly with exit code 0.');
 
   print(
-    '\nStep 2: Formatting raw JSON coverage maps into standardized LCOV format...',
+    '\nStep 2: Formatting raw JSON coverage maps into standardized LCOV format...'
   );
   final formatProcess = await Process.run(Platform.executable, [
     'run',
@@ -46,21 +46,21 @@ void main() async {
 
   if (formatProcess.exitCode != 0) {
     stderr.writeln(
-      'Error: format_coverage execution failed!\n${formatProcess.stderr}',
+      'Error: format_coverage execution failed!\n${formatProcess.stderr}'
     );
     exit(formatProcess.exitCode);
   }
   print(
-    'Formatted LCOV report file successfully written to: coverage/lcov.info',
+    'Formatted LCOV report file successfully written to: coverage/lcov.info'
   );
 
   print(
-    '\nStep 3: Parsing LCOV report stream data and building coverage dashboard...',
+    '\nStep 3: Parsing LCOV report stream data and building coverage dashboard...'
   );
   final lcovFile = File('coverage/lcov.info');
   if (!lcovFile.existsSync()) {
     stderr.writeln(
-      'Error: coverage/lcov.info file not found after formatting pass!',
+      'Error: coverage/lcov.info file not found after formatting pass!'
     );
     exit(1);
   }
@@ -79,17 +79,17 @@ void main() async {
   var currentFileBranchesHit = 0;
 
   print(
-    '\n----------------------------------------------------------------------------',
+    '\n----------------------------------------------------------------------------'
   );
   print(' FILE-BY-FILE COVERAGE METRICS');
   print(
-    '----------------------------------------------------------------------------',
+    '----------------------------------------------------------------------------'
   );
   print(
-    '${"FILE NAME".padRight(35)} | ${"LINE COV %".padRight(12)} | ${"BRANCH COV %".padRight(12)}',
+    '${"FILE NAME".padRight(35)} | ${"LINE COV %".padRight(12)} | ${"BRANCH COV %".padRight(12)}'
   );
   print(
-    '----------------------------------------------------------------------------',
+    '----------------------------------------------------------------------------'
   );
 
   for (final line in lines) {
@@ -130,18 +130,18 @@ void main() async {
             : 'N/A';
 
         print(
-          '${currentFile.padRight(35)} | ${linePctStr.padRight(12)} | ${branchPctStr.padRight(12)} | Line: $currentFileLinesHit/$currentFileLinesFound | Branch: $currentFileBranchesHit/$currentFileBranchesFound',
+          '${currentFile.padRight(35)} | ${linePctStr.padRight(12)} | ${branchPctStr.padRight(12)} | Line: $currentFileLinesHit/$currentFileLinesFound | Branch: $currentFileBranchesHit/$currentFileBranchesFound'
         );
       }
     }
   }
 
   print(
-    '----------------------------------------------------------------------------',
+    '----------------------------------------------------------------------------'
   );
   if (totalLinesFound == 0) {
     print(
-      'Error: No executable code lines discovered in lib/ directory reports!',
+      'Error: No executable code lines discovered in lib/ directory reports!'
     );
   } else {
     final globalLinePct = (totalLinesHit / totalLinesFound) * 100.0;
@@ -150,13 +150,13 @@ void main() async {
         : 0.0;
     print('🏆 GLOBAL WORKSPACE COVERAGE SUMMARY:');
     print(
-      '   GLOBAL LINE COVERAGE   : ${globalLinePct.toStringAsFixed(2)}% ($totalLinesHit / $totalLinesFound)',
+      '   GLOBAL LINE COVERAGE   : ${globalLinePct.toStringAsFixed(2)}% ($totalLinesHit / $totalLinesFound)'
     );
     print(
-      '   GLOBAL BRANCH COVERAGE : ${globalBranchPct.toStringAsFixed(2)}% ($totalBranchesHit / $totalBranchesFound)',
+      '   GLOBAL BRANCH COVERAGE : ${globalBranchPct.toStringAsFixed(2)}% ($totalBranchesHit / $totalBranchesFound)'
     );
   }
   print(
-    '============================================================================\n',
+    '============================================================================\n'
   );
 }

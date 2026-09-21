@@ -256,16 +256,10 @@ void main() {
             [3],
             DType.float64,
           );
-          final sumWithInit = a.reduce(
-            op: BinaryOp.add,
-            initial: 10.0,
-          );
+          final sumWithInit = a.reduce(op: BinaryOp.add, initial: 10.0);
           expect(sumWithInit.scalar, equals(16.0));
 
-          final prodWithInit = a.reduce(
-            op: BinaryOp.multiply,
-            initial: 2.0,
-          );
+          final prodWithInit = a.reduce(op: BinaryOp.multiply, initial: 2.0);
           expect(prodWithInit.scalar, equals(12.0));
 
           final mat = NDArray<Float64>.fromList(
@@ -304,10 +298,7 @@ void main() {
           final empty1D = NDArray<Float64>.zeros([0], DType.float64);
           expect(() => empty1D.reduce(op: BinaryOp.add), throwsArgumentError);
 
-          final emptyWithInit = empty1D.reduce(
-            op: BinaryOp.add,
-            initial: 99.0,
-          );
+          final emptyWithInit = empty1D.reduce(op: BinaryOp.add, initial: 99.0);
           expect(emptyWithInit.scalar, equals(99.0));
 
           final empty2D = NDArray<Float64>.zeros([0, 5], DType.float64);
@@ -466,7 +457,11 @@ void main() {
               [8],
               DType.float64,
             );
-            final idx64 = NDArray<AnyInt>.fromList([0, 4, 1, 5], [4], DType.int64);
+            final idx64 = NDArray<AnyInt>.fromList(
+              [0, 4, 1, 5],
+              [4],
+              DType.int64,
+            );
             final res64 = f64.reduceat(idx64, op: BinaryOp.add);
             expect(res64.toList(), equals([6.0, 4.0, 10.0, 18.0]));
 
@@ -650,8 +645,16 @@ void main() {
             equals([2, 5, 1, 6]),
           );
 
-          final b1 = NDArray<Boolean>.fromList([true, false], [2], DType.boolean);
-          final b2 = NDArray<Boolean>.fromList([true, false], [2], DType.boolean);
+          final b1 = NDArray<Boolean>.fromList(
+            [true, false],
+            [2],
+            DType.boolean,
+          );
+          final b2 = NDArray<Boolean>.fromList(
+            [true, false],
+            [2],
+            DType.boolean,
+          );
           expect(
             b1.outer(b2, op: BinaryOp.logicalAnd).toList(),
             equals([true, false, false, false]),

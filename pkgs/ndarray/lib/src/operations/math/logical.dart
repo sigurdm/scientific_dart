@@ -47,7 +47,11 @@ NDArray<Boolean> logical_not<T extends AnyDType>(
     try {
       final NDArray<Boolean> result =
           out ??
-          NDArray<Boolean>.create(a.shape, DType.boolean, zeroInit: where != null);
+          NDArray<Boolean>.create(
+            a.shape,
+            DType.boolean,
+            zeroInit: where != null,
+          );
       final ffi.Pointer<ffi.Uint8> aBoolPtr;
       final List<int> aBoolStrides;
       if (a.dtype == DType.boolean) {

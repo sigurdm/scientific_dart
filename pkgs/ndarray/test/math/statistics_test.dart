@@ -8,11 +8,7 @@ void main() {
       test('Flat float64 median (odd size)', () {
         NDArray.scope(() {
           final a = NDArray<Float64>.fromList(
-            ([
-              3.0,
-              1.0,
-              2.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([3.0, 1.0, 2.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -26,12 +22,7 @@ void main() {
       test('Flat float64 median (even size)', () {
         NDArray.scope(() {
           final a = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              3.0,
-              2.0,
-              4.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 3.0, 2.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
             [4],
             DType.float64,
           );
@@ -92,11 +83,7 @@ void main() {
       test('Median with out parameter', () {
         NDArray.scope(() {
           final a = NDArray<Float64>.fromList(
-            ([
-              3.0,
-              1.0,
-              2.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([3.0, 1.0, 2.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -152,9 +139,7 @@ void main() {
         NDArray.scope(() {
           final a = NDArray<Complex128>.fromList(
             ([Complex(3.0, 1.0), Complex(1.0, 9.0), Complex(2.0, 5.0)])
-                .map(
-                  (c) => Complex((c as dynamic).real, (c as dynamic).imag),
-                )
+                .map((c) => Complex((c as dynamic).real, (c as dynamic).imag))
                 .toList(),
             [3],
             DType.complex128,
@@ -353,12 +338,7 @@ void main() {
 
     group('Percentile Methods Tests (NumPy compatibility)', () {
       final a = NDArray<Float64>.fromList(
-        ([
-          10.0,
-          20.0,
-          30.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([10.0, 20.0, 30.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [4],
         DType.float64,
       );
@@ -824,12 +804,7 @@ void main() {
       test('Euclidean metric - Float64', () {
         NDArray.scope(() {
           final xa = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-              4.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
             [2, 2],
             DType.float64,
           );
@@ -997,12 +972,7 @@ void main() {
       test('Recycling out parameter', () {
         NDArray.scope(() {
           final xa = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-              4.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
             [2, 2],
             DType.float64,
           );
@@ -1037,11 +1007,7 @@ void main() {
         DType.float64,
       );
       final fp = NDArray<Float64>.fromList(
-        ([
-          10.0,
-          20.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([10.0, 20.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [3],
         DType.float64,
       );
@@ -1071,11 +1037,7 @@ void main() {
         DType.float64,
       );
       final fp = NDArray<Float64>.fromList(
-        ([
-          10.0,
-          20.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([10.0, 20.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [3],
         DType.float64,
       );
@@ -1103,11 +1065,7 @@ void main() {
         DType.float64,
       );
       final fp = NDArray<Float64>.fromList(
-        ([
-          10.0,
-          20.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([10.0, 20.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [3],
         DType.float64,
       );
@@ -1135,11 +1093,7 @@ void main() {
         DType.float64,
       );
       final fp = NDArray<Float64>.fromList(
-        ([
-          10.0,
-          20.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([10.0, 20.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [3],
         DType.float64,
       );
@@ -1168,21 +1122,12 @@ void main() {
         DType.float64,
       );
       final fp = NDArray<Float64>.fromList(
-        ([
-          10.0,
-          20.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([10.0, 20.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [3],
         DType.float64,
       );
       final x = NDArray<Float64>.fromList(
-        ([
-          1.5,
-          2.5,
-          0.0,
-          4.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([1.5, 2.5, 0.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
         [2, 2],
         DType.float64,
       );
@@ -1272,11 +1217,7 @@ void main() {
         DType.float64,
       );
       final fp = NDArray<Float64>.fromList(
-        ([
-          20.0,
-          10.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([20.0, 10.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [3],
         DType.float64,
       );
@@ -1295,22 +1236,12 @@ void main() {
 
     test('Duplicate xp throws ArgumentError (strictly increasing)', () {
       final xp = NDArray<Float64>.fromList(
-        ([
-          1.0,
-          2.0,
-          2.0,
-          3.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([1.0, 2.0, 2.0, 3.0]).map((e) => (e as num).toDouble()).toList(),
         [4],
         DType.float64,
       );
       final fp = NDArray<Float64>.fromList(
-        ([
-          10.0,
-          20.0,
-          30.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([10.0, 20.0, 30.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [4],
         DType.float64,
       );
@@ -1353,22 +1284,12 @@ void main() {
 
     test('Non-1D xp or fp throws ArgumentError', () {
       final xp = NDArray<Float64>.fromList(
-        ([
-          1.0,
-          2.0,
-          3.0,
-          4.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
         [2, 2],
         DType.float64,
       );
       final fp = NDArray<Float64>.fromList(
-        ([
-          10.0,
-          20.0,
-          30.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([10.0, 20.0, 30.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [4],
         DType.float64,
       );
@@ -1381,22 +1302,12 @@ void main() {
       expect(() => interp(x, xp, fp), throwsArgumentError);
 
       final xp2 = NDArray<Float64>.fromList(
-        ([
-          1.0,
-          2.0,
-          3.0,
-          4.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
         [4],
         DType.float64,
       );
       final fp2 = NDArray<Float64>.fromList(
-        ([
-          10.0,
-          20.0,
-          30.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([10.0, 20.0, 30.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [2, 2],
         DType.float64,
       );
@@ -1470,12 +1381,7 @@ void main() {
       expect(fp.shape, [3]);
 
       final xFull = NDArray<Float64>.fromList(
-        ([
-          1.5,
-          99.0,
-          2.5,
-          99.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([1.5, 99.0, 2.5, 99.0]).map((e) => (e as num).toDouble()).toList(),
         [4],
         DType.float64,
       );
@@ -1502,11 +1408,7 @@ void main() {
         DType.float64,
       );
       final fp = NDArray<Float64>.fromList(
-        ([
-          10.0,
-          20.0,
-          40.0,
-        ]).map((e) => (e as num).toDouble()).toList(),
+        ([10.0, 20.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
         [3],
         DType.float64,
       );
@@ -1594,22 +1496,10 @@ void main() {
     group('Future Value (fv) Tests', () {
       test('Scalar-like 0D arrays', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(
-            0.05 / 12,
-            dtype: DType.float64,
-          );
-          final nper = NDArray<Float64>.scalar(
-            10.0 * 12,
-            dtype: DType.float64,
-          );
-          final pmt = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
-          final pvVal = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
+          final rate = NDArray<Float64>.scalar(0.05 / 12, dtype: DType.float64);
+          final nper = NDArray<Float64>.scalar(10.0 * 12, dtype: DType.float64);
+          final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+          final pvVal = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
 
           final res = fv(rate, nper, pmt, pvVal);
           expect(res.shape, <int>[]);
@@ -1620,22 +1510,10 @@ void main() {
 
       test('Rate = 0 case', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(
-            0.0,
-            dtype: DType.float64,
-          );
-          final nper = NDArray<Float64>.scalar(
-            120.0,
-            dtype: DType.float64,
-          );
-          final pmt = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
-          final pvVal = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
+          final rate = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
+          final nper = NDArray<Float64>.scalar(120.0, dtype: DType.float64);
+          final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+          final pvVal = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
 
           final res = fv(rate, nper, pmt, pvVal);
           // fv = - (pv + pmt * nper) = - (-100 + -100 * 120) = - (-12100) = 12100
@@ -1654,18 +1532,9 @@ void main() {
             [3],
             DType.float64,
           );
-          final nper = NDArray<Float64>.scalar(
-            10.0 * 12,
-            dtype: DType.float64,
-          );
-          final pmt = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
-          final pvVal = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
+          final nper = NDArray<Float64>.scalar(10.0 * 12, dtype: DType.float64);
+          final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+          final pvVal = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
 
           final res = fv(rate, nper, pmt, pvVal);
           expect(res.shape, [3]);
@@ -1677,22 +1546,10 @@ void main() {
 
       test('when = "begin" (1) vs "end" (0)', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(
-            0.05 / 12,
-            dtype: DType.float64,
-          );
-          final nper = NDArray<Float64>.scalar(
-            10.0 * 12,
-            dtype: DType.float64,
-          );
-          final pmt = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
-          final pvVal = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
+          final rate = NDArray<Float64>.scalar(0.05 / 12, dtype: DType.float64);
+          final nper = NDArray<Float64>.scalar(10.0 * 12, dtype: DType.float64);
+          final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+          final pvVal = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
 
           final resEnd = fv(rate, nper, pmt, pvVal, when: PaymentDue.end);
           final resBegin = fv(rate, nper, pmt, pvVal, when: PaymentDue.begin);
@@ -1706,22 +1563,10 @@ void main() {
 
       test('out parameter recycling', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(
-            0.05 / 12,
-            dtype: DType.float64,
-          );
-          final nper = NDArray<Float64>.scalar(
-            10.0 * 12,
-            dtype: DType.float64,
-          );
-          final pmt = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
-          final pvVal = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
+          final rate = NDArray<Float64>.scalar(0.05 / 12, dtype: DType.float64);
+          final nper = NDArray<Float64>.scalar(10.0 * 12, dtype: DType.float64);
+          final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+          final pvVal = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
           final out = NDArray<Float64>.zeros([], DType.float64);
 
           final res = fv(rate, nper, pmt, pvVal, out: out);
@@ -1734,18 +1579,9 @@ void main() {
     group('Present Value (pv) Tests', () {
       test('Scalar-like 0D arrays', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(
-            0.05 / 12,
-            dtype: DType.float64,
-          );
-          final nper = NDArray<Float64>.scalar(
-            10.0 * 12,
-            dtype: DType.float64,
-          );
-          final pmt = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
+          final rate = NDArray<Float64>.scalar(0.05 / 12, dtype: DType.float64);
+          final nper = NDArray<Float64>.scalar(10.0 * 12, dtype: DType.float64);
+          final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
           final fvVal = NDArray<Float64>.scalar(
             15692.92889433575,
             dtype: DType.float64,
@@ -1759,22 +1595,10 @@ void main() {
 
       test('Rate = 0 case', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(
-            0.0,
-            dtype: DType.float64,
-          );
-          final nper = NDArray<Float64>.scalar(
-            120.0,
-            dtype: DType.float64,
-          );
-          final pmt = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
-          final fvVal = NDArray<Float64>.scalar(
-            12100.0,
-            dtype: DType.float64,
-          );
+          final rate = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
+          final nper = NDArray<Float64>.scalar(120.0, dtype: DType.float64);
+          final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+          final fvVal = NDArray<Float64>.scalar(12100.0, dtype: DType.float64);
 
           final res = pv(rate, nper, pmt, fvVal);
           // pv = - (fv + pmt * nper) = - (12100 + -100 * 120) = - (12100 - 12000) = -100
@@ -1793,18 +1617,9 @@ void main() {
             [3],
             DType.float64,
           );
-          final nper = NDArray<Float64>.scalar(
-            10.0 * 12,
-            dtype: DType.float64,
-          );
-          final pmt = NDArray<Float64>.scalar(
-            -100.0,
-            dtype: DType.float64,
-          );
-          final fvVal = NDArray<Float64>.scalar(
-            15692.93,
-            dtype: DType.float64,
-          );
+          final nper = NDArray<Float64>.scalar(10.0 * 12, dtype: DType.float64);
+          final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+          final fvVal = NDArray<Float64>.scalar(15692.93, dtype: DType.float64);
 
           final res = pv(rate, nper, pmt, fvVal);
           expect(res.shape, [3]);
@@ -1818,10 +1633,7 @@ void main() {
     group('Net Present Value (npv) Tests', () {
       test('1D cash flows, scalar rate', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(
-            0.08,
-            dtype: DType.float64,
-          );
+          final rate = NDArray<Float64>.scalar(0.08, dtype: DType.float64);
           final cashflows = NDArray<Float64>.fromList(
             ([
               -40000.0,
@@ -1843,11 +1655,7 @@ void main() {
       test('Broadcasting multiple rates and multiple cash flows', () {
         NDArray.scope(() {
           final rates = NDArray<Float64>.fromList(
-            ([
-              0.00,
-              0.05,
-              0.10,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([0.00, 0.05, 0.10]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -1917,11 +1725,7 @@ void main() {
       test('Same sign cash flows returns NaN', () {
         NDArray.scope(() {
           final cashflows = NDArray<Float64>.fromList(
-            ([
-              -100.0,
-              -50.0,
-              -20.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([-100.0, -50.0, -20.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -1933,11 +1737,7 @@ void main() {
       test('Same sign cash flows throws exception when requested', () {
         NDArray.scope(() {
           final cashflows = NDArray<Float64>.fromList(
-            ([
-              -100.0,
-              -50.0,
-              -20.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([-100.0, -50.0, -20.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -2268,20 +2068,12 @@ void main() {
 
       test('double with NaNs', () {
         final a = NDArray<Float64>.fromList(
-          ([
-            double.nan,
-            1.0,
-            2.0,
-          ]).map((e) => (e as num).toDouble()).toList(),
+          ([double.nan, 1.0, 2.0]).map((e) => (e as num).toDouble()).toList(),
           [3],
           DType.float64,
         );
         final b = NDArray<Float64>.fromList(
-          ([
-            2.0,
-            double.nan,
-            3.0,
-          ]).map((e) => (e as num).toDouble()).toList(),
+          ([2.0, double.nan, 3.0]).map((e) => (e as num).toDouble()).toList(),
           [3],
           DType.float64,
         );
@@ -2929,14 +2721,7 @@ void main() {
 
       test('non-contiguous element array', () {
         final aFull = NDArray<Int32>.fromList(
-          ([
-            1,
-            99,
-            2,
-            99,
-            3,
-            99,
-          ]).map((e) => (e as num).toInt()).toList(),
+          ([1, 99, 2, 99, 3, 99]).map((e) => (e as num).toInt()).toList(),
           [6],
           DType.int32,
         );
@@ -2963,14 +2748,7 @@ void main() {
           DType.int32,
         );
         final bFull = NDArray<Int32>.fromList(
-          ([
-            2,
-            99,
-            3,
-            99,
-            4,
-            99,
-          ]).map((e) => (e as num).toInt()).toList(),
+          ([2, 99, 3, 99, 4, 99]).map((e) => (e as num).toInt()).toList(),
           [6],
           DType.int32,
         );
@@ -3003,7 +2781,7 @@ void main() {
 
           // Mutating view must affect original
           view.setCell([0, 1], 99);
-          expect(a.getCell([1]).value, 99);
+          expect(a.getCell([1]), 99);
         });
       });
 
@@ -3229,13 +3007,10 @@ void main() {
       () => NDArray.scope(() {
         final empty = NDArray.zeros([0], DType.float64);
         expect(nansum(empty).scalar, 0.0);
-        expect(nanmean<double>(empty).scalar.isNaN, true);
+        expect(nanmean<AnyFloat>(empty).scalar.isNaN, true);
 
         final a = NDArray<Float64>.fromList(
-          ([
-            1.0,
-            double.nan,
-          ]).map((e) => (e as num).toDouble()).toList(),
+          ([1.0, double.nan]).map((e) => (e as num).toDouble()).toList(),
           [2],
           DType.float64,
         );
@@ -3363,11 +3138,7 @@ void main() {
       'percentile() quantile() contiguous float32 coverage',
       () => NDArray.scope(() {
         final a = NDArray<Float32>.fromList(
-          ([
-            10.0,
-            20.0,
-            30.0,
-          ]).map((e) => (e as num).toDouble()).toList(),
+          ([10.0, 20.0, 30.0]).map((e) => (e as num).toDouble()).toList(),
           [3],
           DType.float32,
         );
@@ -3386,12 +3157,7 @@ void main() {
       'percentile() quantile() non-contiguous transposed views',
       () => NDArray.scope(() {
         final parent = NDArray<Float64>.fromList(
-          ([
-            10.0,
-            20.0,
-            30.0,
-            40.0,
-          ]).map((e) => (e as num).toDouble()).toList(),
+          ([10.0, 20.0, 30.0, 40.0]).map((e) => (e as num).toDouble()).toList(),
           [2, 2],
           DType.float64,
         );
@@ -3409,11 +3175,7 @@ void main() {
       'percentile() quantile() with out parameter recycler',
       () => NDArray.scope(() {
         final a = NDArray<Float64>.fromList(
-          ([
-            10.0,
-            20.0,
-            30.0,
-          ]).map((e) => (e as num).toDouble()).toList(),
+          ([10.0, 20.0, 30.0]).map((e) => (e as num).toDouble()).toList(),
           [3],
           DType.float64,
         );
@@ -3442,12 +3204,7 @@ void main() {
         'mean out parameter reuse',
         () => NDArray.scope(() {
           final a = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-              4.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
             [2, 2],
             DType.float64,
           );
@@ -3468,12 +3225,7 @@ void main() {
         'variance out parameter reuse',
         () => NDArray.scope(() {
           final a = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-              4.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
             [2, 2],
             DType.float64,
           );
@@ -3494,12 +3246,7 @@ void main() {
         'std out parameter reuse',
         () => NDArray.scope(() {
           final a = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-              4.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
             [2, 2],
             DType.float64,
           );
@@ -3583,12 +3330,7 @@ void main() {
         'non-contiguous out array support',
         () => NDArray.scope(() {
           final a = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-              4.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
             [2, 2],
             DType.float64,
           );
@@ -3627,12 +3369,7 @@ void main() {
             DType.int32,
           );
           final aDouble = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-              4.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
             [2, 2],
             DType.float64,
           );
@@ -3672,12 +3409,7 @@ void main() {
         'out parameter reuse',
         () => NDArray.scope(() {
           final a = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-              4.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
             [2, 2],
             DType.float64,
           );
@@ -3729,19 +3461,19 @@ void main() {
 
           final outDType = NDArray<AnyInt>.zeros([2], DType.int32);
           expect(
-            () => cumsum<double, int>(a, out: outDType),
+            () => cumsum<AnyFloat, AnyInt>(a, out: outDType),
             throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
           );
           expect(
-            () => cumprod<double, int>(a, out: outDType),
+            () => cumprod<AnyFloat, AnyInt>(a, out: outDType),
             throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
           );
           expect(
-            () => cummin<double>(a, out: outDType as dynamic),
+            () => cummin<AnyFloat>(a, out: outDType as dynamic),
             throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
           );
           expect(
-            () => cummax<double>(a, out: outDType as dynamic),
+            () => cummax<AnyFloat>(a, out: outDType as dynamic),
             throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
           );
         }),
@@ -3802,11 +3534,7 @@ void main() {
           'median multiple dtypes',
           () => NDArray.scope(() {
             final f32 = NDArray<Float32>.fromList(
-              ([
-                3.0,
-                1.0,
-                2.0,
-              ]).map((e) => (e as num).toDouble()).toList(),
+              ([3.0, 1.0, 2.0]).map((e) => (e as num).toDouble()).toList(),
               [3],
               DType.float32,
             );
@@ -3827,18 +3555,14 @@ void main() {
             );
             final c128 = NDArray<Complex128>.fromList(
               ([Complex(3, 3), Complex(1, 1), Complex(2, 2)])
-                  .map(
-                    (c) => Complex((c as dynamic).real, (c as dynamic).imag),
-                  )
+                  .map((c) => Complex((c as dynamic).real, (c as dynamic).imag))
                   .toList(),
               [3],
               DType.complex128,
             );
             final c64 = NDArray<Complex64>.fromList(
               ([Complex(3, 3), Complex(1, 1), Complex(2, 2)])
-                  .map(
-                    (c) => Complex((c as dynamic).real, (c as dynamic).imag),
-                  )
+                  .map((c) => Complex((c as dynamic).real, (c as dynamic).imag))
                   .toList(),
               [3],
               DType.complex64,
@@ -3857,11 +3581,7 @@ void main() {
           'quantile and percentile multiple dtypes',
           () => NDArray.scope(() {
             final f32 = NDArray<Float32>.fromList(
-              ([
-                10.0,
-                20.0,
-                30.0,
-              ]).map((e) => (e as num).toDouble()).toList(),
+              ([10.0, 20.0, 30.0]).map((e) => (e as num).toDouble()).toList(),
               [3],
               DType.float32,
             );
@@ -4454,11 +4174,7 @@ void main() {
         );
 
         final out = NDArray<Float64>.fromList(
-          ([
-            99.9,
-            99.9,
-            99.9,
-          ]).map((e) => (e as num).toDouble()).toList(),
+          ([99.9, 99.9, 99.9]).map((e) => (e as num).toDouble()).toList(),
           [3],
           DType.float64,
         );
@@ -4659,11 +4375,7 @@ void main() {
       test('1D array cov (y=null)', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            ([
-              -2.1,
-              -1.0,
-              4.3,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([-2.1, -1.0, 4.3]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -4723,20 +4435,12 @@ void main() {
       test('cov with y', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            ([
-              -2.1,
-              -1.0,
-              4.3,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([-2.1, -1.0, 4.3]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
           final y = NDArray<Float64>.fromList(
-            ([
-              3.0,
-              1.1,
-              0.12,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([3.0, 1.1, 0.12]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -4752,11 +4456,7 @@ void main() {
       test('cov with fweights', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -4773,20 +4473,12 @@ void main() {
       test('cov with aweights', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
           final aweights = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              1.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 1.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -4798,11 +4490,7 @@ void main() {
       test('cov ddof variation', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -4844,11 +4532,7 @@ void main() {
       test('cov with y different dtype (int32)', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            ([
-              -2.1,
-              -1.0,
-              4.3,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([-2.1, -1.0, 4.3]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -4868,11 +4552,7 @@ void main() {
       test('cov invalid weights', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -4899,12 +4579,7 @@ void main() {
           expect(() => cov(x, fweights: fNeg), throwsArgumentError);
 
           final aBadRank = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-              4.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0, 4.0]).map((e) => (e as num).toDouble()).toList(),
             [2, 2],
             DType.float64,
           );
@@ -4918,11 +4593,7 @@ void main() {
           expect(() => cov(x, aweights: aBadSize), throwsArgumentError);
 
           final aNeg = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              -2.0,
-              1.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, -2.0, 1.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -4946,11 +4617,7 @@ void main() {
       test('cov 1D input, rowvar=false', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );
@@ -4965,11 +4632,7 @@ void main() {
       test('1D array corrcoef', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            ([
-              1.0,
-              2.0,
-              3.0,
-            ]).map((e) => (e as num).toDouble()).toList(),
+            ([1.0, 2.0, 3.0]).map((e) => (e as num).toDouble()).toList(),
             [3],
             DType.float64,
           );

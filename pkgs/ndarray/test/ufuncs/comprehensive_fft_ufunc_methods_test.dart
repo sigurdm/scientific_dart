@@ -971,11 +971,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final resAxis = mat.reduce(
-            op: BinaryOp.add,
-            axis: 0,
-            initial: 10.0,
-          );
+          final resAxis = mat.reduce(op: BinaryOp.add, axis: 0, initial: 10.0);
           expect(resAxis.toList(), [14.0, 16.0]);
         });
       },
@@ -1119,7 +1115,11 @@ void main() {
             [6],
             DType.float64,
           );
-          final indices = NDArray<AnyInt>.fromList([0, 3, 1, 4], [4], DType.int64);
+          final indices = NDArray<AnyInt>.fromList(
+            [0, 3, 1, 4],
+            [4],
+            DType.int64,
+          );
           final res = a.reduceat(indices, op: BinaryOp.add);
           expect(res.shape, [4]);
           expect(res.toList(), [30.0, 30.0, 60.0, 90.0]);
@@ -1304,7 +1304,11 @@ void main() {
             [3],
             DType.float64,
           );
-          final idx = NDArray<AnyInt>.fromList([0, 1, 0, 2, 0], [5], DType.int64);
+          final idx = NDArray<AnyInt>.fromList(
+            [0, 1, 0, 2, 0],
+            [5],
+            DType.int64,
+          );
           final valsF64 = NDArray.fromList(
             [1.0, 10.0, 2.0, 100.0, 3.0],
             [5],

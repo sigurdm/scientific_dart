@@ -9,7 +9,7 @@ void main() async {
     (c) {
       c.group('1. Real-Valued 1D Transforms (rfft & irfft)', () {
         for (final length in [1024, 4096, 16384, 65536]) {
-          final realSignal = linspace<double>(
+          final realSignal = linspace<AnyFloat>(
             0.0,
             100.0,
             length,

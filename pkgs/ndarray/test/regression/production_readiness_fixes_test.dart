@@ -263,7 +263,11 @@ void main() {
           callerOut = NDArray<Float64>.zeros([2, 1], DType.float64);
 
           NDArray.scope(() {
-            final indices = NDArray<AnyInt>.fromList([1, 0], [2, 1], DType.int32);
+            final indices = NDArray<AnyInt>.fromList(
+              [1, 0],
+              [2, 1],
+              DType.int32,
+            );
             take_along_axis(a, indices, 1, out: callerOut);
           });
 

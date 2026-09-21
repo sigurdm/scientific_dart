@@ -141,12 +141,7 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(2 * dim * dim));
 
-        final rowVec = linspace<Float64>(
-          0.0,
-          10.0,
-          dim,
-          dtype: DType.float64,
-        );
+        final rowVec = linspace<Float64>(0.0, 10.0, dim, dtype: DType.float64);
         c.bench('broadcastTo(vec, [500, 500]) [zero-copy view]', () {
           final view = broadcastTo<Float64>(rowVec, [dim, dim]);
           blackhole(view.shape);

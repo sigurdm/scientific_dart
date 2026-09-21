@@ -55,7 +55,7 @@ void main() {
         return val;
       });
 
-      final dtObj = dt as DType<num>;
+      final dtObj = dt as DType<AnyReal>;
       if (strided) {
         final flatArr = NDArray<AnyReal>.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
@@ -81,7 +81,7 @@ void main() {
         return val;
       });
 
-      final dtObj = dt as DType<Object>;
+      final dtObj = dt;
       if (strided) {
         final flatArr = NDArray<AnyDType>.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];

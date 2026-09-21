@@ -680,7 +680,7 @@ void main() {
               );
               final medCpx = median(aCpx128);
               expect(medCpx.dtype, DType.complex128);
-              expect((medCpx.scalar as Complex).real, closeTo(3.0, 1e-9));
+              expect((medCpx.scalar).real, closeTo(3.0, 1e-9));
 
               final aCpx64 = NDArray.fromList(
                 [Complex(1.0, 2.0), Complex(5.0, 10.0), Complex(3.0, 6.0)],
@@ -826,8 +826,8 @@ void main() {
                 expect((meanRes.scalar as Complex).imag, closeTo(3.0, 1e-9));
 
                 final sumRes = nansum(cpx);
-                expect((sumRes.scalar as Complex).real, closeTo(4.0, 1e-9));
-                expect((sumRes.scalar as Complex).imag, closeTo(6.0, 1e-9));
+                expect((sumRes.scalar).real, closeTo(4.0, 1e-9));
+                expect((sumRes.scalar).imag, closeTo(6.0, 1e-9));
 
                 // Complex not supported for nanmin/nanmax
                 expect(() => nanmin(cpx), throwsUnsupportedError);

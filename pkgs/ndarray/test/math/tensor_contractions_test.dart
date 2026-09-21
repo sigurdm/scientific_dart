@@ -434,7 +434,7 @@ void main() {
           2,
           2,
         ], DType.float64);
-        final res = tensordot<double, double, double>(
+        final res = tensordot<AnyFloat, AnyFloat, AnyFloat>(
           a,
           b,
           axes: const TensordotAxes.count(1),
@@ -1474,7 +1474,7 @@ void main() {
         final untypedB =
             NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64)
                 as NDArray<AnyDType>;
-        final castRes = einsum<Object, Float64>(
+        final castRes = einsum<AnyDType, Float64>(
           EinsumSubscripts.parse("ij,jk->ik"),
           [untypedA, untypedB],
         );
