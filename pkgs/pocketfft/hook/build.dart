@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:archive/archive.dart';
-import 'package:crypto/crypto.dart';
 import 'package:code_assets/code_assets.dart';
+import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
+import 'package:pocketfft/src/hook_helpers/build_options.dart';
+import 'package:pocketfft/src/hook_helpers/hashes.dart';
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
@@ -11,7 +14,174 @@ void main(List<String> args) async {
       return;
     }
 
-    final packageSrcUri = input.packageRoot.resolve('hook/src/');
+    final BuildOptions buildOptions;
+    try {
+      buildOptions = BuildOptions.fromDefines(input.userDefines);
+    } catch (e) {
+      throw ArgumentError(BuildOptions.usageError(e));
+    }
+    print('pocketfft build options: $buildOptions');
+
+    final buildMode = switch (buildOptions.buildMode) {
+      BuildModeEnum.fetch => FetchMode(input),
+      BuildModeEnum.local => LocalMode(input, buildOptions.localPath),
+      BuildModeEnum.source => SourceMode(input, buildOptions.checkoutPath),
+    };
+
+    final builtLibrary = await buildMode.build();
+
+    output.assets.code.add(
+      CodeAsset(
+        package: input.packageName,
+        name: 'pocketfft',
+        linkMode: DynamicLoadingBundled(),
+        file: builtLibrary,
+      ),
+    );
+    output.dependencies.addAll(buildMode.dependencies);
+    output.dependencies.add(input.packageRoot.resolve('pubspec.yaml'));
+  });
+}
+
+String _canonicalLibName(OS os) => os == OS.windows
+    ? 'libpocketfft.dll'
+    : ((os == OS.macOS || os == OS.iOS)
+          ? 'libpocketfft.dylib'
+          : 'libpocketfft.so');
+
+sealed class BuildMode {
+  final BuildInput input;
+
+  const BuildMode(this.input);
+
+  List<Uri> get dependencies;
+
+  Future<Uri> build();
+}
+
+final class FetchMode extends BuildMode {
+  FetchMode(super.input);
+
+  @override
+  Future<Uri> build() async {
+    final os = input.config.code.targetOS;
+    final arch = input.config.code.targetArchitecture;
+    final artifactName = pocketfftArtifactName(os, arch);
+    final expectedHash = fileHashes[(os, arch)];
+
+    if (expectedHash == null || expectedHash.startsWith('00000000')) {
+      throw StateError(
+        'No prebuilt pocketfft binary hash is pinned for ($os, $arch) in release $version.\n'
+        '${BuildOptions.usageError('Switch to `buildMode: source` or `buildMode: local`.')}',
+      );
+    }
+
+    final libName = _canonicalLibName(os);
+    final cachedLibrary = File.fromUri(
+      input.outputDirectoryShared
+          .resolve('pocketfft-$version/${os.name}-${arch.name}/')
+          .resolve(libName),
+    );
+
+    if (await cachedLibrary.exists()) {
+      final cachedHash = sha256
+          .convert(await cachedLibrary.readAsBytes())
+          .toString();
+      if (cachedHash == expectedHash) {
+        print('Using cached pocketfft binary from ${cachedLibrary.path}.');
+        return cachedLibrary.uri;
+      }
+    }
+
+    final remoteUri = Uri.parse(
+      'https://github.com/$repository/releases/download/$version/$artifactName',
+    );
+    print('Fetching prebuilt pocketfft binary from $remoteUri...');
+    final bytes = await _downloadBytesWithRedirects(remoteUri);
+    final actualHash = sha256.convert(bytes).toString();
+    if (actualHash != expectedHash) {
+      throw StateError(
+        'SHA-256 mismatch for prebuilt pocketfft binary at $remoteUri:\n'
+        'Expected: $expectedHash\n'
+        'Actual:   $actualHash',
+      );
+    }
+
+    await cachedLibrary.parent.create(recursive: true);
+    await cachedLibrary.writeAsBytes(bytes, flush: true);
+    return cachedLibrary.uri;
+  }
+
+  @override
+  List<Uri> get dependencies => const [];
+}
+
+final class LocalMode extends BuildMode {
+  final Uri? localPath;
+
+  LocalMode(super.input, this.localPath);
+
+  File _resolveLocalFile() {
+    if (localPath == null) {
+      throw ArgumentError(
+        '`localPath` is not set in `hooks.user_defines.pocketfft` '
+        '(or `LOCAL_POCKETFFT_BINARY` environment variable).',
+      );
+    }
+    final os = input.config.code.targetOS;
+    final entityPath = localPath!.toFilePath(windows: Platform.isWindows);
+    if (FileSystemEntity.isDirectorySync(entityPath)) {
+      final candidate = File.fromUri(
+        Directory(entityPath).uri.resolve(_canonicalLibName(os)),
+      );
+      if (candidate.existsSync()) return candidate;
+      final artifactCandidate = File.fromUri(
+        Directory(entityPath).uri.resolve(
+          pocketfftArtifactName(os, input.config.code.targetArchitecture),
+        ),
+      );
+      if (artifactCandidate.existsSync()) return artifactCandidate;
+      throw FileSystemException(
+        'Could not find ${_canonicalLibName(os)} in localPath directory.',
+        entityPath,
+      );
+    }
+    final file = File(entityPath);
+    if (!file.existsSync()) {
+      throw FileSystemException(
+        'Could not find local pocketfft binary.',
+        entityPath,
+      );
+    }
+    return file;
+  }
+
+  @override
+  Future<Uri> build() async {
+    final sourceFile = _resolveLocalFile();
+    final targetUri = input.outputDirectory.resolve(
+      _canonicalLibName(input.config.code.targetOS),
+    );
+    final targetFile = File.fromUri(targetUri);
+    await targetFile.parent.create(recursive: true);
+    await sourceFile.copy(targetFile.path);
+    return targetFile.uri;
+  }
+
+  @override
+  List<Uri> get dependencies => [_resolveLocalFile().uri];
+}
+
+final class SourceMode extends BuildMode {
+  final Uri? checkoutPath;
+  final List<Uri> _recordedDependencies = [];
+
+  SourceMode(super.input, this.checkoutPath);
+
+  @override
+  Future<Uri> build() async {
+    final rootUri = checkoutPath ?? input.packageRoot;
+    final packageSrcUri = rootUri.resolve('hook/src/');
     final usePackageSrc = File.fromUri(
       packageSrcUri.resolve('kiss_fft_log.h'),
     ).existsSync();
@@ -19,100 +189,71 @@ void main(List<String> args) async {
         ? Directory.fromUri(packageSrcUri)
         : Directory.fromUri(input.outputDirectory.resolve('kissfft_src/'));
 
-    // 1. Download and extract KissFFT if not present
     final logHeader = File.fromUri(srcDir.uri.resolve('kiss_fft_log.h'));
     if (!logHeader.existsSync()) {
       if (!srcDir.existsSync()) {
         srcDir.createSync(recursive: true);
       }
       print('Downloading KissFFT source files archive from GitHub...');
-      final client = HttpClient();
-      try {
-        final request = await client.getUrl(
-          Uri.parse(
-            'https://github.com/mborgerding/kissfft/archive/6e9e673e420c4bf47d4a60c57c578f93e4ec192f.tar.gz',
-          ),
+      final tarGzBytes = await _downloadBytesWithRedirects(
+        Uri.parse(
+          'https://github.com/mborgerding/kissfft/archive/6e9e673e420c4bf47d4a60c57c578f93e4ec192f.tar.gz',
+        ),
+      );
+
+      final actualHash = sha256.convert(tarGzBytes).toString();
+      const expectedHash =
+          '3da5fb17fa446f5368a7e9c71e2ae6a1a29a9940f7afc499a3e70224a17c95e5';
+      if (actualHash != expectedHash) {
+        throw StateError(
+          'SHA-256 mismatch for KissFFT archive: expected $expectedHash, got $actualHash',
         );
-        final response = await request.close();
-        if (response.statusCode != 200) {
-          throw HttpException(
-            'Failed to download KissFFT archive: status ${response.statusCode}',
-          );
-        }
+      }
 
-        final bytesBuilder = BytesBuilder();
-        await for (final chunk in response) {
-          bytesBuilder.add(chunk);
-        }
-        final tarGzBytes = bytesBuilder.toBytes();
+      final unzippedBytes = GZipDecoder().decodeBytes(tarGzBytes);
+      final archive = TarDecoder().decodeBytes(unzippedBytes);
 
-        final actualHash = sha256.convert(tarGzBytes).toString();
-        const expectedHash =
-            '3da5fb17fa446f5368a7e9c71e2ae6a1a29a9940f7afc499a3e70224a17c95e5';
-        if (actualHash != expectedHash) {
-          throw StateError(
-            'SHA-256 mismatch for KissFFT archive: expected $expectedHash, got $actualHash',
-          );
-        }
+      final safeSrcPrefix = srcDir.path.endsWith(Platform.pathSeparator)
+          ? srcDir.path
+          : '${srcDir.path}${Platform.pathSeparator}';
 
-        final unzippedBytes = GZipDecoder().decodeBytes(tarGzBytes);
-        final archive = TarDecoder().decodeBytes(unzippedBytes);
-
-        final safeSrcPrefix = srcDir.path.endsWith(Platform.pathSeparator)
-            ? srcDir.path
-            : '${srcDir.path}${Platform.pathSeparator}';
-
-        for (final file in archive) {
-          if (file.isFile) {
-            final cleanName = file.name.replaceAll('\\', '/');
-            final baseName = cleanName.split('/').last;
-            if (baseName.contains('..') ||
-                baseName.contains('/') ||
-                baseName.contains('\\')) {
+      for (final file in archive) {
+        if (file.isFile) {
+          final cleanName = file.name.replaceAll('\\', '/');
+          final baseName = cleanName.split('/').last;
+          if (baseName.contains('..') ||
+              baseName.contains('/') ||
+              baseName.contains('\\')) {
+            throw FormatException(
+              'Invalid filename in KissFFT archive: ${file.name}',
+            );
+          }
+          if (baseName.endsWith('.c') || baseName.endsWith('.h')) {
+            final outFile = File.fromUri(srcDir.uri.resolve(baseName));
+            if (!outFile.path.startsWith(safeSrcPrefix)) {
               throw FormatException(
-                'Invalid filename in KissFFT archive: ${file.name}',
+                'Path traversal attempt in KissFFT archive: ${file.name}',
               );
             }
-            if (baseName.endsWith('.c') || baseName.endsWith('.h')) {
-              final outFile = File.fromUri(srcDir.uri.resolve(baseName));
-              if (!outFile.path.startsWith(safeSrcPrefix)) {
-                throw FormatException(
-                  'Path traversal attempt in KissFFT archive: ${file.name}',
-                );
-              }
-              outFile.writeAsBytesSync(file.content as List<int>, flush: true);
-              print('Extracted: $baseName');
-            }
+            outFile.writeAsBytesSync(file.content as List<int>, flush: true);
           }
         }
-      } finally {
-        client.close();
       }
     }
 
-    // 2. Get cross-compiler or host compiler from modern input config
-    final packageName = input.packageName;
     final os = input.config.code.targetOS;
     final arch = input.config.code.targetArchitecture;
     final cCompiler = input.config.code.cCompiler;
 
-    final libName = os == OS.windows
-        ? 'libpocketfft.dll'
-        : ((os == OS.macOS || os == OS.iOS)
-              ? 'libpocketfft.dylib'
-              : 'libpocketfft.so');
-
+    final libName = _canonicalLibName(os);
     final outputDir = Directory.fromUri(input.outputDirectory);
     if (!outputDir.existsSync()) {
       outputDir.createSync(recursive: true);
     }
     final libFile = File.fromUri(outputDir.uri.resolve(libName));
 
-    // 3. Compile plain-C source code using Process.run for extreme reliability
     final compilerPath =
         cCompiler?.compiler.toFilePath() ?? (os == OS.windows ? 'cl' : 'cc');
-    print('Compiling pocketfft plain C files via compiler: $compilerPath');
-
     final compilerLower = compilerPath.toLowerCase();
     final isGNU =
         compilerLower.contains('gcc') ||
@@ -144,6 +285,7 @@ void main(List<String> args) async {
             if (os == OS.macOS || os == OS.iOS) ...[
               '-arch',
               arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+              '-Wl,-install_name,@rpath/$libName',
             ],
             '-shared',
             '-fPIC',
@@ -160,19 +302,6 @@ void main(List<String> args) async {
             libFile.path,
             if (os != OS.windows) '-lm',
           ];
-
-    print(
-      'Environment Keys: ${Platform.environment.keys.where((k) => k.toUpperCase().contains("INC") || k.toUpperCase().contains("LIB") || k.toUpperCase() == "PATH").toList()}',
-    );
-    print(
-      'Environment PATH: ${Platform.environment['PATH'] ?? Platform.environment['Path'] ?? Platform.environment['path']}',
-    );
-    print(
-      'Environment INCLUDE: ${Platform.environment['INCLUDE'] ?? Platform.environment['Include'] ?? Platform.environment['include']}',
-    );
-    print(
-      'Environment LIB: ${Platform.environment['LIB'] ?? Platform.environment['Lib'] ?? Platform.environment['lib']}',
-    );
 
     final runEnv = <String, String>{...Platform.environment};
     if (isMSVC) {
@@ -197,41 +326,65 @@ void main(List<String> args) async {
         'stderr: ${res.stderr}',
       );
     }
-    print('Compiled shared library binary successfully at: ${libFile.path}');
 
-    // 4. Register the dynamic CodeAsset in the hooks pipeline
-    if (libFile.existsSync()) {
-      output.assets.code.add(
-        CodeAsset(
-          package: packageName,
-          name: 'pocketfft',
-          linkMode: DynamicLoadingBundled(),
-          file: libFile.uri,
-        ),
-      );
-      if (usePackageSrc) {
-        output.dependencies.add(srcDir.uri.resolve('kiss_fft.c'));
-        output.dependencies.add(srcDir.uri.resolve('kiss_fftr.c'));
-        output.dependencies.add(srcDir.uri.resolve('kiss_fftnd.c'));
-        output.dependencies.add(srcDir.uri.resolve('kiss_fft.h'));
-        output.dependencies.add(srcDir.uri.resolve('kiss_fft_log.h'));
-        output.dependencies.add(srcDir.uri.resolve('kiss_fftnd.h'));
-        output.dependencies.add(srcDir.uri.resolve('kiss_fftr.h'));
-        output.dependencies.add(srcDir.uri.resolve('_kiss_fft_guts.h'));
+    if (usePackageSrc) {
+      for (final srcFile in const [
+        'kiss_fft.c',
+        'kiss_fftr.c',
+        'kiss_fftnd.c',
+        'kiss_fft.h',
+        'kiss_fft_log.h',
+        'kiss_fftnd.h',
+        'kiss_fftr.h',
+        '_kiss_fft_guts.h',
+      ]) {
+        _recordedDependencies.add(srcDir.uri.resolve(srcFile));
       }
-      print('Registered pocketfft native dynamic code asset successfully.');
     }
-  });
+
+    return libFile.uri;
+  }
+
+  @override
+  List<Uri> get dependencies => _recordedDependencies;
 }
 
-/// Helper function to query Visual Studio to obtain the proper environment variables
-/// (like INCLUDE, LIB, and LIBPATH) for MSVC compilation on Windows.
+Future<Uint8List> _downloadBytesWithRedirects(Uri url) async {
+  final client = HttpClient();
+  try {
+    var currentUrl = url;
+    for (var redirectCount = 0; redirectCount < 5; redirectCount++) {
+      final request = await client.getUrl(currentUrl);
+      final response = await request.close();
+      if (response.statusCode >= 300 &&
+          response.statusCode < 400 &&
+          response.headers.value(HttpHeaders.locationHeader) != null) {
+        currentUrl = currentUrl.resolve(
+          response.headers.value(HttpHeaders.locationHeader)!,
+        );
+        continue;
+      }
+      if (response.statusCode != 200) {
+        throw HttpException(
+          'Failed to download $currentUrl (HTTP ${response.statusCode})',
+        );
+      }
+      final builder = BytesBuilder(copy: false);
+      await for (final chunk in response) {
+        builder.add(chunk);
+      }
+      return builder.takeBytes();
+    }
+    throw HttpException('Too many redirects while downloading $url');
+  } finally {
+    client.close();
+  }
+}
+
 Future<Map<String, String>> getMSVCEnvironment(Architecture targetArch) async {
   if (!Platform.isWindows) return {};
 
-  // Find vswhere.exe
-  String vswherePath = 'vswhere.exe'; // Try PATH first
-  // Fallback to default installer directory if not in PATH
+  String vswherePath = 'vswhere.exe';
   final programFilesX86 =
       Platform.environment['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)';
   final defaultVswhere =
@@ -241,66 +394,39 @@ Future<Map<String, String>> getMSVCEnvironment(Architecture targetArch) async {
   }
 
   try {
-    // Run vswhere to find Visual Studio installation path
     final vswhereRes = await Process.run(vswherePath, [
       '-latest',
       '-property',
       'installationPath',
     ]);
-    if (vswhereRes.exitCode != 0) {
-      print('vswhere failed with exit code ${vswhereRes.exitCode}');
-      return {};
-    }
+    if (vswhereRes.exitCode != 0) return {};
 
     final vsPath = vswhereRes.stdout.toString().trim();
-    if (vsPath.isEmpty) {
-      print('vswhere returned empty path');
-      return {};
-    }
+    if (vsPath.isEmpty) return {};
 
     final vcvarsPath = '$vsPath\\VC\\Auxiliary\\Build\\vcvarsall.bat';
-    if (!await File(vcvarsPath).exists()) {
-      print('vcvarsall.bat not found at $vcvarsPath');
-      return {};
-    }
+    if (!await File(vcvarsPath).exists()) return {};
 
     final vcvarsArch = targetArch == Architecture.arm64
         ? 'arm64'
         : (targetArch == Architecture.ia32 ? 'x86' : 'amd64');
 
-    // To avoid Dart process argument escaping issues on Windows, we write a temporary
-    // batch file that calls vcvarsall.bat and prints the environment, then run it.
     final tempDir = Directory.systemTemp;
     final tempFile = File(
       '${tempDir.path}\\get_msvc_env_${DateTime.now().millisecondsSinceEpoch}.bat',
     );
-    try {
-      await tempFile.writeAsString(
-        '@echo off\ncall "$vcvarsPath" $vcvarsArch\nset\n',
-      );
-    } catch (e) {
-      print('Failed to write temporary batch file: $e');
-      return {};
-    }
-
+    await tempFile.writeAsString(
+      '@echo off\ncall "$vcvarsPath" $vcvarsArch\nset\n',
+    );
     final envRes = await Process.run('cmd.exe', ['/c', tempFile.path]);
-
     try {
       await tempFile.delete();
     } catch (_) {}
 
-    if (envRes.exitCode != 0) {
-      print(
-        'Temporary MSVC environment batch file failed with exit code ${envRes.exitCode}',
-      );
-      print('vcvarsall.bat stdout: ${envRes.stdout}');
-      print('vcvarsall.bat stderr: ${envRes.stderr}');
-      return {};
-    }
+    if (envRes.exitCode != 0) return {};
 
     final envMap = <String, String>{};
-    final lines = envRes.stdout.toString().split('\n');
-    for (final line in lines) {
+    for (final line in envRes.stdout.toString().split('\n')) {
       final parts = line.split('=');
       if (parts.length >= 2) {
         final key = parts[0].trim();
@@ -311,8 +437,7 @@ Future<Map<String, String>> getMSVCEnvironment(Architecture targetArch) async {
       }
     }
     return envMap;
-  } catch (e) {
-    print('Error detecting MSVC environment: $e');
+  } catch (_) {
     return {};
   }
 }

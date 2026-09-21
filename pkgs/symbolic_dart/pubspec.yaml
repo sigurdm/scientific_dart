@@ -12,6 +12,7 @@ dependencies:
   hooks: ^1.0.3
   code_assets: ^1.0.0
   archive: ^3.6.1
+  crypto: ^3.0.7
   meta: ^1.18.2
   ndarray: ^0.0.2
   resource_scope: ^0.0.1
@@ -22,3 +23,9 @@ dev_dependencies:
   criterion:
     git: https://github.com/sigurdm/criterion.git
   ffigen: ^20.1.1
+
+hooks:
+  user_defines:
+    symbolic_dart:
+      buildMode: source
+

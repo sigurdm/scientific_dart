@@ -31,3 +31,9 @@ ffigen:
   headers:
     entry-points:
       - 'third_party/openblas/openblas_minimal.h'
+
+hooks:
+  user_defines:
+    openblas:
+      buildMode: source
+

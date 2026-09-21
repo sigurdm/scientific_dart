@@ -20,6 +20,7 @@ dependencies:
   pocketfft: ^0.0.1
   hooks: '>=1.0.3 <3.0.0'
   code_assets: '>=1.0.0 <3.0.0'
+  crypto: ^3.0.7
   meta: ^1.18.2
   resource_scope: ^0.0.1
 
@@ -31,3 +32,9 @@ dev_dependencies:
     git: https://github.com/sigurdm/criterion.git
   coverage: ^1.15.0
   ffigen: ^20.1.1
+
+hooks:
+  user_defines:
+    ndarray:
+      buildMode: source
+

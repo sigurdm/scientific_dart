@@ -1,6 +1,11 @@
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:code_assets/code_assets.dart';
+import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
+import 'package:ndarray/src/hook_helpers/build_options.dart';
+import 'package:ndarray/src/hook_helpers/hashes.dart';
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
@@ -8,17 +13,176 @@ void main(List<String> args) async {
       return;
     }
 
-    final packageName = input.packageName;
+    final BuildOptions buildOptions;
+    try {
+      buildOptions = BuildOptions.fromDefines(input.userDefines);
+    } catch (e) {
+      throw ArgumentError(BuildOptions.usageError(e));
+    }
+    print('ndarray build options: $buildOptions');
+
+    final buildMode = switch (buildOptions.buildMode) {
+      BuildModeEnum.fetch => FetchMode(input),
+      BuildModeEnum.local => LocalMode(input, buildOptions.localPath),
+      BuildModeEnum.source => SourceMode(input, buildOptions.checkoutPath),
+    };
+
+    final builtLibrary = await buildMode.build();
+
+    output.assets.code.add(
+      CodeAsset(
+        package: input.packageName,
+        name: 'ndarray',
+        linkMode: DynamicLoadingBundled(),
+        file: builtLibrary,
+      ),
+    );
+    output.dependencies.addAll(buildMode.dependencies);
+    output.dependencies.add(input.packageRoot.resolve('pubspec.yaml'));
+  });
+}
+
+String _canonicalLibName(OS os) => os == OS.windows
+    ? 'libndarray.dll'
+    : ((os == OS.macOS || os == OS.iOS) ? 'libndarray.dylib' : 'libndarray.so');
+
+sealed class BuildMode {
+  final BuildInput input;
+
+  const BuildMode(this.input);
+
+  List<Uri> get dependencies;
+
+  Future<Uri> build();
+}
+
+final class FetchMode extends BuildMode {
+  FetchMode(super.input);
+
+  @override
+  Future<Uri> build() async {
+    final os = input.config.code.targetOS;
+    final arch = input.config.code.targetArchitecture;
+    final artifactName = ndarrayArtifactName(os, arch);
+    final expectedHash = fileHashes[(os, arch)];
+
+    if (expectedHash == null || expectedHash.startsWith('00000000')) {
+      throw StateError(
+        'No prebuilt ndarray binary hash is pinned for ($os, $arch) in release $version.\n'
+        '${BuildOptions.usageError('Switch to `buildMode: source` or `buildMode: local`.')}',
+      );
+    }
+
+    final libName = _canonicalLibName(os);
+    final cachedLibrary = File.fromUri(
+      input.outputDirectoryShared
+          .resolve('ndarray-$version/${os.name}-${arch.name}/')
+          .resolve(libName),
+    );
+
+    if (await cachedLibrary.exists()) {
+      final cachedHash = sha256
+          .convert(await cachedLibrary.readAsBytes())
+          .toString();
+      if (cachedHash == expectedHash) {
+        print('Using cached ndarray binary from ${cachedLibrary.path}.');
+        return cachedLibrary.uri;
+      }
+    }
+
+    final remoteUri = Uri.parse(
+      'https://github.com/$repository/releases/download/$version/$artifactName',
+    );
+    print('Fetching prebuilt ndarray binary from $remoteUri...');
+    final bytes = await _downloadBytesWithRedirects(remoteUri);
+    final actualHash = sha256.convert(bytes).toString();
+    if (actualHash != expectedHash) {
+      throw StateError(
+        'SHA-256 mismatch for prebuilt ndarray binary at $remoteUri:\n'
+        'Expected: $expectedHash\n'
+        'Actual:   $actualHash',
+      );
+    }
+
+    await cachedLibrary.parent.create(recursive: true);
+    await cachedLibrary.writeAsBytes(bytes, flush: true);
+    return cachedLibrary.uri;
+  }
+
+  @override
+  List<Uri> get dependencies => const [];
+}
+
+final class LocalMode extends BuildMode {
+  final Uri? localPath;
+
+  LocalMode(super.input, this.localPath);
+
+  File _resolveLocalFile() {
+    if (localPath == null) {
+      throw ArgumentError(
+        '`localPath` is not set in `hooks.user_defines.ndarray` '
+        '(or `LOCAL_NDARRAY_BINARY` environment variable).',
+      );
+    }
+    final os = input.config.code.targetOS;
+    final entityPath = localPath!.toFilePath(windows: Platform.isWindows);
+    if (FileSystemEntity.isDirectorySync(entityPath)) {
+      final candidate = File.fromUri(
+        Directory(entityPath).uri.resolve(_canonicalLibName(os)),
+      );
+      if (candidate.existsSync()) return candidate;
+      final artifactCandidate = File.fromUri(
+        Directory(entityPath).uri.resolve(
+          ndarrayArtifactName(os, input.config.code.targetArchitecture),
+        ),
+      );
+      if (artifactCandidate.existsSync()) return artifactCandidate;
+      throw FileSystemException(
+        'Could not find ${_canonicalLibName(os)} in localPath directory.',
+        entityPath,
+      );
+    }
+    final file = File(entityPath);
+    if (!file.existsSync()) {
+      throw FileSystemException(
+        'Could not find local ndarray binary.',
+        entityPath,
+      );
+    }
+    return file;
+  }
+
+  @override
+  Future<Uri> build() async {
+    final sourceFile = _resolveLocalFile();
+    final targetUri = input.outputDirectory.resolve(
+      _canonicalLibName(input.config.code.targetOS),
+    );
+    final targetFile = File.fromUri(targetUri);
+    await targetFile.parent.create(recursive: true);
+    await sourceFile.copy(targetFile.path);
+    return targetFile.uri;
+  }
+
+  @override
+  List<Uri> get dependencies => [_resolveLocalFile().uri];
+}
+
+final class SourceMode extends BuildMode {
+  final Uri? checkoutPath;
+
+  SourceMode(super.input, this.checkoutPath);
+
+  Uri get _root => checkoutPath ?? input.packageRoot;
+
+  @override
+  Future<Uri> build() async {
     final os = input.config.code.targetOS;
     final arch = input.config.code.targetArchitecture;
     final cCompiler = input.config.code.cCompiler;
 
-    final libName = os == OS.windows
-        ? 'libndarray.dll'
-        : ((os == OS.macOS || os == OS.iOS)
-              ? 'libndarray.dylib'
-              : 'libndarray.so');
-
+    final libName = _canonicalLibName(os);
     final outputDir = Directory.fromUri(input.outputDirectory);
     if (!outputDir.existsSync()) {
       outputDir.createSync(recursive: true);
@@ -51,11 +215,15 @@ void main(List<String> args) async {
       cppCompilerPath = compilerPath.replaceAll('clang-', 'clang++-');
     }
 
-    // Compile highway if needed
-    final highwayDir = input.packageRoot.resolve('third_party/highway/');
-    final highwayBuildDir = Directory.fromUri(
-      outputDir.uri.resolve('hwy_build'),
-    );
+    final highwayDir = _root.resolve('third_party/highway/');
+    final legacyHwyDir = Directory.fromUri(outputDir.uri.resolve('hwy_build'));
+    final highwayBuildDir = legacyHwyDir.existsSync()
+        ? legacyHwyDir
+        : Directory.fromUri(
+            input.outputDirectoryShared.resolve(
+              'hwy_build-${os.name}-${arch.name}/',
+            ),
+          );
 
     final String hwyLibName;
     final String hwyContribLibName;
@@ -79,23 +247,62 @@ void main(List<String> args) async {
     final libhwy = File.fromUri(hwyLibUri);
     final libhwyContrib = File.fromUri(hwyContribLibUri);
 
-    await buildHighwayIfNeeded(
-      highwayDir: highwayDir,
-      highwayBuildDir: highwayBuildDir,
-      libhwy: libhwy,
-      libhwyContrib: libhwyContrib,
-      isMSVC: isMSVC,
-      os: os,
-      arch: arch,
-      cCompiler: cCompiler,
-      compilerPath: compilerPath,
-      cppCompilerPath: cppCompilerPath,
-      msvcEnv: msvcEnv,
-    );
+    if (!libhwy.existsSync() || !libhwyContrib.existsSync()) {
+      print('Highway static libraries not found. Compiling highway...');
+      if (!highwayBuildDir.existsSync()) {
+        highwayBuildDir.createSync(recursive: true);
+      }
 
-    print(
-      'Compiling ndarray custom C++ extensions using compiler: $cppCompilerPath',
-    );
+      final cmakeRes = await Process.run(
+        'cmake',
+        [
+          '-DCMAKE_BUILD_TYPE=Release',
+          '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+          '-DHWY_ENABLE_TESTS=OFF',
+          '-DHWY_ENABLE_EXAMPLES=OFF',
+          if (cCompiler != null) ...[
+            '-DCMAKE_C_COMPILER=$compilerPath',
+            '-DCMAKE_CXX_COMPILER=$cppCompilerPath',
+          ],
+          if (os == OS.macOS || os == OS.iOS)
+            '-DCMAKE_OSX_ARCHITECTURES=${arch == Architecture.arm64 ? 'arm64' : 'x86_64'}',
+          highwayDir.toFilePath(),
+        ],
+        workingDirectory: highwayBuildDir.path,
+        environment: msvcEnv,
+      );
+
+      if (cmakeRes.exitCode != 0) {
+        throw StateError(
+          'CMake failed for highway (exit ${cmakeRes.exitCode}):\n'
+          'stdout: ${cmakeRes.stdout}\n'
+          'stderr: ${cmakeRes.stderr}',
+        );
+      }
+
+      final buildRes = await Process.run(
+        'cmake',
+        [
+          '--build',
+          '.',
+          '--target',
+          'hwy',
+          'hwy_contrib',
+          if (isMSVC) ...['--config', 'Release'],
+          '--parallel',
+        ],
+        workingDirectory: highwayBuildDir.path,
+        environment: msvcEnv,
+      );
+
+      if (buildRes.exitCode != 0) {
+        throw StateError(
+          'Build failed for highway (exit ${buildRes.exitCode}):\n'
+          'stdout: ${buildRes.stdout}\n'
+          'stderr: ${buildRes.stderr}',
+        );
+      }
+    }
 
     if (isMSVC) {
       final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.obj').toFilePath();
@@ -113,17 +320,14 @@ void main(List<String> args) async {
         '/O2',
         '/MD',
         '/EHsc',
+        if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
-        '/I${input.packageRoot.toFilePath()}',
-        input.packageRoot.resolve('hook/custom_ufuncs.cpp').toFilePath(),
+        '/I${_root.toFilePath()}',
+        _root.resolve('hook/custom_ufuncs.cpp').toFilePath(),
         '/Fo:$ufuncsObj',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError(
-          'Ufuncs compilation failed:\n'
-          'stdout: ${res.stdout}\n'
-          'stderr: ${res.stderr}',
-        );
+        throw StateError('Ufuncs compilation failed:\n${res.stderr}');
       }
 
       res = await Process.run(cppCompilerPath, [
@@ -131,18 +335,15 @@ void main(List<String> args) async {
         '/O2',
         '/MD',
         '/EHsc',
+        if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
-        '/I${input.packageRoot.toFilePath()}',
-        '/I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
-        input.packageRoot.resolve('hook/custom_sorting.cpp').toFilePath(),
+        '/I${_root.toFilePath()}',
+        '/I${_root.resolve('third_party/highway/').toFilePath()}',
+        _root.resolve('hook/custom_sorting.cpp').toFilePath(),
         '/Fo:$sortingObj',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError(
-          'Sorting compilation failed:\n'
-          'stdout: ${res.stdout}\n'
-          'stderr: ${res.stderr}',
-        );
+        throw StateError('Sorting compilation failed:\n${res.stderr}');
       }
 
       res = await Process.run(cppCompilerPath, [
@@ -150,33 +351,26 @@ void main(List<String> args) async {
         '/O2',
         '/MD',
         '/EHsc',
+        if (arch == Architecture.x64) '/arch:AVX2',
         '/D_USE_MATH_DEFINES',
-        '/I${input.packageRoot.toFilePath()}',
-        input.packageRoot.resolve('hook/custom_indexing.cpp').toFilePath(),
+        '/I${_root.toFilePath()}',
+        _root.resolve('hook/custom_indexing.cpp').toFilePath(),
         '/Fo:$indexingObj',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError(
-          'Indexing compilation failed:\n'
-          'stdout: ${res.stdout}\n'
-          'stderr: ${res.stderr}',
-        );
+        throw StateError('Indexing compilation failed:\n${res.stderr}');
       }
 
       res = await Process.run(compilerPath, [
         '/c',
         '/O2',
         '/MD',
-        '/I${input.packageRoot.toFilePath()}',
-        input.packageRoot.resolve('third_party/miniz/miniz.c').toFilePath(),
+        '/I${_root.toFilePath()}',
+        _root.resolve('third_party/miniz/miniz.c').toFilePath(),
         '/Fo:$minizObj',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError(
-          'miniz compilation failed:\n'
-          'stdout: ${res.stdout}\n'
-          'stderr: ${res.stderr}',
-        );
+        throw StateError('miniz compilation failed:\n${res.stderr}');
       }
 
       res = await Process.run(cppCompilerPath, [
@@ -184,26 +378,20 @@ void main(List<String> args) async {
         '/O2',
         '/MD',
         '/EHsc',
-        '/I${input.packageRoot.toFilePath()}',
-        input.packageRoot.resolve('hook/npz_io.cpp').toFilePath(),
+        '/I${_root.toFilePath()}',
+        _root.resolve('hook/npz_io.cpp').toFilePath(),
         '/Fo:$npzIoObj',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError(
-          'npz_io compilation failed:\n'
-          'stdout: ${res.stdout}\n'
-          'stderr: ${res.stderr}',
-        );
+        throw StateError('npz_io compilation failed:\n${res.stderr}');
       }
 
       final allExports = [
         ...extractExportsFromBindings(
-          input.packageRoot
-              .resolve('lib/src/ndarray_bindings.dart')
-              .toFilePath(),
+          _root.resolve('lib/src/ndarray_bindings.dart').toFilePath(),
         ),
         ...extractExportsFromBindings(
-          input.packageRoot
+          _root
               .resolve('lib/src/ndarray_extensions_bindings.dart')
               .toFilePath(),
         ),
@@ -212,12 +400,9 @@ void main(List<String> args) async {
       final defFile = File(
         outputDir.uri.resolve('libndarray.def').toFilePath(),
       );
-      final defContent = [
-        'LIBRARY libndarray',
-        'EXPORTS',
-        ...allExports,
-      ].join('\n');
-      await defFile.writeAsString(defContent);
+      await defFile.writeAsString(
+        ['LIBRARY libndarray', 'EXPORTS', ...allExports].join('\n'),
+      );
 
       res = await Process.run(cppCompilerPath, [
         '/LD',
@@ -234,11 +419,7 @@ void main(List<String> args) async {
         '/def:${defFile.path}',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError(
-          'Linking failed:\n'
-          'stdout: ${res.stdout}\n'
-          'stderr: ${res.stderr}',
-        );
+        throw StateError('Linking failed:\n${res.stderr}');
       }
     } else {
       final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.o').toFilePath();
@@ -255,13 +436,13 @@ void main(List<String> args) async {
         if (!objF.existsSync()) return true;
         final objTime = objF.lastModifiedSync();
         if (srcF.lastModifiedSync().isAfter(objTime)) return true;
-        for (final header in [
+        for (final header in const [
           'hook/custom_indexing.h',
           'hook/custom_sorting.h',
           'hook/custom_ufuncs.h',
           'hook/build.dart',
         ]) {
-          final hF = File(input.packageRoot.resolve(header).toFilePath());
+          final hF = File(_root.resolve(header).toFilePath());
           if (hF.existsSync() && hF.lastModifiedSync().isAfter(objTime)) {
             return true;
           }
@@ -269,11 +450,8 @@ void main(List<String> args) async {
         return false;
       }
 
-      final ufuncsSrc = input.packageRoot
-          .resolve('hook/custom_ufuncs.cpp')
-          .toFilePath();
+      final ufuncsSrc = _root.resolve('hook/custom_ufuncs.cpp').toFilePath();
       if (needsCompile(ufuncsSrc, ufuncsObj)) {
-        print('Compiling custom_ufuncs.cpp...');
         final res = await Process.run(cppCompilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
@@ -282,9 +460,9 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          '-ffp-contract=fast',
+          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
           '-fno-math-errno',
-          '-I${input.packageRoot.toFilePath()}',
+          '-I${_root.toFilePath()}',
           ufuncsSrc,
           '-o',
           ufuncsObj,
@@ -294,11 +472,8 @@ void main(List<String> args) async {
         }
       }
 
-      final sortingSrc = input.packageRoot
-          .resolve('hook/custom_sorting.cpp')
-          .toFilePath();
+      final sortingSrc = _root.resolve('hook/custom_sorting.cpp').toFilePath();
       if (needsCompile(sortingSrc, sortingObj)) {
-        print('Compiling custom_sorting.cpp...');
         final res = await Process.run(cppCompilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
@@ -307,10 +482,10 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          '-ffp-contract=fast',
+          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
           '-fno-math-errno',
-          '-I${input.packageRoot.toFilePath()}',
-          '-I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
+          '-I${_root.toFilePath()}',
+          '-I${_root.resolve('third_party/highway/').toFilePath()}',
           sortingSrc,
           '-o',
           sortingObj,
@@ -320,11 +495,10 @@ void main(List<String> args) async {
         }
       }
 
-      final indexingSrc = input.packageRoot
+      final indexingSrc = _root
           .resolve('hook/custom_indexing.cpp')
           .toFilePath();
       if (needsCompile(indexingSrc, indexingObj)) {
-        print('Compiling custom_indexing.cpp...');
         final res = await Process.run(cppCompilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
@@ -333,9 +507,9 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          '-ffp-contract=fast',
+          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
           '-fno-math-errno',
-          '-I${input.packageRoot.toFilePath()}',
+          '-I${_root.toFilePath()}',
           indexingSrc,
           '-o',
           indexingObj,
@@ -345,14 +519,9 @@ void main(List<String> args) async {
         }
       }
 
-      final minizSrc = input.packageRoot
-          .resolve('third_party/miniz/miniz.c')
-          .toFilePath();
-      final minizH = input.packageRoot
-          .resolve('third_party/miniz/miniz.h')
-          .toFilePath();
+      final minizSrc = _root.resolve('third_party/miniz/miniz.c').toFilePath();
+      final minizH = _root.resolve('third_party/miniz/miniz.h').toFilePath();
       if (needsCompile(minizSrc, minizObj) || needsCompile(minizH, minizObj)) {
-        print('Compiling miniz.c...');
         final res = await Process.run(compilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
@@ -361,7 +530,7 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          '-I${input.packageRoot.toFilePath()}',
+          '-I${_root.toFilePath()}',
           minizSrc,
           '-o',
           minizObj,
@@ -371,11 +540,8 @@ void main(List<String> args) async {
         }
       }
 
-      final npzIoSrc = input.packageRoot
-          .resolve('hook/npz_io.cpp')
-          .toFilePath();
+      final npzIoSrc = _root.resolve('hook/npz_io.cpp').toFilePath();
       if (needsCompile(npzIoSrc, npzIoObj) || needsCompile(minizH, npzIoObj)) {
-        print('Compiling npz_io.cpp...');
         final res = await Process.run(cppCompilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
@@ -384,7 +550,7 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          '-I${input.packageRoot.toFilePath()}',
+          '-I${_root.toFilePath()}',
           npzIoSrc,
           '-o',
           npzIoObj,
@@ -404,11 +570,11 @@ void main(List<String> args) async {
           );
 
       if (needsLink) {
-        print('Linking shared library...');
         final res = await Process.run(cppCompilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
+            '-Wl,-install_name,@rpath/$libName',
           ],
           '-shared',
           '-fPIC',
@@ -429,156 +595,61 @@ void main(List<String> args) async {
         }
       }
     }
-    print('Compiled ndarray shared library successfully at: ${libFile.path}');
 
-    // Register the dynamic CodeAsset in the hooks pipeline under package asset ID namespace
-    if (libFile.existsSync()) {
-      output.assets.code.add(
-        CodeAsset(
-          package: packageName,
-          name: 'ndarray',
-          linkMode: DynamicLoadingBundled(),
-          file: libFile.uri,
-        ),
-      );
-      output.dependencies.add(
-        input.packageRoot.resolve('hook/custom_sorting.cpp'),
-      );
-      output.dependencies.add(
-        input.packageRoot.resolve('hook/custom_sorting.h'),
-      );
-      output.dependencies.add(
-        input.packageRoot.resolve('hook/custom_ufuncs.cpp'),
-      );
-      output.dependencies.add(
-        input.packageRoot.resolve('hook/custom_ufuncs.h'),
-      );
-      output.dependencies.add(
-        input.packageRoot.resolve('hook/custom_indexing.cpp'),
-      );
-      output.dependencies.add(
-        input.packageRoot.resolve('hook/custom_indexing.h'),
-      );
-      output.dependencies.add(input.packageRoot.resolve('hook/npz_io.cpp'));
-      output.dependencies.add(input.packageRoot.resolve('hook/npz_io.h'));
-      output.dependencies.add(
-        input.packageRoot.resolve('third_party/miniz/miniz.c'),
-      );
-      output.dependencies.add(
-        input.packageRoot.resolve('third_party/miniz/miniz.h'),
-      );
-      output.dependencies.add(
-        input.packageRoot.resolve('third_party/timsort/timsort.h'),
-      );
-      print(
-        'Registered ndarray native custom extensions code asset successfully.',
-      );
-    }
-  });
+    return libFile.uri;
+  }
+
+  @override
+  List<Uri> get dependencies => [
+    _root.resolve('hook/custom_sorting.cpp'),
+    _root.resolve('hook/custom_sorting.h'),
+    _root.resolve('hook/custom_ufuncs.cpp'),
+    _root.resolve('hook/custom_ufuncs.h'),
+    _root.resolve('hook/custom_indexing.cpp'),
+    _root.resolve('hook/custom_indexing.h'),
+    _root.resolve('hook/npz_io.cpp'),
+    _root.resolve('hook/npz_io.h'),
+    _root.resolve('third_party/miniz/miniz.c'),
+    _root.resolve('third_party/miniz/miniz.h'),
+    _root.resolve('third_party/timsort/timsort.h'),
+  ];
 }
 
-Future<void> buildHighwayIfNeeded({
-  required Uri highwayDir,
-  required Directory highwayBuildDir,
-  required File libhwy,
-  required File libhwyContrib,
-  required bool isMSVC,
-  required OS os,
-  required Architecture arch,
-  required CCompilerConfig? cCompiler,
-  required String compilerPath,
-  required String cppCompilerPath,
-  required Map<String, String> msvcEnv,
-}) async {
-  if (!libhwy.existsSync() || !libhwyContrib.existsSync()) {
-    print('Highway static libraries not found. Compiling highway...');
-    if (!highwayBuildDir.existsSync()) {
-      highwayBuildDir.createSync(recursive: true);
+Future<Uint8List> _downloadBytesWithRedirects(Uri url) async {
+  final client = HttpClient();
+  try {
+    var currentUrl = url;
+    for (var redirectCount = 0; redirectCount < 5; redirectCount++) {
+      final request = await client.getUrl(currentUrl);
+      final response = await request.close();
+      if (response.statusCode >= 300 &&
+          response.statusCode < 400 &&
+          response.headers.value(HttpHeaders.locationHeader) != null) {
+        currentUrl = currentUrl.resolve(
+          response.headers.value(HttpHeaders.locationHeader)!,
+        );
+        continue;
+      }
+      if (response.statusCode != 200) {
+        throw HttpException(
+          'Failed to download $currentUrl (HTTP ${response.statusCode})',
+        );
+      }
+      final builder = BytesBuilder(copy: false);
+      await for (final chunk in response) {
+        builder.add(chunk);
+      }
+      return builder.takeBytes();
     }
-
-    // Run cmake configuration
-    final cmakeRes = await Process.run(
-      'cmake',
-      [
-        '-DCMAKE_BUILD_TYPE=Release',
-        '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
-        '-DHWY_ENABLE_TESTS=OFF',
-        '-DHWY_ENABLE_EXAMPLES=OFF',
-        if (cCompiler != null) ...[
-          '-DCMAKE_C_COMPILER=$compilerPath',
-          '-DCMAKE_CXX_COMPILER=$cppCompilerPath',
-        ],
-        if (os != OS.current) ...[
-          switch (os) {
-            OS.windows => '-DCMAKE_SYSTEM_NAME=Windows',
-            OS.linux => '-DCMAKE_SYSTEM_NAME=Linux',
-            OS.macOS => '-DCMAKE_SYSTEM_NAME=Darwin',
-            OS.iOS => '-DCMAKE_SYSTEM_NAME=iOS',
-            OS.android => '-DCMAKE_SYSTEM_NAME=Android',
-            OS.fuchsia => '-DCMAKE_SYSTEM_NAME=Fuchsia',
-            _ => '-DCMAKE_SYSTEM_NAME=${os.name}',
-          },
-          switch (arch) {
-            Architecture.arm64 => '-DCMAKE_SYSTEM_PROCESSOR=aarch64',
-            Architecture.x64 => '-DCMAKE_SYSTEM_PROCESSOR=x86_64',
-            Architecture.arm => '-DCMAKE_SYSTEM_PROCESSOR=arm',
-            Architecture.ia32 => '-DCMAKE_SYSTEM_PROCESSOR=x86',
-            Architecture.riscv64 => '-DCMAKE_SYSTEM_PROCESSOR=riscv64',
-            Architecture.riscv32 => '-DCMAKE_SYSTEM_PROCESSOR=riscv32',
-            _ => '-DCMAKE_SYSTEM_PROCESSOR=${arch.name}',
-          },
-        ],
-        if (os == OS.macOS || os == OS.iOS)
-          '-DCMAKE_OSX_ARCHITECTURES=${arch == Architecture.arm64 ? 'arm64' : 'x86_64'}',
-        highwayDir.toFilePath(),
-      ],
-      workingDirectory: highwayBuildDir.path,
-      environment: msvcEnv,
-    );
-
-    if (cmakeRes.exitCode != 0) {
-      throw StateError(
-        'CMake failed for highway (exit ${cmakeRes.exitCode}):\n'
-        'stdout: ${cmakeRes.stdout}\n'
-        'stderr: ${cmakeRes.stderr}',
-      );
-    }
-
-    // Run cmake build
-    final buildRes = await Process.run(
-      'cmake',
-      [
-        '--build',
-        '.',
-        '--target',
-        'hwy',
-        'hwy_contrib',
-        if (isMSVC) ...['--config', 'Release'],
-        '--parallel',
-      ],
-      workingDirectory: highwayBuildDir.path,
-      environment: msvcEnv,
-    );
-
-    if (buildRes.exitCode != 0) {
-      throw StateError(
-        'Build failed for highway (exit ${buildRes.exitCode}):\n'
-        'stdout: ${buildRes.stdout}\n'
-        'stderr: ${buildRes.stderr}',
-      );
-    }
-    print('Highway compiled successfully.');
+    throw HttpException('Too many redirects while downloading $url');
+  } finally {
+    client.close();
   }
 }
 
 List<String> extractExportsFromBindings(String bindingsPath) {
   final file = File(bindingsPath);
-  if (!file.existsSync()) {
-    print(
-      'WARNING: Bindings file not found at $bindingsPath. Dynamic library exports list might be incomplete!',
-    );
-    return [];
-  }
+  if (!file.existsSync()) return [];
 
   final content = file.readAsStringSync();
   final regex = RegExp(r'external\s+[\w\d_<>.]+\s+(\w+)\s*\(');
@@ -590,7 +661,6 @@ List<String> extractExportsFromBindings(String bindingsPath) {
       exports.add(name);
     }
   }
-  print('Extracted ${exports.length} export symbols from $bindingsPath');
   return exports;
 }
 
@@ -612,22 +682,13 @@ Future<Map<String, String>> getMSVCEnvironment(Architecture targetArch) async {
       '-property',
       'installationPath',
     ]);
-    if (vswhereRes.exitCode != 0) {
-      print('vswhere failed with exit code ${vswhereRes.exitCode}');
-      return {};
-    }
+    if (vswhereRes.exitCode != 0) return {};
 
     final vsPath = vswhereRes.stdout.toString().trim();
-    if (vsPath.isEmpty) {
-      print('vswhere returned empty path');
-      return {};
-    }
+    if (vsPath.isEmpty) return {};
 
     final vcvarsPath = '$vsPath\\VC\\Auxiliary\\Build\\vcvarsall.bat';
-    if (!await File(vcvarsPath).exists()) {
-      print('vcvarsall.bat not found at $vcvarsPath');
-      return {};
-    }
+    if (!await File(vcvarsPath).exists()) return {};
 
     final vcvarsArch = targetArch == Architecture.arm64
         ? 'arm64'
@@ -637,31 +698,18 @@ Future<Map<String, String>> getMSVCEnvironment(Architecture targetArch) async {
     final tempFile = File(
       '${tempDir.path}\\get_msvc_env_${DateTime.now().millisecondsSinceEpoch}.bat',
     );
-    try {
-      await tempFile.writeAsString(
-        '@echo off\ncall "$vcvarsPath" $vcvarsArch\nset\n',
-      );
-    } catch (e) {
-      print('Failed to write temporary batch file: $e');
-      return {};
-    }
-
+    await tempFile.writeAsString(
+      '@echo off\ncall "$vcvarsPath" $vcvarsArch\nset\n',
+    );
     final envRes = await Process.run('cmd.exe', ['/c', tempFile.path]);
-
     try {
       await tempFile.delete();
     } catch (_) {}
 
-    if (envRes.exitCode != 0) {
-      print(
-        'Temporary MSVC environment batch file failed with exit code ${envRes.exitCode}',
-      );
-      return {};
-    }
+    if (envRes.exitCode != 0) return {};
 
     final envMap = <String, String>{};
-    final lines = envRes.stdout.toString().split('\n');
-    for (final line in lines) {
+    for (final line in envRes.stdout.toString().split('\n')) {
       final parts = line.split('=');
       if (parts.length >= 2) {
         final key = parts[0].trim();
@@ -672,8 +720,7 @@ Future<Map<String, String>> getMSVCEnvironment(Architecture targetArch) async {
       }
     }
     return envMap;
-  } catch (e) {
-    print('Error detecting MSVC environment: $e');
+  } catch (_) {
     return {};
   }
 }

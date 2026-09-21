@@ -26,3 +26,9 @@ dev_dependencies:
   lints: ^6.1.0
   criterion:
     git: https://github.com/sigurdm/criterion.git
+
+hooks:
+  user_defines:
+    gpuarray:
+      buildMode: fetch
+

@@ -20,3 +20,9 @@ dev_dependencies:
   criterion:
     git: https://github.com/sigurdm/criterion.git
   ffigen: ^20.1.1
+
+hooks:
+  user_defines:
+    pocketfft:
+      buildMode: source
+
