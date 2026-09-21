@@ -197,9 +197,10 @@ final class SourceMode extends BuildMode {
         compilerLower.contains('clang') ||
         compilerLower.contains('g++');
     final isMSVC = os == OS.windows && !isGNU;
-    final msvcEnv = isMSVC
-        ? await getMSVCEnvironment(arch)
-        : <String, String>{};
+    final msvcEnv = <String, String>{
+      ...Platform.environment,
+      if (isMSVC) ...await getMSVCEnvironment(arch),
+    };
 
     var cppCompilerPath = compilerPath;
     if (compilerPath.endsWith('gcc')) {
@@ -225,29 +226,23 @@ final class SourceMode extends BuildMode {
             ),
           );
 
-    final String hwyLibName;
-    final String hwyContribLibName;
-    final Uri hwyLibUri;
-    final Uri hwyContribLibUri;
+    final String hwyLibName = isMSVC ? 'hwy.lib' : 'libhwy.a';
+    final String hwyContribLibName = isMSVC
+        ? 'hwy_contrib.lib'
+        : 'libhwy_contrib.a';
 
-    if (isMSVC) {
-      hwyLibName = 'hwy.lib';
-      hwyContribLibName = 'hwy_contrib.lib';
-      hwyLibUri = highwayBuildDir.uri.resolve('Release/$hwyLibName');
-      hwyContribLibUri = highwayBuildDir.uri.resolve(
-        'Release/$hwyContribLibName',
+    File resolveHwyLib(String name) {
+      final direct = File.fromUri(highwayBuildDir.uri.resolve(name));
+      if (direct.existsSync()) return direct;
+      final release = File.fromUri(
+        highwayBuildDir.uri.resolve('Release/$name'),
       );
-    } else {
-      hwyLibName = 'libhwy.a';
-      hwyContribLibName = 'libhwy_contrib.a';
-      hwyLibUri = highwayBuildDir.uri.resolve(hwyLibName);
-      hwyContribLibUri = highwayBuildDir.uri.resolve(hwyContribLibName);
+      if (release.existsSync()) return release;
+      return direct;
     }
 
-    final libhwy = File.fromUri(hwyLibUri);
-    final libhwyContrib = File.fromUri(hwyContribLibUri);
-
-    if (!libhwy.existsSync() || !libhwyContrib.existsSync()) {
+    if (!resolveHwyLib(hwyLibName).existsSync() ||
+        !resolveHwyLib(hwyContribLibName).existsSync()) {
       print('Highway static libraries not found. Compiling highway...');
       if (!highwayBuildDir.existsSync()) {
         highwayBuildDir.createSync(recursive: true);
@@ -256,6 +251,7 @@ final class SourceMode extends BuildMode {
       final cmakeRes = await Process.run(
         'cmake',
         [
+          if (isMSVC) ...['-G', 'NMake Makefiles'],
           '-DCMAKE_BUILD_TYPE=Release',
           '-DCMAKE_CXX_STANDARD=17',
           '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
@@ -289,8 +285,7 @@ final class SourceMode extends BuildMode {
           '--target',
           'hwy',
           'hwy_contrib',
-          if (isMSVC) ...['--config', 'Release'],
-          '--parallel',
+          if (!isMSVC) '--parallel',
         ],
         workingDirectory: highwayBuildDir.path,
         environment: msvcEnv,
@@ -304,6 +299,9 @@ final class SourceMode extends BuildMode {
         );
       }
     }
+
+    final libhwy = resolveHwyLib(hwyLibName);
+    final libhwyContrib = resolveHwyLib(hwyContribLibName);
 
     if (isMSVC) {
       final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.obj').toFilePath();
