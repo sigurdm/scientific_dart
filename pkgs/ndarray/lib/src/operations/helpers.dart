@@ -381,7 +381,7 @@ void elementWiseOp<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType
   int offsetA,
   int offsetB,
   int offsetResult,
-  Tr Function(Ta, Tb) op, [
+  Object? Function(Object?, Object?) op, [
   ffi.Pointer<ffi.Uint8>? whereMask,
   int flatIndex = 0,
 ]) {
@@ -655,7 +655,7 @@ void reduceRecursive<S extends AnyDType, D extends AnyDType>(
   List<int> destPos,
   int targetAxis,
   int currentDim,
-  D Function(D acc, S val) op, {
+  Object? Function(Object? acc, Object? val) op, {
   List<int>? destStrides,
 }) {
   if (currentDim == src.shape.length) {
@@ -708,7 +708,7 @@ void unaryOp<Ta extends AnyDType, Tr extends AnyDType>(
   int dim,
   int offsetA,
   int offsetResult,
-  Tr Function(Ta) op, [
+  Object? Function(Object?) op, [
   ffi.Pointer<ffi.Uint8>? whereMask,
   int flatIndex = 0,
 ]) {
@@ -808,7 +808,7 @@ void ternaryOp<Ta extends AnyDType, Tb extends AnyDType, Tc extends AnyDType, Tr
   int offsetB,
   int offsetC,
   int offsetResult,
-  Tr Function(Ta, Tb, Tc) op, [
+  Object? Function(Object?, Object?, Object?) op, [
   ffi.Pointer<ffi.Uint8>? whereMask,
   int flatIndex = 0,
 ]) {

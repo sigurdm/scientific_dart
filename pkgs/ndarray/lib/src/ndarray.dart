@@ -3346,7 +3346,7 @@ final class NDArray<T extends AnyDType>
     );
   }
 
-  R _withWrappedScalar<R extends AnyDType>(dynamic other, R Function(NDArray otherArr) fn) {
+  R _withWrappedScalar<R>(dynamic other, R Function(NDArray otherArr) fn) {
     if (other is NDArray) {
       return fn(other);
     }
