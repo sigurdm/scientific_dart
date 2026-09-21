@@ -203,7 +203,22 @@ final class SourceMode extends BuildMode {
     };
 
     var cppCompilerPath = compilerPath;
-    if (compilerPath.endsWith('gcc')) {
+    if (isMSVC) {
+      for (final candidate in const [
+        r'C:\Program Files\LLVM\bin\clang-cl.exe',
+        'clang-cl.exe',
+      ]) {
+        try {
+          final check = await Process.run(candidate, [
+            '--version',
+          ], environment: msvcEnv);
+          if (check.exitCode == 0) {
+            cppCompilerPath = candidate;
+            break;
+          }
+        } catch (_) {}
+      }
+    } else if (compilerPath.endsWith('gcc')) {
       cppCompilerPath =
           '${compilerPath.substring(0, compilerPath.length - 3)}g++';
     } else if (compilerPath.endsWith('clang')) {
@@ -257,6 +272,15 @@ final class SourceMode extends BuildMode {
           '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
           '-DHWY_ENABLE_TESTS=OFF',
           '-DHWY_ENABLE_EXAMPLES=OFF',
+          '-DHWY_COMPILE_ONLY_STATIC=ON',
+          if (arch == Architecture.x64)
+            isMSVC
+                ? '-DCMAKE_CXX_FLAGS=/arch:AVX2 /DHWY_COMPILE_ONLY_STATIC=1'
+                : '-DCMAKE_CXX_FLAGS=-mavx2 -mfma -mf16c -DHWY_COMPILE_ONLY_STATIC=1'
+          else
+            isMSVC
+                ? '-DCMAKE_CXX_FLAGS=/DHWY_COMPILE_ONLY_STATIC=1'
+                : '-DCMAKE_CXX_FLAGS=-DHWY_COMPILE_ONLY_STATIC=1',
           if (cCompiler != null) ...[
             '-DCMAKE_C_COMPILER=$compilerPath',
             '-DCMAKE_CXX_COMPILER=$cppCompilerPath',
@@ -314,98 +338,86 @@ final class SourceMode extends BuildMode {
       final minizObj = outputDir.uri.resolve('miniz.obj').toFilePath();
       final npzIoObj = outputDir.uri.resolve('npz_io.obj').toFilePath();
 
-      var res = await Process.run(cppCompilerPath, [
-        '/c',
-        '/std:c++17',
-        '/bigobj',
-        '/O2',
-        '/MD',
-        '/EHsc',
-        if (arch == Architecture.x64) '/arch:AVX2',
-        '/D_USE_MATH_DEFINES',
-        '/DNOMINMAX',
-        '/I${_root.toFilePath()}',
-        _root.resolve('hook/custom_ufuncs.cpp').toFilePath(),
-        '/Fo:$ufuncsObj',
-      ], environment: msvcEnv);
-      if (res.exitCode != 0) {
-        throw StateError(
-          'Ufuncs compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
-        );
+      Future<void> runMsvcCompile(
+        String label,
+        String exe,
+        List<String> args,
+      ) async {
+        final res = await Process.run(exe, args, environment: msvcEnv);
+        if (res.exitCode != 0) {
+          throw StateError(
+            '$label compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
+          );
+        }
       }
 
-      res = await Process.run(cppCompilerPath, [
-        '/c',
-        '/std:c++17',
-        '/bigobj',
-        '/O2',
-        '/MD',
-        '/EHsc',
-        if (arch == Architecture.x64) '/arch:AVX2',
-        '/D_USE_MATH_DEFINES',
-        '/DNOMINMAX',
-        '/I${_root.toFilePath()}',
-        '/I${_root.resolve('third_party/highway/').toFilePath()}',
-        _root.resolve('hook/custom_sorting.cpp').toFilePath(),
-        '/Fo:$sortingObj',
-      ], environment: msvcEnv);
-      if (res.exitCode != 0) {
-        throw StateError(
-          'Sorting compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
-        );
-      }
-
-      res = await Process.run(cppCompilerPath, [
-        '/c',
-        '/std:c++17',
-        '/bigobj',
-        '/O2',
-        '/MD',
-        '/EHsc',
-        if (arch == Architecture.x64) '/arch:AVX2',
-        '/D_USE_MATH_DEFINES',
-        '/DNOMINMAX',
-        '/I${_root.toFilePath()}',
-        _root.resolve('hook/custom_indexing.cpp').toFilePath(),
-        '/Fo:$indexingObj',
-      ], environment: msvcEnv);
-      if (res.exitCode != 0) {
-        throw StateError(
-          'Indexing compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
-        );
-      }
-
-      res = await Process.run(compilerPath, [
-        '/c',
-        '/O2',
-        '/MD',
-        '/I${_root.toFilePath()}',
-        _root.resolve('third_party/miniz/miniz.c').toFilePath(),
-        '/Fo:$minizObj',
-      ], environment: msvcEnv);
-      if (res.exitCode != 0) {
-        throw StateError(
-          'miniz compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
-        );
-      }
-
-      res = await Process.run(cppCompilerPath, [
-        '/c',
-        '/std:c++17',
-        '/bigobj',
-        '/O2',
-        '/MD',
-        '/EHsc',
-        '/DNOMINMAX',
-        '/I${_root.toFilePath()}',
-        _root.resolve('hook/npz_io.cpp').toFilePath(),
-        '/Fo:$npzIoObj',
-      ], environment: msvcEnv);
-      if (res.exitCode != 0) {
-        throw StateError(
-          'npz_io compilation failed:\nstdout: ${res.stdout}\nstderr: ${res.stderr}',
-        );
-      }
+      await Future.wait([
+        runMsvcCompile('Ufuncs', cppCompilerPath, [
+          '/c',
+          '/std:c++17',
+          '/bigobj',
+          '/O2',
+          '/MD',
+          '/EHsc',
+          if (arch == Architecture.x64) '/arch:AVX2',
+          '/D_USE_MATH_DEFINES',
+          '/DNOMINMAX',
+          '/DVECTORIZED_TARGETS=',
+          '/I${_root.toFilePath()}',
+          _root.resolve('hook/custom_ufuncs.cpp').toFilePath(),
+          '/Fo:$ufuncsObj',
+        ]),
+        runMsvcCompile('Sorting', cppCompilerPath, [
+          '/c',
+          '/std:c++17',
+          '/bigobj',
+          '/O2',
+          '/MD',
+          '/EHsc',
+          if (arch == Architecture.x64) '/arch:AVX2',
+          '/D_USE_MATH_DEFINES',
+          '/DNOMINMAX',
+          '/DHWY_COMPILE_ONLY_STATIC=1',
+          '/I${_root.toFilePath()}',
+          '/I${_root.resolve('third_party/highway/').toFilePath()}',
+          _root.resolve('hook/custom_sorting.cpp').toFilePath(),
+          '/Fo:$sortingObj',
+        ]),
+        runMsvcCompile('Indexing', cppCompilerPath, [
+          '/c',
+          '/std:c++17',
+          '/bigobj',
+          '/O2',
+          '/MD',
+          '/EHsc',
+          if (arch == Architecture.x64) '/arch:AVX2',
+          '/D_USE_MATH_DEFINES',
+          '/DNOMINMAX',
+          '/I${_root.toFilePath()}',
+          _root.resolve('hook/custom_indexing.cpp').toFilePath(),
+          '/Fo:$indexingObj',
+        ]),
+        runMsvcCompile('miniz', compilerPath, [
+          '/c',
+          '/O2',
+          '/MD',
+          '/I${_root.toFilePath()}',
+          _root.resolve('third_party/miniz/miniz.c').toFilePath(),
+          '/Fo:$minizObj',
+        ]),
+        runMsvcCompile('npz_io', cppCompilerPath, [
+          '/c',
+          '/std:c++17',
+          '/bigobj',
+          '/O2',
+          '/MD',
+          '/EHsc',
+          '/DNOMINMAX',
+          '/I${_root.toFilePath()}',
+          _root.resolve('hook/npz_io.cpp').toFilePath(),
+          '/Fo:$npzIoObj',
+        ]),
+      ]);
 
       final allExports = [
         ...extractExportsFromBindings(
@@ -425,7 +437,7 @@ final class SourceMode extends BuildMode {
         ['LIBRARY libndarray', 'EXPORTS', ...allExports].join('\n'),
       );
 
-      res = await Process.run(cppCompilerPath, [
+      final res = await Process.run(cppCompilerPath, [
         '/LD',
         '/MD',
         ufuncsObj,
@@ -445,37 +457,76 @@ final class SourceMode extends BuildMode {
         );
       }
     } else {
-      final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.o').toFilePath();
-      final sortingObj = outputDir.uri.resolve('custom_sorting.o').toFilePath();
-      final indexingObj = outputDir.uri
+      final sharedObjDir = Directory.fromUri(
+        input.outputDirectoryShared.resolve(
+          'ndarray-objs-${os.name}-${arch.name}/',
+        ),
+      );
+      if (!sharedObjDir.existsSync()) {
+        sharedObjDir.createSync(recursive: true);
+      }
+      final ufuncsObj = sharedObjDir.uri
+          .resolve('custom_ufuncs.o')
+          .toFilePath();
+      final sortingObj = sharedObjDir.uri
+          .resolve('custom_sorting.o')
+          .toFilePath();
+      final indexingObj = sharedObjDir.uri
           .resolve('custom_indexing.o')
           .toFilePath();
-      final minizObj = outputDir.uri.resolve('miniz.o').toFilePath();
-      final npzIoObj = outputDir.uri.resolve('npz_io.o').toFilePath();
+      final minizObj = sharedObjDir.uri.resolve('miniz.o').toFilePath();
+      final npzIoObj = sharedObjDir.uri.resolve('npz_io.o').toFilePath();
 
-      bool needsCompile(String src, String obj) {
-        final srcF = File(src);
-        final objF = File(obj);
-        if (!objF.existsSync()) return true;
-        final objTime = objF.lastModifiedSync();
-        if (srcF.lastModifiedSync().isAfter(objTime)) return true;
+      String computeInputDigest(String src) {
+        final bytes = BytesBuilder(copy: false);
+        bytes.add(File(src).readAsBytesSync());
         for (final header in const [
           'hook/custom_indexing.h',
           'hook/custom_sorting.h',
           'hook/custom_ufuncs.h',
-          'hook/build.dart',
+          'hook/npz_io.h',
         ]) {
           final hF = File(_root.resolve(header).toFilePath());
-          if (hF.existsSync() && hF.lastModifiedSync().isAfter(objTime)) {
-            return true;
+          if (hF.existsSync()) {
+            bytes.add(hF.readAsBytesSync());
           }
         }
-        return false;
+        return sha256.convert(bytes.takeBytes()).toString();
+      }
+
+      Future<bool> compileIfNeeded(
+        String label,
+        String src,
+        String obj,
+        String exe,
+        List<String> args,
+      ) async {
+        final objF = File(obj);
+        final hashF = File('$obj.sha256');
+        final digest = computeInputDigest(src);
+        if (objF.existsSync() &&
+            hashF.existsSync() &&
+            hashF.readAsStringSync().trim() == digest) {
+          return false;
+        }
+        final res = await Process.run(exe, args);
+        if (res.exitCode != 0) {
+          throw StateError('$label compilation failed: ${res.stderr}');
+        }
+        await hashF.writeAsString(digest);
+        return true;
       }
 
       final ufuncsSrc = _root.resolve('hook/custom_ufuncs.cpp').toFilePath();
-      if (needsCompile(ufuncsSrc, ufuncsObj)) {
-        final res = await Process.run(cppCompilerPath, [
+      final sortingSrc = _root.resolve('hook/custom_sorting.cpp').toFilePath();
+      final indexingSrc = _root
+          .resolve('hook/custom_indexing.cpp')
+          .toFilePath();
+      final minizSrc = _root.resolve('third_party/miniz/miniz.c').toFilePath();
+      final npzIoSrc = _root.resolve('hook/npz_io.cpp').toFilePath();
+
+      final compiledAny = await Future.wait([
+        compileIfNeeded('Ufuncs', ufuncsSrc, ufuncsObj, cppCompilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
@@ -483,22 +534,16 @@ final class SourceMode extends BuildMode {
           '-std=c++17',
           '-c',
           '-fPIC',
-          '-O3',
+          '-O2',
           if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
+          '-DVECTORIZED_TARGETS=',
           '-fno-math-errno',
           '-I${_root.toFilePath()}',
           ufuncsSrc,
           '-o',
           ufuncsObj,
-        ]);
-        if (res.exitCode != 0) {
-          throw StateError('Ufuncs compilation failed: ${res.stderr}');
-        }
-      }
-
-      final sortingSrc = _root.resolve('hook/custom_sorting.cpp').toFilePath();
-      if (needsCompile(sortingSrc, sortingObj)) {
-        final res = await Process.run(cppCompilerPath, [
+        ]),
+        compileIfNeeded('Sorting', sortingSrc, sortingObj, cppCompilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
@@ -506,25 +551,17 @@ final class SourceMode extends BuildMode {
           '-std=c++17',
           '-c',
           '-fPIC',
-          '-O3',
+          '-O2',
           if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
+          '-DHWY_COMPILE_ONLY_STATIC=1',
           '-fno-math-errno',
           '-I${_root.toFilePath()}',
           '-I${_root.resolve('third_party/highway/').toFilePath()}',
           sortingSrc,
           '-o',
           sortingObj,
-        ]);
-        if (res.exitCode != 0) {
-          throw StateError('Sorting compilation failed: ${res.stderr}');
-        }
-      }
-
-      final indexingSrc = _root
-          .resolve('hook/custom_indexing.cpp')
-          .toFilePath();
-      if (needsCompile(indexingSrc, indexingObj)) {
-        final res = await Process.run(cppCompilerPath, [
+        ]),
+        compileIfNeeded('Indexing', indexingSrc, indexingObj, cppCompilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
@@ -532,23 +569,15 @@ final class SourceMode extends BuildMode {
           '-std=c++17',
           '-c',
           '-fPIC',
-          '-O3',
+          '-O2',
           if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
           '-fno-math-errno',
           '-I${_root.toFilePath()}',
           indexingSrc,
           '-o',
           indexingObj,
-        ]);
-        if (res.exitCode != 0) {
-          throw StateError('Indexing compilation failed: ${res.stderr}');
-        }
-      }
-
-      final minizSrc = _root.resolve('third_party/miniz/miniz.c').toFilePath();
-      final minizH = _root.resolve('third_party/miniz/miniz.h').toFilePath();
-      if (needsCompile(minizSrc, minizObj) || needsCompile(minizH, minizObj)) {
-        final res = await Process.run(compilerPath, [
+        ]),
+        compileIfNeeded('miniz', minizSrc, minizObj, compilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
@@ -560,15 +589,8 @@ final class SourceMode extends BuildMode {
           minizSrc,
           '-o',
           minizObj,
-        ]);
-        if (res.exitCode != 0) {
-          throw StateError('miniz compilation failed: ${res.stderr}');
-        }
-      }
-
-      final npzIoSrc = _root.resolve('hook/npz_io.cpp').toFilePath();
-      if (needsCompile(npzIoSrc, npzIoObj) || needsCompile(minizH, npzIoObj)) {
-        final res = await Process.run(cppCompilerPath, [
+        ]),
+        compileIfNeeded('npz_io', npzIoSrc, npzIoObj, cppCompilerPath, [
           if (os == OS.macOS || os == OS.iOS) ...[
             '-arch',
             arch == Architecture.arm64 ? 'arm64' : 'x86_64',
@@ -581,20 +603,10 @@ final class SourceMode extends BuildMode {
           npzIoSrc,
           '-o',
           npzIoObj,
-        ]);
-        if (res.exitCode != 0) {
-          throw StateError('npz_io compilation failed: ${res.stderr}');
-        }
-      }
+        ]),
+      ]);
 
-      final objs = [ufuncsObj, sortingObj, indexingObj, minizObj, npzIoObj];
-      final needsLink =
-          !libFile.existsSync() ||
-          objs.any(
-            (obj) => File(
-              obj,
-            ).lastModifiedSync().isAfter(libFile.lastModifiedSync()),
-          );
+      final needsLink = !libFile.existsSync() || compiledAny.any((c) => c);
 
       if (needsLink) {
         final res = await Process.run(cppCompilerPath, [
