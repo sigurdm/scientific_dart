@@ -16,7 +16,7 @@ import 'manipulation.dart';
 ///
 /// Note: To specify spacings for multiple axes in [gradientArray], use a
 /// `List<Spacing>`.
-sealed class Spacing<V extends AnyDType> {
+sealed class Spacing<V extends Object> {
   const Spacing();
 
   /// Constant spacing of value [value] (e.g. [dx]).
@@ -28,13 +28,13 @@ sealed class Spacing<V extends AnyDType> {
 }
 
 /// Constant spacing implementation.
-final class StepSpacing<V extends AnyDType> extends Spacing<V> {
+final class StepSpacing<V extends Object> extends Spacing<V> {
   final V value;
   const StepSpacing(this.value);
 }
 
 /// Variable coordinate spacing implementation.
-final class CoordinateSpacing<V extends AnyDType> extends Spacing<V> {
+final class CoordinateSpacing<V extends Object> extends Spacing<V> {
   final List<V> values;
   const CoordinateSpacing(this.values);
 }

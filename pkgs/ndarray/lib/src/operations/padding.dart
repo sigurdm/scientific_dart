@@ -89,26 +89,36 @@ final class PadWidth {
 }
 
 /// Represents constant padding values for each axis.
+///
+/// The type parameter [T] is the [DTypeTag] of the array these values are
+/// meant for; it ties a `PadValues` to a matching [NDArray] at the [pad] call
+/// site. The values themselves are untyped ([Object?]) because a tag does not
+/// name its element type; they must match the array's dtype (`double` for the
+/// float dtypes, `int` for the integer dtypes, [Complex] for the complex
+/// dtypes and `bool` for [DType.boolean]).
 final class PadValues<T extends AnyDType> {
-  final (T before, T after)? _uniform;
-  final List<(T before, T after)>? _axes;
+  final (Object? before, Object? after)? _uniform;
+  final List<(Object? before, Object? after)>? _axes;
 
   const PadValues._(this._uniform, this._axes);
 
   /// Creates a uniform [PadValues] for all axes.
   ///
   /// If [after] is not specified, it defaults to [before].
-  factory PadValues.all(T before, [T? after]) {
+  factory PadValues.all(Object? before, [Object? after]) {
     return PadValues._((before, after ?? before), null);
   }
 
   /// Creates a [PadValues] with specific values for each axis.
-  factory PadValues.axes(List<(T before, T after)> values) {
+  factory PadValues.axes(List<(Object? before, Object? after)> values) {
     return PadValues._(null, List.unmodifiable(values));
   }
 
   /// Normalizes the pad values to a list of length [rank].
-  List<(T before, T after)> normalize(int rank, T defaultValue) {
+  List<(Object? before, Object? after)> normalize(
+    int rank,
+    Object? defaultValue,
+  ) {
     final uniform = _uniform;
     if (uniform != null) {
       return List.filled(rank, uniform);
@@ -273,13 +283,10 @@ NDArray<T> pad<T extends AnyDType>(
   // Normalize parameters
   final normPadWidths = padWidth.normalize(rank);
   final defaultValue = _getDefaultValue(array.dtype);
-  final normConstantValues =
-      (constantValues ?? PadValues.all(defaultValue as dynamic)).normalize(
-        rank,
-        defaultValue as dynamic,
-      );
-  final normEndValues = (endValues ?? PadValues.all(defaultValue as dynamic))
-      .normalize(rank, defaultValue as dynamic);
+  final normConstantValues = (constantValues ?? PadValues<T>.all(defaultValue))
+      .normalize(rank, defaultValue);
+  final normEndValues = (endValues ?? PadValues<T>.all(defaultValue))
+      .normalize(rank, defaultValue);
   final normStatLengths =
       statLength?.normalize(array.shape) ??
       List.generate(rank, (i) => (array.shape[i], array.shape[i]));
@@ -393,9 +400,9 @@ ffi.Pointer<ffi.Uint8> _copyUint8s(List<int> list) {
   ffi.Pointer<ffi.Void> constAfterPtr,
   int isUniformConstant,
 )
-_prepareConstants<T extends AnyDType>(
+_prepareConstants(
   DType dtype,
-  List<(T before, T after)> normConstantValues,
+  List<(Object? before, Object? after)> normConstantValues,
   int rank,
 ) {
   var isUniform = 1;
@@ -504,8 +511,8 @@ _prepareConstants<T extends AnyDType>(
 bool _padArgsShareMemoryWithOut<T extends AnyDType>(
   NDArray<T> array,
   NDArray<T> out,
-  List<(T before, T after)> normConstantValues,
-  List<(T before, T after)>? normEndValues,
+  List<(Object? before, Object? after)> normConstantValues,
+  List<(Object? before, Object? after)>? normEndValues,
 ) {
   if (sharesMemory(array, out)) return true;
   for (final (b, a) in normConstantValues) {
@@ -525,7 +532,7 @@ NDArray<T> _padNativeFast<T extends AnyDType>(
   NDArray<T> array,
   List<(int before, int after)> normPadWidths,
   PadMode mode,
-  List<(T before, T after)> normConstantValues,
+  List<(Object? before, Object? after)> normConstantValues,
   List<int> finalShape,
   NDArray<T>? out,
 ) {
@@ -552,7 +559,7 @@ NDArray<T> _padNativeFast<T extends AnyDType>(
 
     final marker = ScratchArena.marker;
     try {
-      final (cbPtr, caPtr, isUniform) = _prepareConstants<T>(
+      final (cbPtr, caPtr, isUniform) = _prepareConstants(
         array.dtype,
         normConstantValues,
         rank,
@@ -636,8 +643,8 @@ NDArray<T> _padAxisByAxis<T extends AnyDType>(
   NDArray<T> array,
   List<(int before, int after)> normPadWidths,
   PadMode mode,
-  List<(T before, T after)> normConstantValues,
-  List<(T before, T after)> normEndValues,
+  List<(Object? before, Object? after)> normConstantValues,
+  List<(Object? before, Object? after)> normEndValues,
   List<(int before, int after)> normStatLengths,
   NDArray<T>? out,
 ) {
@@ -732,10 +739,10 @@ void _padAxis<T extends AnyDType>(
   int padBefore,
   int padAfter,
   PadMode mode,
-  T constantBefore,
-  T constantAfter,
-  T endBefore,
-  T endAfter,
+  Object? constantBefore,
+  Object? constantAfter,
+  Object? endBefore,
+  Object? endAfter,
   int statLengthBefore,
   int statLengthAfter,
 ) {

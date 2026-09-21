@@ -1372,9 +1372,9 @@ NDArray<T> square<T extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, N
             );
             return result;
           case DType.boolean:
-            unaryOp<bool, bool>(
-              result as NDArray<Boolean>,
-              a as NDArray<Boolean>,
+            unaryOp<T, T>(
+              result,
+              a,
               a.shape,
               a.strides,
               result.strides,
@@ -1387,16 +1387,19 @@ NDArray<T> square<T extends AnyDType>(NDArray<T> a, {NDArray<AnyDType>? where, N
             return result;
           case DType.uint8:
           case DType.int16:
-            unaryOp<num, num>(
-              result as NDArray<AnyReal>,
-              a as NDArray<AnyReal>,
+            unaryOp<T, T>(
+              result,
+              a,
               a.shape,
               a.strides,
               result.strides,
               0,
               a.offsetElements,
               result.offsetElements,
-              (x) => x * x,
+              (x) {
+                final v = x as int;
+                return v * v;
+              },
               maskHolder.pointer,
             );
             return result;
@@ -1939,7 +1942,7 @@ NDArray<T> power<T extends AnyDType>(
   if (dtype.isInteger) {
     final NDArray<AnyReal> x2Num = (x2 is NDArray<AnyReal>)
         ? (x2 as NDArray<AnyReal>)
-        : castNDArray<AnyReal>(x2, x2.dtype as DType<num>);
+        : castNDArray<AnyReal>(x2, x2.dtype as DType<AnyReal>);
     try {
       if (x2Num.rank == 0) {
         if (x2Num.scalar < 0) {
@@ -3863,16 +3866,19 @@ NDArray<R> abs<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<An
     switch (a.dtype) {
       case DType.complex128:
       case DType.complex64:
-        unaryOp<Complex, Float64>(
-          result as NDArray<Float64>,
-          a as NDArray<AnyComplex>,
+        unaryOp<T, R>(
+          result,
+          a,
           a.shape,
           a.strides,
           result.strides,
           0,
           a.offsetElements,
           result.offsetElements,
-          (c) => math.sqrt(c.real * c.real + c.imag * c.imag),
+          (c) {
+            final z = c as Complex;
+            return math.sqrt(z.real * z.real + z.imag * z.imag);
+          },
           maskHolder.pointer,
         );
       case DType.int64:
@@ -3958,9 +3964,9 @@ NDArray<T> sign<T extends AnyDType>(
     switch (a.dtype) {
       case DType.complex128:
       case DType.complex64:
-        unaryOp<Complex, Complex>(
-          result as NDArray<AnyComplex>,
-          a as NDArray<AnyComplex>,
+        unaryOp<T, T>(
+          result,
+          a,
           a.shape,
           a.strides,
           result.strides,
@@ -3968,9 +3974,10 @@ NDArray<T> sign<T extends AnyDType>(
           a.offsetElements,
           result.offsetElements,
           (c) {
-            if (c.real == 0 && c.imag == 0) return Complex(0, 0);
-            final mag = math.sqrt(c.real * c.real + c.imag * c.imag);
-            return Complex(c.real / mag, c.imag / mag);
+            final z = c as Complex;
+            if (z.real == 0 && z.imag == 0) return Complex(0, 0);
+            final mag = math.sqrt(z.real * z.real + z.imag * z.imag);
+            return Complex(z.real / mag, z.imag / mag);
           },
           maskHolder.pointer,
         );
@@ -5848,7 +5855,7 @@ NDArray<R> add<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
     final cpxA = castNDArray(a, DType.complex128);
     final cpxB = castNDArray(b, DType.complex128);
-    final cpxRes = add<Complex, Complex, Complex>(cpxA, cpxB, where: where);
+    final cpxRes = add<Complex128, Complex128, Complex128>(cpxA, cpxB, where: where);
     final casted = castNDArray(cpxRes, result.dtype);
     _copyMaskedResult(casted, result, where);
     if (!identical(cpxA, a)) cpxA.dispose();
@@ -7387,7 +7394,7 @@ NDArray<R> subtract<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType
   if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
     final cpxA = castNDArray(a, DType.complex128);
     final cpxB = castNDArray(b, DType.complex128);
-    final cpxRes = subtract<Complex, Complex, Complex>(
+    final cpxRes = subtract<Complex128, Complex128, Complex128>(
       cpxA,
       cpxB,
       where: where,
@@ -8935,7 +8942,7 @@ NDArray<R> multiply<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType
   if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
     final cpxA = castNDArray(a, DType.complex128);
     final cpxB = castNDArray(b, DType.complex128);
-    final cpxRes = multiply<Complex, Complex, Complex>(
+    final cpxRes = multiply<Complex128, Complex128, Complex128>(
       cpxA,
       cpxB,
       where: where,
@@ -10497,7 +10504,7 @@ NDArray<R> divide<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
     final cpxA = castNDArray(a, DType.complex128);
     final cpxB = castNDArray(b, DType.complex128);
-    final cpxRes = divide<Complex, Complex, Complex>(cpxA, cpxB, where: where);
+    final cpxRes = divide<Complex128, Complex128, Complex128>(cpxA, cpxB, where: where);
     final casted = castNDArray(cpxRes, result.dtype);
     _copyMaskedResult(casted, result, where);
     if (!identical(cpxA, a)) cpxA.dispose();

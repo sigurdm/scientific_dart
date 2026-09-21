@@ -11,7 +11,7 @@ import 'sorting.dart'; // For searchsorted, count_nonzero
 import 'spacers.dart'; // For linspace
 
 // Helper to check list equality
-bool _listEquals<T extends AnyDType>(List<T>? a, List<T>? b) {
+bool _listEquals<T>(List<T>? a, List<T>? b) {
   if (a == null) return b == null;
   if (b == null) return false;
   if (identical(a, b)) return true;
@@ -86,7 +86,7 @@ NDArray<T> bincount<T extends AnyReal>(
             'Output array must be 1D and have size at least $outSize.',
           );
         }
-        out.fill(normalizeScalar(0, out.dtype) as T);
+        out.fill(normalizeScalar(0, out.dtype) as num);
         return out;
       }
       final result = NDArray<T>.zeros([
@@ -131,7 +131,7 @@ NDArray<T> bincount<T extends AnyReal>(
             sharesMemory(x, out) ||
             (weights != null && sharesMemory(weights, out)));
     if (aliasesInput) {
-      final temp = bincount<num>(x, weights: weights, minlength: out.shape[0]);
+      final temp = bincount<AnyReal>(x, weights: weights, minlength: out.shape[0]);
       _fastCopyAndCast(temp, out);
       return out;
     }
@@ -211,7 +211,7 @@ NDArray<T> bincount<T extends AnyReal>(
       }
     } else {
       // Weighted bincount. Target DType must be float32 or float64.
-      final DType<num> wDType = targetDType.isFloating
+      final DType<AnyReal> wDType = targetDType.isFloating
           ? targetDType
           : DType.float64;
       NDArray<AnyReal> wCast = weights;
@@ -427,12 +427,12 @@ NDArray<Int32> digitize(
       throw ArgumentError('bins must be monotonic.');
     }
 
-    final commonDType = resolveDType(bins.dtype, x.dtype) as DType<Object>;
-    final commonBins = bins.dtype == commonDType
-        ? bins as NDArray<AnyDType>
+    final commonDType = resolveDType(bins.dtype, x.dtype);
+    final NDArray<AnyDType> commonBins = bins.dtype == commonDType
+        ? bins
         : castNDArray<AnyDType>(bins, commonDType);
-    final commonX = x.dtype == commonDType
-        ? x as NDArray<AnyDType>
+    final NDArray<AnyDType> commonX = x.dtype == commonDType
+        ? x
         : castNDArray<AnyDType>(x, commonDType);
 
     final side = right ? SearchSide.left : SearchSide.right;
@@ -555,8 +555,8 @@ NDArray<Int32> digitize(
           minX = 0.0;
           maxX = 1.0;
         } else {
-          final minRes = min<num>(flatX).scalar;
-          final maxRes = max<num>(flatX).scalar;
+          final minRes = min<AnyReal>(flatX).scalar;
+          final maxRes = max<AnyReal>(flatX).scalar;
           if (flatX.dtype == DType.uint64) {
             minX = BigInt.from(minRes as int).toUnsigned(64).toDouble();
             maxX = BigInt.from(maxRes as int).toUnsigned(64).toDouble();
@@ -610,18 +610,18 @@ NDArray<Int32> digitize(
       throw ArgumentError('bins must be an int or an NDArray.');
     }
 
-    final DType<num> targetHistDType = switch (rawFlatWeights?.dtype) {
-      null => DType.int64 as DType<num>,
+    final DType<AnyReal> targetHistDType = switch (rawFlatWeights?.dtype) {
+      null => DType.int64,
       DType.float64 ||
       DType.float32 ||
       DType.float16 ||
       DType.bfloat16 => rawFlatWeights!.dtype,
-      _ => DType.float64 as DType<num>,
+      _ => DType.float64,
     };
-    final DType<num> computeHistDType = switch (rawFlatWeights?.dtype) {
-      null => DType.int64 as DType<num>,
-      DType.float32 => DType.float32 as DType<num>,
-      _ => DType.float64 as DType<num>,
+    final DType<AnyReal> computeHistDType = switch (rawFlatWeights?.dtype) {
+      null => DType.int64,
+      DType.float32 => DType.float32,
+      _ => DType.float64,
     };
 
     final NDArray<AnyReal> hist = NDArray<AnyReal>.zeros([nbins], computeHistDType);
@@ -710,7 +710,7 @@ NDArray<Int32> digitize(
 
     NDArray<AnyReal> finalHist = hist;
     if (density) {
-      final totalSum = sum<num>(hist).scalar;
+      final totalSum = sum<AnyReal>(hist).scalar;
       final widths = subtract<Float64, Float64, Float64>(
         resolvedBinEdges.slice([Slice(start: 1)]),
         resolvedBinEdges.slice([Slice(stop: resolvedBinEdges.size - 1)]),
@@ -720,7 +720,7 @@ NDArray<Int32> digitize(
         dtype: DType.float64,
       );
       final divisor = multiply<Float64, Float64, Float64>(widths, totalSumArr);
-      finalHist = divide<num, Float64, Float64>(hist, divisor);
+      finalHist = divide<AnyReal, Float64, Float64>(hist, divisor);
     } else if (targetHistDType != computeHistDType) {
       finalHist = castNDArray<AnyReal>(hist, targetHistDType);
     }

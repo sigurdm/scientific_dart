@@ -175,8 +175,11 @@ NDArray<R> angle<T extends AnyDType, R extends AnyFloat>(
             0,
             0,
             0,
-            (val) =>
-                (val < 0.0 || identical(val, -0.0)) ? math.pi : 0.0,
+            (val) {
+              // `doubleA` was just cast to float64, so the element is a double.
+              final v = val as double;
+              return (v < 0.0 || identical(v, -0.0)) ? math.pi : 0.0;
+            },
           );
           final casted = castNDArray<R>(doubleRes, result.dtype);
           casted.copy(out: result);

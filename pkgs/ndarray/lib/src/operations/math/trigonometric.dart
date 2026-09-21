@@ -167,16 +167,16 @@ NDArray<R> sin<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<An
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<T, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.sin(x),
+      (x) => math.sin(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -514,16 +514,16 @@ NDArray<R> cos<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<An
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<T, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.cos(x),
+      (x) => math.cos(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -678,16 +678,16 @@ NDArray<R> tan<T extends AnyDType, R extends AnyDType>(NDArray<T> a, {NDArray<An
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<T, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.tan(x),
+      (x) => math.tan(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -855,16 +855,16 @@ NDArray<R> asin<T extends AnyDType, R extends AnyDType>(
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<T, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.asin(x),
+      (x) => math.asin(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -1032,16 +1032,16 @@ NDArray<R> acos<T extends AnyDType, R extends AnyDType>(
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<T, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.acos(x),
+      (x) => math.acos(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -1209,16 +1209,16 @@ NDArray<R> atan<T extends AnyDType, R extends AnyDType>(
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<T, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.atan(x),
+      (x) => math.atan(x as num),
       maskHolder.pointer,
     );
     return result;

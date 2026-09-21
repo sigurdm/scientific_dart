@@ -48,7 +48,9 @@ void setNumThreads(int numThreads) {
 /// // ([1, 0], 30)
 /// // ([1, 1], 40)
 /// ```
-Iterable<(List<int> coordinate, T value)> ndenumerate<T extends AnyDType>(NDArray<T> a) sync* {
+Iterable<(List<int> coordinate, E value)> ndenumerate<T extends DTypeTag<E>, E>(
+  NDArray<T> a,
+) sync* {
   if (a.isDisposed) {
     throw StateError('Cannot execute ndenumerate() on a disposed array.');
   }

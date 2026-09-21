@@ -1802,7 +1802,7 @@ NDArray<T> det<T extends AnyDType>(NDArray<T> a, {NDArray<T>? out}) {
 /// - A record `(sign, logdet)` of two NDArrays, representing the sign (or phase) and log of the absolute determinant.
 ///
 /// Reference: [NumPy linalg.slogdet](https://numpy.org/doc/stable/reference/generated/numpy.linalg.slogdet.html)
-({NDArray<T> sign, NDArray<R> logabsdet}) slogdet<T, R extends AnyReal>(
+({NDArray<T> sign, NDArray<R> logabsdet}) slogdet<T extends AnyDType, R extends AnyReal>(
   NDArray<T> a, {
   NDArray<T>? outSign,
   NDArray<R>? outLogdet,
@@ -4593,13 +4593,11 @@ eigh<T extends AnyDType, R extends AnyDType>(
     throw ArgumentError('Unsupported dtype: ${a.dtype}');
   }
 
-  final DType<num> eigenvalueDType =
-      (targetDType.isComplex
-              ? (targetDType == DType.complex128
-                    ? DType.float64
-                    : DType.float32)
-              : targetDType)
-          as DType<num>;
+  final DType<AnyFloat> eigenvalueDType = switch (targetDType) {
+    DType.float32 || DType.complex64 => DType.float32,
+    DType.float64 || DType.complex128 => DType.float64,
+    _ => throw ArgumentError('Unsupported dtype: ${a.dtype}'),
+  };
 
   final stackShape = a.shape.sublist(0, a.rank - 2);
 
@@ -4898,13 +4896,11 @@ NDArray<AnyReal> eigvalsh<T extends AnyDType>(
     throw ArgumentError('Unsupported dtype: ${a.dtype}');
   }
 
-  final DType<num> eigenvalueDType =
-      (targetDType.isComplex
-              ? (targetDType == DType.complex128
-                    ? DType.float64
-                    : DType.float32)
-              : targetDType)
-          as DType<num>;
+  final DType<AnyFloat> eigenvalueDType = switch (targetDType) {
+    DType.float32 || DType.complex64 => DType.float32,
+    DType.float64 || DType.complex128 => DType.float64,
+    _ => throw ArgumentError('Unsupported dtype: ${a.dtype}'),
+  };
 
   final stackShape = a.shape.sublist(0, a.rank - 2);
   final eigenvaluesShape = [...stackShape, n];
@@ -5508,7 +5504,7 @@ NDArray<AnyReal> eigvalsh<T extends AnyDType>(
           (outH != null && sharesMemory(outH, outQ)));
   if (needTempH || needTempQ) {
     return NDArray.scope(() {
-      final res = hessenberg<T, Object>(
+      final res = hessenberg<T, AnyDType>(
         a,
         outH: needTempH ? null : outH,
         outQ: needTempQ ? null : outQ,
@@ -6852,7 +6848,7 @@ extension QRRecordDispose<T extends AnyDType> on ({NDArray<T> q, NDArray<T> r}) 
   }
 }
 
-extension SVDRecordDispose<T, S extends AnyReal>
+extension SVDRecordDispose<T extends AnyDType, S extends AnyReal>
     on ({NDArray<T> u, NDArray<S> s, NDArray<T> vh}) {
   void dispose() {
     this.u.dispose();
@@ -7308,7 +7304,7 @@ NDArray<R> cond<T extends AnyDType, R extends AnyReal>(
     throw ArgumentError('Cannot compute condition number of an empty matrix.');
   }
 
-  final DType<double> resDType = switch (a.dtype) {
+  final DType<AnyFloat> resDType = switch (a.dtype) {
     DType.float32 || DType.complex64 => DType.float32,
     _ => DType.float64,
   };
@@ -7355,7 +7351,7 @@ NDArray<R> cond<T extends AnyDType, R extends AnyReal>(
               strides: aUse.strides.sublist(rank - 2),
               offsetElements: offsetA,
             );
-      final froNormVal = norm<Object, Float64>(
+      final froNormVal = norm<AnyDType, AnyFloat>(
         aSlice,
         ord: NormKind.frobenius,
       ).scalar;
@@ -7396,13 +7392,13 @@ NDArray<R> cond<T extends AnyDType, R extends AnyReal>(
       } else {
         final normAVal = (ord == NormKind.frobenius)
             ? froNormVal
-            : norm<Object, Float64>(aSlice, ord: ord).scalar;
+            : norm<AnyDType, AnyFloat>(aSlice, ord: ord).scalar;
         if (normAVal.isNaN) {
           val = double.nan;
         } else {
           try {
-            final invSliceA = inv<Object>(aSlice);
-            final normInvAVal = norm<Object, Float64>(
+            final invSliceA = inv<AnyDType>(aSlice);
+            final normInvAVal = norm<AnyDType, AnyFloat>(
               invSliceA,
               ord: ord,
             ).scalar;

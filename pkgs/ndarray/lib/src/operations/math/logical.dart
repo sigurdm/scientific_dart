@@ -683,7 +683,7 @@ NDArray<Boolean> _compareHelper(
             cShape,
             rank,
           );
-          unaryOp<bool, bool>(
+          unaryOp<Boolean, Boolean>(
             result,
             tempRes,
             commonShape,

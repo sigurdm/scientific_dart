@@ -361,11 +361,7 @@ NDArray<R> tensordot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDTyp
       final aView = a.reshape(aShapeExpanded);
       final bView = b.reshape(bShapeExpanded);
 
-      final res = multiply<Object, Object, R>(
-        aView as NDArray<AnyDType>,
-        bView as NDArray<AnyDType>,
-        out: out,
-      );
+      final res = multiply<AnyDType, AnyDType, R>(aView, bView, out: out);
       return _returnFromScope<R>(res, [a, b], out: out);
     });
   }
@@ -450,10 +446,7 @@ NDArray<R> tensordot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDTyp
     final a2D = aPerm.reshape([m, k]);
     final b2D = bPerm.reshape([k, n]);
 
-    final res2D = matmul<Object, Object, R>(
-      a2D as NDArray<AnyDType>,
-      b2D as NDArray<AnyDType>,
-    );
+    final res2D = matmul<AnyDType, AnyDType, R>(a2D, b2D);
     final res = listEquals(res2D.shape, targetShape)
         ? res2D
         : res2D.reshape(targetShape);
