@@ -87,7 +87,7 @@ void main() {
         final a = NDArray.fromList([true, false, true], [3], DType.boolean);
         final b = NDArray.fromList([true, true, false], [3], DType.boolean);
 
-        final result = add<DTypeTag>(a, b);
+        final result = addAs(a, b, DType.uint8);
 
         expect(result.dtype, DType.uint8);
         expect(result.toList(), [2, 1, 1]);

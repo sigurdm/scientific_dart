@@ -47,6 +47,25 @@ void main() {
         expect(diffI32.toList(), [0, 0]);
         expect(divI32.toList(), [1.0, 1.0]);
         expect(divF32.toList(), [1.0, 1.0]);
+
+        // Mixed-dtype / target-dtype operations via *As<Ta, Tb, R>(a, b, DType<R>)
+        // infer all 3 type parameters from (a, b, dtype) without explicit <...>:
+        final NDArray<Float32> mixedAddF32 = addAs(i32, f64, DType.float32);
+        final NDArray<Float64> mixedSubF64 = subtractAs(
+          f32,
+          i32,
+          DType.float64,
+        );
+        final NDArray<Int64> mixedMulI64 = multiplyAs(i32, i64, DType.int64);
+        final NDArray<Float32> mixedDivF32 = divideAs(i32, i64, DType.float32);
+        expect(mixedAddF32.dtype, DType.float32);
+        expect(mixedAddF32.toList(), [2.0, 4.0]);
+        expect(mixedSubF64.dtype, DType.float64);
+        expect(mixedSubF64.toList(), [0.0, 0.0]);
+        expect(mixedMulI64.dtype, DType.int64);
+        expect(mixedMulI64.toList(), [1, 4]);
+        expect(mixedDivF32.dtype, DType.float32);
+        expect(mixedDivF32.toList(), [1.0, 1.0]);
       });
     });
 

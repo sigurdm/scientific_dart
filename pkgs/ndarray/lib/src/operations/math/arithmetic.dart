@@ -10535,3 +10535,249 @@ void _copyMaskedResult(NDArray src, NDArray dest, NDArray<DTypeTag>? where) {
     maskHolder.dispose();
   }
 }
+
+/// Element-wise addition of [a] and [b] computed into the specified target [dtype].
+///
+/// Unlike [add], which requires matching operand types `T`, [addAs] accepts two
+/// strongly-typed arrays of potentially different data types ([Ta] and [Tb]) and
+/// returns an [NDArray<R>] whose static type [R] is inferred from [dtype].
+///
+/// Delegates directly to the native 15x15 cross-dtype C kernels whenever
+/// `resolveDType` matches [dtype] (zero intermediate allocations). If an operand's
+/// dtype would promote above [dtype], only that operand is cast to [dtype] before
+/// delegating to the cross-dtype C kernel.
+///
+/// **Preconditions:**
+/// - It is an error if [a], [b], [where], or [out] is disposed.
+/// - [a] and [b] must have broadcast-compatible shapes.
+/// - If [out] is provided, its shape must match the broadcasted shape and its
+///   dtype must equal [dtype].
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the broadcasted element count.
+/// - Zero temporary allocations when `resolveDType(a.dtype, b.dtype) == dtype`.
+///
+/// Reference: [NumPy add](https://numpy.org/doc/stable/reference/generated/numpy.add.html)
+NDArray<R> addAs<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
+  NDArray<Ta> a,
+  NDArray<Tb> b,
+  DType<R> dtype, {
+  NDArray<DTypeTag>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute addAs() on a disposed array.');
+  }
+  if (resolveDType(a.dtype, b.dtype) == dtype) {
+    return add<DTypeTag>(a, b, where: where, out: out) as NDArray<R>;
+  }
+  return NDArray.scope(() {
+    final aCanPromoteToTarget =
+        a.dtype == dtype || resolveDType(a.dtype, dtype) == dtype;
+    final bCanPromoteToTarget =
+        b.dtype == dtype || resolveDType(dtype, b.dtype) == dtype;
+    final NDArray aIn = aCanPromoteToTarget && !bCanPromoteToTarget
+        ? a
+        : (a.dtype == dtype ? a : castNDArray<R>(a, dtype));
+    final NDArray bIn = bCanPromoteToTarget && !aCanPromoteToTarget
+        ? b
+        : (b.dtype == dtype ? b : castNDArray<R>(b, dtype));
+    final NDArray aFinal = resolveDType(aIn.dtype, bIn.dtype) == dtype
+        ? aIn
+        : (aIn.dtype == dtype ? aIn : castNDArray<R>(aIn, dtype));
+    final NDArray bFinal = resolveDType(aFinal.dtype, bIn.dtype) == dtype
+        ? bIn
+        : (bIn.dtype == dtype ? bIn : castNDArray<R>(bIn, dtype));
+    final res =
+        add<DTypeTag>(aFinal, bFinal, where: where, out: out) as NDArray<R>;
+    return out ?? res.detachToParentScope();
+  });
+}
+
+/// Element-wise subtraction of [a] and [b] computed into the specified target [dtype].
+///
+/// Unlike [subtract], which requires matching operand types `T`, [subtractAs] accepts
+/// two strongly-typed arrays of potentially different data types ([Ta] and [Tb]) and
+/// returns an [NDArray<R>] whose static type [R] is inferred from [dtype].
+///
+/// Delegates directly to the native 15x15 cross-dtype C kernels whenever
+/// `resolveDType` matches [dtype] (zero intermediate allocations).
+///
+/// **Preconditions:**
+/// - It is an error if [a], [b], [where], or [out] is disposed.
+/// - [a] and [b] must have broadcast-compatible shapes.
+/// - If [out] is provided, its shape must match the broadcasted shape and its
+///   dtype must equal [dtype].
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the broadcasted element count.
+/// - Zero temporary allocations when `resolveDType(a.dtype, b.dtype) == dtype`.
+///
+/// Reference: [NumPy subtract](https://numpy.org/doc/stable/reference/generated/numpy.subtract.html)
+NDArray<R>
+subtractAs<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
+  NDArray<Ta> a,
+  NDArray<Tb> b,
+  DType<R> dtype, {
+  NDArray<DTypeTag>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute subtractAs() on a disposed array.');
+  }
+  if (resolveDType(a.dtype, b.dtype) == dtype) {
+    return subtract<DTypeTag>(a, b, where: where, out: out) as NDArray<R>;
+  }
+  return NDArray.scope(() {
+    final aCanPromoteToTarget =
+        a.dtype == dtype || resolveDType(a.dtype, dtype) == dtype;
+    final bCanPromoteToTarget =
+        b.dtype == dtype || resolveDType(dtype, b.dtype) == dtype;
+    final NDArray aIn = aCanPromoteToTarget && !bCanPromoteToTarget
+        ? a
+        : (a.dtype == dtype ? a : castNDArray<R>(a, dtype));
+    final NDArray bIn = bCanPromoteToTarget && !aCanPromoteToTarget
+        ? b
+        : (b.dtype == dtype ? b : castNDArray<R>(b, dtype));
+    final NDArray aFinal = resolveDType(aIn.dtype, bIn.dtype) == dtype
+        ? aIn
+        : (aIn.dtype == dtype ? aIn : castNDArray<R>(aIn, dtype));
+    final NDArray bFinal = resolveDType(aFinal.dtype, bIn.dtype) == dtype
+        ? bIn
+        : (bIn.dtype == dtype ? bIn : castNDArray<R>(bIn, dtype));
+    final res =
+        subtract<DTypeTag>(aFinal, bFinal, where: where, out: out)
+            as NDArray<R>;
+    return out ?? res.detachToParentScope();
+  });
+}
+
+/// Element-wise multiplication of [a] and [b] computed into the specified target [dtype].
+///
+/// Unlike [multiply], which requires matching operand types `T`, [multiplyAs] accepts
+/// two strongly-typed arrays of potentially different data types ([Ta] and [Tb]) and
+/// returns an [NDArray<R>] whose static type [R] is inferred from [dtype].
+///
+/// Delegates directly to the native 15x15 cross-dtype C kernels whenever
+/// `resolveDType` matches [dtype] (zero intermediate allocations).
+///
+/// **Preconditions:**
+/// - It is an error if [a], [b], [where], or [out] is disposed.
+/// - [a] and [b] must have broadcast-compatible shapes.
+/// - If [out] is provided, its shape must match the broadcasted shape and its
+///   dtype must equal [dtype].
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the broadcasted element count.
+/// - Zero temporary allocations when `resolveDType(a.dtype, b.dtype) == dtype`.
+///
+/// Reference: [NumPy multiply](https://numpy.org/doc/stable/reference/generated/numpy.multiply.html)
+NDArray<R>
+multiplyAs<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
+  NDArray<Ta> a,
+  NDArray<Tb> b,
+  DType<R> dtype, {
+  NDArray<DTypeTag>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute multiplyAs() on a disposed array.');
+  }
+  if (resolveDType(a.dtype, b.dtype) == dtype) {
+    return multiply<DTypeTag>(a, b, where: where, out: out) as NDArray<R>;
+  }
+  return NDArray.scope(() {
+    final aCanPromoteToTarget =
+        a.dtype == dtype || resolveDType(a.dtype, dtype) == dtype;
+    final bCanPromoteToTarget =
+        b.dtype == dtype || resolveDType(dtype, b.dtype) == dtype;
+    final NDArray aIn = aCanPromoteToTarget && !bCanPromoteToTarget
+        ? a
+        : (a.dtype == dtype ? a : castNDArray<R>(a, dtype));
+    final NDArray bIn = bCanPromoteToTarget && !aCanPromoteToTarget
+        ? b
+        : (b.dtype == dtype ? b : castNDArray<R>(b, dtype));
+    final NDArray aFinal = resolveDType(aIn.dtype, bIn.dtype) == dtype
+        ? aIn
+        : (aIn.dtype == dtype ? aIn : castNDArray<R>(aIn, dtype));
+    final NDArray bFinal = resolveDType(aFinal.dtype, bIn.dtype) == dtype
+        ? bIn
+        : (bIn.dtype == dtype ? bIn : castNDArray<R>(bIn, dtype));
+    final res =
+        multiply<DTypeTag>(aFinal, bFinal, where: where, out: out)
+            as NDArray<R>;
+    return out ?? res.detachToParentScope();
+  });
+}
+
+/// Element-wise true division of [a] by [b] computed into the specified target [dtype].
+///
+/// Accepts two strongly-typed arrays of potentially different data types ([Ta] and [Tb])
+/// and returns an [NDArray<R>] whose static type [R] is inferred from [dtype].
+///
+/// Delegates directly to the native 15x15 cross-dtype C kernels in [divide] whenever
+/// the promoted division dtype matches [dtype] (zero intermediate allocations).
+///
+/// **Preconditions:**
+/// - It is an error if [a], [b], [where], or [out] is disposed.
+/// - [a] and [b] must have broadcast-compatible shapes.
+/// - If [out] is provided, its shape must match the broadcasted shape and its
+///   dtype must equal [dtype].
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the broadcasted element count.
+///
+/// Reference: [NumPy divide](https://numpy.org/doc/stable/reference/generated/numpy.divide.html)
+NDArray<R>
+divideAs<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
+  NDArray<Ta> a,
+  NDArray<Tb> b,
+  DType<R> dtype, {
+  NDArray<DTypeTag>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute divideAs() on a disposed array.');
+  }
+  var resolved = resolveDType(a.dtype, b.dtype);
+  if (resolved.isInteger) {
+    resolved = DType.float64;
+  }
+  if (resolved == dtype) {
+    return divide<Ta, Tb, R>(a, b, where: where, out: out);
+  }
+  return NDArray.scope(() {
+    if (!dtype.isInteger && dtype != DType.boolean) {
+      final aCanPromote =
+          a.dtype == dtype ||
+          (!a.dtype.isInteger && resolveDType(a.dtype, dtype) == dtype);
+      final bCanPromote =
+          b.dtype == dtype ||
+          (!b.dtype.isInteger && resolveDType(dtype, b.dtype) == dtype);
+      final NDArray aIn = aCanPromote ? a : castNDArray<R>(a, dtype);
+      final NDArray bIn = bCanPromote ? b : castNDArray<R>(b, dtype);
+      var inResolved = resolveDType(aIn.dtype, bIn.dtype);
+      if (inResolved.isInteger) inResolved = DType.float64;
+      final NDArray aFinal = inResolved == dtype
+          ? aIn
+          : (aIn.dtype == dtype ? aIn : castNDArray<R>(aIn, dtype));
+      final NDArray bFinal = inResolved == dtype
+          ? bIn
+          : (bIn.dtype == dtype ? bIn : castNDArray<R>(bIn, dtype));
+      final res = divide<DTypeTag, DTypeTag, R>(
+        aFinal,
+        bFinal,
+        where: where,
+        out: out,
+      );
+      return out ?? res.detachToParentScope();
+    }
+    final divF64 = divide<Ta, Tb, Float64>(a, b, where: where);
+    final casted = castNDArray<R>(divF64, dtype);
+    if (out != null) {
+      casted.copy(out: out);
+      return out;
+    }
+    return casted.detachToParentScope();
+  });
+}
