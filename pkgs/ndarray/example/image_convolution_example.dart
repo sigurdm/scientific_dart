@@ -210,7 +210,7 @@ final class ImageConvolution {
     multiply<Float64>(outGx, outGx, out: temp1);
     multiply<Float64>(outGy, outGy, out: temp2);
     add<Float64>(temp1, temp2, out: temp1);
-    sqrt<Float64, Float64>(temp1, out: outMag);
+    sqrt(temp1, out: outMag);
   }
 }
 
@@ -297,7 +297,7 @@ void main() {
 
     // Generic Magnitude - Hypot
     final stopwatchGenericHypot = Stopwatch()..start();
-    late NDArray<DTypeTag> magnitudeGenericHypot;
+    late NDArray<AnySpec> magnitudeGenericHypot;
     for (var i = 0; i < iterations; i++) {
       magnitudeGenericHypot = hypot(gradXGeneric, gradYGeneric);
       if (i < iterations - 1) {
@@ -318,7 +318,7 @@ void main() {
       final temp1 = multiply<Float64>(gradXGeneric, gradXGeneric);
       final temp2 = multiply<Float64>(gradYGeneric, gradYGeneric);
       final temp3 = add<Float64>(temp1, temp2);
-      magnitudeGenericAlloc = sqrt<Float64, Float64>(temp3);
+      magnitudeGenericAlloc = sqrt(temp3);
       temp1.dispose();
       temp2.dispose();
       temp3.dispose();
@@ -348,7 +348,7 @@ void main() {
       multiply<Float64>(gradXGeneric, gradXGeneric, out: mTemp1);
       multiply<Float64>(gradYGeneric, gradYGeneric, out: mTemp2);
       add<Float64>(mTemp1, mTemp2, out: mTemp1);
-      sqrt<Float64, Float64>(mTemp1, out: magnitudeGenericPre);
+      sqrt(mTemp1, out: magnitudeGenericPre);
     }
     stopwatchGenericPreMag.stop();
     final timeGenericPreMag =

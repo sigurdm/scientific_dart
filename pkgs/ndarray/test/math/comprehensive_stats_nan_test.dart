@@ -592,7 +592,7 @@ void main() {
             expect(sum(empty).scalar, 0.0);
             expect(prod(empty).scalar, 1.0);
 
-            final emptyComplex = NDArray<DTypeTag>.zeros([0], DType.complex128);
+            final emptyComplex = NDArray.zeros([0], DType.complex128);
             expect(sum(emptyComplex).scalar, Complex(0.0, 0.0));
             expect(prod(emptyComplex).scalar, Complex(1.0, 0.0));
           });
@@ -622,8 +622,10 @@ void main() {
             }
 
             final b = NDArray.fromList([true, false, true], [3], DType.boolean);
-            expect(sum(b).scalar, 2);
-            expect(prod(b).scalar, 0);
+            expect(sum(b).scalar, true);
+            expect(prod(b).scalar, false);
+            expect(sumAs(b, DType.int64).scalar, 2);
+            expect(prodAs(b, DType.int64).scalar, 0);
 
             final c128 = NDArray.fromList(
               [Complex(1.0, 2.0), Complex(3.0, 4.0)],
@@ -1416,7 +1418,7 @@ void main() {
 
         test('bincount empty input and out buffer reuse', () {
           NDArray.scope(() {
-            final empty = NDArray<DTypeTag>.zeros([0], DType.int64);
+            final empty = NDArray.zeros([0], DType.int64);
             final cEmpty = bincount(empty);
             expect(cEmpty.shape, [0]);
 
@@ -1425,7 +1427,7 @@ void main() {
             expect(cEmptyMin.toList(), [0, 0, 0, 0]);
 
             final x = NDArray.fromList([0, 1, 1], [3], DType.int32);
-            final out = NDArray<DTypeTag>.zeros([3], DType.int32);
+            final out = NDArray.zeros([3], DType.int32);
             final res = bincount(x, out: out);
             expect(identical(res, out), true);
             expect(out.toList(), [1, 2, 0]);
@@ -1437,7 +1439,7 @@ void main() {
             final xNeg = NDArray.fromList([0, -1, 2], [3], DType.int64);
             expect(() => bincount(xNeg), throwsArgumentError);
 
-            final x2D = NDArray<DTypeTag>.zeros([2, 2], DType.int64);
+            final x2D = NDArray.zeros([2, 2], DType.int64);
             expect(() => bincount(x2D), throwsArgumentError);
 
             final x = NDArray.fromList([0, 1], [2], DType.int64);
@@ -1505,7 +1507,7 @@ void main() {
             expect(res.shape, [2, 2]);
             expect(res.toList(), [0, 1, 2, 3]);
 
-            final out = NDArray<DTypeTag>.zeros([2, 2], DType.int32);
+            final out = NDArray.zeros([2, 2], DType.int32);
             final resOut = digitize(x2D, bins, out: out);
             expect(identical(resOut, out), true);
             expect(out.toList(), [0, 1, 2, 3]);

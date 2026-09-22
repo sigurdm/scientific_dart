@@ -258,7 +258,7 @@ void main() {
         expect(nRes.scalar, closeTo(5.477225575, 1e-6));
 
         final svdRes = svd(a);
-        final NDArray<DTypeTag> sArr = svdRes.s;
+        final NDArray<AnySpec> sArr = svdRes.s;
         expect(sArr.shape, equals([2]));
         svdRes.dispose();
 

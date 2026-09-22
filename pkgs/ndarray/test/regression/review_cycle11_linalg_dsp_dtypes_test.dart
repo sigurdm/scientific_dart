@@ -3,15 +3,11 @@ import 'package:test/test.dart';
 
 void main() {
   group('Review Cycle 11 Finding #4: Linalg Float16 & BFloat16 Promotion', () {
-    for (final dtype in <DType<DTypeTag>>[DType.float16, DType.bfloat16]) {
+    for (final dtype in <DType<AnySpec>>[DType.float16, DType.bfloat16]) {
       group('dtype=${dtype.name}', () {
         test('eig and eigvals promote to float64 / complex128', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList(
-              [2.0, 0.0, 0.0, 3.0],
-              [2, 2],
-              dtype,
-            );
+            final a = NDArray.fromList([2.0, 0.0, 0.0, 3.0], [2, 2], dtype);
             final res = eig(a);
             expect(res.eigenvalues.dtype, equals(DType.complex128));
             expect(res.eigenvectors.dtype, equals(DType.complex128));
@@ -33,11 +29,7 @@ void main() {
 
         test('cholesky promotes to float64 and decomposes SPD matrix', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList(
-              [4.0, 2.0, 2.0, 5.0],
-              [2, 2],
-              dtype,
-            );
+            final a = NDArray.fromList([4.0, 2.0, 2.0, 5.0], [2, 2], dtype);
             final l = cholesky(a);
             expect(l.dtype, equals(dtype));
             expect(l.getCell([0, 0]), closeTo(2.0, 1e-2));
@@ -49,11 +41,7 @@ void main() {
 
         test('qr promotes to float64 and satisfies Q * R == A', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList(
-              [1.0, 2.0, 3.0, 4.0],
-              [2, 2],
-              dtype,
-            );
+            final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], dtype);
             final res = qr(a);
             expect(res.q.dtype, equals(dtype));
             expect(res.r.dtype, equals(dtype));
@@ -67,11 +55,7 @@ void main() {
 
         test('svd promotes to float64 and computes singular values', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList(
-              [3.0, 0.0, 0.0, 4.0],
-              [2, 2],
-              dtype,
-            );
+            final a = NDArray.fromList([3.0, 0.0, 0.0, 4.0], [2, 2], dtype);
             final res = svd(a);
             expect(res.u.dtype, equals(dtype));
             expect(res.s.dtype, equals(dtype));
@@ -83,11 +67,7 @@ void main() {
 
         test('eigh and eigvalsh promote to float64 on symmetric matrix', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList(
-              [2.0, 1.0, 1.0, 2.0],
-              [2, 2],
-              dtype,
-            );
+            final a = NDArray.fromList([2.0, 1.0, 1.0, 2.0], [2, 2], dtype);
             final res = eigh<DTypeTag, DTypeTag>(a);
             expect(res.eigenvalues.dtype, equals(DType.float64));
             expect(res.eigenvectors.dtype, equals(DType.float64));
@@ -103,11 +83,7 @@ void main() {
 
         test('schur promotes to float64 (real) and complex128 (complex)', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList(
-              [2.0, 1.0, 0.0, 3.0],
-              [2, 2],
-              dtype,
-            );
+            final a = NDArray.fromList([2.0, 1.0, 0.0, 3.0], [2, 2], dtype);
             final realRes = schur<DTypeTag, DTypeTag>(
               a,
               output: SchurForm.real,
@@ -128,7 +104,7 @@ void main() {
           'hessenberg promotes to float64 and satisfies Q * H * Q^T == A',
           () {
             NDArray.scope(() {
-              final a = NDArray<DTypeTag>.fromList(
+              final a = NDArray.fromList(
                 [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0],
                 [3, 3],
                 dtype,
@@ -143,12 +119,8 @@ void main() {
 
         test('inv, det, slogdet, solve, pinv, norm, cond, lstsq', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList(
-              [4.0, 1.0, 2.0, 3.0],
-              [2, 2],
-              dtype,
-            );
-            final b = NDArray<DTypeTag>.fromList([1.0, 2.0], [2], dtype);
+            final a = NDArray.fromList([4.0, 1.0, 2.0, 3.0], [2, 2], dtype);
+            final b = NDArray.fromList([1.0, 2.0], [2], dtype);
 
             final d = det(a);
             expect(d.scalar, closeTo(10.0, 1e-1));
@@ -188,7 +160,7 @@ void main() {
   });
 
   group('Review Cycle 11 Finding #5: DSP correlate & convolve DTypes', () {
-    final intDTypes = <DType<DTypeTag>>[
+    final intDTypes = <DType<AnySpec>>[
       DType.int8,
       DType.int16,
       DType.uint8,
@@ -200,8 +172,8 @@ void main() {
     for (final dtype in intDTypes) {
       test('correlate and convolve support integer dtype=${dtype.name}', () {
         NDArray.scope(() {
-          final a = NDArray<DTypeTag>.fromList([1, 2, 3, 4], [4], dtype);
-          final v = NDArray<DTypeTag>.fromList([1, 2], [2], dtype);
+          final a = NDArray.fromList([1, 2, 3, 4], [4], dtype);
+          final v = NDArray.fromList([1, 2], [2], dtype);
 
           // correlate valid: [1*1 + 2*2, 2*1 + 3*2, 3*1 + 4*2] = [5, 8, 11]
           final corrValid = correlate<DTypeTag>(a, v, mode: ConvMode.valid);
@@ -251,15 +223,11 @@ void main() {
       });
     }
 
-    for (final dtype in <DType<DTypeTag>>[DType.float16, DType.bfloat16]) {
+    for (final dtype in <DType<AnySpec>>[DType.float16, DType.bfloat16]) {
       test('correlate and convolve support half-float dtype=${dtype.name}', () {
         NDArray.scope(() {
-          final a = NDArray<DTypeTag>.fromList(
-            [1.0, 2.0, 3.0, 4.0],
-            [4],
-            dtype,
-          );
-          final v = NDArray<DTypeTag>.fromList([1.0, 2.0], [2], dtype);
+          final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], dtype);
+          final v = NDArray.fromList([1.0, 2.0], [2], dtype);
 
           final corrValid = correlate<DTypeTag>(a, v, mode: ConvMode.valid);
           expect(corrValid.dtype, equals(dtype));

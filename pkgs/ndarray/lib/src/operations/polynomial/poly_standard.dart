@@ -79,14 +79,14 @@ NDArray<R> polyval<
   if (!resolved.isFloating && !resolved.isComplex) {
     resolved = DType.float64;
   }
-  final targetDType = resolved as DType<R>;
   if (out != null) {
-    if (!listEquals(out.shape, x.shape) || out.dtype != targetDType) {
+    if (!listEquals(out.shape, x.shape) || out.dtype != resolved) {
       throw ArgumentError(
         "Incompatible out buffer shape or dtype for polyval.",
       );
     }
   }
+  final targetDType = resolved as DType<R>;
 
   return NDArray.scope(() {
     final cCast = _ensureDType(c, targetDType);
@@ -768,7 +768,7 @@ NDArray<DTypeTag> roots<T extends DTypeTag>(
       aMat.setCellFlat(i * deg + i - 1, castValue(one, targetMatDType));
     }
 
-    final res = eigvals(aMat, out: out);
+    final res = eigvals(aMat as NDArray<AnySpec>, out: out);
     if (out != null) return out;
     return res.detachToParentScope();
   });

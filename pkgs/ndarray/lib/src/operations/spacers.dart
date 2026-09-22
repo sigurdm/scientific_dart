@@ -916,14 +916,14 @@ NDArray<T> geomspaceGrid<T extends DTypeTag>(
 
     if (resolvedDType.isFloating) {
       final signs = sign<T>(startBroad);
-      final absStart = abs<T, T>(startBroad);
-      final absStop = abs<T, T>(stopBroad);
+      final absStart = abs(startBroad as NDArray<AnySpec>) as NDArray<T>;
+      final absStop = abs(stopBroad as NDArray<AnySpec>) as NDArray<T>;
       final logStart = divide<T, T, T>(
-        log<T, T>(absStart),
+        log(absStart as NDArray<AnySpec>) as NDArray<T>,
         toNDArray<T>(math.ln10, resolvedDType),
       );
       final logStop = divide<T, T, T>(
-        log<T, T>(absStop),
+        log(absStop as NDArray<AnySpec>) as NDArray<T>,
         toNDArray<T>(math.ln10, resolvedDType),
       );
       final y = linspaceGrid<T>(
@@ -951,11 +951,11 @@ NDArray<T> geomspaceGrid<T extends DTypeTag>(
     }
 
     final logStart = divide<T, T, T>(
-      log<T, T>(startBroad),
+      log(startBroad as NDArray<AnySpec>) as NDArray<T>,
       toNDArray<T>(math.ln10, resolvedDType),
     );
     final logStop = divide<T, T, T>(
-      log<T, T>(stopBroad),
+      log(stopBroad as NDArray<AnySpec>) as NDArray<T>,
       toNDArray<T>(math.ln10, resolvedDType),
     );
 

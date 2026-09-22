@@ -26,10 +26,10 @@ void main() {
               64,
             ], DType.boolean);
 
-            final resExp = exp<Float64, Float64>(a, where: where);
-            final resLog = log<Float64, Float64>(a, where: where);
-            final resLog2 = log2<Float64, Float64>(a, where: where);
-            final resLog10 = log10<Float64, Float64>(a, where: where);
+            final resExp = exp(a, where: where);
+            final resLog = log(a, where: where);
+            final resLog2 = log2(a, where: where);
+            final resLog10 = log10(a, where: where);
 
             for (var i = 0; i < 64; i++) {
               if (i.isOdd) {

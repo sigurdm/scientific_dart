@@ -128,7 +128,7 @@ void main() {
       expect(normalizedAxes, equals([(0, 0), (1, 1)]));
 
       // Padding a 0-sized array
-      final emptyArr = NDArray<DTypeTag>.zeros([0, 5], DType.float64);
+      final emptyArr = NDArray.zeros([0, 5], DType.float64);
       final padded = pad(
         emptyArr,
         PadWidth.all(1),

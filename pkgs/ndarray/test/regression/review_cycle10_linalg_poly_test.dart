@@ -134,7 +134,7 @@ void main() {
           );
           // Slice column 0: shape [3], non-contiguous and shares memory with a
           final aSlice = a.slice([Slice.all(), Index(0)]);
-          final res = norm<Float64, Float64>(a, axis: 1, out: aSlice);
+          final res = norm(a, axis: 1, out: aSlice);
           expect(identical(res, aSlice), isTrue);
           expect(aSlice.toList(), equals([5.0, 10.0, 13.0]));
 
@@ -145,7 +145,7 @@ void main() {
             DType.float64,
           );
           final row0 = b.slice([Index(0), Slice.all()]);
-          final resRow = norm<Float64, Float64>(b, axis: 0, out: row0);
+          final resRow = norm(b, axis: 0, out: row0);
           expect(identical(resRow, row0), isTrue);
           expect(row0.toList(), equals([5.0, 10.0, 13.0]));
 
@@ -187,7 +187,7 @@ void main() {
           'roots with DType.complex64 input of degree 0 and degree 1 and out validation',
           () {
             // Degree 0 (1 coefficient)
-            final pDeg0 = NDArray<DTypeTag>.fromList(
+            final pDeg0 = NDArray.fromList(
               [Complex(5.0, 0.0)],
               [1],
               DType.complex64,
@@ -197,15 +197,15 @@ void main() {
             expect(r0.shape, equals([0]));
 
             // Invalid out shape for degree 0
-            final badOut0 = NDArray<DTypeTag>.zeros([1], DType.complex64);
+            final badOut0 = NDArray.zeros([1], DType.complex64);
             expect(() => roots(pDeg0, out: badOut0), throwsArgumentError);
 
             // Invalid out dtype for degree 0 (complex128 instead of complex64)
-            final badDTypeOut0 = NDArray<DTypeTag>.zeros([0], DType.complex128);
+            final badDTypeOut0 = NDArray.zeros([0], DType.complex128);
             expect(() => roots(pDeg0, out: badDTypeOut0), throwsArgumentError);
 
             // Degree 1: 2x - 6 = 0 => x = 3
-            final pDeg1 = NDArray<DTypeTag>.fromList(
+            final pDeg1 = NDArray.fromList(
               [Complex(2.0, 0.0), Complex(-6.0, 0.0)],
               [2],
               DType.complex64,
@@ -217,11 +217,11 @@ void main() {
             expect(r1.getCell([0]).imag, closeTo(0.0, 1e-5));
 
             // Invalid out shape for degree 1
-            final badOut1 = NDArray<DTypeTag>.zeros([2], DType.complex64);
+            final badOut1 = NDArray.zeros([2], DType.complex64);
             expect(() => roots(pDeg1, out: badOut1), throwsArgumentError);
 
             // Invalid out dtype for degree 1 (complex128 instead of complex64)
-            final badDTypeOut1 = NDArray<DTypeTag>.zeros([1], DType.complex128);
+            final badDTypeOut1 = NDArray.zeros([1], DType.complex128);
             expect(() => roots(pDeg1, out: badDTypeOut1), throwsArgumentError);
 
             // Aliased out sharing memory with pDeg1
@@ -246,7 +246,7 @@ void main() {
           'chebroots (_orthoRoots) with DType.complex64 input of degree 0 and degree 1 and out validation',
           () {
             // Degree 0
-            final cDeg0 = NDArray<DTypeTag>.fromList(
+            final cDeg0 = NDArray.fromList(
               [Complex(5.0, 0.0)],
               [1],
               DType.complex64,
@@ -256,18 +256,18 @@ void main() {
             expect(r0.shape, equals([0]));
 
             // Invalid out shape for degree 0
-            final badOut0 = NDArray<DTypeTag>.zeros([1], DType.complex64);
+            final badOut0 = NDArray.zeros([1], DType.complex64);
             expect(() => chebroots(cDeg0, out: badOut0), throwsArgumentError);
 
             // Invalid out dtype for degree 0
-            final badDTypeOut0 = NDArray<DTypeTag>.zeros([0], DType.complex128);
+            final badDTypeOut0 = NDArray.zeros([0], DType.complex128);
             expect(
               () => chebroots(cDeg0, out: badDTypeOut0),
               throwsArgumentError,
             );
 
             // Degree 1: c0 + c1 * T_1(x) = -6 + 2x = 0 => x = 3
-            final cDeg1 = NDArray<DTypeTag>.fromList(
+            final cDeg1 = NDArray.fromList(
               [Complex(-6.0, 0.0), Complex(2.0, 0.0)],
               [2],
               DType.complex64,
@@ -279,11 +279,11 @@ void main() {
             expect(r1.getCell([0]).imag, closeTo(0.0, 1e-5));
 
             // Invalid out shape for degree 1
-            final badOut1 = NDArray<DTypeTag>.zeros([2], DType.complex64);
+            final badOut1 = NDArray.zeros([2], DType.complex64);
             expect(() => chebroots(cDeg1, out: badOut1), throwsArgumentError);
 
             // Invalid out dtype for degree 1
-            final badDTypeOut1 = NDArray<DTypeTag>.zeros([1], DType.complex128);
+            final badDTypeOut1 = NDArray.zeros([1], DType.complex128);
             expect(
               () => chebroots(cDeg1, out: badDTypeOut1),
               throwsArgumentError,

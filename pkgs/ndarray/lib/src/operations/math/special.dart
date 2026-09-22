@@ -37,8 +37,11 @@ import '../helpers.dart';
 /// final b = i0(a);
 /// print(b.toList()); // [1.0, ~1.266066, ~2.279585]
 /// ```
-NDArray<R> i0<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> i0<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -49,10 +52,12 @@ NDArray<R> i0<T extends DTypeTag, R extends DTypeTag>(
   }
 
   // Handle integer and boolean types by promoting to float64 (double)
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if ((a.dtype as DType<DTypeTag>).isInteger ||
+      (a.dtype as DType<DTypeTag>) == DType.boolean) {
     final promoted = promoteToDouble(a);
     try {
-      return i0<Float64, R>(promoted, where: where, out: out);
+      return i0<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+          as NDArray<R>;
     } finally {
       promoted.dispose();
     }
@@ -238,8 +243,11 @@ NDArray<R> i0<T extends DTypeTag, R extends DTypeTag>(
 /// final b = gamma(a);
 /// print(b.toList()); // [1.0, 1.0, 2.0, 6.0]
 /// ```
-NDArray<R> gamma<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> gamma<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -252,10 +260,16 @@ NDArray<R> gamma<T extends DTypeTag, R extends DTypeTag>(
     throw UnsupportedError("Complex numbers are not supported for gamma.");
   }
 
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if ((a.dtype as DType<DTypeTag>).isInteger ||
+      (a.dtype as DType<DTypeTag>) == DType.boolean) {
     final promoted = promoteToDouble(a);
     try {
-      return gamma<Float64, R>(promoted, where: where, out: out);
+      return gamma<Float64>(
+            promoted,
+            where: where,
+            out: out as NDArray<Float64>?,
+          )
+          as NDArray<R>;
     } finally {
       promoted.dispose();
     }
@@ -393,8 +407,11 @@ NDArray<R> gamma<T extends DTypeTag, R extends DTypeTag>(
 /// final b = erf(a);
 /// print(b.toList()); // [0.0, ~0.8427]
 /// ```
-NDArray<R> erf<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> erf<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -407,10 +424,12 @@ NDArray<R> erf<T extends DTypeTag, R extends DTypeTag>(
     throw UnsupportedError("Complex numbers are not supported for erf.");
   }
 
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if ((a.dtype as DType<DTypeTag>).isInteger ||
+      (a.dtype as DType<DTypeTag>) == DType.boolean) {
     final promoted = promoteToDouble(a);
     try {
-      return erf<Float64, R>(promoted, where: where, out: out);
+      return erf<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+          as NDArray<R>;
     } finally {
       promoted.dispose();
     }

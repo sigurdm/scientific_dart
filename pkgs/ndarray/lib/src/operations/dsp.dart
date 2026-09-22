@@ -34,8 +34,11 @@ typedef Float = double;
 /// ```
 ///
 /// Reference: [NumPy angle](https://numpy.org/doc/stable/reference/generated/numpy.angle.html)
-NDArray<R> angle<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> angle<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<R>? out,
 }) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
@@ -45,9 +48,9 @@ NDArray<R> angle<T extends DTypeTag, R extends DTypeTag>(
   final DType<R> targetDType = switch (a.dtype) {
     DType.complex128 => DType.float64 as DType<R>,
     DType.complex64 => DType.float32 as DType<R>,
-    DType.float32 ||
+    DType.float32 => DType.float32 as DType<R>,
     DType.float16 ||
-    DType.bfloat16 => DType.float32 as DType<R>,
+    DType.bfloat16 ||
     DType.float64 ||
     DType.int64 ||
     DType.int32 ||
@@ -70,7 +73,7 @@ NDArray<R> angle<T extends DTypeTag, R extends DTypeTag>(
     }
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
-        final temp = angle<T, R>(a);
+        final temp = angle<R>(a);
         temp.copy(out: out);
         return out;
       });
@@ -220,8 +223,17 @@ NDArray<R> angle<T extends DTypeTag, R extends DTypeTag>(
 /// ```
 ///
 /// Reference: [NumPy unwrap](https://numpy.org/doc/stable/reference/generated/numpy.unwrap.html)
-NDArray<T>
-unwrap<T extends DTypeSpec<DTypeTag, num, DTypeTag, DTypeTag, DTypeTag>>(
+NDArray<T> unwrap<
+  T extends DTypeSpec<
+    DTypeTag,
+    num,
+    DTypeTag,
+    DTypeTag,
+    DTypeTag,
+    DTypeTag,
+    DTypeTag
+  >
+>(
   NDArray<DTypeTag> a, {
   double discont = math.pi,
   int axis = -1,
@@ -258,43 +270,7 @@ unwrap<T extends DTypeSpec<DTypeTag, num, DTypeTag, DTypeTag, DTypeTag>>(
     }
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
-        final temp =
-            switch (out.dtype) {
-                  DType.float64 => NDArray<Float64>.create(
-                    out.shape,
-                    DType.float64,
-                  ),
-                  DType.float32 => NDArray<Float32>.create(
-                    out.shape,
-                    DType.float32,
-                  ),
-                  DType.float16 => NDArray<Float16>.create(
-                    out.shape,
-                    DType.float16,
-                  ),
-                  DType.bfloat16 => NDArray<BFloat16>.create(
-                    out.shape,
-                    DType.bfloat16,
-                  ),
-                  DType.int64 => NDArray<Int64>.create(out.shape, DType.int64),
-                  DType.int32 => NDArray<Int32>.create(out.shape, DType.int32),
-                  DType.int16 => NDArray<Int16>.create(out.shape, DType.int16),
-                  DType.int8 => NDArray<Int8>.create(out.shape, DType.int8),
-                  DType.uint64 => NDArray<Uint64>.create(
-                    out.shape,
-                    DType.uint64,
-                  ),
-                  DType.uint32 => NDArray<Uint32>.create(
-                    out.shape,
-                    DType.uint32,
-                  ),
-                  DType.uint16 => NDArray<Uint16>.create(
-                    out.shape,
-                    DType.uint16,
-                  ),
-                  DType.uint8 => NDArray<Uint8>.create(out.shape, DType.uint8),
-                }
-                as NDArray<T>;
+        final temp = NDArray<T>.create(out.shape, out.dtype);
         unwrap<T>(a, discont: discont, axis: axis, out: temp);
         temp.copy(out: out);
         return out;

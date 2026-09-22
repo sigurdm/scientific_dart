@@ -108,10 +108,10 @@ void main() {
           offsetElements: 1,
         );
 
-        sin<Float64, Float64>(view0D, out: outView);
+        sin(view0D, out: outView);
         expect((outView.scalar as num).toDouble(), closeTo(0.5, 1e-12));
 
-        cos<Float64, Float64>(view0D, out: outView);
+        cos(view0D, out: outView);
         expect(
           (outView.scalar as num).toDouble(),
           closeTo(math.sqrt(3.0) / 2.0, 1e-12),
@@ -141,7 +141,7 @@ void main() {
             offsetElements: 1,
           );
 
-          abs<Float64, Float64>(viewF, out: outF);
+          abs(viewF, out: outF);
           expect((outF.scalar as num).toDouble(), closeTo(7.5, 1e-12));
 
           final backingC = NDArray<Complex128>.fromList(
@@ -162,7 +162,7 @@ void main() {
             offsetElements: 1,
           );
 
-          abs<Complex128, Float64>(viewC, out: outAbsC);
+          abs(viewC, out: outAbsC);
           expect((outAbsC.scalar as num).toDouble(), closeTo(5.0, 1e-12));
 
           final outConjC = NDArray<Complex128>.view(

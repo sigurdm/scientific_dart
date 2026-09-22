@@ -1353,7 +1353,7 @@ void main() {
         'stack() validation errors throws exceptions',
         () => NDArray.scope(() {
           // Empty list throws ArgumentError
-          expect(() => stack(<NDArray<DTypeTag>>[]), throwsArgumentError);
+          expect(() => stack(<NDArray<AnySpec>>[]), throwsArgumentError);
 
           final a = NDArray.fromList([1, 2], [2], DType.int32);
           final wrongShape = NDArray.fromList([1, 2, 3], [3], DType.int32);
@@ -1478,7 +1478,7 @@ void main() {
         test('out parameter: correct shape/dtype', () {
           NDArray.scope(() {
             final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
-            final out = NDArray<DTypeTag>.create([6], DType.int32);
+            final out = NDArray.create([6], DType.int32);
             final r = repeat(a, rep(2), out: out);
             expect(identical(r, out), true);
             expect(r.toList(), [1, 1, 2, 2, 3, 3]);
@@ -1488,8 +1488,8 @@ void main() {
         test('out parameter: incorrect shape/dtype', () {
           NDArray.scope(() {
             final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
-            final outWrongShape = NDArray<DTypeTag>.create([5], DType.int32);
-            final outWrongDType = NDArray<DTypeTag>.create([6], DType.float64);
+            final outWrongShape = NDArray.create([5], DType.int32);
+            final outWrongDType = NDArray.create([6], DType.float64);
 
             expect(
               () => repeat(a, rep(2), out: outWrongShape),
@@ -1509,7 +1509,7 @@ void main() {
             expect(rF.dtype, DType.float64);
             expect(rF.toList(), [1.0, 1.0, 2.0, 2.0]);
 
-            final c = NDArray<DTypeTag>.fromList(
+            final c = NDArray.fromList(
               [Complex(1, 2), Complex(3, 4)],
               [2],
               DType.complex128,
@@ -1651,7 +1651,7 @@ void main() {
         test('out parameter: correct shape/dtype', () {
           NDArray.scope(() {
             final a = NDArray.fromList([1, 2], [2], DType.int32);
-            final out = NDArray<DTypeTag>.create([4], DType.int32);
+            final out = NDArray.create([4], DType.int32);
             final t = tile(a, rep(2), out: out);
             expect(identical(t, out), true);
             expect(t.toList(), [1, 2, 1, 2]);
@@ -1661,8 +1661,8 @@ void main() {
         test('out parameter: incorrect shape/dtype', () {
           NDArray.scope(() {
             final a = NDArray.fromList([1, 2], [2], DType.int32);
-            final outWrongShape = NDArray<DTypeTag>.create([5], DType.int32);
-            final outWrongDType = NDArray<DTypeTag>.create([4], DType.float64);
+            final outWrongShape = NDArray.create([5], DType.int32);
+            final outWrongDType = NDArray.create([4], DType.float64);
 
             expect(
               () => tile(a, rep(2), out: outWrongShape),
@@ -1682,7 +1682,7 @@ void main() {
             expect(tF.dtype, DType.float64);
             expect(tF.toList(), [1.0, 2.0, 1.0, 2.0]);
 
-            final c = NDArray<DTypeTag>.fromList(
+            final c = NDArray.fromList(
               [Complex(1, 2), Complex(3, 4)],
               [2],
               DType.complex128,
@@ -1776,11 +1776,7 @@ void main() {
       test(
         'Constant Mode - 2D Int with different before/after',
         () => NDArray.scope(() {
-          final arr = NDArray<DTypeTag>.fromList(
-            [1, 2, 3, 4],
-            [2, 2],
-            DType.int32,
-          );
+          final arr = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
           final padded = pad(
             arr,
             PadWidth.axes([(1, 2), (2, 1)]),
@@ -1881,11 +1877,7 @@ void main() {
       test(
         'Symmetric Mode - 1D Large Pad',
         () => NDArray.scope(() {
-          final arr = NDArray<DTypeTag>.fromList(
-            [1.0, 2.0, 3.0],
-            [3],
-            DType.float64,
-          );
+          final arr = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
           final padded = pad(arr, PadWidth.all(5), mode: PaddingMode.symmetric);
           expect(padded.toList(), [
             2.0,
@@ -2092,7 +2084,7 @@ void main() {
         'Out Parameter Reuse',
         () => NDArray.scope(() {
           final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
-          final out = NDArray<DTypeTag>.zeros([5], DType.int32);
+          final out = NDArray.zeros([5], DType.int32);
           final r = pad(
             a,
             PadWidth.all(1),
@@ -2240,7 +2232,7 @@ void main() {
       test(
         '4D Padding - Edge',
         () => NDArray.scope(() {
-          final a = NDArray<DTypeTag>.ones([2, 2, 2, 2], DType.float64);
+          final a = NDArray.ones([2, 2, 2, 2], DType.float64);
           final r = pad(a, PadWidth.all(1), mode: PadMode.edge);
           expect(r.shape, [4, 4, 4, 4]);
           for (final val in r.toList()) {
@@ -2324,7 +2316,7 @@ void main() {
       test(
         'Preconditions - 0-D Array',
         () => NDArray.scope(() {
-          final a = NDArray<DTypeTag>.scalar(1, dtype: DType.int32);
+          final a = NDArray.scalar(1, dtype: DType.int32);
           expect(() => pad(a, PadWidth.all(1)), throwsArgumentError);
         }),
       );
@@ -2457,7 +2449,7 @@ void main() {
     test(
       'concatenate() validation errors throws exceptions',
       () => NDArray.scope(() {
-        expect(() => concatenate(<NDArray<DTypeTag>>[]), throwsArgumentError);
+        expect(() => concatenate(<NDArray<AnySpec>>[]), throwsArgumentError);
 
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
         final wrongRank = NDArray.fromList([1.0, 2.0], [1, 2], DType.float64);
@@ -2466,12 +2458,12 @@ void main() {
         expect(() => concatenate([a, a], axis: 5), throwsRangeError);
         expect(() => concatenate([a, a], axis: -5), throwsRangeError);
         expect(
-          () => concatenate(<NDArray<DTypeTag>>[a, wrongDType]),
+          () => concatenate(<NDArray<AnySpec>>[a, wrongDType]),
           throwsArgumentError,
         );
 
         expect(
-          () => concatenate(<NDArray<DTypeTag>>[a, wrongRank]),
+          () => concatenate(<NDArray<AnySpec>>[a, wrongRank]),
           throwsArgumentError,
         );
 
@@ -2486,7 +2478,7 @@ void main() {
           DType.float64,
         );
         expect(
-          () => concatenate(<NDArray<DTypeTag>>[mat1, mat2], axis: 0),
+          () => concatenate(<NDArray<AnySpec>>[mat1, mat2], axis: 0),
           throwsArgumentError,
         );
       }),

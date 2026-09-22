@@ -22,8 +22,11 @@ import '../helpers.dart';
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Exponential Function](https://en.wikipedia.org/wiki/Exponential_function)
-NDArray<R> exp<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> exp<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -33,11 +36,15 @@ NDArray<R> exp<T extends DTypeTag, R extends DTypeTag>(
     throw StateError('Cannot execute exp() on a disposed array.');
   }
   final DType<R> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype as DType<R>;
   } else {
     targetDType =
-        (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
+        ((a.dtype as DType<DTypeTag>) == DType.float32
+                ? DType.float32
+                : DType.float64)
+            as DType<R>;
   }
 
   if (out != null) {
@@ -197,8 +204,11 @@ NDArray<R> exp<T extends DTypeTag, R extends DTypeTag>(
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Natural Logarithm](https://en.wikipedia.org/wiki/Natural_logarithm)
-NDArray<R> log<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> log<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -208,10 +218,13 @@ NDArray<R> log<T extends DTypeTag, R extends DTypeTag>(
     throw StateError('Cannot execute log() on a disposed array.');
   }
   final DType<DTypeTag> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype;
   } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+    targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+        ? DType.float32
+        : DType.float64;
   }
 
   if (out != null) {
@@ -366,8 +379,11 @@ NDArray<R> log<T extends DTypeTag, R extends DTypeTag>(
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<R> log2<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> log2<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -377,10 +393,13 @@ NDArray<R> log2<T extends DTypeTag, R extends DTypeTag>(
     throw StateError('Cannot execute log2() on a disposed array.');
   }
   final DType<DTypeTag> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype;
   } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+    targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+        ? DType.float32
+        : DType.float64;
   }
 
   if (out != null) {
@@ -536,8 +555,11 @@ NDArray<R> log2<T extends DTypeTag, R extends DTypeTag>(
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<R> log10<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> log10<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -547,10 +569,13 @@ NDArray<R> log10<T extends DTypeTag, R extends DTypeTag>(
     throw StateError('Cannot execute log10() on a disposed array.');
   }
   final DType<DTypeTag> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype;
   } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+    targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+        ? DType.float32
+        : DType.float64;
   }
 
   if (out != null) {

@@ -46,12 +46,12 @@ void main() {
           final b = NDArray.fromList([2, 3, 4], [3], DType.int64);
 
           // intersect1d -> [2, 3]
-          final bufInter = NDArray<DTypeTag>.zeros([2], DType.int64);
+          final bufInter = NDArray.zeros([2], DType.int64);
           intersect1d<DTypeTag>(a, b, out: flip(bufInter));
           expect(bufInter[0].scalar, equals(3));
           expect(bufInter[1].scalar, equals(2));
 
-          final bufInterStep = NDArray<DTypeTag>.zeros([4], DType.int64);
+          final bufInterStep = NDArray.zeros([4], DType.int64);
           intersect1d<DTypeTag>(
             a,
             b,
@@ -63,7 +63,7 @@ void main() {
           expect(bufInterStep[3].scalar, equals(0));
 
           // setdiff1d -> [1]
-          final bufDiff = NDArray<DTypeTag>.zeros([2], DType.int64);
+          final bufDiff = NDArray.zeros([2], DType.int64);
           setdiff1d<DTypeTag>(
             a,
             b,
@@ -73,12 +73,12 @@ void main() {
           expect(bufDiff[1].scalar, equals(1));
 
           // setxor1d -> [1, 4]
-          final bufXor = NDArray<DTypeTag>.zeros([2], DType.int64);
+          final bufXor = NDArray.zeros([2], DType.int64);
           setxor1d<DTypeTag>(a, b, out: flip(bufXor));
           expect(bufXor[0].scalar, equals(4));
           expect(bufXor[1].scalar, equals(1));
 
-          final bufXorStep = NDArray<DTypeTag>.zeros([4], DType.int64);
+          final bufXorStep = NDArray.zeros([4], DType.int64);
           setxor1d<DTypeTag>(a, b, out: bufXorStep.slice([Slice(step: 2)]));
           expect(bufXorStep[0].scalar, equals(1));
           expect(bufXorStep[1].scalar, equals(0));
@@ -86,14 +86,14 @@ void main() {
           expect(bufXorStep[3].scalar, equals(0));
 
           // union1d -> [1, 2, 3, 4]
-          final bufUnion = NDArray<DTypeTag>.zeros([4], DType.int64);
+          final bufUnion = NDArray.zeros([4], DType.int64);
           union1d<DTypeTag>(a, b, out: flip(bufUnion));
           expect(bufUnion[0].scalar, equals(4));
           expect(bufUnion[1].scalar, equals(3));
           expect(bufUnion[2].scalar, equals(2));
           expect(bufUnion[3].scalar, equals(1));
 
-          final bufUnionStep = NDArray<DTypeTag>.zeros([8], DType.int64);
+          final bufUnionStep = NDArray.zeros([8], DType.int64);
           union1d<DTypeTag>(a, b, out: bufUnionStep.slice([Slice(step: 2)]));
           expect(bufUnionStep[0].scalar, equals(1));
           expect(bufUnionStep[2].scalar, equals(2));

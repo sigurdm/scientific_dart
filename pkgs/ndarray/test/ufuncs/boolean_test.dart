@@ -115,14 +115,14 @@ void main() {
   });
 
   group('Boolean cumsum bug repro', () {
-    test('cumsum on boolean array', () {
+    test('cumsumAs on boolean array', () {
       NDArray.scope(() {
         final a = NDArray.fromList(
           [true, false, true, true],
           [4],
           DType.boolean,
         );
-        final result = cumsum(a);
+        final result = cumsumAs(a, DType.int32);
         expect(result.dtype, DType.int32);
         expect(result.shape, [4]);
         expect(result.toList(), [1, 1, 2, 3]);
@@ -131,7 +131,7 @@ void main() {
           [2, 2],
           DType.boolean,
         );
-        final result2D = cumsum(a2D, axis: 0);
+        final result2D = cumsumAs(a2D, DType.int32, axis: 0);
         expect(result2D.dtype, DType.int32);
         expect(result2D.shape, [2, 2]);
         expect(result2D.toList(), [1, 0, 2, 1]);

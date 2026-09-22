@@ -266,11 +266,11 @@ void main() {
           final a = NDArray.fromList([10, 20, 30, 40, 50], [5], DType.int32);
 
           // List with multiple indices on 1D array extracts elements via take
-          final res = a[[1, 3]] as NDArray<DTypeTag>;
+          final res = a[[1, 3]] as NDArray<AnySpec>;
           expect(res.shape, [2]);
           expect(res.toList(), [20, 40]);
 
-          final res3 = a[[0, 2, 4]] as NDArray<DTypeTag>;
+          final res3 = a[[0, 2, 4]] as NDArray<AnySpec>;
           expect(res3.shape, [3]);
           expect(res3.toList(), [10, 30, 50]);
 
@@ -295,7 +295,7 @@ void main() {
           expect(() => a[[1]], throwsArgumentError);
 
           // Row selection with integer: a[1] extracts row 1 as 1D array
-          final row1 = a[1] as NDArray<DTypeTag>;
+          final row1 = a[1] as NDArray<AnySpec>;
           expect(row1.shape, [4]);
           expect(row1.toList(), [4, 5, 6, 7]);
 
@@ -304,7 +304,7 @@ void main() {
               a[[
                     [0, 2],
                   ]]
-                  as NDArray<DTypeTag>;
+                  as NDArray<AnySpec>;
           expect(rows02.shape, [2, 4]);
           expect(rows02.toList(), [0, 1, 2, 3, 8, 9, 10, 11]);
         }),
@@ -323,7 +323,7 @@ void main() {
           expect(a[[0, 1, 2]], 6);
 
           // Subarray selection via slice / integer index
-          final sub2D = a[0] as NDArray<DTypeTag>;
+          final sub2D = a[0] as NDArray<AnySpec>;
           expect(sub2D.shape, [3, 4]);
         }),
       );
@@ -405,7 +405,7 @@ void main() {
         "cumsum into non-contiguous strided result",
         () => NDArray.scope(() {
           final src = NDArray.fromList([1, 2, 3, 4, 5, 6], [2, 3], DType.int16);
-          final dest = NDArray<DTypeTag>.zeros([4, 3], DType.int16);
+          final dest = NDArray.zeros([4, 3], DType.int16);
           final stridedDest = dest.slice([
             Slice(start: 0, stop: 4, step: 2),
             Slice.all(),

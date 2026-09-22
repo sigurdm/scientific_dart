@@ -907,8 +907,10 @@ void main() {
                 expect(prod(emptyCpx).scalar, equals(Complex(1.0, 0.0)));
 
                 final emptyBool = NDArray.create([0], DType.boolean);
-                expect(sum(emptyBool).scalar, equals(0));
-                expect(prod(emptyBool).scalar, equals(1));
+                expect(sum(emptyBool).scalar, isFalse);
+                expect(prod(emptyBool).scalar, isTrue);
+                expect(sumAs(emptyBool, DType.int64).scalar, equals(0));
+                expect(prodAs(emptyBool, DType.int64).scalar, equals(1));
 
                 final aI32 = NDArray.fromList([2, 3, 4], [3], DType.int32);
                 expect(sum(aI32).scalar, 9);
@@ -1011,13 +1013,13 @@ void main() {
                   equals([1.0, 2.0, 3.0, 12.0]),
                 );
 
-                // Boolean cumsum -> returns int32
+                // Boolean cumsumAs -> returns int32
                 final b = NDArray.fromList(
                   [true, false, true],
                   [3],
                   DType.boolean,
                 );
-                final cB = cumsum(b);
+                final cB = cumsumAs(b, DType.int32);
                 expect(cB.dtype, DType.int32);
                 expect(cB.toList(), equals([1, 1, 2]));
               });
@@ -1885,7 +1887,7 @@ void main() {
                 );
 
                 // Simple unique
-                final u = unique(a) as NDArray<DTypeTag>;
+                final u = unique(a) as NDArray<AnySpec>;
                 expect(u.toList(), equals([1, 2, 3, 4]));
 
                 // With all 3 flags
@@ -1941,7 +1943,7 @@ void main() {
                   DType.int64,
                 );
                 expect(
-                  (unique(aI64) as NDArray<DTypeTag>).toList(),
+                  (unique(aI64) as NDArray<AnySpec>).toList(),
                   equals([10, 20, 30]),
                 );
 
@@ -1951,7 +1953,7 @@ void main() {
                   DType.float32,
                 );
                 expect(
-                  (unique(aF32) as NDArray<DTypeTag>).toList(),
+                  (unique(aF32) as NDArray<AnySpec>).toList(),
                   equals([1.0, 2.0, 3.0]),
                 );
 
@@ -1961,7 +1963,7 @@ void main() {
                   DType.uint8,
                 );
                 expect(
-                  (unique(aU8) as NDArray<DTypeTag>).toList(),
+                  (unique(aU8) as NDArray<AnySpec>).toList(),
                   equals([0, 128, 255]),
                 );
 

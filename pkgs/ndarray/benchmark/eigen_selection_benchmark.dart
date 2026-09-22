@@ -47,33 +47,33 @@ void main() async {
 
       c.group('1. Eigenvalues, Condition Numbers & Matrix Chains', () {
         c.bench('eigh(A) [100x100 symmetric]', () {
-          final res = eigh<Float64, Float64>(symMat);
+          final res = eigh(symMat);
           blackhole(res);
           res.eigenvalues.dispose();
           res.eigenvectors.dispose();
         });
 
         c.bench('eigvalsh(A) [100x100 symmetric]', () {
-          final res = eigvalsh<Float64>(symMat);
+          final res = eigvalsh(symMat);
           blackhole(res);
           res.dispose();
         });
 
         c.bench('eig(A) [60x60 general]', () {
-          final res = eig<Float64>(genMat);
+          final res = eig(genMat);
           blackhole(res);
           res.eigenvalues.dispose();
           res.eigenvectors.dispose();
         });
 
         c.bench('eigvals(A) [60x60 general]', () {
-          final res = eigvals<Float64>(genMat);
+          final res = eigvals(genMat);
           blackhole(res);
           res.dispose();
         });
 
         c.bench('cond(A) [100x100]', () {
-          final res = cond<Float64, Float64>(symMat);
+          final res = cond(symMat);
           blackhole(res);
           res.dispose();
         });

@@ -174,8 +174,8 @@ void main() {
         'lstsq zero-fills out: buffer when m == 0 and n == 3 and does not leak casts',
         () {
           NDArray.scope(() {
-            final aEmptyRows = NDArray<DTypeTag>.zeros([0, 3], DType.int32);
-            final bEmptyRows = NDArray<DTypeTag>.zeros([0], DType.int32);
+            final aEmptyRows = NDArray.zeros([0, 3], DType.int32);
+            final bEmptyRows = NDArray.zeros([0], DType.int32);
             final outBuf = NDArray<Float64>.fromList(
               [99.0, -42.0, 123.0],
               [3],
@@ -246,11 +246,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final badIndices = NDArray<DTypeTag>.fromList(
-            [0, 5],
-            [1, 2],
-            DType.int32,
-          );
+          final badIndices = NDArray.fromList([0, 5], [1, 2], DType.int32);
           try {
             expect(
               () => take_along_axis(arr, badIndices, 0),

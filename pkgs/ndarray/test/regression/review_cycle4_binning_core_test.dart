@@ -124,7 +124,7 @@ void main() {
         // 2. Int64 flipped out (casts from Int32 to Int64 via _fastCopyAndCast)
         final buf64 = NDArray<Int64>.fromList([0, 0, 0, 0], [4], DType.int64);
         final flippedOut64 = flip(buf64);
-        final res64 = digitize(x, bins, out: flippedOut64);
+        final res64 = digitizeAs(x, bins, DType.int64, out: flippedOut64);
         expect(identical(res64, flippedOut64), isTrue);
         expect(flippedOut64.toList(), equals([1, 4, 3, 2]));
         expect(buf64.toList(), equals([2, 3, 4, 1]));

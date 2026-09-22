@@ -87,7 +87,7 @@ void main() {
             [3],
             DType.float64,
           );
-          final out = NDArray<DTypeTag>.zeros([], DType.float64);
+          final out = NDArray.zeros([], DType.float64);
           final m = median(a, out: out);
           expect(identical(m, out), true);
           expect(out.toList()[0], 2.0);
@@ -303,7 +303,7 @@ void main() {
     group('Validation & Edge Cases', () {
       test('Empty array throws', () {
         NDArray.scope(() {
-          final a = NDArray<DTypeTag>.zeros([0], DType.float64);
+          final a = NDArray.zeros([0], DType.float64);
           expect(() => median(a), throwsArgumentError);
           expect(() => percentile(a, 50.0), throwsArgumentError);
         });
@@ -1961,7 +1961,7 @@ void main() {
       });
 
       test('empty 2D array returns empty 1D array', () {
-        final a = NDArray<DTypeTag>.create([2, 0], DType.int32);
+        final a = NDArray.create([2, 0], DType.int32);
         final res = unique(a);
         expect(res.shape, [0]);
         expect(res.toList(), <int>[]);
@@ -1970,7 +1970,7 @@ void main() {
       });
 
       test('empty 1D array with optional returns', () {
-        final a = NDArray<DTypeTag>.create([0], DType.int32);
+        final a = NDArray.create([0], DType.int32);
         final (values: u, index: idx, inverse: inv, counts: cnt) = unique(
           a,
           returnIndex: true,
@@ -2126,7 +2126,7 @@ void main() {
       });
 
       test('empty inputs returns empty', () {
-        final a = NDArray<DTypeTag>.create([0], DType.int32);
+        final a = NDArray.create([0], DType.int32);
         final b = NDArray<Int32>.fromList(
           ([1, 2, 3]).map((e) => (e as num).toInt()).toList(),
           [3],
@@ -2310,7 +2310,7 @@ void main() {
       });
 
       test('empty first array returns empty', () {
-        final a = NDArray<DTypeTag>.create([0], DType.int32);
+        final a = NDArray.create([0], DType.int32);
         final b = NDArray<Int32>.fromList(
           ([1, 2, 3]).map((e) => (e as num).toInt()).toList(),
           [3],
@@ -2442,8 +2442,8 @@ void main() {
       });
 
       test('both inputs empty returns empty', () {
-        final a = NDArray<DTypeTag>.create([0], DType.int32);
-        final b = NDArray<DTypeTag>.create([0], DType.int32);
+        final a = NDArray.create([0], DType.int32);
+        final b = NDArray.create([0], DType.int32);
         final res = setxor1d(a, b);
         expect(res.shape, [0]);
         expect(res.toList(), <int>[]);
@@ -2551,8 +2551,8 @@ void main() {
       });
 
       test('both inputs empty returns empty', () {
-        final a = NDArray<DTypeTag>.create([0], DType.int32);
-        final b = NDArray<DTypeTag>.create([0], DType.int32);
+        final a = NDArray.create([0], DType.int32);
+        final b = NDArray.create([0], DType.int32);
         final res = union1d(a, b);
         expect(res.shape, [0]);
         expect(res.toList(), <int>[]);
@@ -3209,12 +3209,12 @@ void main() {
             DType.float64,
           );
 
-          final outFlat = NDArray<DTypeTag>.zeros([], DType.float64);
+          final outFlat = NDArray.zeros([], DType.float64);
           final resFlat = mean(a, out: outFlat);
           expect(identical(resFlat, outFlat), true);
           expect(outFlat.scalar, 2.5);
 
-          final outAxis = NDArray<DTypeTag>.zeros([2], DType.float64);
+          final outAxis = NDArray.zeros([2], DType.float64);
           final resAxis = mean(a, axis: 1, out: outAxis);
           expect(identical(resAxis, outAxis), true);
           expect(outAxis.toList(), [1.5, 3.5]);
@@ -3294,7 +3294,7 @@ void main() {
           expect(() => variance(a, out: outShape), throwsArgumentError);
           expect(() => std(a, out: outShape), throwsArgumentError);
 
-          final outDType = NDArray<DTypeTag>.zeros([], DType.int32);
+          final outDType = NDArray.zeros([], DType.int32);
           expect(
             () => mean(a, out: outDType as dynamic),
             throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
@@ -3381,11 +3381,11 @@ void main() {
 
           expect(cumsum(aInt).toList(), [1, 3, 6, 10]);
           expect(cumsum(aDouble).toList(), [1.0, 3.0, 6.0, 10.0]);
-          expect(cumsum(aBool).toList(), [1, 1, 2, 3]);
+          expect(cumsumAs(aBool, DType.int32).toList(), [1, 1, 2, 3]);
 
           expect(cumprod(aInt).toList(), [1, 2, 6, 24]);
           expect(cumprod(aDouble).toList(), [1.0, 2.0, 6.0, 24.0]);
-          expect(cumprod(aBool).toList(), [1, 0, 0, 0]);
+          expect(cumprodAs(aBool, DType.int32).toList(), [1, 0, 0, 0]);
 
           expect(cummin(aInt).toList(), [1, 1, 1, 1]);
           expect(cummin(aDouble).toList(), [1.0, 1.0, 1.0, 1.0]);
@@ -3414,12 +3414,12 @@ void main() {
             DType.float64,
           );
 
-          final outFlat = NDArray<DTypeTag>.zeros([4], DType.float64);
+          final outFlat = NDArray.zeros([4], DType.float64);
           final resFlat = cumsum(a, out: outFlat);
           expect(identical(resFlat, outFlat), true);
           expect(outFlat.toList(), [1.0, 3.0, 6.0, 10.0]);
 
-          final outAxis = NDArray<DTypeTag>.zeros([2, 2], DType.float64);
+          final outAxis = NDArray.zeros([2, 2], DType.float64);
           final resAxis = cumsum(a, axis: 1, out: outAxis);
           expect(identical(resAxis, outAxis), true);
           expect(outAxis.toList(), [1.0, 3.0, 3.0, 7.0]);
@@ -3434,7 +3434,7 @@ void main() {
             [2],
             DType.float64,
           );
-          final out = NDArray<DTypeTag>.zeros([2], DType.float64);
+          final out = NDArray.zeros([2], DType.float64);
           out.dispose();
 
           expect(() => cumsum(a, out: out), throwsStateError);
@@ -3453,19 +3453,19 @@ void main() {
             DType.float64,
           );
 
-          final outShape = NDArray<DTypeTag>.zeros([3], DType.float64);
+          final outShape = NDArray.zeros([3], DType.float64);
           expect(() => cumsum(a, out: outShape), throwsArgumentError);
           expect(() => cumprod(a, out: outShape), throwsArgumentError);
           expect(() => cummin(a, out: outShape), throwsArgumentError);
           expect(() => cummax(a, out: outShape), throwsArgumentError);
 
-          final outDType = NDArray<DTypeTag>.zeros([2], DType.int32);
+          final outDType = NDArray.zeros([2], DType.int32);
           expect(
-            () => cumsum<DTypeTag, DTypeTag>(a, out: outDType),
+            () => cumsum<DTypeTag>(a, out: outDType),
             throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
           );
           expect(
-            () => cumprod<DTypeTag, DTypeTag>(a, out: outDType),
+            () => cumprod<DTypeTag>(a, out: outDType),
             throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
           );
           expect(
@@ -3647,7 +3647,7 @@ void main() {
               throwsArgumentError,
             );
 
-            final outDType = NDArray<DTypeTag>.zeros([], DType.int32);
+            final outDType = NDArray.zeros([], DType.int32);
             expect(
               () => median(a, out: outDType as dynamic),
               throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
@@ -4309,7 +4309,7 @@ void main() {
           [2],
           DType.float64,
         );
-        final invalidOut = NDArray<DTypeTag>.zeros([], DType.int32);
+        final invalidOut = NDArray.zeros([], DType.int32);
 
         final throwsMismatched = throwsA(
           anyOf(isA<TypeError>(), isA<ArgumentError>()),
@@ -4689,14 +4689,14 @@ void main() {
       });
 
       group('Stream 4 remediation fixes', () {
-        test('cumprod boolean array with int32 out buffer', () {
+        test('cumprodAs boolean array with int32 out buffer', () {
           final aBool = NDArray.fromList(
             [true, false, true],
             [3],
             DType.boolean,
           );
-          final outBuf = NDArray<DTypeTag>.create([3], DType.int32);
-          final res = cumprod(aBool, out: outBuf);
+          final outBuf = NDArray<Int32>.create([3], DType.int32);
+          final res = cumprodAs(aBool, DType.int32, out: outBuf);
           expect(res, same(outBuf));
           expect(res.toList(), [1, 0, 0]);
         });

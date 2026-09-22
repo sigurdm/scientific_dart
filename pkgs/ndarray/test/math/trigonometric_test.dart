@@ -201,7 +201,7 @@ void main() {
     test(
       'Complex arrays throw UnsupportedError',
       () => NDArray.scope(() {
-        final a = NDArray<DTypeTag>.create([2], DType.complex128);
+        final a = NDArray.create([2], DType.complex128);
         expect(() => deg2rad(a), throwsUnsupportedError);
         expect(() => rad2deg(a), throwsUnsupportedError);
       }),
@@ -339,7 +339,7 @@ void main() {
           expect(allClose(ash, a, atol: 1e-9), true);
 
           // 5. in-place recycler out reuse
-          final recycler = NDArray<DTypeTag>.zeros([3], DType.float64);
+          final recycler = NDArray.zeros([3], DType.float64);
           final shRec = sinh(a, out: recycler);
           expect(identical(shRec, recycler), true);
           expect(shRec.getCell([0]), closeTo(0.0, 1e-9));
@@ -349,7 +349,7 @@ void main() {
       test(
         'linalg.sin(), cos(), and tan() complex FFI-accelerated correctness',
         () => NDArray.scope(() {
-          final a = NDArray<DTypeTag>.fromList(
+          final a = NDArray.fromList(
             [Complex(0.0, 0.0), Complex(0.1, 0.2), Complex(0.1, -0.2)],
             [3],
             DType.complex128,
@@ -406,7 +406,7 @@ void main() {
           );
 
           // 4. in-place out recycler reuse
-          final recycler = NDArray<DTypeTag>.zeros([3], DType.complex128);
+          final recycler = NDArray.zeros([3], DType.complex128);
           final sRec = sin(a, out: recycler);
           expect(identical(sRec, recycler), true);
           expect(sRec.getCell([0]), Complex(0.0, 0.0));
@@ -449,11 +449,9 @@ void main() {
           expect(h.dtype, DType.float64);
           expect(h.getCell([1]), closeTo(math.sqrt(0.1), 1e-9));
 
-          final z2 = NDArray<DTypeTag>.fromList(
-            List.filled(3, Complex(2.0, 0.0)),
-            [3],
-            DType.complex128,
-          );
+          final z2 = NDArray.fromList(List.filled(3, Complex(2.0, 0.0)), [
+            3,
+          ], DType.complex128);
           final p = power(a, z2);
           expect(p.dtype, DType.complex128);
           expect(p.getCell([1]).real, closeTo(-0.03, 1e-9));
@@ -475,18 +473,14 @@ void main() {
           expect(conjSlice.getCell([1]), Complex(0.1, 0.2));
 
           // Real array conjugation
-          final realA = NDArray<DTypeTag>.fromList(
-            [1.0, 2.0, 3.0],
-            [3],
-            DType.float64,
-          );
+          final realA = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
           final conjReal = conj(realA);
           expect(conjReal.dtype, DType.float64);
           expect(conjReal.getCell([0]), 1.0);
           expect(conjReal.getCell([1]), 2.0);
 
           // Recycler out buffer reuse
-          final conjRecycler = NDArray<DTypeTag>.zeros([3], DType.complex128);
+          final conjRecycler = NDArray.zeros([3], DType.complex128);
           final conjRes = conj(a, out: conjRecycler);
           expect(identical(conjRes, conjRecycler), true);
           expect(conjRes.getCell([1]), Complex(0.1, -0.2));
@@ -626,12 +620,12 @@ void main() {
           }
 
           // --- complex128 ---
-          final c128Contig = NDArray<DTypeTag>.fromList(
+          final c128Contig = NDArray.fromList(
             [Complex(0.2, 0.3), Complex(-0.4, 0.1)],
             [2],
             DType.complex128,
           );
-          final c128Strided = NDArray<DTypeTag>.fromList(
+          final c128Strided = NDArray.fromList(
             [
               Complex(0.2, 0.3),
               Complex(99, 99),
@@ -692,12 +686,12 @@ void main() {
           }
 
           // --- complex64 ---
-          final c64Contig = NDArray<DTypeTag>.fromList(
+          final c64Contig = NDArray.fromList(
             [Complex(0.2, 0.3), Complex(-0.4, 0.1)],
             [2],
             DType.complex64,
           );
-          final c64Strided = NDArray<DTypeTag>.fromList(
+          final c64Strided = NDArray.fromList(
             [
               Complex(0.2, 0.3),
               Complex(99, 99),
@@ -781,7 +775,7 @@ void main() {
         expect(c.getCell([2]), closeTo(math.cos(9.0), 1e-12));
 
         // complex128 strided
-        final z = NDArray<DTypeTag>.fromList(
+        final z = NDArray.fromList(
           [Complex(1.0, 2.0), Complex(9, 9), Complex(3.0, 4.0), Complex(9, 9)],
           [4],
           DType.complex128,
@@ -808,19 +802,22 @@ void main() {
 
     test('Complex exp, log, sqrt, abs, acosh (contiguous & strided)', () {
       NDArray.scope(() {
-        for (final dtype in [DType.complex128, DType.complex64]) {
+        for (final dtype in <DType<AnySpec>>[
+          DType.complex128,
+          DType.complex64,
+        ]) {
           final isComplex128 = dtype == DType.complex128;
           final double tol = isComplex128 ? 1e-12 : 1e-6;
 
           // Contiguous
-          final cContig = NDArray<DTypeTag>.fromList(
+          final cContig = NDArray.fromList(
             [Complex(0.2, 0.3), Complex(-0.4, 0.1)],
             [2],
             dtype,
           );
 
           // Strided
-          final cStrided = NDArray<DTypeTag>.fromList(
+          final cStrided = NDArray.fromList(
             [
               Complex(0.2, 0.3),
               Complex(99, 99),
@@ -831,9 +828,9 @@ void main() {
             dtype,
           ).slice([const Slice(start: 0, stop: 4, step: 2)]);
 
-          for (final a in [cContig, cStrided]) {
+          for (final a in <NDArray<AnySpec>>[cContig, cStrided]) {
             // exp & log round-trip
-            final e = exp(a);
+            final e = exp(a) as NDArray<AnySpec>;
             expect(e.dtype, dtype);
             final le = log(e);
             expect(le.dtype, dtype);
@@ -864,7 +861,7 @@ void main() {
             }
 
             // cosh & acosh round-trip (cosh(acosh(a)) == a)
-            final ach = acosh(a);
+            final ach = acosh(a) as NDArray<AnySpec>;
             expect(ach.dtype, dtype);
             final ch = cosh(ach);
             expect(ch.dtype, dtype);

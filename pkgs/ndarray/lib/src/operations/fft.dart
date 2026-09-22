@@ -331,8 +331,11 @@ kiss_fft_cfg _getKissFFTPlan(int nfft, int inverse_fft) {
 /// {@example /example/fft_example.dart lang=dart}
 ///
 /// Reference: [Cooley-Tukey FFT Algorithm](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm)
-NDArray<R> fft<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> fft<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, R, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   int? n,
   int axis = -1,
   NDArray<R>? out,
@@ -368,7 +371,9 @@ NDArray<R> fft<T extends DTypeTag, R extends DTypeTag>(
   outShape[normAxis] = targetLen;
 
   final isFloatOrComplex = a.dtype.isFloating || a.dtype.isComplex;
-  final expectedDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+  final expectedDType =
+      ((a.dtype as DType<DTypeTag>) == DType.float32 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)
       ? DType.complex64
       : DType.complex128;
   final targetDType = out?.dtype ?? expectedDType;
@@ -392,7 +397,7 @@ NDArray<R> fft<T extends DTypeTag, R extends DTypeTag>(
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
-        fft<T, R>(a, n: n, axis: axis, out: temp);
+        fft<R>(a, n: n, axis: axis, out: temp);
         temp.copy(out: out);
         return out;
       });
@@ -420,12 +425,12 @@ NDArray<R> fft<T extends DTypeTag, R extends DTypeTag>(
       final transposedInput = a.transpose(axes);
       if (out != null) {
         final transposedOut = out.transpose(axes);
-        fft<T, R>(transposedInput, n: n, out: transposedOut);
+        fft<R>(transposedInput, n: n, out: transposedOut);
         return out;
       } else {
         final result = _createZeros(outShape, targetDType) as NDArray<R>;
         final transposedOut = result.transpose(axes);
-        fft<T, R>(transposedInput, n: n, out: transposedOut);
+        fft<R>(transposedInput, n: n, out: transposedOut);
         result.detachToParentScope();
         return result;
       }
@@ -433,7 +438,7 @@ NDArray<R> fft<T extends DTypeTag, R extends DTypeTag>(
   }
 
   return NDArray.scope(() {
-    final NDArray<T> inputA = a;
+    final NDArray<DTypeTag> inputA = a;
     final result = out ?? _createZeros(outShape, targetDType) as NDArray<R>;
 
     // Count how many 1D row sub-signals exist to execute strided walks
@@ -546,8 +551,11 @@ NDArray<R> fft<T extends DTypeTag, R extends DTypeTag>(
 ///
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
-NDArray<R> ifft<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> ifft<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, R, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   int? n,
   int axis = -1,
   NDArray<R>? out,
@@ -583,7 +591,9 @@ NDArray<R> ifft<T extends DTypeTag, R extends DTypeTag>(
   outShape[normAxis] = targetLen;
 
   final isFloatOrComplex = a.dtype.isFloating || a.dtype.isComplex;
-  final expectedDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+  final expectedDType =
+      ((a.dtype as DType<DTypeTag>) == DType.float32 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)
       ? DType.complex64
       : DType.complex128;
   final targetDType = out?.dtype ?? expectedDType;
@@ -607,7 +617,7 @@ NDArray<R> ifft<T extends DTypeTag, R extends DTypeTag>(
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
-        ifft<T, R>(a, n: n, axis: axis, out: temp);
+        ifft<R>(a, n: n, axis: axis, out: temp);
         temp.copy(out: out);
         return out;
       });
@@ -635,12 +645,12 @@ NDArray<R> ifft<T extends DTypeTag, R extends DTypeTag>(
       final transposedInput = a.transpose(axes);
       if (out != null) {
         final transposedOut = out.transpose(axes);
-        ifft<T, R>(transposedInput, n: n, out: transposedOut);
+        ifft<R>(transposedInput, n: n, out: transposedOut);
         return out;
       } else {
         final result = _createZeros(outShape, targetDType) as NDArray<R>;
         final transposedOut = result.transpose(axes);
-        ifft<T, R>(transposedInput, n: n, out: transposedOut);
+        ifft<R>(transposedInput, n: n, out: transposedOut);
         result.detachToParentScope();
         return result;
       }
@@ -648,7 +658,7 @@ NDArray<R> ifft<T extends DTypeTag, R extends DTypeTag>(
   }
 
   return NDArray.scope(() {
-    final NDArray<T> inputA = a;
+    final NDArray<DTypeTag> inputA = a;
     final result = out ?? _createZeros(outShape, targetDType) as NDArray<R>;
 
     final signalsCount = rank <= 1
@@ -1283,8 +1293,11 @@ NDArray<Float64> rfftfreq(int n, {double d = 1.0}) {
 /// - Odd lengths fall back to casting to complex and running standard complex [fft] and slicing.
 ///
 /// Reference: [Real 1D FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.rfft.html)
-NDArray<R> rfft<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> rfft<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, R, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   int? n,
   int axis = -1,
   NDArray<R>? out,
@@ -1317,7 +1330,9 @@ NDArray<R> rfft<T extends DTypeTag, R extends DTypeTag>(
   outShape[normAxis] = targetLen ~/ 2 + 1;
 
   final isFloatOrComplex = a.dtype.isFloating || a.dtype.isComplex;
-  final expectedDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+  final expectedDType =
+      ((a.dtype as DType<DTypeTag>) == DType.float32 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)
       ? DType.complex64
       : DType.complex128;
   final targetDType = out?.dtype ?? expectedDType;
@@ -1341,7 +1356,7 @@ NDArray<R> rfft<T extends DTypeTag, R extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
-        rfft<T, R>(a, n: n, axis: axis, out: temp);
+        rfft<R>(a, n: n, axis: axis, out: temp);
         temp.copy(out: out);
         return out;
       });
@@ -1369,7 +1384,7 @@ NDArray<R> rfft<T extends DTypeTag, R extends DTypeTag>(
 
       return NDArray.scope(() {
         final transposedInput = a.transpose(axes);
-        final transposedResult = rfft<T, R>(transposedInput, n: n);
+        final transposedResult = rfft<R>(transposedInput, n: n);
         final finalResult = transposedResult.transpose(axes);
         if (out != null) {
           finalResult.copy(out: out);
@@ -1383,14 +1398,14 @@ NDArray<R> rfft<T extends DTypeTag, R extends DTypeTag>(
     }
 
     return NDArray.scope(() {
-      final NDArray<T> inputA = a.isContiguous ? a : a.copy();
+      final inputA = a.isContiguous ? a : a.copy();
       final result = out ?? _createZeros(outShape, targetDType) as NDArray<R>;
 
       final totalElements = inputA.shape.reduce((x, y) => x * y);
       final signalsCount = totalElements ~/ lastAxisDim;
 
       final isZeroCopyFastPath =
-          inputA.dtype == DType.float64 &&
+          (inputA.dtype as DType<DTypeTag>) == DType.float64 &&
           targetLen == lastAxisDim &&
           inputA.isContiguous &&
           result.dtype == DType.complex128;
@@ -1466,7 +1481,7 @@ NDArray<R> rfft<T extends DTypeTag, R extends DTypeTag>(
   } else {
     // Odd targetLen: Fallback Path
     return NDArray.scope(() {
-      final complexFFT = fft<T, DTypeTag>(a, n: targetLen, axis: axis);
+      final complexFFT = fft<R>(a, n: targetLen, axis: axis);
       final slices = List<Selector>.generate(rank, (i) {
         if (i == normAxis) {
           return Slice(start: 0, stop: targetLen ~/ 2 + 1);
@@ -1513,8 +1528,11 @@ NDArray<R> rfft<T extends DTypeTag, R extends DTypeTag>(
 /// - Odd [n] reconstructs the full conjugate symmetric spectrum, runs complex [ifft], and discards imaginary part.
 ///
 /// Reference: [Inverse Real 1D FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.irfft.html)
-NDArray<R> irfft<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> irfft<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   int? n,
   int axis = -1,
   NDArray<R>? out,
@@ -1547,7 +1565,9 @@ NDArray<R> irfft<T extends DTypeTag, R extends DTypeTag>(
   outShape[normAxis] = targetLen;
 
   final isFloatOrComplex = a.dtype.isFloating || a.dtype.isComplex;
-  final expectedDType = (a.dtype == DType.complex64 || a.dtype == DType.float32)
+  final expectedDType =
+      ((a.dtype as DType<DTypeTag>) == DType.complex64 ||
+          (a.dtype as DType<DTypeTag>) == DType.float32)
       ? DType.float32
       : DType.float64;
   final targetDType = out?.dtype ?? expectedDType;
@@ -1571,7 +1591,7 @@ NDArray<R> irfft<T extends DTypeTag, R extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
-        irfft<T, R>(a, n: n, axis: axis, out: temp);
+        irfft<R>(a, n: n, axis: axis, out: temp);
         temp.copy(out: out);
         return out;
       });
@@ -1601,7 +1621,7 @@ NDArray<R> irfft<T extends DTypeTag, R extends DTypeTag>(
 
       return NDArray.scope(() {
         final transposedInput = a.transpose(axes);
-        final transposedResult = irfft<T, R>(transposedInput, n: n);
+        final transposedResult = irfft<R>(transposedInput, n: n);
         final finalResult = transposedResult.transpose(axes);
         if (out != null) {
           finalResult.copy(out: out);
@@ -1615,14 +1635,14 @@ NDArray<R> irfft<T extends DTypeTag, R extends DTypeTag>(
     }
 
     return NDArray.scope(() {
-      final NDArray<T> inputA = a.isContiguous ? a : a.copy();
+      final inputA = a.isContiguous ? a : a.copy();
       final result = out ?? _createZeros(outShape, targetDType) as NDArray<R>;
 
       final totalElements = inputA.shape.reduce((x, y) => x * y);
       final signalsCount = totalElements ~/ lastAxisDim;
 
       final isZeroCopyFastPath =
-          inputA.dtype == DType.complex128 &&
+          (inputA.dtype as DType<DTypeTag>) == DType.complex128 &&
           targetInputLen == lastAxisDim &&
           inputA.isContiguous &&
           result.dtype == DType.float64;
@@ -1707,7 +1727,8 @@ NDArray<R> irfft<T extends DTypeTag, R extends DTypeTag>(
       final lastAxisDim = a.shape[normAxis]; // M
 
       final reconDType =
-          (a.dtype == DType.complex64 || a.dtype == DType.float32)
+          ((a.dtype as DType<DTypeTag>) == DType.complex64 ||
+              (a.dtype as DType<DTypeTag>) == DType.float32)
           ? DType.complex64
           : DType.complex128;
 
@@ -1791,7 +1812,7 @@ NDArray<R> irfft<T extends DTypeTag, R extends DTypeTag>(
         }
       }
 
-      final complexIFFTTransposed = ifft(contiguousRecon);
+      final complexIFFTTransposed = ifft(contiguousRecon as NDArray<AnySpec>);
       final complexIFFT = complexIFFTTransposed.transpose(resolvedAxes);
 
       final outShape = List<int>.from(a.shape);
@@ -1928,7 +1949,7 @@ NDArray<R> _fftnND<T extends DTypeTag, R extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = _createZeros(outShape, out.dtype) as NDArray<R>;
-        _fftnND<T, R>(a, s: s, axes: axes, inverse: inverse, out: temp);
+        _fftnND<DTypeTag, R>(a, s: s, axes: axes, inverse: inverse, out: temp);
         temp.copy(out: out);
         return out;
       });
@@ -1946,7 +1967,7 @@ NDArray<R> _fftnND<T extends DTypeTag, R extends DTypeTag>(
   }
 
   return NDArray.scope(() {
-    final prepA = _padOrTruncate<T, R>(
+    final prepA = _padOrTruncate<DTypeTag, R>(
       a,
       sResolved,
       axesResolved,
@@ -2054,12 +2075,15 @@ NDArray<R> _fftnND<T extends DTypeTag, R extends DTypeTag>(
 /// - Transposes the array to bring target [axes] to the end before calling native C code, which is fast but might require a copy to make it contiguous.
 ///
 /// Reference: [N-dimensional FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.fftn.html)
-NDArray<R> fftn<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> fftn<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, R, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   List<int>? s,
   List<int>? axes,
   NDArray<R>? out,
-}) => _fftnND<T, R>(a, s: s, axes: axes, inverse: false, out: out);
+}) => _fftnND<DTypeTag, R>(a, s: s, axes: axes, inverse: false, out: out);
 
 /// Computes the N-dimensional inverse discrete Fourier Transform.
 ///
@@ -2072,12 +2096,15 @@ NDArray<R> fftn<T extends DTypeTag, R extends DTypeTag>(
 /// - Same as [fftn].
 ///
 /// Reference: [Inverse N-dimensional FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.ifftn.html)
-NDArray<R> ifftn<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> ifftn<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, R, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   List<int>? s,
   List<int>? axes,
   NDArray<R>? out,
-}) => _fftnND<T, R>(a, s: s, axes: axes, inverse: true, out: out);
+}) => _fftnND<DTypeTag, R>(a, s: s, axes: axes, inverse: true, out: out);
 
 /// Computes the 2-dimensional discrete Fourier Transform.
 ///
@@ -2093,8 +2120,11 @@ NDArray<R> ifftn<T extends DTypeTag, R extends DTypeTag>(
 /// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// Reference: [2-dimensional FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.fft2.html)
-NDArray<R> fft2<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> fft2<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, R, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   List<int>? s,
   List<int>? axes = const [-2, -1],
   NDArray<R>? out,
@@ -2103,7 +2133,7 @@ NDArray<R> fft2<T extends DTypeTag, R extends DTypeTag>(
   if (resolvedAxes.length != 2) {
     throw ArgumentError('axes must have length 2');
   }
-  return fftn<T, R>(a, s: s, axes: resolvedAxes, out: out);
+  return fftn<R>(a, s: s, axes: resolvedAxes, out: out);
 }
 
 /// Computes the 2-dimensional inverse discrete Fourier Transform.
@@ -2120,8 +2150,11 @@ NDArray<R> fft2<T extends DTypeTag, R extends DTypeTag>(
 /// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// Reference: [Inverse 2-dimensional FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.ifft2.html)
-NDArray<R> ifft2<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> ifft2<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, R, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   List<int>? s,
   List<int>? axes = const [-2, -1],
   NDArray<R>? out,
@@ -2130,7 +2163,7 @@ NDArray<R> ifft2<T extends DTypeTag, R extends DTypeTag>(
   if (resolvedAxes.length != 2) {
     throw ArgumentError('axes must have length 2');
   }
-  return ifftn<T, R>(a, s: s, axes: resolvedAxes, out: out);
+  return ifftn<R>(a, s: s, axes: resolvedAxes, out: out);
 }
 
 /// Clears all precomputed native FFT plans from the isolate plan cache.

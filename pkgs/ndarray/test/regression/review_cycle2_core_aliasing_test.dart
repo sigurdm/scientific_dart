@@ -94,7 +94,7 @@ void main() {
             [3],
             DType.float64,
           );
-          final idx = NDArray<DTypeTag>.fromList([0, 2], [2], DType.int32);
+          final idx = NDArray.fromList([0, 2], [2], DType.int32);
 
           final disposedA = a.copy()..dispose();
           expect(() => disposedA.setIndicesScalar(idx, 99.0), throwsStateError);
@@ -114,7 +114,7 @@ void main() {
             [3],
             DType.float64,
           );
-          final idx = NDArray<DTypeTag>.fromList([0, 2], [2], DType.int32);
+          final idx = NDArray.fromList([0, 2], [2], DType.int32);
           final vals = NDArray<Float64>.fromList(
             [10.0, 20.0],
             [2],
@@ -289,11 +289,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final indices = NDArray<DTypeTag>.fromList(
-            [1, 0, 1, 0],
-            [2, 2],
-            DType.int32,
-          );
+          final indices = NDArray.fromList([1, 0, 1, 0], [2, 2], DType.int32);
           final expected = take_along_axis(a, indices, 1);
 
           final aCopy = a.copy();
@@ -316,11 +312,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final indices = NDArray<DTypeTag>.fromList(
-            [1, 0, 1, 0],
-            [2, 2],
-            DType.int32,
-          );
+          final indices = NDArray.fromList([1, 0, 1, 0], [2, 2], DType.int32);
 
           // Values is a view of out buffer
           final out = a.copy();
@@ -351,7 +343,7 @@ void main() {
             [3],
             DType.float64,
           );
-          final a = NDArray<DTypeTag>.fromList([1, 0, 1], [3], DType.int32);
+          final a = NDArray.fromList([1, 0, 1], [3], DType.int32);
           final expected = choose<Float64>(a, [c0, c1]);
 
           final c0Copy = c0.copy();
@@ -413,7 +405,7 @@ void main() {
               [4],
               DType.float64,
             );
-            final idx = NDArray<DTypeTag>.fromList([3, 1], [2], DType.int32);
+            final idx = NDArray.fromList([3, 1], [2], DType.int32);
 
             final res = a[idx] as NDArray<Float64>;
             expect(res.shape, equals([2]));

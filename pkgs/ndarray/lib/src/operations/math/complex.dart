@@ -51,8 +51,11 @@ NDArray<DTypeTag> _complexPartView(
 /// a.setCell([1], Complex(-1.0, 0.0));
 /// final r = real(a); // [3.0, -1.0] (DType.float64)
 /// ```
-NDArray<R> real<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> real<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<R, Object?, DTypeTag, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -86,20 +89,21 @@ NDArray<R> real<T extends DTypeTag, R extends DTypeTag>(
                       ? NDArray<Float32>.create(a.shape, DType.float32)
                       : NDArray<Float64>.create(a.shape, DType.float64))
                   as NDArray<R>);
-        real<T, R>(a, where: where, out: temp);
+        real<R>(a, where: where, out: temp);
         temp.copy(out: out);
         return out;
       });
     }
   } else if (where == null &&
-      a.dtype != DType.complex128 &&
-      a.dtype != DType.complex64) {
+      (a.dtype as DType<DTypeTag>) != DType.complex128 &&
+      (a.dtype as DType<DTypeTag>) != DType.complex64) {
     return NDArray.view(a, shape: a.shape, strides: a.strides)
         as NDArray<R>; // Zero-copy view for already real arrays!
   }
 
   if (where == null &&
-      (a.dtype == DType.complex128 || a.dtype == DType.complex64)) {
+      ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)) {
     final NDArray<R> result =
         out ??
         ((targetDType == DType.float32
@@ -186,8 +190,11 @@ NDArray<R> real<T extends DTypeTag, R extends DTypeTag>(
 /// a.setCell([1], Complex(-1.0, 0.0));
 /// final im = imag(a); // [4.0, 0.0] (DType.float64)
 /// ```
-NDArray<R> imag<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> imag<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -198,7 +205,7 @@ NDArray<R> imag<T extends DTypeTag, R extends DTypeTag>(
   }
 
   final DType<DTypeTag> targetDType = switch (a.dtype) {
-    DType.complex64 => DType.float32,
+    DType.complex64 || DType.float32 => DType.float32,
     _ => DType.float64,
   };
 
@@ -216,7 +223,7 @@ NDArray<R> imag<T extends DTypeTag, R extends DTypeTag>(
                       ? NDArray<Float32>.create(a.shape, DType.float32)
                       : NDArray<Float64>.create(a.shape, DType.float64))
                   as NDArray<R>);
-        imag<T, R>(a, where: where, out: temp);
+        imag<R>(a, where: where, out: temp);
         temp.copy(out: out);
         return out;
       });
@@ -224,7 +231,8 @@ NDArray<R> imag<T extends DTypeTag, R extends DTypeTag>(
   }
 
   if (where == null &&
-      (a.dtype == DType.complex128 || a.dtype == DType.complex64)) {
+      ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)) {
     final NDArray<R> result =
         out ??
         ((targetDType == DType.float32
@@ -246,7 +254,8 @@ NDArray<R> imag<T extends DTypeTag, R extends DTypeTag>(
         out ??
         (NDArray.create(a.shape, targetDType, zeroInit: where != null)
             as NDArray<R>);
-    if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
+    if ((a.dtype as DType<DTypeTag>) != DType.complex128 &&
+        (a.dtype as DType<DTypeTag>) != DType.complex64) {
       if (where == null) {
         result.fill(0.0);
       } else {

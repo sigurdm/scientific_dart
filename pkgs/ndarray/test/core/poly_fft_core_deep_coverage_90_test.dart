@@ -1004,7 +1004,7 @@ void main() {
       test('1D FFT and IFFT across all 15 DTypes and odd/even lengths', () {
         NDArray.scope(() {
           // Test all numeric, boolean, and complex DTypes
-          for (final dt in DType.values) {
+          for (final dt in DType.specs) {
             final len = 8;
             final a = NDArray.zeros([len], dt);
             // Set a pulse at index 0
@@ -1033,7 +1033,7 @@ void main() {
             }
 
             // IFFT round-trip
-            final inv = ifft(res);
+            final inv = ifft((res as NDArray<AnySpec>));
             expect(inv.shape, equals([len]));
             final c0 = inv.getCell([0]);
             expect(c0.real, closeTo(1.0, 1e-4));
@@ -1450,7 +1450,7 @@ void main() {
           final wRes = where(cond, wX, wY) as NDArray<Float64>;
           expect(wRes.toList(), equals([1.0, 20.0, 3.0, 40.0]));
 
-          final coords = where(cond) as List<NDArray<DTypeTag>>;
+          final coords = where(cond) as List<NDArray<AnySpec>>;
           expect(coords.length, equals(1));
           expect(coords[0].toList(), equals([0, 2]));
         });

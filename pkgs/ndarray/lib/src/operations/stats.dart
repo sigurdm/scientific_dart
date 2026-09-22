@@ -479,11 +479,22 @@ enum QuantileMethod {
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.toList()); // [4.0, 6.0]
 /// ```
-NDArray<R> sum<R extends DTypeTag>(
-  NDArray a, {
+NDArray<T> sum<T extends DTypeTag>(
+  NDArray<T> a, {
   int? axis,
   bool keepdims = false,
-  DType<R>? dtype,
+  NDArray<T>? out,
+}) => sumAs<T, T>(a, a.dtype, axis: axis, keepdims: keepdims, out: out);
+
+/// Computes the sum of array elements over a given [axis], accumulating and
+/// returning the result in the specified target [dtype].
+///
+/// Refer to [sum] for full details.
+NDArray<R> sumAs<T extends DTypeTag, R extends DTypeTag>(
+  NDArray<T> a,
+  DType<R> dtype, {
+  int? axis,
+  bool keepdims = false,
   NDArray<R>? out,
 }) {
   if (a.isDisposed) {
@@ -494,8 +505,7 @@ NDArray<R> sum<R extends DTypeTag>(
   }
 
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
-  final DType effectiveDType =
-      dtype ?? (a.dtype == DType.boolean ? DType.int64 : a.dtype);
+  final DType<R> effectiveDType = dtype;
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != effectiveDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -503,7 +513,7 @@ NDArray<R> sum<R extends DTypeTag>(
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = NDArray<R>.create(out.shape, out.dtype);
-        sum<R>(a, axis: axis, keepdims: keepdims, dtype: dtype, out: temp);
+        sumAs<T, R>(a, dtype, axis: axis, keepdims: keepdims, out: temp);
         return temp.copy(out: out);
       });
     }
@@ -524,8 +534,7 @@ NDArray<R> sum<R extends DTypeTag>(
       final size = workA.shape.isEmpty
           ? 1
           : workA.shape.reduce((x, y) => x * y);
-      final result =
-          out ?? NDArray<R>.create(targetShape, effectiveDType as DType<R>);
+      final result = out ?? NDArray<R>.create(targetShape, effectiveDType);
       if (size == 0) {
         if (effectiveDType.isComplex) {
           result.setCellFlat(0, Complex(0.0, 0.0));
@@ -622,8 +631,7 @@ NDArray<R> sum<R extends DTypeTag>(
       throw RangeError.range(normAxis, 0, rank - 1, 'axis');
     }
 
-    final result =
-        out ?? NDArray<R>.zeros(targetShape, effectiveDType as DType<R>);
+    final result = out ?? NDArray<R>.zeros(targetShape, effectiveDType);
     if (out != null) {
       result.fill(normalizeScalar(0, effectiveDType));
     }
@@ -771,7 +779,20 @@ NDArray<R> sum<R extends DTypeTag>(
   }
 }
 
-/// Computes the product of elements in the array.
+/// Computes the product of array elements over a given [axis].
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+/// - If [axis] is provided, it must be within `[-a.shape.length, a.shape.length - 1]`.
+///
+/// **Throws:**
+/// - [StateError] if [a] or [out] is disposed.
+/// - [RangeError] if [axis] is out of bounds.
+/// - [ArgumentError] if [out] shape or dtype does not match the expected reduction shape/dtype.
+///
+/// **Performance considerations:**
+/// - Uses direct C FFI reductions (`r_prod_*` for 1D/contiguous, `s_prod_*` for strided) for $O(N)$ time complexity.
+/// - **Overflow Warning:** Integer products wrap around using standard C two's complement arithmetic on 32-bit/64-bit boundaries. Pass `dtype: DType.int64` or `DType.float64` when multiplying large integer arrays.
 ///
 /// If [axis] is provided, multiplies along that axis and returns a new array.
 /// Otherwise, multiplies all elements and returns a 0-D array containing the product.
@@ -782,11 +803,22 @@ NDArray<R> sum<R extends DTypeTag>(
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.toList()); // [3.0, 8.0]
 /// ```
-NDArray<R> prod<R extends DTypeTag>(
-  NDArray a, {
+NDArray<T> prod<T extends DTypeTag>(
+  NDArray<T> a, {
   int? axis,
   bool keepdims = false,
-  DType<R>? dtype,
+  NDArray<T>? out,
+}) => prodAs<T, T>(a, a.dtype, axis: axis, keepdims: keepdims, out: out);
+
+/// Computes the product of array elements over a given [axis], accumulating
+/// and returning the result in the specified target [dtype].
+///
+/// Refer to [prod] for full details.
+NDArray<R> prodAs<T extends DTypeTag, R extends DTypeTag>(
+  NDArray<T> a,
+  DType<R> dtype, {
+  int? axis,
+  bool keepdims = false,
   NDArray<R>? out,
 }) {
   if (a.isDisposed) {
@@ -797,8 +829,7 @@ NDArray<R> prod<R extends DTypeTag>(
   }
 
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
-  final DType effectiveDType =
-      dtype ?? (a.dtype == DType.boolean ? DType.int64 : a.dtype);
+  final DType<R> effectiveDType = dtype;
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != effectiveDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -806,7 +837,7 @@ NDArray<R> prod<R extends DTypeTag>(
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = NDArray<R>.create(out.shape, out.dtype);
-        prod<R>(a, axis: axis, keepdims: keepdims, dtype: dtype, out: temp);
+        prodAs<T, R>(a, dtype, axis: axis, keepdims: keepdims, out: temp);
         return temp.copy(out: out);
       });
     }
@@ -825,8 +856,7 @@ NDArray<R> prod<R extends DTypeTag>(
   try {
     final size = workA.shape.isEmpty ? 1 : workA.shape.reduce((x, y) => x * y);
     if (axis == null) {
-      final result =
-          out ?? NDArray<R>.zeros(targetShape, effectiveDType as DType<R>);
+      final result = out ?? NDArray<R>.zeros(targetShape, effectiveDType);
       if (size == 0) {
         if (effectiveDType.isComplex) {
           result.setCellFlat(0, Complex(1.0, 0.0));
@@ -923,8 +953,7 @@ NDArray<R> prod<R extends DTypeTag>(
       throw RangeError.range(normAxis, 0, rank - 1, 'axis');
     }
 
-    final result =
-        out ?? NDArray<R>.ones(targetShape, effectiveDType as DType<R>);
+    final result = out ?? NDArray<R>.ones(targetShape, effectiveDType);
     if (out != null) {
       result.fill(normalizeScalar(1, effectiveDType));
     }
@@ -2942,8 +2971,19 @@ NDArray<T> nanmax<T extends DTypeTag>(
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<R> cumsum<T extends DTypeTag, R extends DTypeTag>(
+NDArray<T> cumsum<T extends DTypeTag>(
   NDArray<T> a, {
+  int? axis,
+  NDArray<T>? out,
+}) => cumsumAs<T, T>(a, a.dtype, axis: axis, out: out);
+
+/// Computes the cumulative sum of array elements along [axis], accumulating
+/// and returning the result in the specified target [dtype].
+///
+/// Refer to [cumsum] for full details.
+NDArray<R> cumsumAs<T extends DTypeTag, R extends DTypeTag>(
+  NDArray<T> a,
+  DType<R> dtype, {
   int? axis,
   NDArray<R>? out,
 }) {
@@ -2954,13 +2994,11 @@ NDArray<R> cumsum<T extends DTypeTag, R extends DTypeTag>(
     throw StateError('Cannot write cumsum result to a disposed output array.');
   }
 
-  final DType<DTypeTag> targetDType = a.dtype == DType.boolean
-      ? DType.int32
-      : a.dtype;
+  final DType<R> targetDType = dtype;
   final NDArray<R> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = out ?? NDArray<R>.create([size], targetDType as DType<R>);
+    result = out ?? NDArray<R>.create([size], targetDType);
     if (out != null) {
       if (!listEquals(out.shape, [size]) || out.dtype != targetDType) {
         throw ArgumentError(
@@ -2970,7 +3008,7 @@ NDArray<R> cumsum<T extends DTypeTag, R extends DTypeTag>(
       if (sharesMemory(a, out)) {
         return NDArray.scope(() {
           final temp = NDArray<R>.create(out.shape, out.dtype);
-          cumsum<T, R>(a, axis: axis, out: temp);
+          cumsumAs<T, R>(a, dtype, axis: axis, out: temp);
           return temp.copy(out: out);
         });
       }
@@ -2992,7 +3030,7 @@ NDArray<R> cumsum<T extends DTypeTag, R extends DTypeTag>(
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = out ?? NDArray<R>.create(a.shape, targetDType as DType<R>);
+  result = out ?? NDArray<R>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -3002,7 +3040,7 @@ NDArray<R> cumsum<T extends DTypeTag, R extends DTypeTag>(
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = NDArray<R>.create(out.shape, out.dtype);
-        cumsum<T, R>(a, axis: axis, out: temp);
+        cumsumAs<T, R>(a, dtype, axis: axis, out: temp);
         return temp.copy(out: out);
       });
     }
@@ -3023,8 +3061,19 @@ NDArray<R> cumsum<T extends DTypeTag, R extends DTypeTag>(
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<R> cumprod<T extends DTypeTag, R extends DTypeTag>(
+NDArray<T> cumprod<T extends DTypeTag>(
   NDArray<T> a, {
+  int? axis,
+  NDArray<T>? out,
+}) => cumprodAs<T, T>(a, a.dtype, axis: axis, out: out);
+
+/// Computes the cumulative product of array elements along [axis],
+/// accumulating and returning the result in the specified target [dtype].
+///
+/// Refer to [cumprod] for full details.
+NDArray<R> cumprodAs<T extends DTypeTag, R extends DTypeTag>(
+  NDArray<T> a,
+  DType<R> dtype, {
   int? axis,
   NDArray<R>? out,
 }) {
@@ -3035,13 +3084,11 @@ NDArray<R> cumprod<T extends DTypeTag, R extends DTypeTag>(
     throw StateError('Cannot write cumprod result to a disposed output array.');
   }
 
-  final DType<DTypeTag> targetDType = a.dtype == DType.boolean
-      ? DType.int32
-      : a.dtype;
+  final DType<R> targetDType = dtype;
   final NDArray<R> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = out ?? NDArray<R>.create([size], targetDType as DType<R>);
+    result = out ?? NDArray<R>.create([size], targetDType);
     if (out != null) {
       if (!listEquals(out.shape, [size]) || out.dtype != targetDType) {
         throw ArgumentError(
@@ -3051,7 +3098,7 @@ NDArray<R> cumprod<T extends DTypeTag, R extends DTypeTag>(
       if (sharesMemory(a, out)) {
         return NDArray.scope(() {
           final temp = NDArray<R>.create(out.shape, out.dtype);
-          cumprod<T, R>(a, axis: axis, out: temp);
+          cumprodAs<T, R>(a, dtype, axis: axis, out: temp);
           return temp.copy(out: out);
         });
       }
@@ -3073,7 +3120,7 @@ NDArray<R> cumprod<T extends DTypeTag, R extends DTypeTag>(
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = out ?? NDArray<R>.create(a.shape, targetDType as DType<R>);
+  result = out ?? NDArray<R>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -3083,7 +3130,7 @@ NDArray<R> cumprod<T extends DTypeTag, R extends DTypeTag>(
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = NDArray<R>.create(out.shape, out.dtype);
-        cumprod<T, R>(a, axis: axis, out: temp);
+        cumprodAs<T, R>(a, dtype, axis: axis, out: temp);
         return temp.copy(out: out);
       });
     }
@@ -4885,7 +4932,7 @@ NDArray<T> nansum<T extends DTypeTag>(
     throw StateError('Cannot execute nansum() on a disposed array.');
   }
   if (a.dtype.isInteger || a.dtype == DType.boolean) {
-    return sum<T>(a, dtype: a.dtype, axis: axis, keepdims: keepdims, out: out);
+    return sum<T>(a, axis: axis, keepdims: keepdims, out: out);
   }
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {

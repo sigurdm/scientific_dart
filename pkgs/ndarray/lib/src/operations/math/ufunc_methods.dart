@@ -3111,6 +3111,20 @@ NDArray<R> unaryUfunc<T extends DTypeTag, R extends DTypeTag>(
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
+  final xSpec = _asView<AnySpec>(x);
+  final outSpec = _asViewNullable<DTypeTag>(out);
+  final xRealSpec =
+      _asView<
+        DTypeSpec<
+          DTypeTag,
+          num,
+          DTypeTag,
+          DTypeTag,
+          DTypeTag,
+          DTypeTag,
+          DTypeTag
+        >
+      >(x);
   switch (op) {
     case UnaryOp.invert:
     case UnaryOp.bitwiseNot:
@@ -3125,10 +3139,10 @@ NDArray<R> unaryUfunc<T extends DTypeTag, R extends DTypeTag>(
     case UnaryOp.absolute:
     case UnaryOp.abs:
     case UnaryOp.fabs:
-      final res = abs(x, where: where, out: _asViewNullable<DTypeTag>(out));
+      final res = abs(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.rint:
-      final res = rint(x, where: where, out: _asViewNullable<T>(out));
+      final res = rint(xRealSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.sign:
       final res = sign(x, where: where, out: _asViewNullable<T>(out));
@@ -3138,7 +3152,7 @@ NDArray<R> unaryUfunc<T extends DTypeTag, R extends DTypeTag>(
       final res = conj(x, where: where, out: _asViewNullable<T>(out));
       return out ?? _asView<R>(res);
     case UnaryOp.exp:
-      final res = exp(x, where: where, out: _asViewNullable<T>(out));
+      final res = exp(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.exp2:
       final res = power(
@@ -3149,22 +3163,22 @@ NDArray<R> unaryUfunc<T extends DTypeTag, R extends DTypeTag>(
       );
       return out ?? _asView<R>(res);
     case UnaryOp.log:
-      final res = log(x, where: where, out: _asViewNullable<T>(out));
+      final res = log(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.log2:
-      final res = log2(x, where: where, out: _asViewNullable<T>(out));
+      final res = log2(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.log10:
-      final res = log10(x, where: where, out: _asViewNullable<T>(out));
+      final res = log10(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.expm1:
-      final res = expm1(x, where: where, out: _asViewNullable<T>(out));
+      final res = expm1(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.log1p:
-      final res = log1p(x, where: where, out: _asViewNullable<T>(out));
+      final res = log1p(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.sqrt:
-      final res = sqrt(x, where: where, out: _asViewNullable<T>(out));
+      final res = sqrt(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.square:
       final res = square(x, where: where, out: _asViewNullable<T>(out));
@@ -3178,51 +3192,51 @@ NDArray<R> unaryUfunc<T extends DTypeTag, R extends DTypeTag>(
       );
       return out ?? _asView<R>(res);
     case UnaryOp.reciprocal:
-      final res = reciprocal(x, where: where, out: _asViewNullable<T>(out));
+      final res = reciprocal(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.sin:
-      final res = sin(x, where: where, out: _asViewNullable<T>(out));
+      final res = sin(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.cos:
-      final res = cos(x, where: where, out: _asViewNullable<T>(out));
+      final res = cos(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.tan:
-      final res = tan(x, where: where, out: _asViewNullable<T>(out));
+      final res = tan(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arcsin:
-      final res = asin(x, where: where, out: _asViewNullable<T>(out));
+      final res = asin(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arccos:
-      final res = acos(x, where: where, out: _asViewNullable<T>(out));
+      final res = acos(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arctan:
-      final res = atan(x, where: where, out: _asViewNullable<T>(out));
+      final res = atan(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.sinh:
-      final res = sinh(x, where: where, out: _asViewNullable<T>(out));
+      final res = sinh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.cosh:
-      final res = cosh(x, where: where, out: _asViewNullable<T>(out));
+      final res = cosh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.tanh:
-      final res = tanh(x, where: where, out: _asViewNullable<T>(out));
+      final res = tanh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arcsinh:
-      final res = asinh(x, where: where, out: _asViewNullable<T>(out));
+      final res = asinh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arccosh:
-      final res = acosh(x, where: where, out: _asViewNullable<T>(out));
+      final res = acosh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arctanh:
-      final res = atanh(x, where: where, out: _asViewNullable<T>(out));
+      final res = atanh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.degrees:
     case UnaryOp.rad2deg:
-      final res = rad2deg(x, where: where, out: _asViewNullable<Float64>(out));
+      final res = rad2deg(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.radians:
     case UnaryOp.deg2rad:
-      final res = deg2rad(x, where: where, out: _asViewNullable<Float64>(out));
+      final res = deg2rad(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.logicalNot:
       final res = logical_not(
@@ -3255,11 +3269,11 @@ NDArray<R> unaryUfunc<T extends DTypeTag, R extends DTypeTag>(
       final res = ceil(x, where: where, out: _asViewNullable<T>(out));
       return out ?? _asView<R>(res);
     case UnaryOp.trunc:
-      final res = trunc(x, where: where, out: _asViewNullable<T>(out));
+      final res = trunc(xRealSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.spacing:
       return NDArray.scope(() {
-        final parts = frexp<T, Float64>(x, where: where);
+        final parts = frexp<DTypeTag>(xSpec, where: where);
         final res = power(
           NDArray.scalar(2.0, dtype: DType.float64),
           subtract(

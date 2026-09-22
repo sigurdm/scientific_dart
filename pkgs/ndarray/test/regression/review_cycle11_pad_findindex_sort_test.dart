@@ -5,12 +5,12 @@ void main() {
   group('Review Cycle 11 Regression Tests: pad, findIndex, argpartition', () {
     group('1. pad with PaddingMode.constant on float16 and bfloat16', () {
       for (final dtype in [
-        DType.float16 as DType<DTypeTag>,
-        DType.bfloat16 as DType<DTypeTag>,
+        DType.float16 as DType<AnySpec>,
+        DType.bfloat16 as DType<AnySpec>,
       ]) {
         test('1D constant padding (uniform and per-axis) on $dtype', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList([1.0, 2.0, 3.0], [3], dtype);
+            final a = NDArray.fromList([1.0, 2.0, 3.0], [3], dtype);
 
             // Uniform constant value
             final paddedUniform = pad<DTypeTag>(
@@ -38,11 +38,7 @@ void main() {
 
         test('2D constant padding (uniform and per-axis) on $dtype', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList(
-              [1.0, 2.0, 3.0, 4.0],
-              [2, 2],
-              dtype,
-            );
+            final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], dtype);
 
             // Uniform constant value (hits native_pad_2d with isUniform = 1)
             final paddedUniform = pad<DTypeTag>(
@@ -108,7 +104,7 @@ void main() {
 
         test('3D constant padding (uniform and per-axis) on $dtype', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList([1.0, 2.0], [1, 1, 2], dtype);
+            final a = NDArray.fromList([1.0, 2.0], [1, 1, 2], dtype);
 
             // Uniform constant value (hits native_pad_nd with isUniform = 1)
             final paddedUniform = pad<DTypeTag>(
@@ -166,7 +162,7 @@ void main() {
     group('2. findIndex across all comparison operators on extra dtypes', () {
       test('findIndex on int8', () {
         NDArray.scope(() {
-          final a = NDArray<DTypeTag>.fromList(
+          final a = NDArray.fromList(
             [-10, 0, 15, 20, -5, 30],
             [2, 3],
             DType.int8,
@@ -187,13 +183,13 @@ void main() {
       });
 
       for (final dtype in [
-        DType.uint16 as DType<DTypeTag>,
-        DType.uint32 as DType<DTypeTag>,
-        DType.uint64 as DType<DTypeTag>,
+        DType.uint16 as DType<AnySpec>,
+        DType.uint32 as DType<AnySpec>,
+        DType.uint64 as DType<AnySpec>,
       ]) {
         test('findIndex on $dtype', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList(
+            final a = NDArray.fromList(
               [10, 200, 300, 400, 50, 600],
               [2, 3],
               dtype,
@@ -219,12 +215,12 @@ void main() {
       }
 
       for (final dtype in [
-        DType.float16 as DType<DTypeTag>,
-        DType.bfloat16 as DType<DTypeTag>,
+        DType.float16 as DType<AnySpec>,
+        DType.bfloat16 as DType<AnySpec>,
       ]) {
         test('findIndex on $dtype', () {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList(
+            final a = NDArray.fromList(
               [-2.5, 0.5, 1.5, 3.5, -1.0, 4.0],
               [2, 3],
               dtype,
@@ -266,13 +262,13 @@ void main() {
       }
 
       for (final dtype in [
-        DType.float16 as DType<DTypeTag>,
-        DType.bfloat16 as DType<DTypeTag>,
+        DType.float16 as DType<AnySpec>,
+        DType.bfloat16 as DType<AnySpec>,
       ]) {
         test('argpartition on $dtype (default, int32 out, int64 out)', () {
           NDArray.scope(() {
             final data = [3.5, -1.5, 4.0, 0.5, 2.0];
-            final a = NDArray<DTypeTag>.fromList(data, [5], dtype);
+            final a = NDArray.fromList(data, [5], dtype);
 
             // Default out == null
             final resDefault = argpartition(a, 2);
@@ -280,14 +276,14 @@ void main() {
             verifyPartition1D(data, resDefault.toList().cast<int>(), 2);
 
             // out with DType.int32
-            final out32 = NDArray<DTypeTag>.zeros([5], DType.int32);
+            final out32 = NDArray.zeros([5], DType.int32);
             final ret32 = argpartition(a, 2, out: out32);
             expect(identical(ret32, out32), isTrue);
             verifyPartition1D(data, out32.toList().cast<int>(), 2);
 
             // out with DType.int64
-            final out64 = NDArray<DTypeTag>.zeros([5], DType.int64);
-            final ret64 = argpartition(a, 2, out: out64);
+            final out64 = NDArray.zeros([5], DType.int64);
+            final ret64 = argpartitionAs(a, 2, DType.int64, out: out64);
             expect(identical(ret64, out64), isTrue);
             expect(out64.dtype, DType.int64);
             verifyPartition1D(data, out64.toList().cast<int>(), 2);
@@ -296,16 +292,16 @@ void main() {
       }
 
       for (final dtype in [
-        DType.int8 as DType<DTypeTag>,
-        DType.uint16 as DType<DTypeTag>,
-        DType.uint32 as DType<DTypeTag>,
+        DType.int8 as DType<AnySpec>,
+        DType.uint16 as DType<AnySpec>,
+        DType.uint32 as DType<AnySpec>,
       ]) {
         test('argpartition on $dtype (default, int32 out, int64 out)', () {
           NDArray.scope(() {
             final data = dtype == DType.int8
                 ? [30, -10, 40, 5, 20]
                 : [300, 10, 400, 50, 200];
-            final a = NDArray<DTypeTag>.fromList(data, [5], dtype);
+            final a = NDArray.fromList(data, [5], dtype);
 
             // Default out == null
             final resDefault = argpartition(a, 2);
@@ -313,14 +309,14 @@ void main() {
             verifyPartition1D(data, resDefault.toList().cast<int>(), 2);
 
             // out with DType.int32
-            final out32 = NDArray<DTypeTag>.zeros([5], DType.int32);
+            final out32 = NDArray.zeros([5], DType.int32);
             final ret32 = argpartition(a, 2, out: out32);
             expect(identical(ret32, out32), isTrue);
             verifyPartition1D(data, out32.toList().cast<int>(), 2);
 
             // out with DType.int64
-            final out64 = NDArray<DTypeTag>.zeros([5], DType.int64);
-            final ret64 = argpartition(a, 2, out: out64);
+            final out64 = NDArray.zeros([5], DType.int64);
+            final ret64 = argpartitionAs(a, 2, DType.int64, out: out64);
             expect(identical(ret64, out64), isTrue);
             expect(out64.dtype, DType.int64);
             verifyPartition1D(data, out64.toList().cast<int>(), 2);

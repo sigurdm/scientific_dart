@@ -26,88 +26,156 @@ sealed class DTypeTag {
 /// Each of the 15 concrete tag classes (`Float64`, `Float32`, `Int32`, …)
 /// extends [DTypeSpec] with its deterministic type-level counterparts so that
 /// operations can infer concrete return types without explicit type arguments:
-/// - [Self]: the concrete tag itself.
+/// - [R]: the real/magnitude counterpart (`Float32` for `Complex64`;
+///   `Float64` for `Complex128`; `Self` otherwise).
 /// - [E]: the Dart element type (`double`, `int`, [Complex], `bool`).
-/// - [F]: the corresponding real-float tag (`Float32` for `Float32`/`Complex64`;
-///   `Float16` for `Float16`; `BFloat16` for `BFloat16`; `Float64` otherwise).
-/// - [C]: the corresponding complex tag (`Complex64` for 16/32-bit floats and
-///   `Complex64`; `Complex128` otherwise).
+/// - [F]: the real-float computation tag (`Float32` for `Float32`/`Complex64`;
+///   `Float64` otherwise).
+/// - [C]: the complex computation tag (`Complex64` for `Float32`/`Complex64`;
+///   `Complex128` otherwise).
 /// - [M]: the inexact/math-promoted tag (`Self` for `Float64`, `Float32`,
 ///   `Complex128`, `Complex64`; `Float64` for integers, booleans, and half
 ///   floats).
+/// - [S]: the sum/product accumulation tag (`Int64` for `Boolean`; `Self`
+///   otherwise).
+/// - [CS]: the cumulative sum/product tag (`Int32` for `Boolean`; `Self`
+///   otherwise).
 sealed class DTypeSpec<
-  Self extends DTypeTag,
+  R extends DTypeTag,
   E,
   F extends DTypeTag,
   C extends DTypeTag,
-  M extends DTypeTag
+  M extends DTypeTag,
+  S extends DTypeTag,
+  CS extends DTypeTag
 >
     extends DTypeTag {
   const DTypeSpec();
 }
 
+/// Wildcard [DTypeSpec] bound matching any [DTypeSpec] subtype.
+typedef AnySpec = DTypeSpec;
+
 /// Tag for the `float64` dtype. Elements are `double`.
 abstract final class Float64
-    extends DTypeSpec<Float64, double, Float64, Complex128, Float64> {}
+    extends
+        DTypeSpec<
+          Float64,
+          double,
+          Float64,
+          Complex128,
+          Float64,
+          Float64,
+          Float64
+        > {}
 
 /// Tag for the `float32` dtype. Elements are `double`.
 abstract final class Float32
-    extends DTypeSpec<Float32, double, Float32, Complex64, Float32> {}
+    extends
+        DTypeSpec<
+          Float32,
+          double,
+          Float32,
+          Complex64,
+          Float32,
+          Float32,
+          Float32
+        > {}
 
 /// Tag for the `float16` dtype. Elements are `double`.
 abstract final class Float16
-    extends DTypeSpec<Float16, double, Float16, Complex64, Float64> {}
+    extends
+        DTypeSpec<
+          Float16,
+          double,
+          Float64,
+          Complex128,
+          Float64,
+          Float16,
+          Float16
+        > {}
 
 /// Tag for the `bfloat16` dtype. Elements are `double`.
 abstract final class BFloat16
-    extends DTypeSpec<BFloat16, double, BFloat16, Complex64, Float64> {}
+    extends
+        DTypeSpec<
+          BFloat16,
+          double,
+          Float64,
+          Complex128,
+          Float64,
+          BFloat16,
+          BFloat16
+        > {}
 
 /// Tag for the `int64` dtype. Elements are `int`.
 abstract final class Int64
-    extends DTypeSpec<Int64, int, Float64, Complex128, Float64> {}
+    extends DTypeSpec<Int64, int, Float64, Complex128, Float64, Int64, Int64> {}
 
 /// Tag for the `int32` dtype. Elements are `int`.
 abstract final class Int32
-    extends DTypeSpec<Int32, int, Float64, Complex128, Float64> {}
+    extends DTypeSpec<Int32, int, Float64, Complex128, Float64, Int32, Int32> {}
 
 /// Tag for the `int16` dtype. Elements are `int`.
 abstract final class Int16
-    extends DTypeSpec<Int16, int, Float64, Complex128, Float64> {}
+    extends DTypeSpec<Int16, int, Float64, Complex128, Float64, Int16, Int16> {}
 
 /// Tag for the `int8` dtype. Elements are `int`.
 abstract final class Int8
-    extends DTypeSpec<Int8, int, Float64, Complex128, Float64> {}
+    extends DTypeSpec<Int8, int, Float64, Complex128, Float64, Int8, Int8> {}
 
 /// Tag for the `uint64` dtype. Elements are `int`.
 ///
 /// Dart `int` is signed 64-bit; bit patterns with the MSB set represent
 /// negative values. Use [uint64Compare] for unsigned comparisons.
 abstract final class Uint64
-    extends DTypeSpec<Uint64, int, Float64, Complex128, Float64> {}
+    extends
+        DTypeSpec<Uint64, int, Float64, Complex128, Float64, Uint64, Uint64> {}
 
 /// Tag for the `uint32` dtype. Elements are `int`.
 abstract final class Uint32
-    extends DTypeSpec<Uint32, int, Float64, Complex128, Float64> {}
+    extends
+        DTypeSpec<Uint32, int, Float64, Complex128, Float64, Uint32, Uint32> {}
 
 /// Tag for the `uint16` dtype. Elements are `int`.
 abstract final class Uint16
-    extends DTypeSpec<Uint16, int, Float64, Complex128, Float64> {}
+    extends
+        DTypeSpec<Uint16, int, Float64, Complex128, Float64, Uint16, Uint16> {}
 
 /// Tag for the `uint8` dtype. Elements are `int`.
 abstract final class Uint8
-    extends DTypeSpec<Uint8, int, Float64, Complex128, Float64> {}
+    extends DTypeSpec<Uint8, int, Float64, Complex128, Float64, Uint8, Uint8> {}
 
 /// Tag for the `complex64` dtype. Elements are [Complex].
 abstract final class Complex64
-    extends DTypeSpec<Complex64, Complex, Float32, Complex64, Complex64> {}
+    extends
+        DTypeSpec<
+          Float32,
+          Complex,
+          Float32,
+          Complex64,
+          Complex64,
+          Complex64,
+          Complex64
+        > {}
 
 /// Tag for the `complex128` dtype. Elements are [Complex].
 abstract final class Complex128
-    extends DTypeSpec<Complex128, Complex, Float64, Complex128, Complex128> {}
+    extends
+        DTypeSpec<
+          Float64,
+          Complex,
+          Float64,
+          Complex128,
+          Complex128,
+          Complex128,
+          Complex128
+        > {}
 
 /// Tag for the `boolean` dtype. Elements are `bool`.
 abstract final class Boolean
-    extends DTypeSpec<Boolean, bool, Float64, Complex128, Float64> {}
+    extends
+        DTypeSpec<Boolean, bool, Float64, Complex128, Float64, Int64, Int32> {}
 
 /// Supported data types for the elements of an [NDArray].
 
@@ -182,6 +250,25 @@ enum DType<T extends DTypeTag> {
   complex128<Complex128>('complex128', 16, '<c16'),
   complex64<Complex64>('complex64', 8, '<c8'),
   boolean<Boolean>('boolean', 1, '|b1');
+
+  /// All 15 [DType] values typed as [DType<AnySpec>].
+  static const List<DType<AnySpec>> specs = [
+    float64,
+    float32,
+    float16,
+    bfloat16,
+    int64,
+    int32,
+    int16,
+    int8,
+    uint64,
+    uint32,
+    uint16,
+    uint8,
+    complex128,
+    complex64,
+    boolean,
+  ];
 
   final String name;
   final int byteWidth;
@@ -4449,8 +4536,8 @@ extension NDArrayArithmetic<T extends DTypeTag> on NDArray<T> {
 /// (`Float64` for integer arrays, and preserving [T] for floating-point and
 /// complex arrays).
 extension NDArrayDivide<
-  T extends DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, M>,
-  M extends DTypeTag
+  T extends DTypeSpec<AnySpec, Object?, AnySpec, AnySpec, M, AnySpec, AnySpec>,
+  M extends AnySpec
 >
     on NDArray<T> {
   /// Element-wise true division with full broadcasting support.
@@ -4987,7 +5074,7 @@ void _initializeOpenBLASOnce() {
 /// resolves to `Object?`, which is the correct answer for dtype-agnostic
 /// operations.
 extension NDArrayElements<
-  T extends DTypeSpec<DTypeTag, E, DTypeTag, DTypeTag, DTypeTag>,
+  T extends DTypeSpec<AnySpec, E, AnySpec, AnySpec, AnySpec, AnySpec, AnySpec>,
   E
 >
     on NDArray<T> {

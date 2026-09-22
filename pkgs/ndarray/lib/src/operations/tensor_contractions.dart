@@ -851,7 +851,7 @@ NDArray<T> einsum<T extends DTypeTag>(
         }
       }
 
-      NDArray res = op;
+      NDArray<T> res = op;
       axesToSum.sort((a, b) => b.compareTo(a));
       for (final ax in axesToSum) {
         res = sum<T>(res, axis: ax);

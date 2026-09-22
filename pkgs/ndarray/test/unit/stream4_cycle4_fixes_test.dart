@@ -185,7 +185,7 @@ void main() {
         expect(out32.toList().map((e) => e.toInt()).toList(), [1, 3, 0, 2]);
 
         final out64 = NDArray<Int64>.create([4], DType.int64);
-        final res64 = argsort(a, out: out64);
+        final res64 = argsortAs(a, DType.int64, out: out64);
         expect(identical(res64, out64), true);
         expect(out64.toList().map((e) => e.toInt()).toList(), [1, 3, 0, 2]);
       });

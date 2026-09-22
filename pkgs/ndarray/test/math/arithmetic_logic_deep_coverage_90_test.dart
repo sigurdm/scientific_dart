@@ -41,7 +41,7 @@ void main() {
     DType.bfloat16,
   ];
 
-  NDArray<DTypeTag> makeSampleArray(
+  NDArray<AnySpec> makeSampleArray(
     DType dt,
     List<int> shape, {
     int seed = 1,
@@ -57,30 +57,30 @@ void main() {
         final baseVal = nonZero ? ((i + seed) % 5) + 2 : ((i + seed) % 5);
         return Complex(baseVal.toDouble(), 1.0);
       });
-      return NDArray<DTypeTag>.fromList(raw, shape, DType.complex128);
+      return NDArray.fromList(raw, shape, DType.complex128);
     }
     if (dt == DType.complex64) {
       final raw = List<Complex>.generate(size, (i) {
         final baseVal = nonZero ? ((i + seed) % 5) + 2 : ((i + seed) % 5);
         return Complex(baseVal.toDouble(), 1.0);
       });
-      return NDArray<DTypeTag>.fromList(raw, shape, DType.complex64);
+      return NDArray.fromList(raw, shape, DType.complex64);
     }
     if (floatDTypes.contains(dt)) {
       final raw = List<double>.generate(size, (i) {
         final baseVal = nonZero ? ((i + seed) % 5) + 2 : ((i + seed) % 5);
         return baseVal.toDouble();
       });
-      return NDArray<DTypeTag>.fromList(raw, shape, dt);
+      return NDArray.fromList(raw, shape, (dt as DType<AnySpec>));
     }
     final raw = List<int>.generate(size, (i) {
       final baseVal = nonZero ? ((i + seed) % 5) + 2 : ((i + seed) % 5);
       return baseVal;
     });
-    return NDArray<DTypeTag>.fromList(raw, shape, dt);
+    return NDArray.fromList(raw, shape, (dt as DType<AnySpec>));
   }
 
-  void testUnaryHelper<T extends DTypeTag>(
+  void testUnaryHelper<T extends AnySpec>(
     NDArray<T> a,
     NDArray<T> aTrans,
     NDArray<Boolean> mask, {
@@ -233,7 +233,7 @@ void main() {
             final conj2 = conjugate(aTrans as NDArray<Boolean>, where: mask);
             expect(conj2.shape, [2, 3]);
           } else if (dt.isComplex) {
-            testUnaryHelper<DTypeTag>(
+            testUnaryHelper<AnySpec>(
               aContig,
               aTrans,
               mask,
@@ -246,7 +246,7 @@ void main() {
             expect(() => trunc(aContig), throwsUnsupportedError);
             expect(() => fix(aContig), throwsUnsupportedError);
           } else if (floatDTypes.contains(dt)) {
-            testUnaryHelper<DTypeTag>(
+            testUnaryHelper<AnySpec>(
               aContig,
               aTrans,
               mask,
@@ -256,7 +256,7 @@ void main() {
               testExpm1Log1p: true,
             );
           } else {
-            testUnaryHelper<DTypeTag>(
+            testUnaryHelper<AnySpec>(
               aContig,
               aTrans,
               mask,
@@ -272,13 +272,9 @@ void main() {
 
     test('Unary operations error handling & invalid buffer checks', () {
       NDArray.scope(() {
-        final a = NDArray<DTypeTag>.fromList(
-          [1.0, 2.0, 3.0],
-          [3],
-          DType.float64,
-        );
-        final badOutShape = NDArray<DTypeTag>.zeros([4], DType.float64);
-        final badOutDType = NDArray<DTypeTag>.zeros([3], DType.float32);
+        final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final badOutShape = NDArray.zeros([4], DType.float64);
+        final badOutDType = NDArray.zeros([3], DType.float32);
 
         // Incompatible shape/dtype out errors
         expect(() => sqrt(a, out: badOutShape), throwsArgumentError);
@@ -307,11 +303,7 @@ void main() {
         expect(() => conj(a, out: badOutDType), throwsArgumentError);
 
         // Disposed array errors
-        final dispArr = NDArray<DTypeTag>.fromList(
-          [1.0, 2.0],
-          [2],
-          DType.float64,
-        );
+        final dispArr = NDArray.fromList([1.0, 2.0], [2], DType.float64);
         dispArr.dispose();
         expect(() => sqrt(dispArr), throwsStateError);
         expect(() => expm1(dispArr), throwsStateError);
@@ -552,23 +544,15 @@ void main() {
 
     test('Binary operations error cases & unsupported operands', () {
       NDArray.scope(() {
-        final aFloat = NDArray<DTypeTag>.fromList(
-          [1.0, 2.0],
-          [2],
-          DType.float64,
-        );
-        final bFloat = NDArray<DTypeTag>.fromList(
-          [3.0, 4.0],
-          [2],
-          DType.float64,
-        );
-        final cCplx = NDArray<DTypeTag>.fromList(
+        final aFloat = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final bFloat = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+        final cCplx = NDArray.fromList(
           [Complex(1.0, 2.0)],
           [1],
           DType.complex128,
         );
-        final bZeroInt = NDArray<DTypeTag>.fromList([0, 2], [2], DType.int32);
-        final aInt = NDArray<DTypeTag>.fromList([4, 6], [2], DType.int32);
+        final bZeroInt = NDArray.fromList([0, 2], [2], DType.int32);
+        final aInt = NDArray.fromList([4, 6], [2], DType.int32);
 
         // Complex unsupported for logaddexp, logaddexp2, heaviside, copysign, fmod
         expect(() => logaddexp(aFloat, cCplx), throwsUnsupportedError);
@@ -584,14 +568,14 @@ void main() {
         expect(() => divmod(aInt, bZeroInt), throwsUnsupportedError);
 
         // Incompatible broadcast shapes
-        final badShape = NDArray<DTypeTag>.zeros([5], DType.float64);
+        final badShape = NDArray.zeros([5], DType.float64);
         expect(() => add(aFloat, badShape), throwsArgumentError);
         expect(() => subtract(aFloat, badShape), throwsArgumentError);
         expect(() => multiply(aFloat, badShape), throwsArgumentError);
         expect(() => divide(aFloat, badShape), throwsArgumentError);
 
         // Disposed array errors
-        final disp = NDArray<DTypeTag>.zeros([2], DType.float64);
+        final disp = NDArray.zeros([2], DType.float64);
         disp.dispose();
         expect(() => add(disp, bFloat), throwsStateError);
         expect(() => subtract(aFloat, disp), throwsStateError);
@@ -772,8 +756,8 @@ void main() {
 
     test('Logical and Comparison error cases and invalid out buffers', () {
       NDArray.scope(() {
-        final a = NDArray<DTypeTag>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<DTypeTag>.fromList([1, 4, 3], [3], DType.int32);
+        final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray.fromList([1, 4, 3], [3], DType.int32);
         final badShapeOut = NDArray<Boolean>.zeros([5], DType.boolean);
 
         expect(() => logical_not(a, out: badShapeOut), throwsArgumentError);
@@ -908,12 +892,8 @@ void main() {
 
     test('Bitwise operations error cases & type validation', () {
       NDArray.scope(() {
-        final floatArr = NDArray<DTypeTag>.fromList(
-          [1.0, 2.0],
-          [2],
-          DType.float64,
-        );
-        final intArr = NDArray<DTypeTag>.fromList([1, 2], [2], DType.int32);
+        final floatArr = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final intArr = NDArray.fromList([1, 2], [2], DType.int32);
         final boolArr = NDArray<Boolean>.fromList(
           [true, false],
           [2],
@@ -930,7 +910,7 @@ void main() {
         expect(() => right_shift(intArr, floatArr), throwsArgumentError);
 
         // Disposed array throws StateError
-        final disp = NDArray<DTypeTag>.fromList([1, 2], [2], DType.int32);
+        final disp = NDArray.fromList([1, 2], [2], DType.int32);
         disp.dispose();
         expect(() => invert(disp), throwsStateError);
         expect(() => bitwise_and(disp, intArr), throwsStateError);
@@ -954,7 +934,7 @@ void main() {
           );
 
           // Float64 special values
-          final f64Arr = NDArray<DTypeTag>.fromList(
+          final f64Arr = NDArray.fromList(
             [0.0, double.nan, double.infinity, double.negativeInfinity],
             [2, 2],
             DType.float64,
@@ -977,7 +957,7 @@ void main() {
           expect(finRes2.shape, [2, 2]);
 
           // Float32 special values
-          final f32Arr = NDArray<DTypeTag>.fromList(
+          final f32Arr = NDArray.fromList(
             [1.0, double.nan, double.infinity, -2.5],
             [2, 2],
             DType.float32,
@@ -987,7 +967,7 @@ void main() {
           expect(isfinite(f32Arr).data, [true, false, false, true]);
 
           // Complex128 special values
-          final c128Arr = NDArray<DTypeTag>.fromList(
+          final c128Arr = NDArray.fromList(
             [
               Complex(1.0, 2.0),
               Complex(double.nan, 0.0),
@@ -1006,7 +986,7 @@ void main() {
           expect(isfinite(c128Trans, where: mask).shape, [2, 2]);
 
           // Complex64 special values
-          final c64Arr = NDArray<DTypeTag>.fromList(
+          final c64Arr = NDArray.fromList(
             [
               Complex(3.0, 4.0),
               Complex(double.nan, 1.0),
@@ -1060,12 +1040,12 @@ void main() {
             DType.boolean,
           );
 
-          final x1 = NDArray<DTypeTag>.fromList(
+          final x1 = NDArray.fromList(
             [1.0, -2.0, 3.0, -4.0],
             [2, 2],
             DType.float64,
           );
-          final x2 = NDArray<DTypeTag>.fromList(
+          final x2 = NDArray.fromList(
             [-1.0, 1.0, -0.0, 0.0],
             [2, 2],
             DType.float64,
@@ -1077,27 +1057,19 @@ void main() {
           final res2 = copysign(x1.transpose(), x2.transpose(), where: mask);
           expect(res2.shape, [2, 2]);
 
-          final outBuf = NDArray<DTypeTag>.zeros([2, 2], DType.float64);
+          final outBuf = NDArray.zeros([2, 2], DType.float64);
           final res3 = copysign(x1, x2, out: outBuf);
           expect(identical(res3, outBuf), isTrue);
 
           // Float32 copysign
-          final f32_1 = NDArray<DTypeTag>.fromList(
-            [5.0, -6.0],
-            [2],
-            DType.float32,
-          );
-          final f32_2 = NDArray<DTypeTag>.fromList(
-            [-1.0, 1.0],
-            [2],
-            DType.float32,
-          );
+          final f32_1 = NDArray.fromList([5.0, -6.0], [2], DType.float32);
+          final f32_2 = NDArray.fromList([-1.0, 1.0], [2], DType.float32);
           final f32Res = copysign(f32_1, f32_2);
           expect(f32Res.data, [-5.0, 6.0]);
 
           // Integer copysign
-          final int1 = NDArray<DTypeTag>.fromList([10, -20], [2], DType.int32);
-          final int2 = NDArray<DTypeTag>.fromList([-1, 1], [2], DType.int32);
+          final int1 = NDArray.fromList([10, -20], [2], DType.int32);
+          final int2 = NDArray.fromList([-1, 1], [2], DType.int32);
           final intRes = copysign(int1, int2);
           expect(intRes.data, [-10, 20]);
         });
@@ -1108,12 +1080,12 @@ void main() {
       'isClose & allClose with various tolerances, equalNan, Infs, and Complex',
       () {
         NDArray.scope(() {
-          final a = NDArray<DTypeTag>.fromList(
+          final a = NDArray.fromList(
             [1.0, 2.0, double.nan, double.infinity],
             [4],
             DType.float64,
           );
-          final b = NDArray<DTypeTag>.fromList(
+          final b = NDArray.fromList(
             [1.000001, 2.0, double.nan, double.infinity],
             [4],
             DType.float64,
@@ -1133,12 +1105,12 @@ void main() {
           expect(close3.data, [false, true, true, true]);
 
           // Complex isClose
-          final cA = NDArray<DTypeTag>.fromList(
+          final cA = NDArray.fromList(
             [Complex(1.0, 2.0), Complex(double.nan, 1.0)],
             [2],
             DType.complex128,
           );
-          final cB = NDArray<DTypeTag>.fromList(
+          final cB = NDArray.fromList(
             [Complex(1.000001, 2.0), Complex(double.nan, 1.0)],
             [2],
             DType.complex128,
@@ -1146,8 +1118,8 @@ void main() {
           expect(allClose(cA, cB, equalNan: true), isTrue);
 
           // Mixed real and complex isClose
-          final rA = NDArray<DTypeTag>.fromList([1.0, 2.0], [2], DType.float64);
-          final cB2 = NDArray<DTypeTag>.fromList(
+          final rA = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final cB2 = NDArray.fromList(
             [Complex(1.0, 0.0), Complex(2.0, 0.0)],
             [2],
             DType.complex128,
@@ -1156,12 +1128,12 @@ void main() {
           expect(allClose(cB2, rA), isTrue);
 
           // Strided transposed isClose with where mask and out buffer
-          final a2D = NDArray<DTypeTag>.fromList(
+          final a2D = NDArray.fromList(
             [1.0, 2.0, 3.0, 4.0],
             [2, 2],
             DType.float64,
           );
-          final b2D = NDArray<DTypeTag>.fromList(
+          final b2D = NDArray.fromList(
             [1.0, 2.0, 3.0, 4.0],
             [2, 2],
             DType.float64,

@@ -285,7 +285,7 @@ void main() {
           [5],
           DType.float64,
         );
-        final outRfft = NDArray<DTypeTag>.zeros([3], DType.complex128);
+        final outRfft = NDArray.zeros([3], DType.complex128);
         final resRfft = rfft(input, n: 5, out: outRfft);
         expect(identical(resRfft, outRfft), isTrue);
         expect(resRfft.isDisposed, isFalse);
@@ -332,7 +332,7 @@ void main() {
           expect(qrRes.q.isDisposed, isTrue);
           expect(qrRes.r.isDisposed, isTrue);
 
-          final svdRes = svd<Float64>(a);
+          final svdRes = svd(a);
           expect(svdRes.u.shape, equals([2, 2]));
           expect(svdRes.s.shape, equals([2]));
           expect(svdRes.vh.shape, equals([2, 2]));
@@ -341,7 +341,7 @@ void main() {
           expect(svdRes.s.isDisposed, isTrue);
           expect(svdRes.vh.isDisposed, isTrue);
 
-          final hessRes = hessenberg<Float64, Float64>(a);
+          final hessRes = hessenberg(a);
           expect(hessRes.h.shape, equals([2, 2]));
           expect(hessRes.q.shape, equals([2, 2]));
           hessRes.dispose();
@@ -427,7 +427,7 @@ void main() {
           expect(eigh00.eigenvectors.shape, equals([0, 0]));
 
           // hessenberg
-          final hess00 = hessenberg<Float64, Float64>(mat00);
+          final hess00 = hessenberg(mat00);
           expect(hess00.h.shape, equals([0, 0]));
           expect(hess00.q.shape, equals([0, 0]));
         });
@@ -445,13 +445,12 @@ void main() {
           );
 
           // eigh return generic <T> check
-          ({NDArray<DTypeTag> eigenvalues, NDArray<Float64> eigenvectors})
+          ({NDArray<AnySpec> eigenvalues, NDArray<Float64> eigenvectors})
           resEigh = eigh<Float64, Float64>(mat);
           expect(resEigh.eigenvectors.dtype, equals(DType.float64));
 
           // hessenberg return generic <T> check
-          ({NDArray<Float64> h, NDArray<Float64> q}) resHess =
-              hessenberg<Float64, Float64>(mat);
+          ({NDArray<Float64> h, NDArray<Float64> q}) resHess = hessenberg(mat);
           expect(resHess.h.dtype, equals(DType.float64));
           expect(resHess.q.dtype, equals(DType.float64));
 

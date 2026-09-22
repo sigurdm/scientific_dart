@@ -123,7 +123,7 @@ void main() {
           final view = parent.slice([const Slice(start: 0, stop: 5, step: 2)]);
           expect(view.isContiguous, isFalse);
 
-          final out = NDArray<DTypeTag>.zeros([], DType.float64);
+          final out = NDArray.zeros([], DType.float64);
           final res = trapz(view, out: out);
           expect(identical(res, out), isTrue);
           expect(out.scalar, closeTo(4.5, 1e-9));
@@ -138,7 +138,7 @@ void main() {
             ..dispose();
           expect(() => trapz(disp), throwsStateError);
 
-          final dispOut = NDArray<DTypeTag>.zeros([], DType.float64)..dispose();
+          final dispOut = NDArray.zeros([], DType.float64)..dispose();
           expect(() => trapz(valid, out: dispOut), throwsStateError);
 
           final intArr = NDArray.fromList([1, 2, 3], [3], DType.int64);
@@ -162,7 +162,7 @@ void main() {
             throwsArgumentError,
           );
 
-          final badOutShape = NDArray<DTypeTag>.zeros([2], DType.float64);
+          final badOutShape = NDArray.zeros([2], DType.float64);
           expect(() => trapz(valid, out: badOutShape), throwsArgumentError);
         });
       });
@@ -249,8 +249,8 @@ void main() {
           expect(gradsCustom[0].getCell([0, 0]), closeTo(1.5, 1e-9));
 
           // gradientArray with out parameter
-          final out0 = NDArray<DTypeTag>.zeros([3, 3], DType.float64);
-          final out1 = NDArray<DTypeTag>.zeros([3, 3], DType.float64);
+          final out0 = NDArray.zeros([3, 3], DType.float64);
+          final out1 = NDArray.zeros([3, 3], DType.float64);
           final gradsOut = gradientArray(grid, out: [out0, out1]);
           expect(identical(gradsOut[0], out0), isTrue);
           expect(identical(gradsOut[1], out1), isTrue);
@@ -403,7 +403,7 @@ void main() {
                 [4],
                 DType.boolean,
               );
-              expect(sum(bools).scalar, equals(3));
+              expect(sumAs(bools, DType.int64).scalar, equals(3));
 
               // Empty array sum
               final empty = NDArray.zeros([0], DType.float64);

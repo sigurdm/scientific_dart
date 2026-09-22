@@ -1351,7 +1351,7 @@ NDArray<T> inv<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = inv<T>(a);
-        temp.copy(out: out);
+        temp.copy(out: out as dynamic);
         return out;
       });
     }
@@ -1637,7 +1637,7 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = det<T>(a);
-        temp.copy(out: out);
+        temp.copy(out: out as dynamic);
         return out;
       });
     }
@@ -1813,10 +1813,12 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
 /// - A record `(sign, logdet)` of two NDArrays, representing the sign (or phase) and log of the absolute determinant.
 ///
 /// Reference: [NumPy linalg.slogdet](https://numpy.org/doc/stable/reference/generated/numpy.linalg.slogdet.html)
-({NDArray<T> sign, NDArray<R> logabsdet}) slogdet<
-  T extends DTypeTag,
-  R extends DTypeTag
->(NDArray<T> a, {NDArray<T>? outSign, NDArray<R>? outLogdet}) {
+({NDArray<T> sign, NDArray<R> logabsdet})
+slogdet<T extends DTypeTag, R extends DTypeTag>(
+  NDArray<DTypeSpec<R, Object?, DTypeTag, DTypeTag, DTypeTag, T, DTypeTag>> a, {
+  NDArray<T>? outSign,
+  NDArray<R>? outLogdet,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute slogdet of a disposed array.');
   }
@@ -1826,12 +1828,12 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
   if (outLogdet != null && outLogdet.isDisposed) {
     throw StateError('Cannot write slogdet logdet to a disposed output array.');
   }
-  if (a.dtype != DType.float64 &&
-      a.dtype != DType.float32 &&
-      a.dtype != DType.float16 &&
-      a.dtype != DType.bfloat16 &&
-      a.dtype != DType.complex128 &&
-      a.dtype != DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) != DType.float64 &&
+      (a.dtype as DType<DTypeTag>) != DType.float32 &&
+      (a.dtype as DType<DTypeTag>) != DType.float16 &&
+      (a.dtype as DType<DTypeTag>) != DType.bfloat16 &&
+      (a.dtype as DType<DTypeTag>) != DType.complex128 &&
+      (a.dtype as DType<DTypeTag>) != DType.complex64) {
     throw ArgumentError('slogdet only supports float and complex dtypes');
   }
   final rank = a.shape.length;
@@ -1842,7 +1844,8 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
   }
   final stackShape = a.shape.sublist(0, rank - 2);
 
-  if (a.dtype == DType.float16 || a.dtype == DType.bfloat16) {
+  if ((a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     if (outSign != null) {
       if (!listEquals(outSign.shape, stackShape) ||
           (outSign.dtype != DType.float64 && outSign.dtype != a.dtype)) {
@@ -1880,7 +1883,11 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
         }
       }
       final finalSign =
-          outSign ?? castNDArray<T>(resF64.sign, a.dtype).detachToParentScope();
+          outSign ??
+          castNDArray<T>(
+            resF64.sign,
+            a.dtype as DType<T>,
+          ).detachToParentScope();
       final finalLogdet =
           outLogdet ??
           castNDArray<R>(
@@ -1892,7 +1899,8 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
   }
 
   final DType<R> logdetDType =
-      (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ((a.dtype as DType<DTypeTag>) == DType.float32 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)
       ? DType.float32 as DType<R>
       : DType.float64 as DType<R>;
 
@@ -1936,7 +1944,8 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
   }
 
   return NDArray.scope(() {
-    final signResult = outSign ?? NDArray<T>.zeros(stackShape, a.dtype);
+    final signResult =
+        outSign ?? NDArray<T>.zeros(stackShape, a.dtype as DType<T>);
     final logdetResult = outLogdet ?? NDArray<R>.zeros(stackShape, logdetDType);
 
     if (a.shape[rank - 1] == 0) {
@@ -2364,7 +2373,7 @@ NDArray<T> solve<T extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out) || sharesMemory(b, out)) {
       return NDArray.scope(() {
         final temp = solve<T>(a, b);
-        temp.copy(out: out);
+        temp.copy(out: out as dynamic);
         return out;
       });
     }
@@ -2489,10 +2498,12 @@ NDArray<T> solve<T extends DTypeTag>(
 /// - It is an error if [a] is not square in its last two dimensions or is less than 2-dimensional.
 /// - It is an error if the DType of [a] is not supported.
 /// - It is an error if [out] is provided and has incompatible shape or dtype.
-({NDArray<DTypeTag> eigenvalues, NDArray<DTypeTag> eigenvectors})
-eig<T extends DTypeTag>(
-  NDArray<T> a, {
-  ({NDArray<DTypeTag> eigenvalues, NDArray<DTypeTag> eigenvectors})? out,
+({NDArray<R> eigenvalues, NDArray<R> eigenvectors}) eig<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, R, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
+  ({NDArray<R> eigenvalues, NDArray<R> eigenvectors})? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute eig of a disposed array.');
@@ -2510,7 +2521,9 @@ eig<T extends DTypeTag>(
   final n = a.shape[rank - 1];
   final stackShape = a.shape.sublist(0, rank - 2);
 
-  final compDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+  final compDType =
+      ((a.dtype as DType<DTypeTag>) == DType.float32 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)
       ? DType.complex64
       : DType.complex128;
 
@@ -2518,8 +2531,8 @@ eig<T extends DTypeTag>(
   final vrShape = [...stackShape, n, n];
 
   return NDArray.scope(() {
-    final NDArray<DTypeTag> w;
-    final NDArray<DTypeTag> vr;
+    final NDArray<R> w;
+    final NDArray<R> vr;
 
     if (out != null) {
       w = out.eigenvalues;
@@ -2539,14 +2552,14 @@ eig<T extends DTypeTag>(
           sharesMemory(a, w) ||
           sharesMemory(a, vr) ||
           sharesMemory(w, vr)) {
-        final temp = eig<T>(a);
+        final temp = eig<R>(a);
         temp.eigenvalues.copy(out: w);
         temp.eigenvectors.copy(out: vr);
         return (eigenvalues: w, eigenvectors: vr);
       }
     } else {
-      w = NDArray<DTypeTag>.create(wShape, compDType);
-      vr = NDArray<DTypeTag>.create(vrShape, compDType);
+      w = NDArray<R>.create(wShape, compDType as DType<R>);
+      vr = NDArray<R>.create(vrShape, compDType);
     }
 
     if (n == 0) {
@@ -2562,8 +2575,8 @@ eig<T extends DTypeTag>(
 
     final bool wasCast =
         a.dtype.isInteger ||
-        a.dtype == DType.float16 ||
-        a.dtype == DType.bfloat16;
+        (a.dtype as DType<DTypeTag>) == DType.float16 ||
+        (a.dtype as DType<DTypeTag>) == DType.bfloat16;
     final NDArray src = wasCast ? castNDArray(a, DType.float64) : a;
     try {
       walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
@@ -2831,9 +2844,12 @@ eig<T extends DTypeTag>(
 /// - A contiguous `NDArray<DTypeTag>` containing the computed eigenvalues.
 ///
 /// Reference: [NumPy linalg.eigvals](https://numpy.org/doc/stable/reference/generated/numpy.linalg.eigvals.html)
-NDArray<DTypeTag> eigvals<T extends DTypeTag>(
-  NDArray<T> a, {
-  NDArray<DTypeTag>? out,
+NDArray<R> eigvals<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, R, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<R>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute eigvals of a disposed array.');
@@ -2850,14 +2866,16 @@ NDArray<DTypeTag> eigvals<T extends DTypeTag>(
   final n = a.shape[rank - 1];
   final stackShape = a.shape.sublist(0, rank - 2);
 
-  final compDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+  final compDType =
+      ((a.dtype as DType<DTypeTag>) == DType.float32 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)
       ? DType.complex64
       : DType.complex128;
 
   final wShape = [...stackShape, n];
 
   return NDArray.scope(() {
-    final NDArray<DTypeTag> w;
+    final NDArray<R> w;
 
     if (out != null) {
       w = out;
@@ -2867,12 +2885,12 @@ NDArray<DTypeTag> eigvals<T extends DTypeTag>(
         );
       }
       if (!w.isContiguous || sharesMemory(a, w)) {
-        final temp = eigvals<T>(a);
+        final temp = eigvals<R>(a);
         temp.copy(out: w);
         return w;
       }
     } else {
-      w = NDArray<DTypeTag>.create(wShape, compDType);
+      w = NDArray<R>.create(wShape, compDType as DType<R>);
     }
 
     if (n == 0) {
@@ -2887,8 +2905,8 @@ NDArray<DTypeTag> eigvals<T extends DTypeTag>(
 
     final bool wasCast =
         a.dtype.isInteger ||
-        a.dtype == DType.float16 ||
-        a.dtype == DType.bfloat16;
+        (a.dtype as DType<DTypeTag>) == DType.float16 ||
+        (a.dtype as DType<DTypeTag>) == DType.bfloat16;
     final NDArray src = wasCast ? castNDArray(a, DType.float64) : a;
     try {
       if (src.dtype != DType.complex128 &&
@@ -3171,7 +3189,7 @@ NDArray<T> pinv<T extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = pinv<T>(a, rcond: rcond);
-        temp.copy(out: out);
+        temp.copy(out: out as dynamic);
         return out;
       });
     }
@@ -3185,7 +3203,7 @@ NDArray<T> pinv<T extends DTypeTag>(
       }
       return result;
     }
-    final svdResult = svd(a);
+    final svdResult = _svd<T>(a);
     final u = svdResult.u;
     final s = svdResult.s;
     final vt = svdResult.vh;
@@ -3268,7 +3286,7 @@ NDArray<T> matrix_power<T extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = matrix_power<T>(a, n);
-        temp.copy(out: out);
+        temp.copy(out: out as dynamic);
         return out;
       });
     }
@@ -3422,7 +3440,7 @@ NDArray<T> cholesky<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = cholesky<T>(a);
-        temp.copy(out: out);
+        temp.copy(out: out as dynamic);
         return out;
       });
     }
@@ -3938,9 +3956,10 @@ NDArray<T> cholesky<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
 /// final s = res.s;
 /// final vh = res.vh;
 /// ```
-({NDArray<T> u, NDArray<DTypeTag> s, NDArray<T> vh}) svd<T extends DTypeTag>(
-  NDArray<T> a, {
-  ({NDArray<T> u, NDArray<DTypeTag> s, NDArray<T> vh})? out,
+({NDArray<T> u, NDArray<R> s, NDArray<T> vh})
+svd<T extends DTypeTag, R extends DTypeTag>(
+  NDArray<DTypeSpec<R, Object?, DTypeTag, DTypeTag, DTypeTag, T, DTypeTag>> a, {
+  ({NDArray<T> u, NDArray<R> s, NDArray<T> vh})? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute svd() on a disposed array.');
@@ -3967,7 +3986,8 @@ NDArray<T> cholesky<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
   final sShape = m < n ? [...stackShape, m] : [...stackShape, n];
   final vtShape = [...stackShape, n, n];
 
-  if (a.dtype == DType.float16 || a.dtype == DType.bfloat16) {
+  if ((a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     if (out != null) {
       if (!listEquals(out.u.shape, uShape) ||
           (out.u.dtype != DType.float64 && out.u.dtype != a.dtype)) {
@@ -4000,7 +4020,7 @@ NDArray<T> cholesky<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
         if (out.s.dtype == DType.float64) {
           resF64.s.copy(out: out.s);
         } else {
-          castNDArray<DTypeTag>(resF64.s, out.s.dtype).copy(out: out.s);
+          castNDArray<R>(resF64.s, out.s.dtype).copy(out: out.s);
         }
         if (out.vh.dtype == DType.float64) {
           resF64.vh.copy(out: out.vh as NDArray<Float64>);
@@ -4010,18 +4030,20 @@ NDArray<T> cholesky<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
         return (u: out.u, s: out.s, vh: out.vh);
       }
       return (
-        u: castNDArray<T>(resF64.u, a.dtype).detachToParentScope(),
-        s: castNDArray<DTypeTag>(
-          resF64.s,
-          a.dtype as DType<DTypeTag>,
+        u: castNDArray<T>(resF64.u, a.dtype as DType<T>).detachToParentScope(),
+        s: castNDArray<R>(resF64.s, a.dtype as DType<R>).detachToParentScope(),
+        vh: castNDArray<T>(
+          resF64.vh,
+          a.dtype as DType<T>,
         ).detachToParentScope(),
-        vh: castNDArray<T>(resF64.vh, a.dtype).detachToParentScope(),
       );
     });
   }
 
   final dtypeS = a.dtype.isComplex
-      ? (a.dtype == DType.complex128 ? DType.float64 : DType.float32)
+      ? ((a.dtype as DType<DTypeTag>) == DType.complex128
+            ? DType.float64
+            : DType.float32)
       : a.dtype;
 
   if (out != null) {
@@ -4050,7 +4072,7 @@ NDArray<T> cholesky<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
         sharesMemory(out.u, out.vh) ||
         sharesMemory(out.s, out.vh)) {
       return NDArray.scope(() {
-        final temp = _svd<T>(a);
+        final temp = _svd<T>(a as NDArray<T>);
         temp.u.copy(out: out.u);
         temp.s.copy(out: out.s);
         temp.vh.copy(out: out.vh);
@@ -4059,7 +4081,11 @@ NDArray<T> cholesky<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
     }
   }
 
-  return _svd<T>(a, out: out);
+  final res = _svd<T>(
+    a as NDArray<T>,
+    out: out == null ? null : (u: out.u, s: out.s, vh: out.vh),
+  );
+  return (u: res.u, s: res.s as NDArray<R>, vh: res.vh);
 }
 
 ({NDArray<T> u, NDArray<DTypeTag> s, NDArray<T> vh}) _svd<T extends DTypeTag>(
@@ -4567,12 +4593,12 @@ NDArray<DTypeTag> _svdVals<T extends DTypeTag>(NDArray<T> a) {
 /// - [ArgumentError] if [a] has unsupported dtype.
 /// - [ArgumentError] if [outEigenvalues] or [outEigenvectors] are incompatible.
 /// - [StateError] if the LAPACK call fails.
-({NDArray<DTypeTag> eigenvalues, NDArray<R> eigenvectors})
-eigh<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+({NDArray<F> eigenvalues, NDArray<R> eigenvectors})
+eigh<F extends DTypeTag, R extends DTypeTag>(
+  NDArray<DTypeSpec<DTypeTag, Object?, F, DTypeTag, R, DTypeTag, DTypeTag>> a, {
   MatrixTriangle uplo = MatrixTriangle.lower,
   NDArray<DTypeTag>? outEigenvalues,
-  NDArray<T>? outEigenvectors,
+  NDArray<DTypeTag>? outEigenvectors,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot calculate eigh on a disposed array.');
@@ -4588,8 +4614,8 @@ eigh<T extends DTypeTag, R extends DTypeTag>(
 
   final bool promoted =
       a.dtype.isInteger ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16;
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16;
   DType targetDType = a.dtype;
   if (promoted) {
     targetDType = DType.float64;
@@ -4653,7 +4679,7 @@ eigh<T extends DTypeTag, R extends DTypeTag>(
               sharesMemory(outEigenvalues, outEigenvectors)));
   if (needTempVal || needTempVec) {
     return NDArray.scope(() {
-      final res = eigh<T, R>(
+      final res = eigh<F, R>(
         a,
         uplo: uplo,
         outEigenvalues: needTempVal ? null : outEigenvalues,
@@ -4661,7 +4687,7 @@ eigh<T extends DTypeTag, R extends DTypeTag>(
       );
       if (needTempVal) {
         if (outEigenvalues.dtype == res.eigenvalues.dtype) {
-          res.eigenvalues.copy(out: outEigenvalues);
+          res.eigenvalues.copy(out: outEigenvalues as NDArray<F>);
         } else {
           castNDArray(
             res.eigenvalues,
@@ -4679,7 +4705,9 @@ eigh<T extends DTypeTag, R extends DTypeTag>(
           ).copy(out: outEigenvectors);
         }
       }
-      final finalVal = outEigenvalues ?? res.eigenvalues.detachToParentScope();
+      final finalVal =
+          (outEigenvalues as NDArray<F>?) ??
+          res.eigenvalues.detachToParentScope();
       final finalVec =
           (outEigenvectors as NDArray<R>?) ??
           res.eigenvectors.detachToParentScope();
@@ -4705,7 +4733,10 @@ eigh<T extends DTypeTag, R extends DTypeTag>(
     if (n == 0) {
       if (outEigenvalues == null) wMat.detachToParentScope();
       if (outEigenvectors == null) vMat.detachToParentScope();
-      return (eigenvalues: wMat, eigenvectors: vMat as NDArray<R>);
+      return (
+        eigenvalues: wMat as NDArray<F>,
+        eigenvectors: vMat as NDArray<R>,
+      );
     }
 
     final uploVal = uplo == MatrixTriangle.lower ? 76 : 85;
@@ -4725,7 +4756,7 @@ eigh<T extends DTypeTag, R extends DTypeTag>(
           Slice.all(),
         ]);
         if (sliceView.dtype == targetDType) {
-          sliceView.copy(out: aCopy2D as NDArray<T>);
+          sliceView.copy(out: aCopy2D as dynamic);
         } else {
           final casted = castNDArray(sliceView, targetDType);
           casted.copy(out: aCopy2D);
@@ -4842,13 +4873,13 @@ eigh<T extends DTypeTag, R extends DTypeTag>(
 
     if (outEigenvalues == null) wMat.detachToParentScope();
     if (outEigenvectors == null) vMat.detachToParentScope();
-    return (eigenvalues: wMat, eigenvectors: vMat as NDArray<R>);
+    return (eigenvalues: wMat as NDArray<F>, eigenvectors: vMat as NDArray<R>);
   });
 }
 
 /// Extension on [eigh] result record type to support easy disposal of both arrays.
-extension EighRecordDispose<T extends DTypeTag>
-    on ({NDArray<DTypeTag> eigenvalues, NDArray<T> eigenvectors}) {
+extension EighRecordDispose<F extends DTypeTag, T extends DTypeTag>
+    on ({NDArray<F> eigenvalues, NDArray<T> eigenvectors}) {
   /// Disposes both [eigenvalues] and [eigenvectors] simultaneously,
   /// freeing their underlying unmanaged C memory.
   void dispose() {
@@ -4872,8 +4903,11 @@ extension EighRecordDispose<T extends DTypeTag>
 /// - [ArgumentError] if [a] has unsupported dtype.
 /// - [ArgumentError] if [out] is incompatible.
 /// - [StateError] if the LAPACK call fails.
-NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> eigvalsh<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   MatrixTriangle uplo = MatrixTriangle.lower,
   NDArray<DTypeTag>? out,
 }) {
@@ -4891,8 +4925,8 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
 
   final bool promoted =
       a.dtype.isInteger ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16;
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16;
   DType targetDType = a.dtype;
   if (promoted) {
     targetDType = DType.float64;
@@ -4928,13 +4962,13 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
         !out.isContiguous ||
         sharesMemory(a, out)) {
       return NDArray.scope(() {
-        final temp = eigvalsh<T>(a, uplo: uplo);
+        final temp = eigvalsh<R>(a, uplo: uplo);
         if (out.dtype == temp.dtype) {
-          temp.copy(out: out);
+          temp.copy(out: out as dynamic);
         } else {
           castNDArray(temp, out.dtype).copy(out: out);
         }
-        return out;
+        return out as NDArray<R>;
       });
     }
   }
@@ -4951,7 +4985,7 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
       if (out == null) {
         wMat.detachToParentScope();
       }
-      return wMat;
+      return wMat as NDArray<R>;
     }
 
     final uploVal = uplo == MatrixTriangle.lower ? 76 : 85;
@@ -4971,7 +5005,7 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
           Slice.all(),
         ]);
         if (sliceView.dtype == targetDType) {
-          sliceView.copy(out: aCopy2D as NDArray<T>);
+          sliceView.copy(out: aCopy2D as dynamic);
         } else {
           final casted = castNDArray(sliceView, targetDType);
           casted.copy(out: aCopy2D);
@@ -5081,7 +5115,7 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
     if (out == null) {
       wMat.detachToParentScope();
     }
-    return wMat;
+    return wMat as NDArray<R>;
   });
 }
 
@@ -5273,7 +5307,7 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
         ]);
 
         if (sliceView.dtype == targetDType) {
-          sliceView.copy(out: aCopy2D as NDArray<T>);
+          sliceView.copy(out: aCopy2D as dynamic);
         } else {
           final casted = castNDArray(sliceView, targetDType);
           casted.copy(out: aCopy2D);
@@ -5448,10 +5482,14 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
 ///
 /// **Throws:**
 /// - [StateError] if the LAPACK call fails.
-({NDArray<R> h, NDArray<R> q}) hessenberg<
-  T extends DTypeTag,
-  R extends DTypeTag
->(NDArray<T> a, {NDArray<R>? outH, NDArray<R>? outQ}) {
+({NDArray<R> h, NDArray<R> q}) hessenberg<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<R>? outH,
+  NDArray<R>? outQ,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot calculate hessenberg on a disposed array.');
   }
@@ -5466,8 +5504,8 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
 
   final bool promoted =
       a.dtype.isInteger ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16;
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16;
   DType targetDType = a.dtype;
   if (promoted) {
     targetDType = DType.float64;
@@ -5485,16 +5523,14 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
 
   if (outH != null) {
     if (outH.isDisposed) throw StateError('outH is disposed.');
-    if (!listEquals(outH.shape, hessenbergShape) ||
-        (outH.dtype != targetDType && (!promoted || outH.dtype != a.dtype))) {
+    if (!listEquals(outH.shape, hessenbergShape) || outH.dtype != targetDType) {
       throw ArgumentError('Incompatible outH.');
     }
   }
 
   if (outQ != null) {
     if (outQ.isDisposed) throw StateError('outQ is disposed.');
-    if (!listEquals(outQ.shape, hessenbergShape) ||
-        (outQ.dtype != targetDType && (!promoted || outQ.dtype != a.dtype))) {
+    if (!listEquals(outQ.shape, hessenbergShape) || outQ.dtype != targetDType) {
       throw ArgumentError('Incompatible outQ.');
     }
   }
@@ -5512,28 +5548,20 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
           (outH != null && sharesMemory(outH, outQ)));
   if (needTempH || needTempQ) {
     return NDArray.scope(() {
-      final res = hessenberg<T, DTypeTag>(
+      final res = hessenberg<R>(
         a,
         outH: needTempH ? null : outH,
         outQ: needTempQ ? null : outQ,
       );
       if (needTempH) {
-        if (outH.dtype == res.h.dtype) {
-          res.h.copy(out: outH);
-        } else {
-          castNDArray(res.h, outH.dtype).copy(out: outH);
-        }
+        res.h.copy(out: outH);
       }
       if (needTempQ) {
-        if (outQ.dtype == res.q.dtype) {
-          res.q.copy(out: outQ);
-        } else {
-          castNDArray(res.q, outQ.dtype).copy(out: outQ);
-        }
+        res.q.copy(out: outQ);
       }
       final finalH = outH ?? res.h.detachToParentScope();
       final finalQ = outQ ?? res.q.detachToParentScope();
-      return (h: finalH as NDArray<R>, q: finalQ as NDArray<R>);
+      return (h: finalH, q: finalQ);
     });
   }
 
@@ -5571,7 +5599,7 @@ NDArray<DTypeTag> eigvalsh<T extends DTypeTag>(
           Slice.all(),
         ]);
         if (sliceView.dtype == targetDType) {
-          sliceView.copy(out: aCopy2D as NDArray<T>);
+          sliceView.copy(out: aCopy2D as dynamic);
         } else {
           final casted = castNDArray(sliceView, targetDType);
           casted.copy(out: aCopy2D);
@@ -5820,7 +5848,7 @@ NDArray<T> outer<T extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out) || sharesMemory(b, out)) {
       return NDArray.scope(() {
         final temp = outer<DTypeTag>(a, b);
-        temp.copy(out: out);
+        temp.copy(out: out as dynamic);
         return out;
       });
     }
@@ -6068,7 +6096,7 @@ NDArray<T> cross<T extends DTypeTag>(
           axisc: axisc,
           axis: axis,
         );
-        temp.copy(out: out);
+        temp.copy(out: out as dynamic);
         return out;
       });
     }
@@ -6396,8 +6424,11 @@ enum NormKind {
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.norm](https://numpy.org/doc/stable/reference/generated/numpy.linalg.norm.html)
-NDArray<R> norm<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> norm<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   dynamic ord,
   dynamic axis,
   bool keepdims = false,
@@ -6444,7 +6475,8 @@ NDArray<R> norm<T extends DTypeTag, R extends DTypeTag>(
 
   final isVecNorm = targetAxes.length == 1;
   final DType targetDType =
-      (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ((a.dtype as DType<DTypeTag>) == DType.float32 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)
       ? DType.float32
       : DType.float64;
 
@@ -6471,8 +6503,8 @@ NDArray<R> norm<T extends DTypeTag, R extends DTypeTag>(
     }
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
-        final temp = norm<T, R>(a, ord: ord, axis: axis, keepdims: keepdims);
-        temp.copy(out: out);
+        final temp = norm<R>(a, ord: ord, axis: axis, keepdims: keepdims);
+        temp.copy(out: out as dynamic);
         return out;
       });
     }
@@ -6485,14 +6517,14 @@ NDArray<R> norm<T extends DTypeTag, R extends DTypeTag>(
     if (targetAxes.length == rank && !keepdims) {
       // Global norm
       if (isVecNorm) {
-        final val = _vectorNorm<T>(a, ord, targetDType);
+        final val = _vectorNorm(a, ord, targetDType);
         if (targetDType == DType.float32) {
           result.pointer.cast<ffi.Float>()[0] = val;
         } else {
           result.pointer.cast<ffi.Double>()[0] = val;
         }
       } else {
-        final val = _matrixNorm<T>(a, ord, targetDType);
+        final val = _matrixNorm(a, ord, targetDType);
         if (targetDType == DType.float32) {
           result.pointer.cast<ffi.Float>()[0] = val;
         } else {
@@ -6525,7 +6557,7 @@ NDArray<R> norm<T extends DTypeTag, R extends DTypeTag>(
           }
         }
 
-        final NDArray<T> slice;
+        final NDArray<DTypeTag> slice;
         if (isVecNorm) {
           final ax = targetAxes[0];
           final len = a.shape[ax];
@@ -6562,9 +6594,9 @@ NDArray<R> norm<T extends DTypeTag, R extends DTypeTag>(
 
         final double val;
         if (isVecNorm) {
-          val = _vectorNorm<T>(slice, ord, targetDType);
+          val = _vectorNorm(slice, ord, targetDType);
         } else {
-          val = _matrixNorm<T>(slice, ord, targetDType);
+          val = _matrixNorm(slice, ord, targetDType);
         }
         slice.dispose();
 
@@ -7262,8 +7294,11 @@ LstsqResult<R> lstsq<
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.cond](https://numpy.org/doc/stable/reference/generated/numpy.linalg.cond.html)
-NDArray<R> cond<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> cond<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   dynamic p,
   NDArray<R>? out,
 }) {
@@ -7368,8 +7403,8 @@ NDArray<R> cond<T extends DTypeTag, R extends DTypeTag>(
               strides: aUse.strides.sublist(rank - 2),
               offsetElements: offsetA,
             );
-      final froNormVal = norm<DTypeTag, DTypeTag>(
-        aSlice,
+      final froNormVal = norm<DTypeTag>(
+        aSlice as NDArray<AnySpec>,
         ord: NormKind.frobenius,
       ).scalar;
       double val;
@@ -7409,14 +7444,14 @@ NDArray<R> cond<T extends DTypeTag, R extends DTypeTag>(
       } else {
         final normAVal = (ord == NormKind.frobenius)
             ? froNormVal
-            : norm<DTypeTag, DTypeTag>(aSlice, ord: ord).scalar;
+            : norm<DTypeTag>(aSlice, ord: ord).scalar;
         if (normAVal.isNaN) {
           val = double.nan;
         } else {
           try {
             final invSliceA = inv<DTypeTag>(aSlice);
-            final normInvAVal = norm<DTypeTag, DTypeTag>(
-              invSliceA,
+            final normInvAVal = norm<DTypeTag>(
+              invSliceA as NDArray<AnySpec>,
               ord: ord,
             ).scalar;
             invSliceA.dispose();

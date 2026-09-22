@@ -227,8 +227,8 @@ void main() {
             DType.float64,
           );
 
-          final outSign = NDArray<DTypeTag>.zeros([2], DType.float64);
-          final outLogdet = NDArray<DTypeTag>.zeros([2], DType.float64);
+          final outSign = NDArray.zeros([2], DType.float64);
+          final outLogdet = NDArray.zeros([2], DType.float64);
 
           final (:sign, logabsdet: logdet) = slogdet(
             a,
@@ -256,10 +256,10 @@ void main() {
             DType.float64,
           );
 
-          final badSign = NDArray<DTypeTag>.zeros([
+          final badSign = NDArray.zeros([
             2,
           ], DType.float64); // bad shape, should be [] for 2D matrix
-          final badLogdet = NDArray<DTypeTag>.zeros(
+          final badLogdet = NDArray.zeros(
             [],
             DType.float32,
           ); // bad dtype, should be float64

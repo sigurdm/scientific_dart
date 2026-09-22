@@ -78,25 +78,25 @@ void main() async {
 
       c.group('2. Cumulative Scans (cumsum & cumprod)', () {
         c.bench('cumsum(arr) [100k Float64]', () {
-          final res = cumsum<Float64, Float64>(cleanVec);
+          final res = cumsum<Float64>(cleanVec);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
 
         c.bench('cumsum(mat, axis=0) [500x500 Float64]', () {
-          final res = cumsum<Float64, Float64>(mat2d, axis: 0);
+          final res = cumsum<Float64>(mat2d, axis: 0);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(dim * dim));
 
         c.bench('cumsum(mat, axis=1) [500x500 Float64]', () {
-          final res = cumsum<Float64, Float64>(mat2d, axis: 1);
+          final res = cumsum<Float64>(mat2d, axis: 1);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(dim * dim));
 
         c.bench('cumprod(arr) [100k Float64]', () {
-          final res = cumprod<Float64, Float64>(cleanVec);
+          final res = cumprod<Float64>(cleanVec);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));

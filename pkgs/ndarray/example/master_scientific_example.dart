@@ -42,7 +42,7 @@ void main() {
     );
 
     // 3. Execute FFI-Accelerated Real FFT (rfft) to map signal to frequency space
-    final fftCoeffs = rfft<Float64, Complex128>(noisySignal);
+    final fftCoeffs = rfft(noisySignal);
     final freqs = rfftfreq(numPoints, d: 1.0 / samplingRate);
     print(
       '3. Executed mixed-radix FFI Real FFT (rfft) to transform signal to frequency space.',
@@ -56,7 +56,7 @@ void main() {
     );
 
     // 5. Restoration: Inverse Real Fourier Transform (irfft) back to time domain!
-    final reconstructed = irfft<Complex128, Float64>(fftCoeffs, n: numPoints);
+    final reconstructed = irfft(fftCoeffs, n: numPoints);
     print(
       '5. Executed FFI Inverse Real FFT (irfft) to restore time-domain signal.',
     );

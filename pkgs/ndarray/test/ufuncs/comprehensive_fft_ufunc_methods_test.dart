@@ -1115,11 +1115,7 @@ void main() {
             [6],
             DType.float64,
           );
-          final indices = NDArray<DTypeTag>.fromList(
-            [0, 3, 1, 4],
-            [4],
-            DType.int64,
-          );
+          final indices = NDArray.fromList([0, 3, 1, 4], [4], DType.int64);
           final res = a.reduceat(indices, op: BinaryOp.add);
           expect(res.shape, [4]);
           expect(res.toList(), [30.0, 30.0, 60.0, 90.0]);
@@ -1134,7 +1130,7 @@ void main() {
             [4],
             DType.float32,
           );
-          final idx2 = NDArray<DTypeTag>.fromList([0, 2], [2], DType.int64);
+          final idx2 = NDArray.fromList([0, 2], [2], DType.int64);
           expect(aF32.reduceat(idx2, op: BinaryOp.add).toList(), [3.0, 7.0]);
 
           final aI32 = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
@@ -1304,11 +1300,7 @@ void main() {
             [3],
             DType.float64,
           );
-          final idx = NDArray<DTypeTag>.fromList(
-            [0, 1, 0, 2, 0],
-            [5],
-            DType.int64,
-          );
+          final idx = NDArray.fromList([0, 1, 0, 2, 0], [5], DType.int64);
           final valsF64 = NDArray.fromList(
             [1.0, 10.0, 2.0, 100.0, 3.0],
             [5],
@@ -1328,22 +1320,14 @@ void main() {
 
           // Float32 multiply
           final targetF32 = NDArray.fromList([1.0, 1.0], [2], DType.float32);
-          final idxF32 = NDArray<DTypeTag>.fromList(
-            [0, 0, 1],
-            [3],
-            DType.int64,
-          );
+          final idxF32 = NDArray.fromList([0, 0, 1], [3], DType.int64);
           final valsF32 = NDArray.fromList([2.0, 3.0, 5.0], [3], DType.float32);
           targetF32.at(idxF32, valsF32, op: BinaryOp.multiply);
           expect(targetF32.toList(), [6.0, 5.0]);
 
           // Int64 subtract
           final targetI64 = NDArray.fromList([100, 100], [2], DType.int64);
-          final idxI64 = NDArray<DTypeTag>.fromList(
-            [0, 0, 1],
-            [3],
-            DType.int64,
-          );
+          final idxI64 = NDArray.fromList([0, 0, 1], [3], DType.int64);
           final valsI64 = NDArray.fromList([10, 20, 50], [3], DType.int64);
           targetI64.at(idxI64, valsI64, op: BinaryOp.subtract);
           expect(targetI64.toList(), [70, 50]);

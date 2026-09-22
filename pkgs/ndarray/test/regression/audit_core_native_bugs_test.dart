@@ -21,7 +21,7 @@ void main() {
           try {
             final rev =
                 a[[Slice(start: 3, stop: null, step: -1), Slice()]]
-                    as NDArray<DTypeTag>;
+                    as NDArray<AnySpec>;
             expect(rev.offsetElements, equals(12));
             expect(
               rev.toList(),
@@ -277,7 +277,7 @@ void main() {
 
   group('Bug 5: N-D boolean masking & operator [] integer NDArray indexing', () {
     test(
-      'N-D boolean masking on contiguous and transposed arrays and assignment with NDArray<DTypeTag>',
+      'N-D boolean masking on contiguous and transposed arrays and assignment with NDArray<AnySpec>',
       () {
         final a = NDArray.fromList(
           [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
@@ -287,7 +287,7 @@ void main() {
         try {
           final mask = a > 3.0;
           try {
-            final masked = a[mask] as NDArray<DTypeTag>;
+            final masked = a[mask] as NDArray<AnySpec>;
             try {
               expect(masked.shape, equals([3]));
               expect(masked.toList(), equals([4.0, 5.0, 6.0]));
@@ -327,8 +327,8 @@ void main() {
         final idxSameShape = NDArray.fromList([2, 0, 1], [3], DType.int32);
         final idx2D = NDArray.fromList([2, 0, 1, 2], [2, 2], DType.int32);
         try {
-          final res1 = arr[idxSameShape] as NDArray<DTypeTag>;
-          final res2 = arr[idx2D] as NDArray<DTypeTag>;
+          final res1 = arr[idxSameShape] as NDArray<AnySpec>;
+          final res2 = arr[idx2D] as NDArray<AnySpec>;
           try {
             expect(res1.shape, equals([3]));
             expect(res1.toList(), equals([30, 10, 20]));
@@ -456,8 +456,8 @@ void main() {
           final b = NDArray.fromList([10, 20, 30, 40, 50], [5], DType.int32);
           final c = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
           try {
-            final srcA = a[Slice(start: 0, stop: 4)] as NDArray<DTypeTag>;
-            final dstA = a[Slice(start: 1, stop: 5)] as NDArray<DTypeTag>;
+            final srcA = a[Slice(start: 0, stop: 4)] as NDArray<AnySpec>;
+            final dstA = a[Slice(start: 1, stop: 5)] as NDArray<AnySpec>;
             srcA.copy(out: dstA);
             expect(a.toList(), equals([1, 1, 2, 3, 4]));
 
@@ -491,10 +491,10 @@ void main() {
           try {
             final src =
                 a[[Slice(start: 0, stop: 2), Slice(start: 0, stop: 2)]]
-                    as NDArray<DTypeTag>;
+                    as NDArray<AnySpec>;
             final dst =
                 a[[Slice(start: 1, stop: 3), Slice(start: 1, stop: 3)]]
-                    as NDArray<DTypeTag>;
+                    as NDArray<AnySpec>;
             src.copy(out: dst);
             expect(a.toList(), equals([1, 2, 3, 4, 1, 2, 7, 4, 5]));
 
@@ -647,7 +647,7 @@ void main() {
               dt,
             );
             try {
-              final u = unique(arr) as NDArray<DTypeTag>;
+              final u = unique(arr) as NDArray<AnySpec>;
               final uWithCounts = unique(arr, returnCounts: true);
               try {
                 expect(u.size, equals(5));

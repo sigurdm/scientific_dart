@@ -124,7 +124,7 @@ void main() {
   );
 
   group('Review Cycle 16 — Issue #2: All 8 Integer DTypes in Bitwise Operations', () {
-    final intDTypes = <DType<DTypeTag>>[
+    final intDTypes = <DType<AnySpec>>[
       DType.int8,
       DType.int16,
       DType.int32,
@@ -140,16 +140,12 @@ void main() {
       () {
         for (final dt in intDTypes) {
           NDArray.scope(() {
-            final aFull = NDArray<DTypeTag>.fromList(
+            final aFull = NDArray.fromList(
               [3, 5, 6, 12, 15, 9, 10, 7],
               [8],
               dt,
             );
-            final bFull = NDArray<DTypeTag>.fromList(
-              [1, 3, 2, 4, 7, 5, 6, 3],
-              [8],
-              dt,
-            );
+            final bFull = NDArray.fromList([1, 3, 2, 4, 7, 5, 6, 3], [8], dt);
 
             // Contiguous tests
             final cAnd = bitwise_and(aFull, bFull);
@@ -309,8 +305,8 @@ void main() {
       () {
         for (final dt in intDTypes) {
           NDArray.scope(() {
-            final a = NDArray<DTypeTag>.fromList([7, 3, 5, 1], [4], dt);
-            final b = NDArray<DTypeTag>.fromList([6, 2, 4, 1], [4], dt);
+            final a = NDArray.fromList([7, 3, 5, 1], [4], dt);
+            final b = NDArray.fromList([6, 2, 4, 1], [4], dt);
 
             final bAnd = binaryUfunc<DTypeTag, DTypeTag>(
               a,
@@ -345,7 +341,7 @@ void main() {
             atUfunc(
               target,
               NDArray<Int64>.fromList([0, 3], [2], DType.int64),
-              NDArray<DTypeTag>.fromList([8, 2], [2], dt),
+              NDArray.fromList([8, 2], [2], dt),
               op: BinaryOp.bitwiseOr,
             );
             expect(target.toList(), equals([7 | 8, 3, 5, 1 | 2]));
@@ -422,7 +418,7 @@ void main() {
               [5],
               DType.float64,
             );
-            sqrt<Float64, Float64>(
+            sqrt(
               sqStrided.slice([Slice(step: 2)]),
               out: sqStrided.slice([Slice(start: 1, stop: 4)]),
             );
@@ -433,7 +429,7 @@ void main() {
               [2, 2],
               DType.float64,
             );
-            sqrt<Float64, Float64>(sq2d.transpose(), out: sq2d);
+            sqrt(sq2d.transpose(), out: sq2d);
             expect(sq2d.toList(), equals([2.0, 4.0, 3.0, 5.0]));
 
             final sqF64 = NDArray<Float64>.fromList(
@@ -441,7 +437,7 @@ void main() {
               [5],
               DType.float64,
             );
-            sqrt<Float64, Float64>(
+            sqrt(
               sqF64.slice([Slice(start: 0, stop: 4)]),
               out: sqF64.slice([Slice(start: 1, stop: 5)]),
             );

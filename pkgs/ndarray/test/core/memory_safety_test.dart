@@ -576,7 +576,7 @@ void main() {
           pointer[i] = (i + 1) * 10.0;
         }
 
-        final arr = NDArray<DTypeTag>.fromPointer(pointer.cast(), [
+        final arr = NDArray<AnySpec>.fromPointer(pointer.cast(), [
           2,
           2,
         ], DType.float64);
@@ -610,7 +610,7 @@ void main() {
           pointer[i] = (i + 1) * 2.0;
         }
 
-        final arr = NDArray<DTypeTag>.fromPointer(
+        final arr = NDArray<AnySpec>.fromPointer(
           pointer.cast(),
           [4],
           DType.float64,
@@ -632,10 +632,10 @@ void main() {
         pointer[0] = 1.0;
         pointer[1] = 2.0;
 
-        NDArray<DTypeTag>? arrRef;
+        NDArray<AnySpec>? arrRef;
 
         NDArray.scope(() {
-          final arr = NDArray<DTypeTag>.fromPointer(pointer.cast(), [
+          final arr = NDArray<AnySpec>.fromPointer(pointer.cast(), [
             2,
           ], DType.float64);
           arrRef = arr;

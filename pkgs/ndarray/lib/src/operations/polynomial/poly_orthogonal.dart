@@ -866,7 +866,7 @@ NDArray<DTypeTag> _orthoRoots<T extends DTypeTag>(
         }
         break;
     }
-    final res = eigvals(cMat, out: out);
+    final res = eigvals(cMat as NDArray<AnySpec>, out: out);
     if (out != null) return out;
     return res.detachToParentScope();
   });

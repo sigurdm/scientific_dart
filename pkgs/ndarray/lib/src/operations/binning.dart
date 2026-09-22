@@ -362,11 +362,24 @@ NDArray<T> bincount<T extends DTypeTag>(
 ///
 /// Refer to the [NumPy digitize reference](https://numpy.org/doc/stable/reference/generated/numpy.digitize.html)
 /// for details.
-NDArray<DTypeTag> digitize(
-  NDArray<DTypeTag> x,
-  NDArray<DTypeTag> bins, {
+NDArray<Int32> digitize<Tx extends DTypeTag, Tb extends DTypeTag>(
+  NDArray<Tx> x,
+  NDArray<Tb> bins, {
   bool right = false,
-  NDArray<DTypeTag>? out,
+  NDArray<Int32>? out,
+}) => digitizeAs<Tx, Tb, Int32>(x, bins, DType.int32, right: right, out: out);
+
+/// Returns the indices of the bins to which each value in [x] belongs, stored
+/// in the specified integer [dtype].
+///
+/// Refer to [digitize] for full details.
+NDArray<R>
+digitizeAs<Tx extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
+  NDArray<Tx> x,
+  NDArray<Tb> bins,
+  DType<R> dtype, {
+  bool right = false,
+  NDArray<R>? out,
 }) {
   if (x.isDisposed || bins.isDisposed) {
     throw StateError('Cannot execute digitize() on disposed array(s).');
@@ -381,6 +394,9 @@ NDArray<DTypeTag> digitize(
     throw StateError(
       'Cannot write digitize result to a disposed output array.',
     );
+  }
+  if (!dtype.isInteger) {
+    throw ArgumentError('dtype must be an integer DType, got $dtype.');
   }
   if (x.dtype.isComplex || bins.dtype.isComplex) {
     throw ArgumentError('Complex arrays are not supported in digitize.');
@@ -401,9 +417,9 @@ NDArray<DTypeTag> digitize(
         prev = curr;
       }
     } else if (bins.dtype.isInteger) {
-      var prev = bins.getCell([0]).toInt();
+      var prev = (bins.getCell([0]) as num).toInt();
       for (var i = 1; i < len; i++) {
-        final curr = bins.getCell([i]).toInt();
+        final curr = (bins.getCell([i]) as num).toInt();
         if (curr < prev) increasing = false;
         if (curr > prev) decreasing = false;
         prev = curr;
@@ -440,7 +456,7 @@ NDArray<DTypeTag> digitize(
         : castNDArray<DTypeTag>(x, commonDType);
 
     final side = right ? SearchSide.left : SearchSide.right;
-    NDArray<DTypeTag> res;
+    NDArray<Int32> res;
 
     if (increasing) {
       res = searchsorted(commonBins, commonX, side: side);
@@ -448,18 +464,21 @@ NDArray<DTypeTag> digitize(
       final flippedBins = flip(commonBins);
       final j = searchsorted(flippedBins, commonX, side: side);
       final nArr = NDArray<Int32>.scalar(bins.size, dtype: DType.int32);
-      res = subtract<DTypeTag>(nArr, j);
+      res = subtract<Int32>(nArr, j);
     }
 
     if (out != null) {
-      if (!listEquals(out.shape, res.shape) || !out.dtype.isInteger) {
+      if (!listEquals(out.shape, res.shape) || out.dtype != dtype) {
         throw ArgumentError('Incompatible out buffer shape or dtype.');
       }
       _fastCopyAndCast(res, out);
       return out;
     }
 
-    return res.detachToParentScope();
+    if (dtype == DType.int32) {
+      return (res as NDArray<R>).detachToParentScope();
+    }
+    return castNDArray<R>(res, dtype).detachToParentScope();
   });
 }
 

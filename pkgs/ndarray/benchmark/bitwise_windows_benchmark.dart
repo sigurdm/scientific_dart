@@ -31,25 +31,25 @@ void main() async {
         );
 
         c.bench('i0(x) (Bessel I0) [100k]', () {
-          final res = i0<DTypeTag, DTypeTag>(floatVec);
+          final res = i0((floatVec as NDArray<AnySpec>));
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
 
         c.bench('sinc(x) (Normalized Sinc) [100k]', () {
-          final res = sinc<DTypeTag, DTypeTag>(floatVec);
+          final res = sinc((floatVec as NDArray<AnySpec>));
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
       });
 
       c.group('3. Bitwise Integer Operations (100k elements)', () {
-        final intA = NDArray<DTypeTag>.fromList(
+        final intA = NDArray<AnySpec>.fromList(
           List.generate(size, (i) => i * 13),
           [size],
           DType.int32,
         );
-        final intB = NDArray<DTypeTag>.fromList(
+        final intB = NDArray<AnySpec>.fromList(
           List.generate(size, (i) => i * 7 + 1),
           [size],
           DType.int32,
@@ -79,7 +79,7 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(size));
 
-        final shiftAmt = NDArray<DTypeTag>.fromList(
+        final shiftAmt = NDArray<AnySpec>.fromList(
           List.generate(size, (i) => (i % 8)),
           [size],
           DType.int32,

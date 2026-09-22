@@ -22,8 +22,11 @@ import '../stats.dart';
 ///
 /// **Edge cases:**
 /// - Negative values will result in [double.nan].
-NDArray<R> sqrt<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> sqrt<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -31,11 +34,15 @@ NDArray<R> sqrt<T extends DTypeTag, R extends DTypeTag>(
     throw StateError('Cannot execute sqrt() on a disposed array.');
   }
   final DType<R> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype as DType<R>;
   } else {
     targetDType =
-        (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
+        ((a.dtype as DType<DTypeTag>) == DType.float32
+                ? DType.float32
+                : DType.float64)
+            as DType<R>;
   }
 
   if (out != null) {
@@ -88,7 +95,8 @@ NDArray<R> sqrt<T extends DTypeTag, R extends DTypeTag>(
       }
     }
 
-    if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+        (a.dtype as DType<DTypeTag>) == DType.complex64) {
       final rank = a.shape.length;
       final marker = ScratchArena.marker;
       try {
@@ -101,7 +109,7 @@ NDArray<R> sqrt<T extends DTypeTag, R extends DTypeTag>(
           cStridesA[i] = a.strides[i];
           cStridesRes[i] = result.strides[i];
         }
-        if (a.dtype == DType.complex128) {
+        if ((a.dtype as DType<DTypeTag>) == DType.complex128) {
           s_sqrt_complex128(
             a.pointer.cast(),
             cStridesA,
@@ -131,7 +139,7 @@ NDArray<R> sqrt<T extends DTypeTag, R extends DTypeTag>(
     final temp = a.isContiguous ? a : a.copy();
 
     double toDoubleUnsigned(Object? val) {
-      if (temp.dtype == DType.uint64 && val is int) {
+      if ((temp.dtype as DType<DTypeTag>) == DType.uint64 && val is int) {
         return BigInt.from(val).toUnsigned(64).toDouble();
       }
       return (val as num).toDouble();
@@ -246,8 +254,11 @@ double _logaddexp2(double x, double y) {
 }
 
 /// Computes the exponential minus one ($e^x - 1$) element-wise.
-NDArray<R> expm1<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> expm1<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -257,10 +268,13 @@ NDArray<R> expm1<T extends DTypeTag, R extends DTypeTag>(
     throw StateError('Cannot execute expm1() on a disposed array.');
   }
   final DType<DTypeTag> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype;
   } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+    targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+        ? DType.float32
+        : DType.float64;
   }
 
   if (out != null) {
@@ -382,7 +396,8 @@ NDArray<R> expm1<T extends DTypeTag, R extends DTypeTag>(
       }
     }
 
-    if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+        (a.dtype as DType<DTypeTag>) == DType.complex64) {
       unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
@@ -441,8 +456,11 @@ NDArray<R> expm1<T extends DTypeTag, R extends DTypeTag>(
 }
 
 /// Computes $\ln(1+x)$ element-wise.
-NDArray<R> log1p<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> log1p<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -452,10 +470,13 @@ NDArray<R> log1p<T extends DTypeTag, R extends DTypeTag>(
     throw StateError('Cannot execute log1p() on a disposed array.');
   }
   final DType<DTypeTag> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype;
   } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+    targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+        ? DType.float32
+        : DType.float64;
   }
 
   if (out != null) {
@@ -577,7 +598,8 @@ NDArray<R> log1p<T extends DTypeTag, R extends DTypeTag>(
       }
     }
 
-    if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+        (a.dtype as DType<DTypeTag>) == DType.complex64) {
       unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
@@ -908,8 +930,11 @@ NDArray<DTypeTag> logaddexp2<T1 extends DTypeTag, T2 extends DTypeTag>(
 }
 
 /// Rounds elements of the array to the nearest integer.
-NDArray<R> rint<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> rint<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -918,10 +943,13 @@ NDArray<R> rint<T extends DTypeTag, R extends DTypeTag>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute rint() on a disposed array.');
   }
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for rint');
   }
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+      ? DType.float32
+      : DType.float64;
 
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
@@ -1048,8 +1076,11 @@ NDArray<R> rint<T extends DTypeTag, R extends DTypeTag>(
 }
 
 /// Rounds elements of the array to the nearest integer towards zero.
-NDArray<R> trunc<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> trunc<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -1058,10 +1089,13 @@ NDArray<R> trunc<T extends DTypeTag, R extends DTypeTag>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute trunc() on a disposed array.');
   }
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for trunc');
   }
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+      ? DType.float32
+      : DType.float64;
 
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
@@ -1180,8 +1214,11 @@ NDArray<R> trunc<T extends DTypeTag, R extends DTypeTag>(
 /// Rounds elements of the array to the nearest integer towards zero.
 ///
 /// Synonym for [trunc].
-NDArray<R> fix<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> fix<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) => trunc(a, where: where, out: out);
@@ -3661,8 +3698,11 @@ NDArray<T> heaviside<T extends DTypeTag>(
   }
 }
 
-NDArray<R> abs<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> a, {
+NDArray<R> abs<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<R, Object?, DTypeTag, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
@@ -3864,7 +3904,7 @@ NDArray<R> abs<T extends DTypeTag, R extends DTypeTag>(
     switch (a.dtype) {
       case DType.complex128:
       case DType.complex64:
-        unaryOp<T, R>(
+        unaryOp<DTypeTag, R>(
           result,
           a,
           a.shape,

@@ -176,9 +176,9 @@ void main() {
         final badOut = NDArray<Float64>.zeros([2], DType.float64);
         expect(() => kron<Float64>(a, a, out: badOut), throwsArgumentError);
         // fft invalid axis
-        expect(() => fft<Float64, Complex128>(a, axis: 5), throwsRangeError);
+        expect(() => fft(a, axis: 5), throwsRangeError);
         // rfft invalid n
-        expect(() => rfft<Float64, Complex128>(a, n: 0), throwsArgumentError);
+        expect(() => rfft(a, n: 0), throwsArgumentError);
       });
       expect(ScratchArena.marker.offset, equals(initialMarker.offset));
     });

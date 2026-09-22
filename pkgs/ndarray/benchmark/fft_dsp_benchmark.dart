@@ -17,14 +17,14 @@ void main() async {
           );
 
           c.bench('rfft(realSignal) [length=$length]', () {
-            final spec = rfft(realSignal);
+            final spec = rfft((realSignal as NDArray<AnySpec>));
             blackhole(spec);
             spec.dispose();
           }, throughput: Throughput.elements(length));
 
-          final specInput = rfft(realSignal);
+          final specInput = rfft((realSignal as NDArray<AnySpec>));
           c.bench('irfft(spec) [length=$length]', () {
-            final recovered = irfft(specInput, n: length);
+            final recovered = irfft((specInput as NDArray<AnySpec>), n: length);
             blackhole(recovered);
             recovered.dispose();
           }, throughput: Throughput.elements(length));
@@ -33,7 +33,7 @@ void main() async {
 
       c.group('2. 2D Complex Fourier Transforms (fft2 & ifft2)', () {
         for (final dim in [256, 512]) {
-          final img2d = NDArray<DTypeTag>.zeros([dim, dim], DType.float64);
+          final img2d = NDArray<AnySpec>.zeros([dim, dim], DType.float64);
           for (var i = 0; i < dim; i++) {
             img2d.setCell([i, i], 1.0);
           }
@@ -46,7 +46,7 @@ void main() async {
 
           final imgSpec = fft2(img2d);
           c.bench('ifft2 [${dim}x$dim]', () {
-            final res = ifft2(imgSpec);
+            final res = ifft2((imgSpec as NDArray<AnySpec>));
             blackhole(res);
             res.dispose();
           }, throughput: Throughput.elements(dim * dim));

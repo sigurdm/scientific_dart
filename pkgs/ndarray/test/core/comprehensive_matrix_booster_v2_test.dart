@@ -23,7 +23,7 @@ void main() {
 
     final complexDTypes = [DType.complex128, DType.complex64];
 
-    NDArray<DTypeTag> createArray3D(
+    NDArray<AnySpec> createArray3D(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -40,11 +40,11 @@ void main() {
 
       final dtObj = dt;
       if (strided) {
-        final flatArr = NDArray<DTypeTag>.fromList(rawList, [size * 2], dtObj);
+        final flatArr = NDArray.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<DTypeTag>.fromList(rawList, shape, dtObj);
+        return NDArray.fromList(rawList, shape, (dtObj as DType<AnySpec>));
       }
     }
 

@@ -1274,9 +1274,11 @@ extension FrexpRecordExtension<R extends DTypeTag>
 /// shapes/dtypes or alias each other (throws [ArgumentError]).
 ///
 /// Reference: [NumPy modf](https://numpy.org/doc/stable/reference/generated/numpy.modf.html)
-({NDArray<R> fractional, NDArray<R> integral})
-modf<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> x, {
+({NDArray<R> fractional, NDArray<R> integral}) modf<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  x, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out1,
   NDArray<R>? out2,
@@ -1293,7 +1295,9 @@ modf<T extends DTypeTag, R extends DTypeTag>(
   final DType<R> targetDType =
       (out1?.dtype ??
               out2?.dtype ??
-              (x.dtype == DType.float32 ? DType.float32 : DType.float64))
+              ((x.dtype as DType<DTypeTag>) == DType.float32
+                  ? DType.float32
+                  : DType.float64))
           as DType<R>;
   if (!targetDType.isFloating) {
     throw ArgumentError('modf output dtype must be floating-point.');
@@ -1338,14 +1342,14 @@ modf<T extends DTypeTag, R extends DTypeTag>(
 
     try {
       double toDoubleVal(Object? val) {
-        if (x.dtype == DType.uint64 && val is int) {
+        if ((x.dtype as DType<DTypeTag>) == DType.uint64 && val is int) {
           return BigInt.from(val).toUnsigned(64).toDouble();
         }
         if (val is bool) return val ? 1.0 : 0.0;
         return (val as num).toDouble();
       }
 
-      unaryOp<T, R>(
+      unaryOp<DTypeTag, R>(
         res1,
         x,
         x.shape,
@@ -1369,7 +1373,7 @@ modf<T extends DTypeTag, R extends DTypeTag>(
         maskHolder.pointer,
       );
 
-      unaryOp<T, R>(
+      unaryOp<DTypeTag, R>(
         res2,
         x,
         x.shape,
@@ -1412,9 +1416,11 @@ modf<T extends DTypeTag, R extends DTypeTag>(
 /// with the mantissa in the open interval $(-1, -0.5]$ or $[0.5, 1)$ (or $0$ when $x = 0$).
 ///
 /// Reference: [NumPy frexp](https://numpy.org/doc/stable/reference/generated/numpy.frexp.html)
-({NDArray<R> mantissa, NDArray<Int32> exponent})
-frexp<T extends DTypeTag, R extends DTypeTag>(
-  NDArray<T> x, {
+({NDArray<R> mantissa, NDArray<Int32> exponent}) frexp<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  x, {
   NDArray<DTypeTag>? where,
   NDArray<R>? out1,
   NDArray<Int32>? out2,
@@ -1430,7 +1436,9 @@ frexp<T extends DTypeTag, R extends DTypeTag>(
   }
   final DType<R> targetDType =
       (out1?.dtype ??
-              (x.dtype == DType.float32 ? DType.float32 : DType.float64))
+              ((x.dtype as DType<DTypeTag>) == DType.float32
+                  ? DType.float32
+                  : DType.float64))
           as DType<R>;
   if (!targetDType.isFloating) {
     throw ArgumentError('frexp mantissa output dtype must be floating-point.');
@@ -1502,7 +1510,7 @@ frexp<T extends DTypeTag, R extends DTypeTag>(
     }
 
     double toDoubleVal(Object? val) {
-      if (x.dtype == DType.uint64 && val is int) {
+      if ((x.dtype as DType<DTypeTag>) == DType.uint64 && val is int) {
         return BigInt.from(val).toUnsigned(64).toDouble();
       }
       if (val is bool) return val ? 1.0 : 0.0;
@@ -1510,7 +1518,7 @@ frexp<T extends DTypeTag, R extends DTypeTag>(
     }
 
     try {
-      unaryOp<T, R>(
+      unaryOp<DTypeTag, R>(
         res1,
         x,
         x.shape,
@@ -1526,7 +1534,7 @@ frexp<T extends DTypeTag, R extends DTypeTag>(
         maskHolder.pointer,
       );
 
-      unaryOp<T, Int32>(
+      unaryOp<DTypeTag, Int32>(
         res2,
         x,
         x.shape,

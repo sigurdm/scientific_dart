@@ -22,11 +22,7 @@ void main() {
                 DType.uint32,
                 DType.uint64,
               ]) {
-                final idx = NDArray<DTypeTag>.fromList(
-                  [3, 1, 0],
-                  [3],
-                  idxDType,
-                );
+                final idx = NDArray.fromList([3, 1, 0], [3], idxDType);
                 final res = take_along_axis(arr1d, idx, 0);
                 expect(res[[0]], equals(40.0));
                 expect(res[[1]], equals(20.0));
@@ -78,7 +74,7 @@ void main() {
                   [4],
                   DType.float64,
                 );
-                final idx = NDArray<DTypeTag>.fromList([3, 1], [2], idxDType);
+                final idx = NDArray.fromList([3, 1], [2], idxDType);
                 final vals = NDArray<Float64>.fromList(
                   [99.0, 88.0],
                   [2],
@@ -143,8 +139,8 @@ void main() {
             expect(res32.h[[2, 0]], closeTo(0.0, 1e-12));
 
             // Verify Q * H * Q^T == A
-            final q = res32.q as NDArray<Float64>;
-            final h = res32.h as NDArray<Float64>;
+            final q = res32.q;
+            final h = res32.h;
             final qt = q.transpose();
             final reconstructed = matmul(matmul(q, h), qt);
             expect(reconstructed[[0, 0]], closeTo(1.0, 1e-10));
@@ -168,14 +164,14 @@ void main() {
               [3, 3],
               DType.uint8,
             );
-            final outHU8 = NDArray<Uint8>.zeros([3, 3], DType.uint8);
-            final outQU8 = NDArray<Uint8>.zeros([3, 3], DType.uint8);
+            final outHU8 = NDArray<Float64>.zeros([3, 3], DType.float64);
+            final outQU8 = NDArray<Float64>.zeros([3, 3], DType.float64);
             final resU8 = hessenberg(aUint8, outH: outHU8, outQ: outQU8);
             expect(identical(resU8.h, outHU8), isTrue);
             expect(identical(resU8.q, outQU8), isTrue);
-            expect(outHU8[[0, 0]], equals(1));
-            expect(outHU8[[1, 1]], equals(2));
-            expect(outHU8[[2, 2]], equals(3));
+            expect(outHU8[[0, 0]], closeTo(1.0, 1e-12));
+            expect(outHU8[[1, 1]], closeTo(2.0, 1e-12));
+            expect(outHU8[[2, 2]], closeTo(3.0, 1e-12));
           });
         },
       );

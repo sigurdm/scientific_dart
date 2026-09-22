@@ -219,7 +219,7 @@ void main() {
     test(
       'Verify fft() and ifft() throws StateError on native plan allocation failure',
       () => NDArray.scope(() {
-        final a = NDArray<DTypeTag>.fromList(Float64List.fromList([1.0, 2.0]), [
+        final a = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
           2,
         ], DType.float64);
 
@@ -631,7 +631,7 @@ void main() {
     test(
       'fft() and ifft() processing complex inputs directly',
       () => NDArray.scope(() {
-        final complexSignal = NDArray<DTypeTag>.fromList(
+        final complexSignal = NDArray.fromList(
           [Complex(1.0, 1.0), Complex(2.0, 2.0)],
           [2],
           DType.complex128,
@@ -656,11 +656,7 @@ void main() {
     test(
       'fft() and ifft() with real inputs and zero padding padding checks',
       () {
-        final realSignal = NDArray<DTypeTag>.fromList(
-          [1.0, 2.0],
-          [2],
-          DType.float64,
-        );
+        final realSignal = NDArray.fromList([1.0, 2.0], [2], DType.float64);
 
         // 1. fft with zero-padding (n = 4)
         final freqPadded = fft(realSignal, n: 4);
@@ -710,7 +706,7 @@ void main() {
     test(
       'FFT and IFFT zero-padding with ComplexList inputs and outputs',
       () => NDArray.scope(() {
-        final a = NDArray<DTypeTag>.create([4], DType.complex128);
+        final a = NDArray.create([4], DType.complex128);
         a.setCell([0], Complex(1.0, 0.0));
         a.setCell([1], Complex(2.0, 0.0));
         a.setCell([2], Complex(3.0, 0.0));
@@ -732,7 +728,7 @@ void main() {
       'Zero-copy FFT and IFFT contiguous Float64 complex128 correctness',
       () {
         // 1. 1D Complex Vector Zero-Copy FFT and IFFT
-        final a = NDArray<DTypeTag>.fromList(
+        final a = NDArray.fromList(
           [
             Complex(1.0, 0.0),
             Complex(2.0, 0.0),
@@ -774,7 +770,7 @@ void main() {
         expect(resIFFT.getCell([3]).imag, closeTo(0.0, 1e-10));
 
         // 2. High-Dimensional Stacked 2D Complex Matrix Zero-Copy FFT and IFFT
-        final mat = NDArray<DTypeTag>.fromList(
+        final mat = NDArray.fromList(
           [
             Complex(1.0, 0.0),
             Complex(2.0, 0.0),
@@ -806,7 +802,7 @@ void main() {
     );
 
     test('Multi-dimensional axis support inside fft() and ifft()', () {
-      final mat = NDArray<DTypeTag>.fromList(
+      final mat = NDArray.fromList(
         [
           Complex(1.0, 0.0),
           Complex(1.0, 0.0),
@@ -1060,22 +1056,20 @@ void main() {
         'disposed out buffer throws StateError',
         () => NDArray.scope(() {
           final a = NDArray.zeros([8], DType.float64);
-          final complexInput = NDArray<DTypeTag>.zeros([5], DType.complex128);
+          final complexInput = NDArray.zeros([5], DType.complex128);
           final outComplex = NDArray<Complex128>.zeros([8], DType.complex128);
           outComplex.dispose();
 
           expect(() => fft(a, out: outComplex), throwsStateError);
           expect(() => ifft(complexInput, out: outComplex), throwsStateError);
 
-          final outReal = NDArray<DTypeTag>.zeros([8], DType.float64);
+          final outReal = NDArray.zeros([8], DType.float64);
           outReal.dispose();
           final rfftOut = NDArray<Complex128>.zeros([5], DType.complex128);
           rfftOut.dispose();
           expect(() => rfft(a, out: rfftOut), throwsStateError);
 
-          final complexInputForIrfft = NDArray<DTypeTag>.zeros([
-            5,
-          ], DType.complex128);
+          final complexInputForIrfft = NDArray.zeros([5], DType.complex128);
           expect(
             () => irfft(complexInputForIrfft, n: 8, out: outReal),
             throwsStateError,
@@ -1108,7 +1102,7 @@ void main() {
           final outRfftWrong = NDArray<Complex64>.zeros([5], DType.complex64);
           expect(() => rfft(a64, out: outRfftWrong), throwsArgumentError);
 
-          final outIrfftWrong = NDArray<DTypeTag>.zeros([8], DType.float32);
+          final outIrfftWrong = NDArray.zeros([8], DType.float32);
           final rfftIn = NDArray<Complex128>.zeros([5], DType.complex128);
           expect(
             () => irfft(rfftIn, n: 8, out: outIrfftWrong),

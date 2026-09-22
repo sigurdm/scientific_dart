@@ -21,7 +21,7 @@ void main() {
         expect(erasedF64 is NDArray<Float64>, isTrue);
         expect(erasedF64 is NDArray<Float32>, isFalse);
         expect(erasedF64 is NDArray<Float16>, isFalse);
-        expect(erasedF64 is NDArray<DTypeTag>, isTrue);
+        expect(erasedF64 is NDArray<AnySpec>, isTrue);
 
         expect((f32 as Object) is NDArray<Float32>, isTrue);
         expect((f32 as Object) is NDArray<Float64>, isFalse);
@@ -29,12 +29,12 @@ void main() {
         expect((i32 as Object) is NDArray<Int32>, isTrue);
         expect((i32 as Object) is NDArray<Int64>, isFalse);
         expect((i64 as Object) is NDArray<Int64>, isTrue);
-        expect((i64 as Object) is NDArray<DTypeTag>, isTrue);
+        expect((i64 as Object) is NDArray<AnySpec>, isTrue);
         expect((c128 as Object) is NDArray<Complex128>, isTrue);
         expect((c128 as Object) is NDArray<Complex64>, isFalse);
-        expect((c128 as Object) is NDArray<DTypeTag>, isTrue);
+        expect((c128 as Object) is NDArray<AnySpec>, isTrue);
         expect((b as Object) is NDArray<Boolean>, isTrue);
-        expect((b as Object) is NDArray<DTypeTag>, isTrue);
+        expect((b as Object) is NDArray<AnySpec>, isTrue);
 
         // Unannotated binary and unary operations statically infer concrete NDArray<T>:
         final NDArray<Float64> sumF64 = add(f64, f64);
@@ -123,7 +123,7 @@ void main() {
           final a = NDArray.fromList([30.0, 10.0, 20.0], [3], DType.float64);
           final out64 = NDArray.zeros([3], DType.int64);
 
-          final res = argsort(a, out: out64);
+          final res = argsortAs(a, DType.int64, out: out64);
           expect(res.dtype, DType.int64);
           expect((res as Object) is NDArray<Int64>, isTrue);
           expect(res.toList(), [1, 2, 0]);
@@ -132,12 +132,22 @@ void main() {
     );
 
     test(
-      'Bucket C: mismatched output type annotation throws TypeError at runtime',
+      'Bucket C: sin/fft/argsort/sum infer concrete return types and reject wrong casts at runtime',
       () {
         NDArray.scope(() {
           final f64 = NDArray.fromList([0.0, 1.0], [2], DType.float64);
+          final NDArray<Float64> s = sin(f64);
+          final NDArray<Complex128> f = fft(f64);
+          final NDArray<Int32> idx = argsort(f64);
+          final NDArray<Float64> total = sum(f64);
+          expect(s.dtype, DType.float64);
+          expect(f.dtype, DType.complex128);
+          expect(idx.dtype, DType.int32);
+          expect(total.dtype, DType.float64);
+
+          final NDArray<AnySpec> erased = f64;
           expect(() {
-            final NDArray<Float32> _ = sin<Float64, Float32>(f64);
+            final _ = sin(erased) as NDArray<Float32>;
           }, throwsA(isA<TypeError>()));
         });
       },
