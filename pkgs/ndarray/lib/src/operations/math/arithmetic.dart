@@ -10538,14 +10538,8 @@ void _copyMaskedResult(NDArray src, NDArray dest, NDArray<DTypeTag>? where) {
 
 /// Element-wise addition of [a] and [b] computed into the specified target [dtype].
 ///
-/// Unlike [add], which requires matching operand types `T`, [addAs] accepts two
-/// strongly-typed arrays of potentially different data types ([Ta] and [Tb]) and
+/// Accepts two arrays of potentially different data types ([Ta] and [Tb]) and
 /// returns an [NDArray<R>] whose static type [R] is inferred from [dtype].
-///
-/// Delegates directly to the native 15x15 cross-dtype C kernels whenever
-/// `resolveDType` matches [dtype] (zero intermediate allocations). If an operand's
-/// dtype would promote above [dtype], only that operand is cast to [dtype] before
-/// delegating to the cross-dtype C kernel.
 ///
 /// **Preconditions:**
 /// - It is an error if [a], [b], [where], or [out] is disposed.
@@ -10555,7 +10549,6 @@ void _copyMaskedResult(NDArray src, NDArray dest, NDArray<DTypeTag>? where) {
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the broadcasted element count.
-/// - Zero temporary allocations when `resolveDType(a.dtype, b.dtype) == dtype`.
 ///
 /// Reference: [NumPy add](https://numpy.org/doc/stable/reference/generated/numpy.add.html)
 NDArray<R> addAs<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
@@ -10596,12 +10589,8 @@ NDArray<R> addAs<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
 
 /// Element-wise subtraction of [a] and [b] computed into the specified target [dtype].
 ///
-/// Unlike [subtract], which requires matching operand types `T`, [subtractAs] accepts
-/// two strongly-typed arrays of potentially different data types ([Ta] and [Tb]) and
+/// Accepts two arrays of potentially different data types ([Ta] and [Tb]) and
 /// returns an [NDArray<R>] whose static type [R] is inferred from [dtype].
-///
-/// Delegates directly to the native 15x15 cross-dtype C kernels whenever
-/// `resolveDType` matches [dtype] (zero intermediate allocations).
 ///
 /// **Preconditions:**
 /// - It is an error if [a], [b], [where], or [out] is disposed.
@@ -10611,7 +10600,6 @@ NDArray<R> addAs<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the broadcasted element count.
-/// - Zero temporary allocations when `resolveDType(a.dtype, b.dtype) == dtype`.
 ///
 /// Reference: [NumPy subtract](https://numpy.org/doc/stable/reference/generated/numpy.subtract.html)
 NDArray<R>
@@ -10654,12 +10642,8 @@ subtractAs<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
 
 /// Element-wise multiplication of [a] and [b] computed into the specified target [dtype].
 ///
-/// Unlike [multiply], which requires matching operand types `T`, [multiplyAs] accepts
-/// two strongly-typed arrays of potentially different data types ([Ta] and [Tb]) and
+/// Accepts two arrays of potentially different data types ([Ta] and [Tb]) and
 /// returns an [NDArray<R>] whose static type [R] is inferred from [dtype].
-///
-/// Delegates directly to the native 15x15 cross-dtype C kernels whenever
-/// `resolveDType` matches [dtype] (zero intermediate allocations).
 ///
 /// **Preconditions:**
 /// - It is an error if [a], [b], [where], or [out] is disposed.
@@ -10669,7 +10653,6 @@ subtractAs<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the broadcasted element count.
-/// - Zero temporary allocations when `resolveDType(a.dtype, b.dtype) == dtype`.
 ///
 /// Reference: [NumPy multiply](https://numpy.org/doc/stable/reference/generated/numpy.multiply.html)
 NDArray<R>
@@ -10712,11 +10695,8 @@ multiplyAs<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
 
 /// Element-wise true division of [a] by [b] computed into the specified target [dtype].
 ///
-/// Accepts two strongly-typed arrays of potentially different data types ([Ta] and [Tb])
+/// Accepts two arrays of potentially different data types ([Ta] and [Tb])
 /// and returns an [NDArray<R>] whose static type [R] is inferred from [dtype].
-///
-/// Delegates directly to the native 15x15 cross-dtype C kernels in [divide] whenever
-/// the promoted division dtype matches [dtype] (zero intermediate allocations).
 ///
 /// **Preconditions:**
 /// - It is an error if [a], [b], [where], or [out] is disposed.
