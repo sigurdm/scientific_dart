@@ -5,9 +5,9 @@ import "../../ndarray_bindings.dart";
 import "../../scratch_arena.dart";
 import "../helpers.dart";
 
-NDArray<AnyDType> _complexPartView(
-  NDArray<AnyDType> a,
-  DType<AnyDType> floatDType, {
+NDArray<DTypeTag> _complexPartView(
+  NDArray<DTypeTag> a,
+  DType<DTypeTag> floatDType, {
   required bool isImag,
 }) {
   final floatStrides = a.strides.map((s) => s * 2).toList();
@@ -24,7 +24,7 @@ NDArray<AnyDType> _complexPartView(
   final ffi.Pointer<ffi.Void> basePtr = floatDType == DType.float64
       ? (a.pointer.cast<ffi.Double>() + elementOffset).cast<ffi.Void>()
       : (a.pointer.cast<ffi.Float>() + elementOffset).cast<ffi.Void>();
-  return NDArray<AnyDType>.fromPointer(
+  return NDArray<DTypeTag>.fromPointer(
     basePtr,
     a.shape,
     floatDType,
@@ -46,14 +46,14 @@ NDArray<AnyDType> _complexPartView(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<AnyComplex>.create([2], DType.complex128);
+/// final a = NDArray<DTypeTag>.create([2], DType.complex128);
 /// a.setCell([0], Complex(3.0, 4.0));
 /// a.setCell([1], Complex(-1.0, 0.0));
 /// final r = real(a); // [3.0, -1.0] (DType.float64)
 /// ```
-NDArray<R> real<T extends AnyDType, R extends AnyDType>(
+NDArray<R> real<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -62,7 +62,7 @@ NDArray<R> real<T extends AnyDType, R extends AnyDType>(
     throw StateError("Cannot execute real() on a disposed array.");
   }
 
-  final DType<AnyDType> targetDType;
+  final DType<DTypeTag> targetDType;
   switch (a.dtype) {
     case DType.complex64:
       targetDType = DType.float32;
@@ -181,14 +181,14 @@ NDArray<R> real<T extends AnyDType, R extends AnyDType>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<AnyComplex>.create([2], DType.complex128);
+/// final a = NDArray<DTypeTag>.create([2], DType.complex128);
 /// a.setCell([0], Complex(3.0, 4.0));
 /// a.setCell([1], Complex(-1.0, 0.0));
 /// final im = imag(a); // [4.0, 0.0] (DType.float64)
 /// ```
-NDArray<R> imag<T extends AnyDType, R extends AnyDType>(
+NDArray<R> imag<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -197,7 +197,7 @@ NDArray<R> imag<T extends AnyDType, R extends AnyDType>(
     throw StateError("Cannot execute imag() on a disposed array.");
   }
 
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex64 => DType.float32,
     _ => DType.float64,
   };
@@ -304,9 +304,9 @@ NDArray<R> imag<T extends AnyDType, R extends AnyDType>(
 /// final a = NDArray.fromList([Complex(1.0, 2.0)], [1], DType.complex128);
 /// final c = conj(a); // [Complex(1.0, -2.0)]
 /// ```
-NDArray<T> conj<T extends AnyDType>(
+NDArray<T> conj<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -430,8 +430,8 @@ NDArray<T> conj<T extends AnyDType>(
 }
 
 /// Alias for [conj].
-NDArray<T> conjugate<T extends AnyDType>(
+NDArray<T> conjugate<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) => conj(a, where: where, out: out);

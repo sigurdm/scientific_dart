@@ -7,7 +7,7 @@ void main() {
     test(
       'asStrided on view with non-zero offsetElements does not double-add offsetElements and validates bounds',
       () {
-        final base = NDArray<AnyInt>.fromList(
+        final base = NDArray<DTypeTag>.fromList(
           [10, 20, 30, 40, 50, 60],
           [6],
           DType.int64,
@@ -39,12 +39,12 @@ void main() {
     test(
       'linspaceGrid on sliced start/stop/out views respects offsetElements',
       () {
-        final baseStart = NDArray<AnyFloat>.fromList(
+        final baseStart = NDArray<DTypeTag>.fromList(
           [99.0, 0.0, 10.0],
           [3],
           DType.float64,
         );
-        final baseStop = NDArray<AnyFloat>.fromList(
+        final baseStop = NDArray<DTypeTag>.fromList(
           [99.0, 2.0, 20.0],
           [3],
           DType.float64,
@@ -67,17 +67,17 @@ void main() {
     );
 
     test('clipArray on sliced views respects offsetElements', () {
-      final baseA = NDArray<AnyFloat>.fromList(
+      final baseA = NDArray<DTypeTag>.fromList(
         [99.0, -5.0, 5.0, 15.0],
         [4],
         DType.float64,
       );
-      final baseMin = NDArray<AnyFloat>.fromList(
+      final baseMin = NDArray<DTypeTag>.fromList(
         [99.0, 0.0, 0.0, 0.0],
         [4],
         DType.float64,
       );
-      final baseMax = NDArray<AnyFloat>.fromList(
+      final baseMax = NDArray<DTypeTag>.fromList(
         [99.0, 10.0, 10.0, 10.0],
         [4],
         DType.float64,
@@ -99,7 +99,7 @@ void main() {
     test(
       'choice and shuffle on sliced views do not double-add offsetElements',
       () {
-        final base = NDArray<AnyInt>.fromList(
+        final base = NDArray<DTypeTag>.fromList(
           [999, 888, 10, 20, 30],
           [5],
           DType.int64,
@@ -126,7 +126,11 @@ void main() {
     test(
       'sqrt on sliced view and non-contiguous out does not double-add offsetElements',
       () {
-        final base = NDArray<AnyInt>.fromList([99, 4, 9, 16], [4], DType.int64);
+        final base = NDArray<DTypeTag>.fromList(
+          [99, 4, 9, 16],
+          [4],
+          DType.int64,
+        );
         final view = base.slice([
           Slice(start: 1, stop: 4),
         ]); // [4, 9, 16], offset = 1
@@ -141,7 +145,7 @@ void main() {
     test(
       'ndenumerate on 0-D view with non-zero offsetElements reads correct element without RangeError',
       () {
-        final base = NDArray<AnyInt>.fromList(
+        final base = NDArray<DTypeTag>.fromList(
           [100, 200, 300],
           [3],
           DType.int64,
@@ -170,12 +174,12 @@ void main() {
       test(
         'isClose on transposed/sliced non-contiguous views works accurately',
         () {
-          final aBase = NDArray<AnyFloat>.fromList(
+          final aBase = NDArray<DTypeTag>.fromList(
             [1.0, 2.0, 3.0, 4.0],
             [2, 2],
             DType.float64,
           );
-          final bBase = NDArray<AnyFloat>.fromList(
+          final bBase = NDArray<DTypeTag>.fromList(
             [1.0, 3.0, 2.0, 4.0],
             [2, 2],
             DType.float64,
@@ -226,7 +230,7 @@ void main() {
       test(
         'flip on empty array (axis size 0) does not produce negative offsetElements',
         () {
-          final empty = NDArray<AnyFloat>.create([0, 3], DType.float64);
+          final empty = NDArray<DTypeTag>.create([0, 3], DType.float64);
           final flipped = flip(empty, axis: 0);
           expect(flipped.shape, equals([0, 3]));
           expect(flipped.offsetElements, equals(0));
@@ -237,8 +241,8 @@ void main() {
       test(
         'diag on 1D input with non-contiguous out writes to exact strided coordinates',
         () {
-          final v = NDArray<AnyInt>.fromList([1, 2, 3], [3], DType.int64);
-          final outBase = NDArray<AnyInt>.zeros([3, 3], DType.int64);
+          final v = NDArray<DTypeTag>.fromList([1, 2, 3], [3], DType.int64);
+          final outBase = NDArray<DTypeTag>.zeros([3, 3], DType.int64);
           final outTransposed = outBase.transpose(); // non-contiguous view
           diag(v, out: outTransposed);
           expect(outBase.toList(), equals([1, 0, 0, 0, 2, 0, 0, 0, 3]));
@@ -251,12 +255,16 @@ void main() {
       test(
         'diag on 2D input with out-of-bounds k validates and returns out buffer',
         () {
-          final m = NDArray<AnyInt>.fromList([1, 2, 3, 4], [2, 2], DType.int64);
-          final outValid = NDArray<AnyInt>.create([0], DType.int64);
+          final m = NDArray<DTypeTag>.fromList(
+            [1, 2, 3, 4],
+            [2, 2],
+            DType.int64,
+          );
+          final outValid = NDArray<DTypeTag>.create([0], DType.int64);
           final res = diag(m, k: 5, out: outValid);
           expect(identical(res, outValid), isTrue);
 
-          final outInvalid = NDArray<AnyInt>.create([1], DType.int64);
+          final outInvalid = NDArray<DTypeTag>.create([1], DType.int64);
           expect(() => diag(m, k: 5, out: outInvalid), throwsArgumentError);
 
           m.dispose();
@@ -268,11 +276,19 @@ void main() {
       test(
         'in-place roll on strided and contiguous arrays avoids overwrite corruption',
         () {
-          final a = NDArray<AnyInt>.fromList([1, 2, 3, 4, 5], [5], DType.int64);
+          final a = NDArray<DTypeTag>.fromList(
+            [1, 2, 3, 4, 5],
+            [5],
+            DType.int64,
+          );
           roll(a, 2, out: a);
           expect(a.toList(), equals([4, 5, 1, 2, 3]));
 
-          final m = NDArray<AnyInt>.fromList([1, 2, 3, 4], [2, 2], DType.int64);
+          final m = NDArray<DTypeTag>.fromList(
+            [1, 2, 3, 4],
+            [2, 2],
+            DType.int64,
+          );
           final mT = m.transpose(); // [[1, 3], [2, 4]]
           roll(mT, 1, axis: 0, out: mT);
           expect(mT.toList(), equals([2, 4, 1, 3]));
@@ -290,7 +306,7 @@ void main() {
       test(
         'trigonometric and arithmetic ufuncs zero-initialize unmasked elements when out == null',
         () {
-          final a = NDArray<AnyFloat>.fromList(
+          final a = NDArray<DTypeTag>.fromList(
             [1.0, 2.0, 3.0],
             [3],
             DType.float64,
@@ -305,7 +321,7 @@ void main() {
           expect(s.getCell([1]), equals(0.0));
 
           final c = ceil(
-            NDArray<AnyInt>.fromList([5, 6, 7], [3], DType.int64),
+            NDArray<DTypeTag>.fromList([5, 6, 7], [3], DType.int64),
             where: mask,
           );
           expect(c.toList(), equals([5, 0, 7]));
@@ -333,7 +349,7 @@ void main() {
             DType.float16,
           );
 
-          add<Float16, Float16, Float16>(a, b, where: mask, out: out);
+          add<Float16>(a, b, where: mask, out: out);
           expect(out.getCell([0]).toDouble(), closeTo(11.0, 1e-2));
           expect(out.getCell([1]).toDouble(), closeTo(88.0, 1e-2));
 
@@ -358,7 +374,7 @@ void main() {
         expect(min(b).scalar, isFalse);
         expect(max(b).scalar, isTrue);
 
-        final c = NDArray<AnyComplex>.fromList(
+        final c = NDArray<DTypeTag>.fromList(
           [Complex(2.0, 1.0), Complex(1.0, 5.0), Complex(1.0, 2.0)],
           [3],
           DType.complex128,
@@ -390,9 +406,9 @@ void main() {
       );
 
       test('floatPower promotes integer inputs to float64', () {
-        final a = NDArray<AnyInt>.fromList([2, 4], [2], DType.int64);
-        final b = NDArray<AnyInt>.fromList([-1, -2], [2], DType.int64);
-        final res = binaryUfunc<AnyInt, AnyFloat>(
+        final a = NDArray<DTypeTag>.fromList([2, 4], [2], DType.int64);
+        final b = NDArray<DTypeTag>.fromList([-1, -2], [2], DType.int64);
+        final res = binaryUfunc<DTypeTag, DTypeTag>(
           a,
           b,
           op: BinaryOp.floatPower,
@@ -407,18 +423,18 @@ void main() {
       test(
         'minimum/maximum propagate NaN symmetrically while fmin/fmax ignore NaN',
         () {
-          final a = NDArray<AnyFloat>.fromList(
+          final a = NDArray<DTypeTag>.fromList(
             [1.0, double.nan],
             [2],
             DType.float64,
           );
-          final b = NDArray<AnyFloat>.fromList(
+          final b = NDArray<DTypeTag>.fromList(
             [double.nan, 2.0],
             [2],
             DType.float64,
           );
 
-          final minRes = binaryUfunc<AnyFloat, AnyFloat>(
+          final minRes = binaryUfunc<DTypeTag, DTypeTag>(
             a,
             b,
             op: BinaryOp.minimum,
@@ -426,7 +442,7 @@ void main() {
           expect(minRes.getCell([0]).isNaN, isTrue);
           expect(minRes.getCell([1]).isNaN, isTrue);
 
-          final fminRes = binaryUfunc<AnyFloat, AnyFloat>(
+          final fminRes = binaryUfunc<DTypeTag, DTypeTag>(
             a,
             b,
             op: BinaryOp.fmin,
@@ -441,7 +457,7 @@ void main() {
       );
 
       test('reduceUfunc with initial != null and keepdims: true succeeds', () {
-        final a = NDArray<AnyInt>.fromList([1, 2, 3, 4], [2, 2], DType.int64);
+        final a = NDArray<DTypeTag>.fromList([1, 2, 3, 4], [2, 2], DType.int64);
         final res = reduceUfunc(
           a,
           op: BinaryOp.add,
@@ -457,7 +473,7 @@ void main() {
       });
 
       test('quantile and median respect keepdims: true when axis == null', () {
-        final a = NDArray<AnyFloat>.fromList(
+        final a = NDArray<DTypeTag>.fromList(
           [1.0, 2.0, 3.0, 4.0],
           [2, 2],
           DType.float64,
@@ -482,7 +498,7 @@ void main() {
       'castNDArray and castValue preserve unsigned uint64 values >= 2^63',
       () {
         // -1 in signed 64-bit int represents 18446744073709551615 (2^64 - 1)
-        final u = NDArray<AnyInt>.fromList([-1], [1], DType.uint64);
+        final u = NDArray<DTypeTag>.fromList([-1], [1], DType.uint64);
         final f = castNDArray(u, DType.float64);
         expect(f.getCell([0]), closeTo(18446744073709551615.0, 1e5));
 
@@ -497,7 +513,7 @@ void main() {
 
     test('cummin and cummax on uint64 use unsigned comparison', () {
       // 10 vs -1 (18446744073709551615)
-      final u = NDArray<AnyInt>.fromList([10, -1, 5], [3], DType.uint64);
+      final u = NDArray<DTypeTag>.fromList([10, -1, 5], [3], DType.uint64);
       final cmin = cummin(u);
       final cmax = cummax(u);
       expect(cmin.toList(), equals([10, 10, 5]));
@@ -512,7 +528,7 @@ void main() {
       'median on uint64 with values >= 2^63 does not clamp to signed int64 max',
       () {
         // Two elements both equal to -2 (2^64 - 2) -> median should be -2
-        final u = NDArray<AnyInt>.fromList([-2, -2], [2], DType.uint64);
+        final u = NDArray<DTypeTag>.fromList([-2, -2], [2], DType.uint64);
         final med = median(u);
         expect(med.scalar, equals(-2));
 
@@ -524,7 +540,7 @@ void main() {
     test(
       'clip on uint64 treats values >= 2^63 as positive unsigned integers',
       () {
-        final u = NDArray<AnyInt>.fromList([5, -1], [2], DType.uint64);
+        final u = NDArray<DTypeTag>.fromList([5, -1], [2], DType.uint64);
         final c = clip(u, min: 10);
         // 5 clipped to 10; -1 (max uint64) stays -1
         expect(c.toList(), equals([10, -1]));
@@ -541,12 +557,12 @@ void main() {
       test(
         'toNDArray returns zero-copy view when runtime generic type differs',
         () {
-          final NDArray<AnyDType> objArr = NDArray<AnyFloat>.fromList(
+          final NDArray<DTypeTag> objArr = NDArray<DTypeTag>.fromList(
             [1.0, 2.0],
             [2],
             DType.float64,
           );
-          final typed = toNDArray<AnyFloat>(objArr, DType.float64);
+          final typed = toNDArray<DTypeTag>(objArr, DType.float64);
           expect(typed.toList(), equals([1.0, 2.0]));
           objArr.dispose();
         },
@@ -556,7 +572,7 @@ void main() {
         'put_along_axis casts values when runtime extension types erase to double',
         () {
           final arr = NDArray<Float16>.fromList([0.0, 0.0], [2], DType.float16);
-          final indices = NDArray<AnyInt>.fromList([0, 1], [2], DType.int64);
+          final indices = NDArray<DTypeTag>.fromList([0, 1], [2], DType.int64);
           final values = NDArray<Float64>.fromList(
             [3.5, 7.25],
             [2],
@@ -576,8 +592,8 @@ void main() {
       test(
         'choose infers integer dtype for integer scalars and casts mixed choices',
         () {
-          final a = NDArray<AnyInt>.fromList([0, 1], [2], DType.int64);
-          final resInt = choose<AnyInt>(a, [10, 20]);
+          final a = NDArray<DTypeTag>.fromList([0, 1], [2], DType.int64);
+          final resInt = choose<DTypeTag>(a, [10, 20]);
           expect(resInt.dtype, equals(DType.int64));
           expect(resInt.toList(), equals([10, 20]));
 
@@ -597,7 +613,7 @@ void main() {
           [2, 2],
           DType.boolean,
         );
-        final outBase = NDArray<AnyInt>.zeros([2, 2], DType.int32);
+        final outBase = NDArray<DTypeTag>.zeros([2, 2], DType.int32);
         final outTransposed = outBase.transpose();
 
         final res = argsort(b, axis: 1, out: outTransposed);
@@ -609,7 +625,11 @@ void main() {
     );
 
     test('sort on uint64 multi-row array sorts unsigned values per row', () {
-      final u = NDArray<AnyInt>.fromList([-1, 5, 10, -2], [2, 2], DType.uint64);
+      final u = NDArray<DTypeTag>.fromList(
+        [-1, 5, 10, -2],
+        [2, 2],
+        DType.uint64,
+      );
       final sorted = sort(u, axis: 1);
       expect(sorted.toList(), equals([5, -1, 10, -2]));
 
@@ -620,7 +640,7 @@ void main() {
 
   group('Bug 9: padding.dart, spacers.dart, & helpers.dart Bugs', () {
     test('pad with zero padding returns a new copy, not input array', () {
-      final a = NDArray<AnyInt>.fromList([1, 2, 3], [3], DType.int64);
+      final a = NDArray<DTypeTag>.fromList([1, 2, 3], [3], DType.int64);
       final padded = pad(a, PadWidth.all(0));
       expect(identical(padded, a), isFalse);
       padded.setCell([0], 99);
@@ -633,7 +653,7 @@ void main() {
     test(
       'linspaceWithStep and linspaceGridWithStep with numSamples == 0 on integer dtype do not crash',
       () {
-        final res = linspaceWithStep<AnyInt>(0, 10, 0, dtype: DType.int64);
+        final res = linspaceWithStep<DTypeTag>(0, 10, 0, dtype: DType.int64);
         expect(res.samples.shape, equals([0]));
         expect(res.step, equals(0));
         res.samples.dispose();
@@ -641,8 +661,8 @@ void main() {
     );
 
     test('logspaceGrid with axis != 0 and base array broadcasts properly', () {
-      final start = NDArray<AnyFloat>.fromList([0.0, 1.0], [2], DType.float64);
-      final stop = NDArray<AnyFloat>.fromList([1.0, 2.0], [2], DType.float64);
+      final start = NDArray<DTypeTag>.fromList([0.0, 1.0], [2], DType.float64);
+      final stop = NDArray<DTypeTag>.fromList([1.0, 2.0], [2], DType.float64);
       final base = NDArray<Float64>.fromList([10.0, 2.0], [2], DType.float64);
 
       final res = logspaceGrid(start, stop, 3, base: base, axis: 1);
@@ -659,12 +679,12 @@ void main() {
     });
 
     test('geomspaceGrid supports negative start and stop with same sign', () {
-      final start = NDArray<AnyFloat>.fromList(
+      final start = NDArray<DTypeTag>.fromList(
         [-1.0, -10.0],
         [2],
         DType.float64,
       );
-      final stop = NDArray<AnyFloat>.fromList(
+      final stop = NDArray<DTypeTag>.fromList(
         [-100.0, -1000.0],
         [2],
         DType.float64,
@@ -688,12 +708,12 @@ void main() {
       test(
         'geomspaceGrid with small negative floats does not underflow sign check to zero',
         () {
-          final start = NDArray<AnyFloat>.fromList(
+          final start = NDArray<DTypeTag>.fromList(
             [-1e-200, -1e-200],
             [2],
             DType.float64,
           );
-          final stop = NDArray<AnyFloat>.fromList(
+          final stop = NDArray<DTypeTag>.fromList(
             [-1e-198, -1e-198],
             [2],
             DType.float64,
@@ -715,7 +735,7 @@ void main() {
           // 1 << 62 is 4611686018427387904 (sqrt = 2147483648.0)
           // 1 << 63 is -9223372036854775808 in signed int64 (unsigned 9223372036854775808, sqrt = 3037000499.9760499)
           final val63 = (BigInt.one << 63).toSigned(64).toInt();
-          final u = NDArray<AnyInt>.fromList([val63], [1], DType.uint64);
+          final u = NDArray<DTypeTag>.fromList([val63], [1], DType.uint64);
           final sq = sqrt(u);
           expect(sq.getCell([0]).isNaN, isFalse);
           expect(sq.getCell([0]), closeTo(3037000499.97605, 1e-3));
@@ -727,7 +747,7 @@ void main() {
       test(
         'clip on uint64 when min > max clamps to max matching NumPy/C behavior',
         () {
-          final u = NDArray<AnyInt>.fromList([5, 50, 500], [3], DType.uint64);
+          final u = NDArray<DTypeTag>.fromList([5, 50, 500], [3], DType.uint64);
           final clipped = clip(u, min: 100, max: 10);
           expect(clipped.toList(), equals([10, 10, 10]));
           u.dispose();
@@ -738,7 +758,7 @@ void main() {
       test(
         'nan_to_num with where mask preserves unmasked elements when out == null',
         () {
-          final a = NDArray<AnyFloat>.fromList(
+          final a = NDArray<DTypeTag>.fromList(
             [double.nan, double.nan, double.infinity],
             [3],
             DType.float64,
@@ -772,7 +792,7 @@ void main() {
           final sb = nansum(b);
           expect(sb.scalar, isTrue);
 
-          final u = NDArray<AnyInt>.fromList([10, 20, 30], [3], DType.uint64);
+          final u = NDArray<DTypeTag>.fromList([10, 20, 30], [3], DType.uint64);
           final su = nansum(u);
           expect(su.scalar, equals(60));
 
@@ -784,17 +804,17 @@ void main() {
       );
 
       test('floatPower on complex numbers promotes to complex128', () {
-        final c = NDArray<AnyComplex>.fromList(
+        final c = NDArray<DTypeTag>.fromList(
           [Complex(0.0, 1.0)],
           [1],
           DType.complex64,
         );
-        final p = NDArray<AnyComplex>.fromList(
+        final p = NDArray<DTypeTag>.fromList(
           [Complex(2.0, 0.0)],
           [1],
           DType.complex64,
         );
-        final res = binaryUfunc<AnyComplex, AnyComplex>(
+        final res = binaryUfunc<DTypeTag, DTypeTag>(
           c,
           p,
           op: BinaryOp.floatPower,
@@ -810,18 +830,18 @@ void main() {
       test(
         'minimum/maximum vs fmin/fmax on complex numbers with NaN components',
         () {
-          final a = NDArray<AnyComplex>.fromList(
+          final a = NDArray<DTypeTag>.fromList(
             [Complex(1.0, double.nan)],
             [1],
             DType.complex128,
           );
-          final b = NDArray<AnyComplex>.fromList(
+          final b = NDArray<DTypeTag>.fromList(
             [Complex(2.0, 0.0)],
             [1],
             DType.complex128,
           );
 
-          final minRes = binaryUfunc<AnyComplex, AnyComplex>(
+          final minRes = binaryUfunc<DTypeTag, DTypeTag>(
             a,
             b,
             op: BinaryOp.minimum,
@@ -829,7 +849,7 @@ void main() {
           expect(minRes.getCell([0]).real, equals(1.0));
           expect(minRes.getCell([0]).imag.isNaN, isTrue);
 
-          final fminRes = binaryUfunc<AnyComplex, AnyComplex>(
+          final fminRes = binaryUfunc<DTypeTag, DTypeTag>(
             a,
             b,
             op: BinaryOp.fmin,
@@ -844,12 +864,12 @@ void main() {
       );
 
       test('bincount with non-contiguous out view writes accurately', () {
-        final x = NDArray<AnyInt>.fromList(
+        final x = NDArray<DTypeTag>.fromList(
           [0, 1, 1, 2, 2, 2],
           [6],
           DType.int32,
         );
-        final outBase = NDArray<AnyInt>.zeros([2, 3], DType.int64);
+        final outBase = NDArray<DTypeTag>.zeros([2, 3], DType.int64);
         final outStrided = outBase.slice([Index(1), Slice()]);
         bincount(x, out: outStrided);
         expect(outStrided.toList(), equals([1, 2, 3]));
@@ -863,12 +883,12 @@ void main() {
 
   group('Additional Combined Regression Coverage', () {
     test('allClose on transposed non-contiguous arrays', () {
-      final a = NDArray<AnyFloat>.fromList(
+      final a = NDArray<DTypeTag>.fromList(
         [1.0, 2.0, 3.0, 4.0],
         [2, 2],
         DType.float64,
       );
-      final b = NDArray<AnyFloat>.fromList(
+      final b = NDArray<DTypeTag>.fromList(
         [1.0, 3.0, 2.0, 4.0],
         [2, 2],
         DType.float64,
@@ -906,7 +926,7 @@ void main() {
     test(
       'roll in-place on strided slice view (step: 2) avoids overwrite corruption',
       () {
-        final base = NDArray<AnyInt>.fromList(
+        final base = NDArray<DTypeTag>.fromList(
           [1, 0, 2, 0, 3, 0, 4, 0],
           [8],
           DType.int32,
@@ -920,13 +940,13 @@ void main() {
     );
 
     test('choose with mixed Float16 and Float64 choice arrays', () {
-      final idx = NDArray<AnyInt>.fromList([0, 1, 0], [3], DType.int32);
+      final idx = NDArray<DTypeTag>.fromList([0, 1, 0], [3], DType.int32);
       final cFloat16 = NDArray<Float16>.fromList(
         [1.5, 2.5, 3.5],
         [3],
         DType.float16,
       );
-      final cFloat64 = NDArray<AnyFloat>.fromList(
+      final cFloat64 = NDArray<DTypeTag>.fromList(
         [10.0, 20.0, 30.0],
         [3],
         DType.float64,
@@ -943,7 +963,7 @@ void main() {
     });
 
     test('partition with uint64 on 2D array partitions each row once', () {
-      final u = NDArray<AnyInt>.fromList(
+      final u = NDArray<DTypeTag>.fromList(
         [-1, 10, 5, 20, 1, 15],
         [2, 3],
         DType.uint64,
@@ -958,7 +978,7 @@ void main() {
     test(
       'pad with (0, 0) pad widths inside scope does not detach caller input array',
       () {
-        final outer = NDArray<AnyFloat>.fromList(
+        final outer = NDArray<DTypeTag>.fromList(
           [1.0, 2.0, 3.0],
           [3],
           DType.float64,
@@ -981,7 +1001,7 @@ void main() {
       () {
         final v1 = ((BigInt.one << 63) + BigInt.from(1)).toSigned(64).toInt();
         final v2 = 10;
-        final uPrec = NDArray<AnyInt>.fromList([v1, v2], [2], DType.uint64);
+        final uPrec = NDArray<DTypeTag>.fromList([v1, v2], [2], DType.uint64);
         final csum = cumsum(uPrec, axis: 0);
         final expectedSum = ((BigInt.one << 63) + BigInt.from(11))
             .toSigned(64)
@@ -993,7 +1013,7 @@ void main() {
           [4],
           DType.boolean,
         );
-        final intOut = NDArray<AnyInt>.create([4], DType.int32);
+        final intOut = NDArray<DTypeTag>.create([4], DType.int32);
         cumsum(boolArr, axis: 0, out: intOut);
         expect(intOut.toList(), equals([1, 2, 2, 3]));
 
@@ -1007,8 +1027,8 @@ void main() {
     test(
       'clipArray on uint64 treats values >= 2^63 as positive unsigned integers',
       () {
-        final u = NDArray<AnyInt>.fromList([5, -1], [2], DType.uint64);
-        final minArr = NDArray<AnyInt>.fromList([10, 10], [2], DType.uint64);
+        final u = NDArray<DTypeTag>.fromList([5, -1], [2], DType.uint64);
+        final minArr = NDArray<DTypeTag>.fromList([10, 10], [2], DType.uint64);
         final cArr = clipArray(u, min: minArr);
         expect(cArr.toList(), equals([10, -1]));
 
@@ -1044,7 +1064,7 @@ void main() {
     test(
       'isnan and isinf handle uint64, int8, and float16 arrays without uninitialized memory',
       () {
-        final u = NDArray<AnyInt>.fromList([0, -1, 42], [3], DType.uint64);
+        final u = NDArray<DTypeTag>.fromList([0, -1, 42], [3], DType.uint64);
         final nanU = isnan(u);
         final infU = isinf(u);
         expect(nanU.toList(), equals([false, false, false]));

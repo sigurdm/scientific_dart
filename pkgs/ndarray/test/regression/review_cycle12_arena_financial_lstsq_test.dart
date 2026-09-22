@@ -174,15 +174,15 @@ void main() {
         'lstsq zero-fills out: buffer when m == 0 and n == 3 and does not leak casts',
         () {
           NDArray.scope(() {
-            final aEmptyRows = NDArray<AnyInt>.zeros([0, 3], DType.int32);
-            final bEmptyRows = NDArray<AnyInt>.zeros([0], DType.int32);
+            final aEmptyRows = NDArray<DTypeTag>.zeros([0, 3], DType.int32);
+            final bEmptyRows = NDArray<DTypeTag>.zeros([0], DType.int32);
             final outBuf = NDArray<Float64>.fromList(
               [99.0, -42.0, 123.0],
               [3],
               DType.float64,
             );
 
-            final res = lstsq<AnyInt, AnyInt, Float64>(
+            final res = lstsq<DTypeTag, DTypeTag, Float64>(
               aEmptyRows,
               bEmptyRows,
               out: outBuf,
@@ -246,7 +246,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final badIndices = NDArray<AnyInt>.fromList(
+          final badIndices = NDArray<DTypeTag>.fromList(
             [0, 5],
             [1, 2],
             DType.int32,

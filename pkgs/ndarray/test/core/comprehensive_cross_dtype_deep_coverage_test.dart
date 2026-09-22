@@ -43,7 +43,7 @@ void main() {
       DType.complex64,
     ];
 
-    NDArray<AnyReal> makeNumArr(
+    NDArray<DTypeTag> makeNumArr(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -55,17 +55,17 @@ void main() {
         return val;
       });
 
-      final dtObj = dt as DType<AnyReal>;
+      final dtObj = dt;
       if (strided) {
-        final flatArr = NDArray<AnyReal>.fromList(rawList, [size * 2], dtObj);
+        final flatArr = NDArray<DTypeTag>.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<AnyReal>.fromList(rawList, shape, dtObj);
+        return NDArray<DTypeTag>.fromList(rawList, shape, dtObj);
       }
     }
 
-    NDArray<AnyDType> makeArr(
+    NDArray<DTypeTag> makeArr(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -83,11 +83,11 @@ void main() {
 
       final dtObj = dt;
       if (strided) {
-        final flatArr = NDArray<AnyDType>.fromList(rawList, [size * 2], dtObj);
+        final flatArr = NDArray<DTypeTag>.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<AnyDType>.fromList(rawList, shape, dtObj);
+        return NDArray<DTypeTag>.fromList(rawList, shape, dtObj);
       }
     }
 
@@ -235,7 +235,7 @@ void main() {
                   ]
                 : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-            final arr = NDArray<AnyReal>.fromList(raw, [3, 4], dt);
+            final arr = NDArray<DTypeTag>.fromList(raw, [3, 4], dt);
 
             // nanmean
             final nmAll = nanmean(arr);

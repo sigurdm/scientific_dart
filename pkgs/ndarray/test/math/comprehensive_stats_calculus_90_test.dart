@@ -1885,7 +1885,7 @@ void main() {
                 );
 
                 // Simple unique
-                final u = unique(a) as NDArray<AnyInt>;
+                final u = unique(a) as NDArray<DTypeTag>;
                 expect(u.toList(), equals([1, 2, 3, 4]));
 
                 // With all 3 flags
@@ -1941,7 +1941,7 @@ void main() {
                   DType.int64,
                 );
                 expect(
-                  (unique(aI64) as NDArray<AnyInt>).toList(),
+                  (unique(aI64) as NDArray<DTypeTag>).toList(),
                   equals([10, 20, 30]),
                 );
 
@@ -1951,7 +1951,7 @@ void main() {
                   DType.float32,
                 );
                 expect(
-                  (unique(aF32) as NDArray<AnyFloat>).toList(),
+                  (unique(aF32) as NDArray<DTypeTag>).toList(),
                   equals([1.0, 2.0, 3.0]),
                 );
 
@@ -1961,7 +1961,7 @@ void main() {
                   DType.uint8,
                 );
                 expect(
-                  (unique(aU8) as NDArray<AnyInt>).toList(),
+                  (unique(aU8) as NDArray<DTypeTag>).toList(),
                   equals([0, 128, 255]),
                 );
 

@@ -10,9 +10,9 @@ void main() async {
   await criterion(
     'NDArray Statistics & Reductions Benchmark Suite',
     (c) {
-      final vec1d = linspace<AnyFloat>(0.0, 100.0, size, dtype: DType.float64);
+      final vec1d = linspace<DTypeTag>(0.0, 100.0, size, dtype: DType.float64);
 
-      final mat2d = linspace<AnyFloat>(
+      final mat2d = linspace<DTypeTag>(
         0.0,
         1000.0,
         matrixRows * matrixCols,
@@ -47,7 +47,7 @@ void main() async {
           blackhole(res);
         }, throughput: Throughput.elements(size));
 
-        final weights = linspace<AnyFloat>(
+        final weights = linspace<DTypeTag>(
           1.0,
           10.0,
           size,
@@ -60,7 +60,7 @@ void main() async {
       });
 
       c.group('2. Order Statistics (Median & Quantile)', () {
-        final randVec = NDArray<AnyFloat>.fromList(
+        final randVec = NDArray<DTypeTag>.fromList(
           List.generate(size, (i) => ((i * 37) % 1000).toDouble()),
           [size],
           DType.float64,
@@ -85,7 +85,7 @@ void main() async {
       c.group('3. Covariance & Correlation', () {
         const nVars = 50;
         const nObs = 500;
-        final obsMat = linspace<AnyFloat>(
+        final obsMat = linspace<DTypeTag>(
           0.0,
           100.0,
           nVars * nObs,

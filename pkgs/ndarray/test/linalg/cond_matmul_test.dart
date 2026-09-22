@@ -226,13 +226,13 @@ void main() {
           [2, 2],
           DType.float16,
         );
-        final res = matmul<Float16, Float16, Float16>(a, b);
+        final res = matmul<Float16>(a, b);
         expect(res.dtype, equals(DType.float16));
         expect(res.shape, equals([2, 2]));
         expect(res.toList(), equals([4.0, 4.0, 10.0, 8.0]));
 
         final out = NDArray<Float16>.zeros([2, 2], DType.float16);
-        final resOut = matmul<Float16, Float16, Float16>(a, b, out: out);
+        final resOut = matmul<Float16>(a, b, out: out);
         expect(identical(resOut, out), isTrue);
         expect(out.toList(), equals([4.0, 4.0, 10.0, 8.0]));
       });
@@ -250,13 +250,13 @@ void main() {
           [2, 2],
           DType.bfloat16,
         );
-        final res = matmul<BFloat16, BFloat16, BFloat16>(a, b);
+        final res = matmul<BFloat16>(a, b);
         expect(res.dtype, equals(DType.bfloat16));
         expect(res.shape, equals([2, 2]));
         expect(res.toList(), equals([4.0, 4.0, 10.0, 8.0]));
 
         final out = NDArray<BFloat16>.zeros([2, 2], DType.bfloat16);
-        final resOut = matmul<BFloat16, BFloat16, BFloat16>(a, b, out: out);
+        final resOut = matmul<BFloat16>(a, b, out: out);
         expect(identical(resOut, out), isTrue);
         expect(out.toList(), equals([4.0, 4.0, 10.0, 8.0]));
       });
@@ -266,13 +266,13 @@ void main() {
       NDArray.scope(() {
         final a = NDArray<Int8>.fromList([1, 2, 3, 4], [2, 2], DType.int8);
         final b = NDArray<Int8>.fromList([2, -1, 1, 2], [2, 2], DType.int8);
-        final res = matmul<Int8, Int8, Int8>(a, b);
+        final res = matmul<Int8>(a, b);
         expect(res.dtype, equals(DType.int8));
         expect(res.shape, equals([2, 2]));
         expect(res.toList(), equals([4, 3, 10, 5]));
 
         final out = NDArray<Int8>.zeros([2, 2], DType.int8);
-        final resOut = matmul<Int8, Int8, Int8>(a, b, out: out);
+        final resOut = matmul<Int8>(a, b, out: out);
         expect(identical(resOut, out), isTrue);
         expect(out.toList(), equals([4, 3, 10, 5]));
       });
@@ -286,13 +286,13 @@ void main() {
           DType.uint16,
         );
         final b = NDArray<Uint16>.fromList([2, 1, 1, 2], [2, 2], DType.uint16);
-        final res = matmul<Uint16, Uint16, Uint16>(a, b);
+        final res = matmul<Uint16>(a, b);
         expect(res.dtype, equals(DType.uint16));
         expect(res.shape, equals([2, 2]));
         expect(res.toList(), equals([40, 50, 100, 110]));
 
         final out = NDArray<Uint16>.zeros([2, 2], DType.uint16);
-        final resOut = matmul<Uint16, Uint16, Uint16>(a, b, out: out);
+        final resOut = matmul<Uint16>(a, b, out: out);
         expect(identical(resOut, out), isTrue);
         expect(out.toList(), equals([40, 50, 100, 110]));
       });
@@ -306,13 +306,13 @@ void main() {
           DType.uint32,
         );
         final b = NDArray<Uint32>.fromList([2, 1, 1, 2], [2, 2], DType.uint32);
-        final res = matmul<Uint32, Uint32, Uint32>(a, b);
+        final res = matmul<Uint32>(a, b);
         expect(res.dtype, equals(DType.uint32));
         expect(res.shape, equals([2, 2]));
         expect(res.toList(), equals([400, 500, 1000, 1100]));
 
         final out = NDArray<Uint32>.zeros([2, 2], DType.uint32);
-        final resOut = matmul<Uint32, Uint32, Uint32>(a, b, out: out);
+        final resOut = matmul<Uint32>(a, b, out: out);
         expect(identical(resOut, out), isTrue);
         expect(out.toList(), equals([400, 500, 1000, 1100]));
       });
@@ -326,13 +326,13 @@ void main() {
           DType.uint64,
         );
         final b = NDArray<Uint64>.fromList([2, 1, 1, 2], [2, 2], DType.uint64);
-        final res = matmul<Uint64, Uint64, Uint64>(a, b);
+        final res = matmul<Uint64>(a, b);
         expect(res.dtype, equals(DType.uint64));
         expect(res.shape, equals([2, 2]));
         expect(res.toList(), equals([4000, 5000, 10000, 11000]));
 
         final out = NDArray<Uint64>.zeros([2, 2], DType.uint64);
-        final resOut = matmul<Uint64, Uint64, Uint64>(a, b, out: out);
+        final resOut = matmul<Uint64>(a, b, out: out);
         expect(identical(resOut, out), isTrue);
         expect(out.toList(), equals([4000, 5000, 10000, 11000]));
 
@@ -350,7 +350,7 @@ void main() {
           [2, 2],
           DType.uint64,
         );
-        final resLarge = matmul<Uint64, Uint64, Uint64>(aLarge, bTwo);
+        final resLarge = matmul<Uint64>(aLarge, bTwo);
         expect(resLarge.toList(), equals([6, 0, 0, 6]));
       });
     });

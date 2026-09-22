@@ -24,9 +24,9 @@ import '../helpers.dart';
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_not](https://numpy.org/doc/stable/reference/generated/numpy.logical_not.html)
-NDArray<Boolean> logical_not<T extends AnyDType>(
+NDArray<Boolean> logical_not<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -282,10 +282,10 @@ NDArray<Boolean> logical_not<T extends AnyDType>(
 /// ```
 ///
 /// Reference: [NumPy equal](https://numpy.org/doc/stable/reference/generated/numpy.equal.html)
-NDArray<Boolean> equal<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> equal<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -332,10 +332,10 @@ NDArray<Boolean> equal<Ta extends AnyDType, Tb extends AnyDType>(
 /// ```
 ///
 /// Reference: [NumPy not_equal](https://numpy.org/doc/stable/reference/generated/numpy.not_equal.html)
-NDArray<Boolean> notEqual<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> notEqual<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -384,10 +384,10 @@ NDArray<Boolean> notEqual<Ta extends AnyDType, Tb extends AnyDType>(
 /// ```
 ///
 /// Reference: [NumPy greater](https://numpy.org/doc/stable/reference/generated/numpy.greater.html)
-NDArray<Boolean> greater<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> greater<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -441,10 +441,10 @@ NDArray<Boolean> greater<Ta extends AnyDType, Tb extends AnyDType>(
 /// ```
 ///
 /// Reference: [NumPy greater_equal](https://numpy.org/doc/stable/reference/generated/numpy.greater_equal.html)
-NDArray<Boolean> greaterEqual<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> greaterEqual<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -498,10 +498,10 @@ NDArray<Boolean> greaterEqual<Ta extends AnyDType, Tb extends AnyDType>(
 /// ```
 ///
 /// Reference: [NumPy less](https://numpy.org/doc/stable/reference/generated/numpy.less.html)
-NDArray<Boolean> less<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> less<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -555,10 +555,10 @@ NDArray<Boolean> less<Ta extends AnyDType, Tb extends AnyDType>(
 /// ```
 ///
 /// Reference: [NumPy less_equal](https://numpy.org/doc/stable/reference/generated/numpy.less_equal.html)
-NDArray<Boolean> lessEqual<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> lessEqual<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -602,7 +602,7 @@ NDArray<Boolean> _compareHelper(
   List<int> stridesA,
   List<int> stridesB,
   int op, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   final rank = commonShape.length;
@@ -733,10 +733,10 @@ NDArray<Boolean> _compareHelper(
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_and](https://numpy.org/doc/stable/reference/generated/numpy.logical_and.html)
-NDArray<Boolean> logical_and<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> logical_and<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -777,10 +777,10 @@ NDArray<Boolean> logical_and<Ta extends AnyDType, Tb extends AnyDType>(
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_or](https://numpy.org/doc/stable/reference/generated/numpy.logical_or.html)
-NDArray<Boolean> logical_or<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> logical_or<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -821,10 +821,10 @@ NDArray<Boolean> logical_or<Ta extends AnyDType, Tb extends AnyDType>(
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_xor](https://numpy.org/doc/stable/reference/generated/numpy.logical_xor.html)
-NDArray<Boolean> logical_xor<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> logical_xor<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -1052,10 +1052,10 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
   return destPtr;
 }
 
-NDArray<Boolean> _runBinaryLogical<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> _runBinaryLogical<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b,
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
   void Function(
     ffi.Pointer<ffi.Uint8>,

@@ -180,8 +180,8 @@ void main() {
             a,
             b,
           );
-          final NDArray<AnyFloat> residuals = res.residuals;
-          final NDArray<AnyFloat> s = res.s;
+          final NDArray<DTypeTag> residuals = res.residuals;
+          final NDArray<DTypeTag> s = res.s;
 
           expect(residuals, isA<NDArray<Float64>>());
           expect(s, isA<NDArray<Float64>>());

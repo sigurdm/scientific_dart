@@ -56,7 +56,7 @@ void main() {
           'supports float16, bfloat16, int8, uint16, uint32, uint64 for x and weights',
           () {
             NDArray.scope(() {
-              final dtypes = <DType<AnyReal>>[
+              final dtypes = <DType<DTypeTag>>[
                 DType.float16,
                 DType.bfloat16,
                 DType.int8,
@@ -66,7 +66,7 @@ void main() {
               ];
 
               for (final dt in dtypes) {
-                final x = castNDArray<AnyReal>(
+                final x = castNDArray<DTypeTag>(
                   NDArray<Float64>.fromList(
                     [1.0, 2.0, 3.0, 4.0],
                     [4],
@@ -74,7 +74,7 @@ void main() {
                   ),
                   dt,
                 );
-                final weights = castNDArray<AnyReal>(
+                final weights = castNDArray<DTypeTag>(
                   NDArray<Float64>.fromList(
                     [1.0, 2.0, 3.0, 4.0],
                     [4],

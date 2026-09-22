@@ -236,7 +236,7 @@ void main() {
         NDArray.scope(() {
           final c = NDArray.fromList([2.0, 1.0], [2], DType.float64);
           final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-          final out = NDArray<AnyFloat>.zeros([3], DType.float64);
+          final out = NDArray<DTypeTag>.zeros([3], DType.float64);
 
           final res = polyval(c, x, out: out);
           expect(identical(res, out), isTrue);
@@ -245,7 +245,7 @@ void main() {
           // Float32 out buffer
           final c32 = NDArray.fromList([2.0, 1.0], [2], DType.float32);
           final x32 = NDArray.fromList([1.0, 2.0], [2], DType.float32);
-          final out32 = NDArray<AnyFloat>.zeros([2], DType.float32);
+          final out32 = NDArray<DTypeTag>.zeros([2], DType.float32);
           final res32 = polyval(c32, x32, out: out32);
           expect(identical(res32, out32), isTrue);
 
@@ -256,7 +256,7 @@ void main() {
             DType.complex128,
           );
           final xCpx = NDArray.fromList([Complex(2, 0)], [1], DType.complex128);
-          final outCpx = NDArray<AnyComplex>.zeros([1], DType.complex128);
+          final outCpx = NDArray<DTypeTag>.zeros([1], DType.complex128);
           final resCpx = polyval(cCpx, xCpx, out: outCpx);
           expect(identical(resCpx, outCpx), isTrue);
 
@@ -271,14 +271,14 @@ void main() {
             [1],
             DType.complex64,
           );
-          final outCpx64 = NDArray<AnyComplex>.zeros([1], DType.complex64);
+          final outCpx64 = NDArray<DTypeTag>.zeros([1], DType.complex64);
           final resCpx64 = polyval(cCpx64, xCpx64, out: outCpx64);
           expect(identical(resCpx64, outCpx64), isTrue);
 
-          final outBadShape = NDArray<AnyFloat>.zeros([4], DType.float64);
+          final outBadShape = NDArray<DTypeTag>.zeros([4], DType.float64);
           expect(() => polyval(c, x, out: outBadShape), throwsArgumentError);
 
-          final outBadDtype = NDArray<AnyFloat>.zeros([3], DType.float32);
+          final outBadDtype = NDArray<DTypeTag>.zeros([3], DType.float32);
           expect(() => polyval(c, x, out: outBadDtype), throwsArgumentError);
         });
       });
@@ -294,7 +294,7 @@ void main() {
           final dispX = NDArray.fromList([1.0], [1], DType.float64)..dispose();
           expect(() => polyval(validC, dispX), throwsStateError);
 
-          final dispOut = NDArray<AnyFloat>.zeros([2], DType.float64)
+          final dispOut = NDArray<DTypeTag>.zeros([2], DType.float64)
             ..dispose();
           expect(() => polyval(validC, validX, out: dispOut), throwsStateError);
 
@@ -514,14 +514,14 @@ void main() {
         NDArray.scope(() {
           final x = NDArray.fromList([0.0, 1.0, 2.0], [3], DType.float64);
           final y = NDArray.fromList([1.0, 3.0, 5.0], [3], DType.float64);
-          final out = NDArray<AnyFloat>.zeros([2], DType.float64);
+          final out = NDArray<DTypeTag>.zeros([2], DType.float64);
 
           final res = polyfit(x, y, 1, out: out);
           expect(identical(res, out), isTrue);
           expect(out.getCell([0]), closeTo(2.0, 1e-5));
           expect(out.getCell([1]), closeTo(1.0, 1e-5));
 
-          final badOut = NDArray<AnyFloat>.zeros([3], DType.float64);
+          final badOut = NDArray<DTypeTag>.zeros([3], DType.float64);
           expect(() => polyfit(x, y, 1, out: badOut), throwsArgumentError);
         });
       });
@@ -542,7 +542,7 @@ void main() {
             ..dispose();
           expect(() => polyfit(x, y, 1, w: dispW), throwsStateError);
 
-          final dispOut = NDArray<AnyFloat>.zeros([2], DType.float64)
+          final dispOut = NDArray<DTypeTag>.zeros([2], DType.float64)
             ..dispose();
           expect(() => polyfit(x, y, 1, out: dispOut), throwsStateError);
 
@@ -709,7 +709,7 @@ void main() {
       test('Out buffer reuse and validation for roots', () {
         NDArray.scope(() {
           final p = NDArray.fromList([1.0, -3.0, 2.0], [3], DType.float64);
-          final out = NDArray<AnyComplex>.zeros([2], DType.complex128);
+          final out = NDArray<DTypeTag>.zeros([2], DType.complex128);
 
           final res = roots(p, out: out);
           expect(identical(res, out), isTrue);
@@ -721,11 +721,11 @@ void main() {
           expect(vals[1], closeTo(2.0, 1e-5));
 
           final pConst = NDArray.fromList([5.0], [1], DType.float64);
-          final emptyOut = NDArray<AnyComplex>.zeros([0], DType.complex128);
+          final emptyOut = NDArray<DTypeTag>.zeros([0], DType.complex128);
           final emptyRes = roots(pConst, out: emptyOut);
           expect(identical(emptyRes, emptyOut), isTrue);
 
-          final badOut = NDArray<AnyComplex>.zeros([3], DType.complex128);
+          final badOut = NDArray<DTypeTag>.zeros([3], DType.complex128);
           expect(() => roots(p, out: badOut), throwsArgumentError);
         });
       });
@@ -738,7 +738,7 @@ void main() {
             ..dispose();
           expect(() => roots(dispP), throwsStateError);
 
-          final dispOut = NDArray<AnyComplex>.zeros([1], DType.complex128)
+          final dispOut = NDArray<DTypeTag>.zeros([1], DType.complex128)
             ..dispose();
           expect(() => roots(p, out: dispOut), throwsStateError);
 
@@ -1176,7 +1176,7 @@ void main() {
           expect(() => hermval(c, dispX), throwsStateError);
           expect(() => lagval(c, dispX), throwsStateError);
 
-          final dispOut = NDArray<AnyFloat>.zeros([2], DType.float64)
+          final dispOut = NDArray<DTypeTag>.zeros([2], DType.float64)
             ..dispose();
           expect(() => chebval(c, x, out: dispOut), throwsStateError);
 

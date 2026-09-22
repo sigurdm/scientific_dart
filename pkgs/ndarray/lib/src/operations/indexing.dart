@@ -77,12 +77,12 @@ void _mapCoordInPlace(
 /// **Example:**
 /// ```dart
 /// final a = NDArray<Float64>.fromList([10, 20, 30, 40, 50, 60], [2, 3], DType.float64);
-/// final indices = NDArray<AnyInt>.fromList([2, 0, 1, 1], [2, 2], DType.int32);
+/// final indices = NDArray<DTypeTag>.fromList([2, 0, 1, 1], [2, 2], DType.int32);
 /// final result = take_along_axis(a, indices, 1);
 /// ```
-NDArray<T> take_along_axis<T extends AnyDType>(
+NDArray<T> take_along_axis<T extends DTypeTag>(
   NDArray<T> arr,
-  NDArray<AnyInt> indices,
+  NDArray<DTypeTag> indices,
   int axis, {
   NDArray<T>? out,
 }) {
@@ -246,13 +246,13 @@ NDArray<T> take_along_axis<T extends AnyDType>(
 /// **Example:**
 /// ```dart
 /// final a = NDArray<Float64>.fromList([10, 20, 30, 40, 50, 60], [2, 3], DType.float64);
-/// final indices = NDArray<AnyInt>.fromList([2, 0, 1, 1], [2, 2], DType.int32);
+/// final indices = NDArray<DTypeTag>.fromList([2, 0, 1, 1], [2, 2], DType.int32);
 /// final values = NDArray<Float64>.fromList([99, 88, 77, 66], [2, 2], DType.float64);
 /// put_along_axis(a, indices, values, 1);
 /// ```
-NDArray<T> put_along_axis<T extends AnyDType>(
+NDArray<T> put_along_axis<T extends DTypeTag>(
   NDArray<T> arr,
-  NDArray<AnyInt> indices,
+  NDArray<DTypeTag> indices,
   Object values,
   int axis, {
   NDArray<T>? out,
@@ -453,11 +453,11 @@ NDArray<T> put_along_axis<T extends AnyDType>(
 ///   NDArray<Float64>.fromList([0, 1, 2, 3], [2, 2], DType.float64),
 ///   NDArray<Float64>.fromList([10, 11, 12, 13], [2, 2], DType.float64),
 /// ];
-/// final a = NDArray<AnyInt>.fromList([0, 1, 1, 0], [2, 2], DType.int32);
+/// final a = NDArray<DTypeTag>.fromList([0, 1, 1, 0], [2, 2], DType.int32);
 /// final result = choose(a, choices);
 /// ```
-NDArray<T> choose<T extends AnyDType>(
-  NDArray<AnyInt> a,
+NDArray<T> choose<T extends DTypeTag>(
+  NDArray<DTypeTag> a,
   List<Object> choices, {
   NDArray<T>? out,
   ChooseMode mode = ChooseMode.raise,
@@ -595,6 +595,8 @@ NDArray<T> choose<T extends AnyDType>(
           final ptr = a.pointer.cast<ffi.Uint8>();
           getIdx = aIsScalar ? ((_) => ptr[0]) : ((i) => ptr[i]);
           break;
+        default:
+          throw UnsupportedError('Unsupported index dtype: ${a.dtype}');
       }
 
       final isScalarChoice = choiceArrays.map((c) => c.size == 1).toList();
@@ -936,7 +938,7 @@ NDArray<T> choose<T extends AnyDType>(
 /// final choices = [x * 10, x * 100];
 /// final result = select(conds, choices, defaultValue: -1.0);
 /// ```
-NDArray<T> select<T extends AnyDType>(
+NDArray<T> select<T extends DTypeTag>(
   List<NDArray<Boolean>> condlist,
   List<Object> choicelist, {
   Object? defaultValue,

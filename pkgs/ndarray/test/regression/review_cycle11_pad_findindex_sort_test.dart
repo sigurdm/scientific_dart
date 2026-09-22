@@ -5,15 +5,15 @@ void main() {
   group('Review Cycle 11 Regression Tests: pad, findIndex, argpartition', () {
     group('1. pad with PaddingMode.constant on float16 and bfloat16', () {
       for (final dtype in [
-        DType.float16 as DType<AnyFloat>,
-        DType.bfloat16 as DType<AnyFloat>,
+        DType.float16 as DType<DTypeTag>,
+        DType.bfloat16 as DType<DTypeTag>,
       ]) {
         test('1D constant padding (uniform and per-axis) on $dtype', () {
           NDArray.scope(() {
-            final a = NDArray<AnyFloat>.fromList([1.0, 2.0, 3.0], [3], dtype);
+            final a = NDArray<DTypeTag>.fromList([1.0, 2.0, 3.0], [3], dtype);
 
             // Uniform constant value
-            final paddedUniform = pad<AnyFloat>(
+            final paddedUniform = pad<DTypeTag>(
               a,
               PadWidth.all(2, 1),
               mode: PaddingMode.constant,
@@ -24,7 +24,7 @@ void main() {
             expect(paddedUniform.toList(), [5.5, 5.5, 1.0, 2.0, 3.0, 5.5]);
 
             // Per-axis (before, after) constant values
-            final paddedPerAxis = pad<AnyFloat>(
+            final paddedPerAxis = pad<DTypeTag>(
               a,
               PadWidth.axes([(1, 2)]),
               mode: PaddingMode.constant,
@@ -38,14 +38,14 @@ void main() {
 
         test('2D constant padding (uniform and per-axis) on $dtype', () {
           NDArray.scope(() {
-            final a = NDArray<AnyFloat>.fromList(
+            final a = NDArray<DTypeTag>.fromList(
               [1.0, 2.0, 3.0, 4.0],
               [2, 2],
               dtype,
             );
 
             // Uniform constant value (hits native_pad_2d with isUniform = 1)
-            final paddedUniform = pad<AnyFloat>(
+            final paddedUniform = pad<DTypeTag>(
               a,
               PadWidth.all(1, 1),
               mode: PaddingMode.constant,
@@ -73,7 +73,7 @@ void main() {
             ]);
 
             // Per-axis constant values (hits native_pad_2d with isUniform = 0)
-            final paddedPerAxis = pad<AnyFloat>(
+            final paddedPerAxis = pad<DTypeTag>(
               a,
               PadWidth.axes([(1, 1), (2, 1)]),
               mode: PaddingMode.constant,
@@ -108,10 +108,10 @@ void main() {
 
         test('3D constant padding (uniform and per-axis) on $dtype', () {
           NDArray.scope(() {
-            final a = NDArray<AnyFloat>.fromList([1.0, 2.0], [1, 1, 2], dtype);
+            final a = NDArray<DTypeTag>.fromList([1.0, 2.0], [1, 1, 2], dtype);
 
             // Uniform constant value (hits native_pad_nd with isUniform = 1)
-            final paddedUniform = pad<AnyFloat>(
+            final paddedUniform = pad<DTypeTag>(
               a,
               PadWidth.axes([(1, 0), (0, 1), (1, 1)]),
               mode: PaddingMode.constant,
@@ -139,7 +139,7 @@ void main() {
             ]);
 
             // Per-axis constant values (hits native_pad_nd with isUniform = 0)
-            final paddedPerAxis = pad<AnyFloat>(
+            final paddedPerAxis = pad<DTypeTag>(
               a,
               PadWidth.axes([(1, 1), (1, 0), (1, 1)]),
               mode: PaddingMode.constant,
@@ -166,47 +166,47 @@ void main() {
     group('2. findIndex across all comparison operators on extra dtypes', () {
       test('findIndex on int8', () {
         NDArray.scope(() {
-          final a = NDArray<AnyInt>.fromList(
+          final a = NDArray<DTypeTag>.fromList(
             [-10, 0, 15, 20, -5, 30],
             [2, 3],
             DType.int8,
           );
 
-          expect(findIndex<AnyInt>(a, CompareOp.equal, -5), [1, 1]);
-          expect(findIndex<AnyInt>(a, CompareOp.notEqual, -10), [0, 1]);
-          expect(findIndex<AnyInt>(a, CompareOp.greater, 15), [1, 0]);
-          expect(findIndex<AnyInt>(a, CompareOp.greaterEqual, 15), [0, 2]);
-          expect(findIndex<AnyInt>(a, CompareOp.less, -10), isNull);
-          expect(findIndex<AnyInt>(a, CompareOp.less, -9), [0, 0]);
-          expect(findIndex<AnyInt>(a, CompareOp.lessEqual, -10), [0, 0]);
+          expect(findIndex<DTypeTag>(a, CompareOp.equal, -5), [1, 1]);
+          expect(findIndex<DTypeTag>(a, CompareOp.notEqual, -10), [0, 1]);
+          expect(findIndex<DTypeTag>(a, CompareOp.greater, 15), [1, 0]);
+          expect(findIndex<DTypeTag>(a, CompareOp.greaterEqual, 15), [0, 2]);
+          expect(findIndex<DTypeTag>(a, CompareOp.less, -10), isNull);
+          expect(findIndex<DTypeTag>(a, CompareOp.less, -9), [0, 0]);
+          expect(findIndex<DTypeTag>(a, CompareOp.lessEqual, -10), [0, 0]);
           expect(
-            findIndex<AnyInt>(a, CompareOp.greater, 10, directions: [-1, -1]),
+            findIndex<DTypeTag>(a, CompareOp.greater, 10, directions: [-1, -1]),
             [1, 2],
           );
         });
       });
 
       for (final dtype in [
-        DType.uint16 as DType<AnyInt>,
-        DType.uint32 as DType<AnyInt>,
-        DType.uint64 as DType<AnyInt>,
+        DType.uint16 as DType<DTypeTag>,
+        DType.uint32 as DType<DTypeTag>,
+        DType.uint64 as DType<DTypeTag>,
       ]) {
         test('findIndex on $dtype', () {
           NDArray.scope(() {
-            final a = NDArray<AnyInt>.fromList(
+            final a = NDArray<DTypeTag>.fromList(
               [10, 200, 300, 400, 50, 600],
               [2, 3],
               dtype,
             );
 
-            expect(findIndex<AnyInt>(a, CompareOp.equal, 400), [1, 0]);
-            expect(findIndex<AnyInt>(a, CompareOp.equal, 999), isNull);
-            expect(findIndex<AnyInt>(a, CompareOp.notEqual, 10), [0, 1]);
-            expect(findIndex<AnyInt>(a, CompareOp.greater, 300), [1, 0]);
-            expect(findIndex<AnyInt>(a, CompareOp.greaterEqual, 300), [0, 2]);
-            expect(findIndex<AnyInt>(a, CompareOp.less, 50), [0, 0]);
+            expect(findIndex<DTypeTag>(a, CompareOp.equal, 400), [1, 0]);
+            expect(findIndex<DTypeTag>(a, CompareOp.equal, 999), isNull);
+            expect(findIndex<DTypeTag>(a, CompareOp.notEqual, 10), [0, 1]);
+            expect(findIndex<DTypeTag>(a, CompareOp.greater, 300), [1, 0]);
+            expect(findIndex<DTypeTag>(a, CompareOp.greaterEqual, 300), [0, 2]);
+            expect(findIndex<DTypeTag>(a, CompareOp.less, 50), [0, 0]);
             expect(
-              findIndex<AnyInt>(
+              findIndex<DTypeTag>(
                 a,
                 CompareOp.lessEqual,
                 50,
@@ -219,25 +219,25 @@ void main() {
       }
 
       for (final dtype in [
-        DType.float16 as DType<AnyFloat>,
-        DType.bfloat16 as DType<AnyFloat>,
+        DType.float16 as DType<DTypeTag>,
+        DType.bfloat16 as DType<DTypeTag>,
       ]) {
         test('findIndex on $dtype', () {
           NDArray.scope(() {
-            final a = NDArray<AnyFloat>.fromList(
+            final a = NDArray<DTypeTag>.fromList(
               [-2.5, 0.5, 1.5, 3.5, -1.0, 4.0],
               [2, 3],
               dtype,
             );
 
-            expect(findIndex<AnyFloat>(a, CompareOp.equal, -1.0), [1, 1]);
-            expect(findIndex<AnyFloat>(a, CompareOp.equal, 99.0), isNull);
-            expect(findIndex<AnyFloat>(a, CompareOp.notEqual, -2.5), [0, 1]);
-            expect(findIndex<AnyFloat>(a, CompareOp.greater, 1.5), [1, 0]);
-            expect(findIndex<AnyFloat>(a, CompareOp.greaterEqual, 1.5), [0, 2]);
-            expect(findIndex<AnyFloat>(a, CompareOp.less, -1.0), [0, 0]);
+            expect(findIndex<DTypeTag>(a, CompareOp.equal, -1.0), [1, 1]);
+            expect(findIndex<DTypeTag>(a, CompareOp.equal, 99.0), isNull);
+            expect(findIndex<DTypeTag>(a, CompareOp.notEqual, -2.5), [0, 1]);
+            expect(findIndex<DTypeTag>(a, CompareOp.greater, 1.5), [1, 0]);
+            expect(findIndex<DTypeTag>(a, CompareOp.greaterEqual, 1.5), [0, 2]);
+            expect(findIndex<DTypeTag>(a, CompareOp.less, -1.0), [0, 0]);
             expect(
-              findIndex<AnyFloat>(
+              findIndex<DTypeTag>(
                 a,
                 CompareOp.lessEqual,
                 -1.0,
@@ -266,13 +266,13 @@ void main() {
       }
 
       for (final dtype in [
-        DType.float16 as DType<AnyFloat>,
-        DType.bfloat16 as DType<AnyFloat>,
+        DType.float16 as DType<DTypeTag>,
+        DType.bfloat16 as DType<DTypeTag>,
       ]) {
         test('argpartition on $dtype (default, int32 out, int64 out)', () {
           NDArray.scope(() {
             final data = [3.5, -1.5, 4.0, 0.5, 2.0];
-            final a = NDArray<AnyFloat>.fromList(data, [5], dtype);
+            final a = NDArray<DTypeTag>.fromList(data, [5], dtype);
 
             // Default out == null
             final resDefault = argpartition(a, 2);
@@ -280,13 +280,13 @@ void main() {
             verifyPartition1D(data, resDefault.toList().cast<int>(), 2);
 
             // out with DType.int32
-            final out32 = NDArray<AnyInt>.zeros([5], DType.int32);
+            final out32 = NDArray<DTypeTag>.zeros([5], DType.int32);
             final ret32 = argpartition(a, 2, out: out32);
             expect(identical(ret32, out32), isTrue);
             verifyPartition1D(data, out32.toList().cast<int>(), 2);
 
             // out with DType.int64
-            final out64 = NDArray<AnyInt>.zeros([5], DType.int64);
+            final out64 = NDArray<DTypeTag>.zeros([5], DType.int64);
             final ret64 = argpartition(a, 2, out: out64);
             expect(identical(ret64, out64), isTrue);
             expect(out64.dtype, DType.int64);
@@ -296,16 +296,16 @@ void main() {
       }
 
       for (final dtype in [
-        DType.int8 as DType<AnyInt>,
-        DType.uint16 as DType<AnyInt>,
-        DType.uint32 as DType<AnyInt>,
+        DType.int8 as DType<DTypeTag>,
+        DType.uint16 as DType<DTypeTag>,
+        DType.uint32 as DType<DTypeTag>,
       ]) {
         test('argpartition on $dtype (default, int32 out, int64 out)', () {
           NDArray.scope(() {
             final data = dtype == DType.int8
                 ? [30, -10, 40, 5, 20]
                 : [300, 10, 400, 50, 200];
-            final a = NDArray<AnyInt>.fromList(data, [5], dtype);
+            final a = NDArray<DTypeTag>.fromList(data, [5], dtype);
 
             // Default out == null
             final resDefault = argpartition(a, 2);
@@ -313,13 +313,13 @@ void main() {
             verifyPartition1D(data, resDefault.toList().cast<int>(), 2);
 
             // out with DType.int32
-            final out32 = NDArray<AnyInt>.zeros([5], DType.int32);
+            final out32 = NDArray<DTypeTag>.zeros([5], DType.int32);
             final ret32 = argpartition(a, 2, out: out32);
             expect(identical(ret32, out32), isTrue);
             verifyPartition1D(data, out32.toList().cast<int>(), 2);
 
             // out with DType.int64
-            final out64 = NDArray<AnyInt>.zeros([5], DType.int64);
+            final out64 = NDArray<DTypeTag>.zeros([5], DType.int64);
             final ret64 = argpartition(a, 2, out: out64);
             expect(identical(ret64, out64), isTrue);
             expect(out64.dtype, DType.int64);

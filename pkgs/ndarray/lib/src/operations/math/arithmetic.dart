@@ -22,9 +22,9 @@ import '../stats.dart';
 ///
 /// **Edge cases:**
 /// - Negative values will result in [double.nan].
-NDArray<R> sqrt<T extends AnyDType, R extends AnyDType>(
+NDArray<R> sqrt<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
@@ -246,9 +246,9 @@ double _logaddexp2(double x, double y) {
 }
 
 /// Computes the exponential minus one ($e^x - 1$) element-wise.
-NDArray<R> expm1<T extends AnyDType, R extends AnyDType>(
+NDArray<R> expm1<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -256,7 +256,7 @@ NDArray<R> expm1<T extends AnyDType, R extends AnyDType>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute expm1() on a disposed array.');
   }
-  final DType<AnyDType> targetDType;
+  final DType<DTypeTag> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
   } else {
@@ -383,7 +383,7 @@ NDArray<R> expm1<T extends AnyDType, R extends AnyDType>(
     }
 
     if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -396,7 +396,7 @@ NDArray<R> expm1<T extends AnyDType, R extends AnyDType>(
         maskHolder.pointer,
       );
     } else if (a.dtype.isInteger) {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -415,7 +415,7 @@ NDArray<R> expm1<T extends AnyDType, R extends AnyDType>(
         maskHolder.pointer,
       );
     } else {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -441,9 +441,9 @@ NDArray<R> expm1<T extends AnyDType, R extends AnyDType>(
 }
 
 /// Computes $\ln(1+x)$ element-wise.
-NDArray<R> log1p<T extends AnyDType, R extends AnyDType>(
+NDArray<R> log1p<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -451,7 +451,7 @@ NDArray<R> log1p<T extends AnyDType, R extends AnyDType>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute log1p() on a disposed array.');
   }
-  final DType<AnyDType> targetDType;
+  final DType<DTypeTag> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
   } else {
@@ -578,7 +578,7 @@ NDArray<R> log1p<T extends AnyDType, R extends AnyDType>(
     }
 
     if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -591,7 +591,7 @@ NDArray<R> log1p<T extends AnyDType, R extends AnyDType>(
         maskHolder.pointer,
       );
     } else if (a.dtype.isInteger) {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -610,7 +610,7 @@ NDArray<R> log1p<T extends AnyDType, R extends AnyDType>(
         maskHolder.pointer,
       );
     } else {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -636,11 +636,11 @@ NDArray<R> log1p<T extends AnyDType, R extends AnyDType>(
 }
 
 /// Computes $\log(e^{x_1} + e^{x_2})$ element-wise.
-NDArray<AnyFloat> logaddexp<T1 extends AnyDType, T2 extends AnyDType>(
+NDArray<DTypeTag> logaddexp<T1 extends DTypeTag, T2 extends DTypeTag>(
   NDArray<T1> x1,
   NDArray<T2> x2, {
-  NDArray<AnyDType>? where,
-  NDArray<AnyFloat>? out,
+  NDArray<DTypeTag>? where,
+  NDArray<DTypeTag>? out,
 }) {
   if (x1.isDisposed ||
       x2.isDisposed ||
@@ -671,13 +671,9 @@ NDArray<AnyFloat> logaddexp<T1 extends AnyDType, T2 extends AnyDType>(
 
   final maskHolder = prepareMask(where, shape);
   try {
-    final NDArray<AnyFloat> result =
+    final NDArray<DTypeTag> result =
         out ??
-        NDArray<AnyFloat>.create(
-          shape,
-          targetDType as DType<AnyFloat>,
-          zeroInit: where != null,
-        );
+        NDArray<DTypeTag>.create(shape, targetDType, zeroInit: where != null);
     if (x1.isContiguous &&
         x2.isContiguous &&
         result.isContiguous &&
@@ -751,7 +747,7 @@ NDArray<AnyFloat> logaddexp<T1 extends AnyDType, T2 extends AnyDType>(
       }
     }
 
-    elementWiseOp<AnyDType, AnyDType, AnyDType>(
+    elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
       result,
       x1,
       x2,
@@ -776,11 +772,11 @@ NDArray<AnyFloat> logaddexp<T1 extends AnyDType, T2 extends AnyDType>(
 }
 
 /// Computes $\log_2(2^{x_1} + 2^{x_2})$ element-wise.
-NDArray<AnyFloat> logaddexp2<T1 extends AnyDType, T2 extends AnyDType>(
+NDArray<DTypeTag> logaddexp2<T1 extends DTypeTag, T2 extends DTypeTag>(
   NDArray<T1> x1,
   NDArray<T2> x2, {
-  NDArray<AnyDType>? where,
-  NDArray<AnyFloat>? out,
+  NDArray<DTypeTag>? where,
+  NDArray<DTypeTag>? out,
 }) {
   if (x1.isDisposed ||
       x2.isDisposed ||
@@ -811,13 +807,9 @@ NDArray<AnyFloat> logaddexp2<T1 extends AnyDType, T2 extends AnyDType>(
 
   final maskHolder = prepareMask(where, shape);
   try {
-    final NDArray<AnyFloat> result =
+    final NDArray<DTypeTag> result =
         out ??
-        NDArray<AnyFloat>.create(
-          shape,
-          targetDType as DType<AnyFloat>,
-          zeroInit: where != null,
-        );
+        NDArray<DTypeTag>.create(shape, targetDType, zeroInit: where != null);
     if (x1.isContiguous &&
         x2.isContiguous &&
         result.isContiguous &&
@@ -891,7 +883,7 @@ NDArray<AnyFloat> logaddexp2<T1 extends AnyDType, T2 extends AnyDType>(
       }
     }
 
-    elementWiseOp<AnyDType, AnyDType, AnyDType>(
+    elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
       result,
       x1,
       x2,
@@ -916,9 +908,9 @@ NDArray<AnyFloat> logaddexp2<T1 extends AnyDType, T2 extends AnyDType>(
 }
 
 /// Rounds elements of the array to the nearest integer.
-NDArray<R> rint<T extends AnyDType, R extends AnyDType>(
+NDArray<R> rint<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1013,7 +1005,7 @@ NDArray<R> rint<T extends AnyDType, R extends AnyDType>(
     }
 
     if (a.dtype.isInteger) {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -1026,7 +1018,7 @@ NDArray<R> rint<T extends AnyDType, R extends AnyDType>(
         maskHolder.pointer,
       );
     } else {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -1056,9 +1048,9 @@ NDArray<R> rint<T extends AnyDType, R extends AnyDType>(
 }
 
 /// Rounds elements of the array to the nearest integer towards zero.
-NDArray<R> trunc<T extends AnyDType, R extends AnyDType>(
+NDArray<R> trunc<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1153,7 +1145,7 @@ NDArray<R> trunc<T extends AnyDType, R extends AnyDType>(
     }
 
     if (a.dtype.isInteger) {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -1166,7 +1158,7 @@ NDArray<R> trunc<T extends AnyDType, R extends AnyDType>(
         maskHolder.pointer,
       );
     } else {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -1188,9 +1180,9 @@ NDArray<R> trunc<T extends AnyDType, R extends AnyDType>(
 /// Rounds elements of the array to the nearest integer towards zero.
 ///
 /// Synonym for [trunc].
-NDArray<R> fix<T extends AnyDType, R extends AnyDType>(
+NDArray<R> fix<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) => trunc(a, where: where, out: out);
 
@@ -1203,9 +1195,9 @@ NDArray<R> fix<T extends AnyDType, R extends AnyDType>(
 /// final a = NDArray.fromList([2.0, 3.0], [2], DType.float64);
 /// final b = square(a); // [4.0, 9.0]
 /// ```
-NDArray<T> square<T extends AnyDType>(
+NDArray<T> square<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -1421,9 +1413,9 @@ NDArray<T> square<T extends AnyDType>(
 }
 
 /// Computes the element-wise reciprocal ($1/x$) of the array.
-NDArray<T> reciprocal<T extends AnyDType>(
+NDArray<T> reciprocal<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -1675,9 +1667,9 @@ NDArray<T> reciprocal<T extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<T> positive<T extends AnyDType>(
+NDArray<T> positive<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -1922,10 +1914,10 @@ NDArray<T> positive<T extends AnyDType>(
 /// Performance Considerations:
 /// - Contiguous arrays leverage vector sweeps (`v_pow_*`).
 /// - Strided broadcasting uses multi-dimensional FFI iterators (`s_pow_*`).
-NDArray<T> power<T extends AnyDType>(
+NDArray<T> power<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (x1.isDisposed ||
@@ -1944,9 +1936,7 @@ NDArray<T> power<T extends AnyDType>(
   final dtype = x1.dtype;
 
   if (dtype.isInteger) {
-    final NDArray<AnyReal> x2Num = (x2 is NDArray<AnyReal>)
-        ? (x2 as NDArray<AnyReal>)
-        : castNDArray<AnyReal>(x2, x2.dtype as DType<AnyReal>);
+    final NDArray<DTypeTag> x2Num = x2;
     try {
       if (x2Num.rank == 0) {
         if (x2Num.scalar < 0) {
@@ -2197,9 +2187,9 @@ NDArray<T> power<T extends AnyDType>(
   }
 }
 
-NDArray<T> negative<T extends AnyDType>(
+NDArray<T> negative<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -2221,7 +2211,7 @@ NDArray<T> negative<T extends AnyDType>(
     switch (a.dtype) {
       case DType.complex128:
       case DType.complex64:
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -2237,7 +2227,7 @@ NDArray<T> negative<T extends AnyDType>(
       case DType.float32:
       case DType.float16:
       case DType.bfloat16:
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -2257,7 +2247,7 @@ NDArray<T> negative<T extends AnyDType>(
       case DType.uint32:
       case DType.uint16:
       case DType.uint8:
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -2302,10 +2292,10 @@ NDArray<T> negative<T extends AnyDType>(
 /// ```dart
 /// final c = floor_divide(a, b);
 /// ```
-NDArray<T> floor_divide<T extends AnyDType>(
+NDArray<T> floor_divide<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (x1.isDisposed ||
@@ -2507,7 +2497,7 @@ NDArray<T> floor_divide<T extends AnyDType>(
     }
 
     if (targetDType.isFloating) {
-      elementWiseOp<AnyDType, AnyDType, AnyDType>(
+      elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
         result,
         x1,
         x2,
@@ -2529,7 +2519,7 @@ NDArray<T> floor_divide<T extends AnyDType>(
         maskHolder.pointer,
       );
     } else {
-      elementWiseOp<AnyDType, AnyDType, AnyDType>(
+      elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
         result,
         x1,
         x2,
@@ -2575,10 +2565,10 @@ NDArray<T> floor_divide<T extends AnyDType>(
 /// - [x1], [x2], or [out] is disposed (throws [StateError]).
 /// - [out] has incompatible shape or dtype (throws [ArgumentError]).
 /// - for integer arrays, the divisor [x2] contains any `0` elements (throws [UnsupportedError]).
-NDArray<T> remainder<T extends AnyDType>(
+NDArray<T> remainder<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (x1.isDisposed ||
@@ -2783,7 +2773,7 @@ NDArray<T> remainder<T extends AnyDType>(
     }
 
     if (targetDType.isFloating) {
-      elementWiseOp<AnyDType, AnyDType, AnyDType>(
+      elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
         result,
         x1,
         x2,
@@ -2805,7 +2795,7 @@ NDArray<T> remainder<T extends AnyDType>(
         maskHolder.pointer,
       );
     } else {
-      elementWiseOp<AnyDType, AnyDType, AnyDType>(
+      elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
         result,
         x1,
         x2,
@@ -2848,10 +2838,10 @@ NDArray<T> remainder<T extends AnyDType>(
 /// - [x1], [x2], or [out] is disposed (throws [StateError]).
 /// - [out] has incompatible shape or dtype (throws [ArgumentError]).
 /// - for integer arrays, the divisor [x2] contains any `0` elements (throws [UnsupportedError]).
-NDArray<T> mod<T extends AnyDType>(
+NDArray<T> mod<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) => remainder<T>(x1, x2, where: where, out: out);
 
@@ -2868,7 +2858,7 @@ NDArray<T> mod<T extends AnyDType>(
 /// It is an error if:
 /// - [x1] or [x2] is disposed (throws [StateError]).
 /// - for integer arrays, the divisor [x2] contains any `0` elements (throws [UnsupportedError]).
-(NDArray<T> div, NDArray<T> mod) divmod<T extends AnyDType>(
+(NDArray<T> div, NDArray<T> mod) divmod<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2,
 ) {
@@ -2892,10 +2882,10 @@ NDArray<T> mod<T extends AnyDType>(
 /// - [x1], [x2], or [out] is disposed (throws [StateError]).
 /// - [out] has incompatible shape or dtype (throws [ArgumentError]).
 /// - for integer arrays, the divisor [x2] contains any `0` elements (throws [UnsupportedError]).
-NDArray<T> fmod<T extends AnyDType>(
+NDArray<T> fmod<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (x1.isDisposed ||
@@ -3079,7 +3069,7 @@ NDArray<T> fmod<T extends AnyDType>(
     }
 
     if (targetDType.isFloating) {
-      elementWiseOp<AnyDType, AnyDType, AnyDType>(
+      elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
         result,
         x1,
         x2,
@@ -3100,7 +3090,7 @@ NDArray<T> fmod<T extends AnyDType>(
         maskHolder.pointer,
       );
     } else {
-      elementWiseOp<AnyDType, AnyDType, AnyDType>(
+      elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
         result,
         x1,
         x2,
@@ -3139,10 +3129,10 @@ NDArray<T> fmod<T extends AnyDType>(
 /// - [x1], [x2], or [out] is disposed (throws [StateError]).
 /// - [x1] or [x2] has a non-integer dtype (throws [UnsupportedError]).
 /// - [out] has incompatible shape or dtype (throws [ArgumentError]).
-NDArray<T> gcd<T extends AnyDType>(
+NDArray<T> gcd<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (x1.isDisposed ||
@@ -3267,7 +3257,7 @@ NDArray<T> gcd<T extends AnyDType>(
       return u;
     }
 
-    elementWiseOp<AnyDType, AnyDType, AnyDType>(
+    elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
       result,
       x1,
       x2,
@@ -3302,11 +3292,11 @@ NDArray<T> gcd<T extends AnyDType>(
 /// final c = lcm(a, b);
 /// print(c.toList()); // [36, 60]
 /// ```
-NDArray<R> lcm<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
-  NDArray<Ta> x1,
-  NDArray<Tb> x2, {
-  NDArray<AnyDType>? where,
-  NDArray<R>? out,
+NDArray<T> lcm<T extends DTypeTag>(
+  NDArray<T> x1,
+  NDArray<T> x2, {
+  NDArray<DTypeTag>? where,
+  NDArray<T>? out,
 }) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute lcm() on a disposed array.');
@@ -3314,7 +3304,7 @@ NDArray<R> lcm<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   if (!x1.dtype.isInteger || !x2.dtype.isInteger) {
     throw UnsupportedError('lcm only supports integer arrays.');
   }
-  final DType<AnyDType> targetDType = resolveDType(x1.dtype, x2.dtype);
+  final DType<DTypeTag> targetDType = resolveDType(x1.dtype, x2.dtype);
   final broadcastResult = broadcast(x1, x2);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -3330,11 +3320,11 @@ NDArray<R> lcm<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   final maskHolder = prepareMask(where, commonShape);
 
   try {
-    final NDArray<R> result =
+    final NDArray<T> result =
         out ??
-        NDArray<R>.create(
+        NDArray<T>.create(
           commonShape,
-          targetDType as DType<R>,
+          targetDType as DType<T>,
           zeroInit: where != null,
         );
     if (x1.isContiguous &&
@@ -3426,7 +3416,7 @@ NDArray<R> lcm<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
       return u;
     }
 
-    elementWiseOp<AnyDType, AnyDType, AnyDType>(
+    elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
       result,
       x1,
       x2,
@@ -3467,10 +3457,10 @@ NDArray<R> lcm<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
 /// - [x1], [x2], or [out] is disposed (throws [StateError]).
 /// - [x1] or [x2] has a complex dtype (throws [UnsupportedError]).
 /// - [out] has incompatible shape or dtype (throws [ArgumentError]).
-NDArray<T> heaviside<T extends AnyDType>(
+NDArray<T> heaviside<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (x1.isDisposed ||
@@ -3637,7 +3627,7 @@ NDArray<T> heaviside<T extends AnyDType>(
       }
     }
 
-    elementWiseOp<AnyDType, AnyDType, AnyDType>(
+    elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
       result,
       x1,
       x2,
@@ -3671,9 +3661,9 @@ NDArray<T> heaviside<T extends AnyDType>(
   }
 }
 
-NDArray<R> abs<T extends AnyDType, R extends AnyDType>(
+NDArray<R> abs<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -3897,7 +3887,7 @@ NDArray<R> abs<T extends AnyDType, R extends AnyDType>(
       case DType.uint32:
       case DType.uint16:
       case DType.uint8:
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -3913,7 +3903,7 @@ NDArray<R> abs<T extends AnyDType, R extends AnyDType>(
       case DType.float32:
       case DType.float16:
       case DType.bfloat16:
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -3948,9 +3938,9 @@ NDArray<R> abs<T extends AnyDType, R extends AnyDType>(
 /// ```dart
 /// final s = sign(a);
 /// ```
-NDArray<T> sign<T extends AnyDType>(
+NDArray<T> sign<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -3990,7 +3980,7 @@ NDArray<T> sign<T extends AnyDType>(
           maskHolder.pointer,
         );
       case DType.uint64:
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -4003,7 +3993,7 @@ NDArray<T> sign<T extends AnyDType>(
           maskHolder.pointer,
         );
       case DType.boolean:
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -4022,7 +4012,7 @@ NDArray<T> sign<T extends AnyDType>(
       case DType.uint32:
       case DType.uint16:
       case DType.uint8:
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -4038,7 +4028,7 @@ NDArray<T> sign<T extends AnyDType>(
       case DType.float32:
       case DType.float16:
       case DType.bfloat16:
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -4062,9 +4052,9 @@ NDArray<T> sign<T extends AnyDType>(
 /// It is an error if [a], [where], or [out] is disposed (throws [StateError]),
 /// if [a] has a complex dtype (throws [UnsupportedError]),
 /// or if [out] has an incompatible shape or dtype (throws [ArgumentError]).
-NDArray<T> ceil<T extends AnyDType>(
+NDArray<T> ceil<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -4113,7 +4103,7 @@ NDArray<T> ceil<T extends AnyDType>(
       if (where == null) {
         a.copy(out: result);
       } else {
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -4127,7 +4117,7 @@ NDArray<T> ceil<T extends AnyDType>(
         );
       }
     } else if (a.dtype.isFloating) {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -4153,9 +4143,9 @@ NDArray<T> ceil<T extends AnyDType>(
 /// It is an error if [a], [where], or [out] is disposed (throws [StateError]),
 /// if [a] has a complex dtype (throws [UnsupportedError]),
 /// or if [out] has an incompatible shape or dtype (throws [ArgumentError]).
-NDArray<T> floor<T extends AnyDType>(
+NDArray<T> floor<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -4206,7 +4196,7 @@ NDArray<T> floor<T extends AnyDType>(
       if (where == null) {
         a.copy(out: result);
       } else {
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -4220,7 +4210,7 @@ NDArray<T> floor<T extends AnyDType>(
         );
       }
     } else if (a.dtype.isFloating) {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -4246,9 +4236,9 @@ NDArray<T> floor<T extends AnyDType>(
 /// It is an error if [a], [where], or [out] is disposed (throws [StateError]),
 /// if [a] has a complex dtype (throws [UnsupportedError]),
 /// or if [out] has an incompatible shape or dtype (throws [ArgumentError]).
-NDArray<T> round<T extends AnyDType>(
+NDArray<T> round<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -4299,7 +4289,7 @@ NDArray<T> round<T extends AnyDType>(
       if (where == null) {
         a.copy(out: result);
       } else {
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -4313,7 +4303,7 @@ NDArray<T> round<T extends AnyDType>(
         );
       }
     } else if (a.dtype.isFloating) {
-      unaryOp<AnyDType, AnyDType>(
+      unaryOp<DTypeTag, DTypeTag>(
         result,
         a,
         a.shape,
@@ -4350,11 +4340,11 @@ typedef StridedBinaryOp =
 /// Element-wise addition of two arrays.
 ///
 /// Returns a new array with the promoted data type.
-NDArray<R> add<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
-  NDArray<R>? out,
+NDArray<T> add<T extends DTypeTag>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  NDArray<DTypeTag>? where,
+  NDArray<T>? out,
 }) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute add() on a disposed array.');
@@ -4373,16 +4363,16 @@ NDArray<R> add<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
     }
   }
   final maskHolder = prepareMask(where, commonShape);
-  late final NDArray<R> result;
+  late final NDArray<T> result;
 
   final ndim = commonShape.length;
   final marker = ScratchArena.marker;
   try {
     result =
         out ??
-        NDArray<R>.create(
+        NDArray<T>.create(
           commonShape,
-          targetDType as DType<R>,
+          targetDType as DType<T>,
           zeroInit: where != null,
         );
     // Specialized paths for Float64 (as in original extensions.dart)
@@ -5863,11 +5853,7 @@ NDArray<R> add<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
     final cpxA = castNDArray(a, DType.complex128);
     final cpxB = castNDArray(b, DType.complex128);
-    final cpxRes = add<Complex128, Complex128, Complex128>(
-      cpxA,
-      cpxB,
-      where: where,
-    );
+    final cpxRes = add<Complex128>(cpxA, cpxB, where: where);
     final casted = castNDArray(cpxRes, result.dtype);
     _copyMaskedResult(casted, result, where);
     if (!identical(cpxA, a)) cpxA.dispose();
@@ -5878,11 +5864,7 @@ NDArray<R> add<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   } else {
     final doubleA = castNDArray(a, DType.float64);
     final doubleB = castNDArray(b, DType.float64);
-    final doubleRes = add<Float64, Float64, Float64>(
-      doubleA,
-      doubleB,
-      where: where,
-    );
+    final doubleRes = add<Float64>(doubleA, doubleB, where: where);
     final casted = castNDArray(doubleRes, result.dtype);
     _copyMaskedResult(casted, result, where);
     if (!identical(doubleA, a)) doubleA.dispose();
@@ -5894,11 +5876,12 @@ NDArray<R> add<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
 }
 
 /// Element-wise subtraction of two arrays.
-NDArray<R> subtract<
-  Ta extends AnyDType,
-  Tb extends AnyDType,
-  R extends AnyDType
->(NDArray<Ta> a, NDArray<Tb> b, {NDArray<AnyDType>? where, NDArray<R>? out}) {
+NDArray<T> subtract<T extends DTypeTag>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  NDArray<DTypeTag>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute subtract() on a disposed array.');
   }
@@ -5916,16 +5899,16 @@ NDArray<R> subtract<
     }
   }
   final maskHolder = prepareMask(where, commonShape);
-  late final NDArray<R> result;
+  late final NDArray<T> result;
 
   final ndim = commonShape.length;
   final marker = ScratchArena.marker;
   try {
     result =
         out ??
-        NDArray<R>.create(
+        NDArray<T>.create(
           commonShape,
-          targetDType as DType<R>,
+          targetDType as DType<T>,
           zeroInit: where != null,
         );
     final isContig =
@@ -7405,11 +7388,7 @@ NDArray<R> subtract<
   if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
     final cpxA = castNDArray(a, DType.complex128);
     final cpxB = castNDArray(b, DType.complex128);
-    final cpxRes = subtract<Complex128, Complex128, Complex128>(
-      cpxA,
-      cpxB,
-      where: where,
-    );
+    final cpxRes = subtract<Complex128>(cpxA, cpxB, where: where);
     final casted = castNDArray(cpxRes, result.dtype);
     _copyMaskedResult(casted, result, where);
     if (!identical(cpxA, a)) cpxA.dispose();
@@ -7420,11 +7399,7 @@ NDArray<R> subtract<
   } else {
     final doubleA = castNDArray(a, DType.float64);
     final doubleB = castNDArray(b, DType.float64);
-    final doubleRes = subtract<Float64, Float64, Float64>(
-      doubleA,
-      doubleB,
-      where: where,
-    );
+    final doubleRes = subtract<Float64>(doubleA, doubleB, where: where);
     final casted = castNDArray(doubleRes, result.dtype);
     _copyMaskedResult(casted, result, where);
     if (!identical(doubleA, a)) doubleA.dispose();
@@ -7440,11 +7415,12 @@ NDArray<R> subtract<
 /// **Overflow behavior:**
 /// - **Integer arrays** (`int32`, `int64`, etc.) overflow silently wrapping around via standard two's complement.
 /// - **Floating-point arrays** (`float32`, `float64`) overflow silently to `double.infinity` or `double.negativeInfinity` per IEEE 754.
-NDArray<R> multiply<
-  Ta extends AnyDType,
-  Tb extends AnyDType,
-  R extends AnyDType
->(NDArray<Ta> a, NDArray<Tb> b, {NDArray<AnyDType>? where, NDArray<R>? out}) {
+NDArray<T> multiply<T extends DTypeTag>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  NDArray<DTypeTag>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute multiply() on a disposed array.');
   }
@@ -7462,16 +7438,16 @@ NDArray<R> multiply<
     }
   }
   final maskHolder = prepareMask(where, commonShape);
-  late final NDArray<R> result;
+  late final NDArray<T> result;
 
   final ndim = commonShape.length;
   final marker = ScratchArena.marker;
   try {
     result =
         out ??
-        NDArray<R>.create(
+        NDArray<T>.create(
           commonShape,
-          targetDType as DType<R>,
+          targetDType as DType<T>,
           zeroInit: where != null,
         );
     final isContig =
@@ -8952,11 +8928,7 @@ NDArray<R> multiply<
   if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
     final cpxA = castNDArray(a, DType.complex128);
     final cpxB = castNDArray(b, DType.complex128);
-    final cpxRes = multiply<Complex128, Complex128, Complex128>(
-      cpxA,
-      cpxB,
-      where: where,
-    );
+    final cpxRes = multiply<Complex128>(cpxA, cpxB, where: where);
     final casted = castNDArray(cpxRes, result.dtype);
     _copyMaskedResult(casted, result, where);
     if (!identical(cpxA, a)) cpxA.dispose();
@@ -8967,11 +8939,7 @@ NDArray<R> multiply<
   } else {
     final doubleA = castNDArray(a, DType.float64);
     final doubleB = castNDArray(b, DType.float64);
-    final doubleRes = multiply<Float64, Float64, Float64>(
-      doubleA,
-      doubleB,
-      where: where,
-    );
+    final doubleRes = multiply<Float64>(doubleA, doubleB, where: where);
     final casted = castNDArray(doubleRes, result.dtype);
     _copyMaskedResult(casted, result, where);
     if (!identical(doubleA, a)) doubleA.dispose();
@@ -8998,10 +8966,10 @@ NDArray<R> multiply<
 /// It is an error if:
 /// - [a], [b], or [out] is disposed (throws [StateError]).
 /// - [out] has incompatible shape or dtype (throws [ArgumentError]).
-NDArray<R> divide<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
+NDArray<R> divide<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
@@ -10544,14 +10512,14 @@ NDArray<R> divide<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
   }
 }
 
-void _copyMaskedResult(NDArray src, NDArray dest, NDArray<AnyDType>? where) {
+void _copyMaskedResult(NDArray src, NDArray dest, NDArray<DTypeTag>? where) {
   if (where == null && dest.isContiguous && src.isContiguous) {
     custom_memcpy(dest.pointer, src.pointer, dest.size * dest.dtype.byteWidth);
     return;
   }
   final maskHolder = prepareMask(where, dest.shape);
   try {
-    unaryOp<AnyDType, AnyDType>(
+    unaryOp<DTypeTag, DTypeTag>(
       dest,
       src,
       dest.shape,

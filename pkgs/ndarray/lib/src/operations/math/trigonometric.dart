@@ -11,7 +11,7 @@ import 'arithmetic.dart';
 /// Computes the element-wise sine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends AnyReal`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -25,9 +25,9 @@ import 'arithmetic.dart';
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Sine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<R> sin<T extends AnyDType, R extends AnyDType>(
+NDArray<R> sin<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -47,7 +47,7 @@ NDArray<R> sin<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -192,7 +192,7 @@ NDArray<R> sin<T extends AnyDType, R extends AnyDType>(
 /// Computes the element-wise sinc of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends AnyReal`) or [Complex].
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`) or [Complex].
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -201,9 +201,9 @@ NDArray<R> sin<T extends AnyDType, R extends AnyDType>(
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
 /// - For C-contiguous array layouts, uses native C vector math kernels (`v_sinc_double`/`v_sinc_float` etc).
-NDArray<R> sinc<T extends AnyDType, R extends AnyDType>(
+NDArray<R> sinc<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -225,7 +225,7 @@ NDArray<R> sinc<T extends AnyDType, R extends AnyDType>(
     }
   }
 
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -362,7 +362,7 @@ NDArray<R> sinc<T extends AnyDType, R extends AnyDType>(
 /// Computes the element-wise cosine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends AnyReal`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -376,9 +376,9 @@ NDArray<R> sinc<T extends AnyDType, R extends AnyDType>(
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Cosine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<R> cos<T extends AnyDType, R extends AnyDType>(
+NDArray<R> cos<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -398,7 +398,7 @@ NDArray<R> cos<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -544,9 +544,9 @@ NDArray<R> cos<T extends AnyDType, R extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<R> tan<T extends AnyDType, R extends AnyDType>(
+NDArray<R> tan<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -566,7 +566,7 @@ NDArray<R> tan<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -721,9 +721,9 @@ NDArray<R> tan<T extends AnyDType, R extends AnyDType>(
 /// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
 /// final b = asin(a); // [0.0, 1.570796...]
 /// ```
-NDArray<R> asin<T extends AnyDType, R extends AnyDType>(
+NDArray<R> asin<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -743,7 +743,7 @@ NDArray<R> asin<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -898,9 +898,9 @@ NDArray<R> asin<T extends AnyDType, R extends AnyDType>(
 /// final a = NDArray.fromList([1.0, 0.0], [2], DType.float64);
 /// final b = acos(a); // [0.0, 1.570796...]
 /// ```
-NDArray<R> acos<T extends AnyDType, R extends AnyDType>(
+NDArray<R> acos<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -920,7 +920,7 @@ NDArray<R> acos<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1075,9 +1075,9 @@ NDArray<R> acos<T extends AnyDType, R extends AnyDType>(
 /// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
 /// final b = atan(a); // [0.0, 0.785398...]
 /// ```
-NDArray<R> atan<T extends AnyDType, R extends AnyDType>(
+NDArray<R> atan<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1097,7 +1097,7 @@ NDArray<R> atan<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1242,7 +1242,7 @@ NDArray<R> atan<T extends AnyDType, R extends AnyDType>(
 /// Computes the element-wise hyperbolic sine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends AnyReal`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -1250,9 +1250,9 @@ NDArray<R> atan<T extends AnyDType, R extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> sinh<T extends AnyDType, R extends AnyDType>(
+NDArray<R> sinh<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1272,7 +1272,7 @@ NDArray<R> sinh<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1420,7 +1420,7 @@ NDArray<R> sinh<T extends AnyDType, R extends AnyDType>(
 /// Computes the element-wise hyperbolic cosine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends AnyReal`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -1428,9 +1428,9 @@ NDArray<R> sinh<T extends AnyDType, R extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> cosh<T extends AnyDType, R extends AnyDType>(
+NDArray<R> cosh<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1450,7 +1450,7 @@ NDArray<R> cosh<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1598,7 +1598,7 @@ NDArray<R> cosh<T extends AnyDType, R extends AnyDType>(
 /// Computes the element-wise hyperbolic tangent of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends AnyReal`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -1606,9 +1606,9 @@ NDArray<R> cosh<T extends AnyDType, R extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> tanh<T extends AnyDType, R extends AnyDType>(
+NDArray<R> tanh<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1628,7 +1628,7 @@ NDArray<R> tanh<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1777,7 +1777,7 @@ NDArray<R> tanh<T extends AnyDType, R extends AnyDType>(
 /// Computes the element-wise inverse hyperbolic sine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends AnyReal`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -1785,9 +1785,9 @@ NDArray<R> tanh<T extends AnyDType, R extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> asinh<T extends AnyDType, R extends AnyDType>(
+NDArray<R> asinh<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1807,7 +1807,7 @@ NDArray<R> asinh<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1955,7 +1955,7 @@ NDArray<R> asinh<T extends AnyDType, R extends AnyDType>(
 /// Computes the element-wise inverse hyperbolic cosine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends AnyReal`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -1963,9 +1963,9 @@ NDArray<R> asinh<T extends AnyDType, R extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> acosh<T extends AnyDType, R extends AnyDType>(
+NDArray<R> acosh<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1985,7 +1985,7 @@ NDArray<R> acosh<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -2133,7 +2133,7 @@ NDArray<R> acosh<T extends AnyDType, R extends AnyDType>(
 /// Computes the element-wise inverse hyperbolic tangent of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends AnyReal`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -2141,9 +2141,9 @@ NDArray<R> acosh<T extends AnyDType, R extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> atanh<T extends AnyDType, R extends AnyDType>(
+NDArray<R> atanh<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -2163,7 +2163,7 @@ NDArray<R> atanh<T extends AnyDType, R extends AnyDType>(
       promoted.dispose();
     }
   }
-  final DType<AnyDType> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -2312,11 +2312,11 @@ NDArray<R> atanh<T extends AnyDType, R extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<AnyFloat> atan2<Ty extends AnyDType, Tx extends AnyDType>(
+NDArray<DTypeTag> atan2<Ty extends DTypeTag, Tx extends DTypeTag>(
   NDArray<Ty> y,
   NDArray<Tx> x, {
-  NDArray<AnyDType>? where,
-  NDArray<AnyFloat>? out,
+  NDArray<DTypeTag>? where,
+  NDArray<DTypeTag>? out,
 }) {
   if (y.isDisposed ||
       x.isDisposed ||
@@ -2335,7 +2335,7 @@ NDArray<AnyFloat> atan2<Ty extends AnyDType, Tx extends AnyDType>(
         ? promoteToDouble(x)
         : x;
     try {
-      final res = atan2<AnyDType, AnyDType>(
+      final res = atan2<DTypeTag, DTypeTag>(
         yPromoted,
         xPromoted,
         where: where,
@@ -2370,13 +2370,9 @@ NDArray<AnyFloat> atan2<Ty extends AnyDType, Tx extends AnyDType>(
   final maskHolder = prepareMask(where, shape);
 
   try {
-    final NDArray<AnyFloat> result =
+    final NDArray<DTypeTag> result =
         out ??
-        NDArray<AnyFloat>.create(
-          shape,
-          targetDType as DType<AnyFloat>,
-          zeroInit: where != null,
-        );
+        NDArray<DTypeTag>.create(shape, targetDType, zeroInit: where != null);
     // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
     if (y.isContiguous &&
         x.isContiguous &&
@@ -2451,7 +2447,7 @@ NDArray<AnyFloat> atan2<Ty extends AnyDType, Tx extends AnyDType>(
       }
     }
 
-    elementWiseOp<AnyDType, AnyDType, AnyDType>(
+    elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
       result,
       y,
       x,
@@ -2478,10 +2474,10 @@ NDArray<AnyFloat> atan2<Ty extends AnyDType, Tx extends AnyDType>(
 /// ```dart
 /// final h = hypot(a, b);
 /// ```
-NDArray<R> hypot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
+NDArray<R> hypot<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -2522,10 +2518,12 @@ NDArray<R> hypot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
     final NDArray<R> result =
         out ?? NDArray<R>.create(shape, targetDType, zeroInit: where != null);
     if (isCpx) {
-      final cpxDType = is64BitComplex ? DType.complex128 : DType.complex64;
+      final DType<DTypeTag> cpxDType = is64BitComplex
+          ? DType.complex128
+          : DType.complex64;
       return NDArray.scope(() {
-        final aCpx = castNDArray<AnyComplex>(a, cpxDType);
-        final bCpx = castNDArray<AnyComplex>(b, cpxDType);
+        final aCpx = castNDArray<DTypeTag>(a, cpxDType);
+        final bCpx = castNDArray<DTypeTag>(b, cpxDType);
         final cpxBroadcast = broadcast(aCpx, bCpx);
         if (listEquals(a.shape, b.shape) &&
             a.isContiguous &&
@@ -2606,7 +2604,7 @@ NDArray<R> hypot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
       return x * math.sqrt(1.0 + t * t);
     }
 
-    elementWiseOp<AnyDType, AnyDType, AnyDType>(
+    elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
       result,
       a,
       b,
@@ -2647,9 +2645,9 @@ NDArray<R> hypot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
 /// final a = NDArray.fromList([180.0, 90.0, 45.0], [3], DType.float64);
 /// final r = deg2rad(a); // [pi, pi / 2.0, pi / 4.0]
 /// ```
-NDArray<R> deg2rad<T extends AnyDType, R extends AnyDType>(
+NDArray<R> deg2rad<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -2673,7 +2671,7 @@ NDArray<R> deg2rad<T extends AnyDType, R extends AnyDType>(
 
   final factor = NDArray.fromList([0.017453292519943295], [], targetDType);
   try {
-    return multiply<T, AnyDType, R>(a, factor, where: where, out: out);
+    return multiply<DTypeTag>(a, factor, where: where, out: out) as NDArray<R>;
   } finally {
     factor.dispose();
   }
@@ -2694,9 +2692,9 @@ NDArray<R> deg2rad<T extends AnyDType, R extends AnyDType>(
 /// final a = NDArray.fromList([math.pi, math.pi / 2.0], [2], DType.float64);
 /// final d = rad2deg(a); // [180.0, 90.0]
 /// ```
-NDArray<R> rad2deg<T extends AnyDType, R extends AnyDType>(
+NDArray<R> rad2deg<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -2720,7 +2718,7 @@ NDArray<R> rad2deg<T extends AnyDType, R extends AnyDType>(
 
   final factor = NDArray.fromList([57.29577951308232], [], targetDType);
   try {
-    return multiply<T, AnyDType, R>(a, factor, where: where, out: out);
+    return multiply<DTypeTag>(a, factor, where: where, out: out) as NDArray<R>;
   } finally {
     factor.dispose();
   }

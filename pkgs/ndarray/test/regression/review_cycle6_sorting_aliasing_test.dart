@@ -164,7 +164,7 @@ void main() {
         final badSorter = NDArray<Int32>.fromList([0, 99, 1], [3], DType.int32);
 
         // searchsorted mismatched dtype
-        expect(() => searchsorted<AnyDType>(a, vInt), throwsArgumentError);
+        expect(() => searchsorted<DTypeTag>(a, vInt), throwsArgumentError);
         // searchsorted out-of-bounds sorter index
         expect(
           () => searchsorted(a, a, sorter: badSorter),
@@ -174,10 +174,7 @@ void main() {
         expect(() => argpartition(a, 10), throwsRangeError);
         // kron incompatible out shape
         final badOut = NDArray<Float64>.zeros([2], DType.float64);
-        expect(
-          () => kron<Float64, Float64, Float64>(a, a, out: badOut),
-          throwsArgumentError,
-        );
+        expect(() => kron<Float64>(a, a, out: badOut), throwsArgumentError);
         // fft invalid axis
         expect(() => fft<Float64, Complex128>(a, axis: 5), throwsRangeError);
         // rfft invalid n

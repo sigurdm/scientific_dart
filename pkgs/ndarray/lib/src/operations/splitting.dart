@@ -5,7 +5,7 @@ import 'helpers.dart';
 // Standalone operational relative cross-imports
 
 /// Helper to slice an array along a specific axis between [start] and [stop].
-NDArray<T> _sliceAlongAxis<T extends AnyDType>(
+NDArray<T> _sliceAlongAxis<T extends DTypeTag>(
   NDArray<T> a,
   int axis,
   int start,
@@ -40,7 +40,7 @@ NDArray<T> _sliceAlongAxis<T extends AnyDType>(
 ///
 /// Refer to the [NumPy array_split reference](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html)
 /// for details.
-List<NDArray<T>> array_split<T extends AnyDType>(
+List<NDArray<T>> array_split<T extends DTypeTag>(
   NDArray<T> a,
   int sections, {
   int axis = 0,
@@ -131,7 +131,7 @@ List<NDArray<T>> array_split<T extends AnyDType>(
 ///
 /// Refer to the [NumPy array_split reference](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html)
 /// for details.
-List<NDArray<T>> array_split_at<T extends AnyDType>(
+List<NDArray<T>> array_split_at<T extends DTypeTag>(
   NDArray<T> a,
   List<int> indices, {
   int axis = 0,
@@ -226,7 +226,7 @@ List<NDArray<T>> array_split_at<T extends AnyDType>(
 ///
 /// Refer to the [NumPy split reference](https://numpy.org/doc/stable/reference/generated/numpy.split.html)
 /// for details.
-List<NDArray<T>> split<T extends AnyDType>(
+List<NDArray<T>> split<T extends DTypeTag>(
   NDArray<T> a,
   int sections, {
   int axis = 0,
@@ -274,7 +274,7 @@ List<NDArray<T>> split<T extends AnyDType>(
 ///
 /// Refer to the [NumPy split reference](https://numpy.org/doc/stable/reference/generated/numpy.split.html)
 /// for details.
-List<NDArray<T>> split_at<T extends AnyDType>(
+List<NDArray<T>> split_at<T extends DTypeTag>(
   NDArray<T> a,
   List<int> indices, {
   int axis = 0,
@@ -303,7 +303,7 @@ List<NDArray<T>> split_at<T extends AnyDType>(
 ///
 /// Refer to the [NumPy hsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html)
 /// for details.
-List<NDArray<T>> hsplit<T extends AnyDType>(
+List<NDArray<T>> hsplit<T extends DTypeTag>(
   NDArray<T> a,
   int sections, {
   List<NDArray<T>>? out,
@@ -338,7 +338,7 @@ List<NDArray<T>> hsplit<T extends AnyDType>(
 ///
 /// Refer to the [NumPy hsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html)
 /// for details.
-List<NDArray<T>> hsplit_at<T extends AnyDType>(
+List<NDArray<T>> hsplit_at<T extends DTypeTag>(
   NDArray<T> a,
   List<int> indices, {
   List<NDArray<T>>? out,
@@ -373,7 +373,7 @@ List<NDArray<T>> hsplit_at<T extends AnyDType>(
 ///
 /// Refer to the [NumPy vsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html)
 /// for details.
-List<NDArray<T>> vsplit<T extends AnyDType>(
+List<NDArray<T>> vsplit<T extends DTypeTag>(
   NDArray<T> a,
   int sections, {
   List<NDArray<T>>? out,
@@ -407,7 +407,7 @@ List<NDArray<T>> vsplit<T extends AnyDType>(
 ///
 /// Refer to the [NumPy vsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html)
 /// for details.
-List<NDArray<T>> vsplit_at<T extends AnyDType>(
+List<NDArray<T>> vsplit_at<T extends DTypeTag>(
   NDArray<T> a,
   List<int> indices, {
   List<NDArray<T>>? out,
@@ -445,7 +445,7 @@ List<NDArray<T>> vsplit_at<T extends AnyDType>(
 ///
 /// Refer to the [NumPy dsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html)
 /// for details.
-List<NDArray<T>> dsplit<T extends AnyDType>(
+List<NDArray<T>> dsplit<T extends DTypeTag>(
   NDArray<T> a,
   int sections, {
   List<NDArray<T>>? out,
@@ -479,7 +479,7 @@ List<NDArray<T>> dsplit<T extends AnyDType>(
 ///
 /// Refer to the [NumPy dsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html)
 /// for details.
-List<NDArray<T>> dsplit_at<T extends AnyDType>(
+List<NDArray<T>> dsplit_at<T extends DTypeTag>(
   NDArray<T> a,
   List<int> indices, {
   List<NDArray<T>>? out,

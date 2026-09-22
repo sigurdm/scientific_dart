@@ -258,7 +258,7 @@ void main() {
         expect(nRes.scalar, closeTo(5.477225575, 1e-6));
 
         final svdRes = svd(a);
-        final NDArray<AnyFloat> sArr = svdRes.s;
+        final NDArray<DTypeTag> sArr = svdRes.s;
         expect(sArr.shape, equals([2]));
         svdRes.dispose();
 
@@ -269,13 +269,13 @@ void main() {
         final x2 = NDArray.fromList([3.0, 4.0], [2], DType.float64);
         final outVec = NDArray<Float64>.zeros([2], DType.float64);
 
-        final NDArray<AnyFloat> lae = logaddexp(x1, x2, out: outVec);
+        final NDArray<DTypeTag> lae = logaddexp(x1, x2, out: outVec);
         expect(lae.shape, equals([2]));
 
-        final NDArray<AnyFloat> lae2 = logaddexp2(x1, x2, out: outVec);
+        final NDArray<DTypeTag> lae2 = logaddexp2(x1, x2, out: outVec);
         expect(lae2.shape, equals([2]));
 
-        final NDArray<AnyFloat> at2 = atan2(x1, x2, out: outVec);
+        final NDArray<DTypeTag> at2 = atan2(x1, x2, out: outVec);
         expect(at2.shape, equals([2]));
 
         a.dispose();

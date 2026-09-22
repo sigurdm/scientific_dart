@@ -12,7 +12,7 @@ void main() {
             [2, 3],
             DType.float64,
           );
-          final indices = NDArray<AnyInt>.fromList(
+          final indices = NDArray<DTypeTag>.fromList(
             [2, 0, 1, 1],
             [2, 2],
             DType.int32,
@@ -27,12 +27,12 @@ void main() {
       test(
         '2D int32 take_along_axis along axis 0 with negative indices',
         () => NDArray.scope(() {
-          final a = NDArray<AnyInt>.fromList(
+          final a = NDArray<DTypeTag>.fromList(
             [1, 2, 3, 4, 5, 6],
             [3, 2],
             DType.int32,
           );
-          final indices = NDArray<AnyInt>.fromList(
+          final indices = NDArray<DTypeTag>.fromList(
             [-1, 0, 1, -2],
             [2, 2],
             DType.int32,
@@ -46,13 +46,13 @@ void main() {
       test(
         'take_along_axis strided/non-contiguous array',
         () => NDArray.scope(() {
-          final a = NDArray<AnyInt>.fromList(
+          final a = NDArray<DTypeTag>.fromList(
             [1, 2, 3, 4, 5, 6, 7, 8],
             [2, 4],
             DType.int64,
           );
           final view = a.swapaxes(0, 1); // shape [4, 2], strided view
-          final idx = NDArray<AnyInt>.fromList(
+          final idx = NDArray<DTypeTag>.fromList(
             [1, 0, 1, 0],
             [4, 1],
             DType.int64,
@@ -71,8 +71,12 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final indices = NDArray<AnyInt>.fromList([1, 0], [2, 1], DType.int32);
-          final out = NDArray<AnyFloat>.create([2, 1], DType.float64);
+          final indices = NDArray<DTypeTag>.fromList(
+            [1, 0],
+            [2, 1],
+            DType.int32,
+          );
+          final out = NDArray<DTypeTag>.create([2, 1], DType.float64);
           final res = take_along_axis(a, indices, 1, out: out);
           expect(identical(res, out), true);
           expect(res.toList(), [2.0, 3.0]);
@@ -87,7 +91,7 @@ void main() {
             [2, 2],
             DType.complex128,
           );
-          final idx = NDArray<AnyInt>.fromList([1, 0], [2, 1], DType.int32);
+          final idx = NDArray<DTypeTag>.fromList([1, 0], [2, 1], DType.int32);
           final resC = take_along_axis(c, idx, 1);
           expect(resC.toList(), [Complex(3, 4), Complex(5, 6)]);
 
@@ -109,7 +113,7 @@ void main() {
             [2, 2],
             DType.float32,
           );
-          final idx = NDArray<AnyInt>.fromList([1, 0], [2, 1], DType.int32);
+          final idx = NDArray<DTypeTag>.fromList([1, 0], [2, 1], DType.int32);
           final resF32 = take_along_axis(f32, idx, 1);
           expect(resF32.dtype, DType.float32);
           expect(resF32.toList(), [2.5, 3.5]);
@@ -152,7 +156,7 @@ void main() {
             [4],
             DType.float64,
           );
-          final idx1d = NDArray<AnyInt>.fromList(
+          final idx1d = NDArray<DTypeTag>.fromList(
             [3, 1, -1, 0],
             [4],
             DType.int32,
@@ -161,12 +165,12 @@ void main() {
           expect(res1d.toList(), [400.0, 200.0, 400.0, 100.0]);
 
           // 3D test: arr shape [2, 1, 3], idx shape [2, 2, 2], axis = 2
-          final a3d = NDArray<AnyInt>.fromList(
+          final a3d = NDArray<DTypeTag>.fromList(
             [1, 2, 3, 4, 5, 6],
             [2, 1, 3],
             DType.int32,
           );
-          final idx3d = NDArray<AnyInt>.fromList(
+          final idx3d = NDArray<DTypeTag>.fromList(
             [2, 0, 1, 1, 0, 2, 1, 0],
             [2, 2, 2],
             DType.int32,
@@ -185,13 +189,17 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final idx1D = NDArray<AnyInt>.fromList([0, 1], [2], DType.int32);
+          final idx1D = NDArray<DTypeTag>.fromList([0, 1], [2], DType.int32);
           expect(() => take_along_axis(a, idx1D, 0), throwsArgumentError);
 
-          final idx2D = NDArray<AnyInt>.fromList([5, 0], [2, 1], DType.int32);
+          final idx2D = NDArray<DTypeTag>.fromList([5, 0], [2, 1], DType.int32);
           expect(() => take_along_axis(a, idx2D, 1), throwsRangeError);
           expect(() => take_along_axis(a, idx2D, 5), throwsRangeError);
-          final idxNeg = NDArray<AnyInt>.fromList([-5, 0], [2, 1], DType.int32);
+          final idxNeg = NDArray<DTypeTag>.fromList(
+            [-5, 0],
+            [2, 1],
+            DType.int32,
+          );
           expect(() => take_along_axis(a, idxNeg, 1), throwsRangeError);
         }),
       );
@@ -206,7 +214,7 @@ void main() {
             [2, 3],
             DType.float64,
           );
-          final indices = NDArray<AnyInt>.fromList(
+          final indices = NDArray<DTypeTag>.fromList(
             [2, 0, 1, 1],
             [2, 2],
             DType.int32,
@@ -219,8 +227,8 @@ void main() {
           put_along_axis(a, indices, values, 1);
           expect(a.toList(), [88.0, 20.0, 99.0, 40.0, 66.0, 60.0]);
 
-          final b = NDArray<AnyInt>.zeros([2, 3], DType.int32);
-          final bIdx = NDArray<AnyInt>.fromList([2, 0], [2, 1], DType.int32);
+          final b = NDArray<DTypeTag>.zeros([2, 3], DType.int32);
+          final bIdx = NDArray<DTypeTag>.fromList([2, 0], [2, 1], DType.int32);
           put_along_axis(b, bIdx, 99, 1);
           expect(b.toList(), [0, 0, 99, 99, 0, 0]);
         }),
@@ -234,7 +242,7 @@ void main() {
             [3],
             DType.float32,
           );
-          final idx1d = NDArray<AnyInt>.fromList([2, 0], [2], DType.int32);
+          final idx1d = NDArray<DTypeTag>.fromList([2, 0], [2], DType.int32);
           final val1d = NDArray<Float32>.fromList(
             [99.0, 88.0],
             [2],
@@ -244,7 +252,7 @@ void main() {
           expect(a1d.toList(), [88.0, 20.0, 99.0]);
 
           final c128 = NDArray<Complex128>.zeros([2, 2], DType.complex128);
-          final idxC = NDArray<AnyInt>.fromList([1, 0], [2, 1], DType.int32);
+          final idxC = NDArray<DTypeTag>.fromList([1, 0], [2, 1], DType.int32);
           put_along_axis(c128, idxC, Complex(7, 8), 1);
           expect(c128.toList(), [
             Complex(0, 0),
@@ -258,14 +266,22 @@ void main() {
       test(
         'put_along_axis with out parameter',
         () => NDArray.scope(() {
-          final a = NDArray<AnyInt>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-          final indices = NDArray<AnyInt>.fromList([1, 0], [2, 1], DType.int32);
-          final values = NDArray<AnyInt>.fromList(
+          final a = NDArray<DTypeTag>.fromList(
+            [1, 2, 3, 4],
+            [2, 2],
+            DType.int32,
+          );
+          final indices = NDArray<DTypeTag>.fromList(
+            [1, 0],
+            [2, 1],
+            DType.int32,
+          );
+          final values = NDArray<DTypeTag>.fromList(
             [10, 20],
             [2, 1],
             DType.int32,
           );
-          final out = NDArray<AnyInt>.create([2, 2], DType.int32);
+          final out = NDArray<DTypeTag>.create([2, 2], DType.int32);
           final res = put_along_axis(a, indices, values, 1, out: out);
           expect(identical(res, out), true);
           expect(out.toList(), [1, 10, 20, 4]);
@@ -281,14 +297,14 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final indices = NDArray<AnyInt>.fromList(
+          final indices = NDArray<DTypeTag>.fromList(
             [10, 0],
             [2, 1],
             DType.int32,
           );
           final values = NDArray.fromList([9.0, 8.0], [2, 1], DType.float64);
           expect(() => put_along_axis(a, indices, values, 1), throwsRangeError);
-          final idxNeg = NDArray<AnyInt>.fromList(
+          final idxNeg = NDArray<DTypeTag>.fromList(
             [-10, 0],
             [2, 1],
             DType.int32,
@@ -312,7 +328,11 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final a = NDArray<AnyInt>.fromList([0, 1, 1, 0], [2, 2], DType.int32);
+          final a = NDArray<DTypeTag>.fromList(
+            [0, 1, 1, 0],
+            [2, 2],
+            DType.int32,
+          );
           final res = choose(a, [choice0, choice1]);
           expect(res.shape, [2, 2]);
           expect(res.toList(), [0.0, 11.0, 12.0, 3.0]);
@@ -322,9 +342,17 @@ void main() {
       test(
         'choose wrap mode',
         () => NDArray.scope(() {
-          final choice0 = NDArray<AnyInt>.fromList([10, 20], [2], DType.int32);
-          final choice1 = NDArray<AnyInt>.fromList([30, 40], [2], DType.int32);
-          final a = NDArray<AnyInt>.fromList([2, -1], [2], DType.int32);
+          final choice0 = NDArray<DTypeTag>.fromList(
+            [10, 20],
+            [2],
+            DType.int32,
+          );
+          final choice1 = NDArray<DTypeTag>.fromList(
+            [30, 40],
+            [2],
+            DType.int32,
+          );
+          final a = NDArray<DTypeTag>.fromList([2, -1], [2], DType.int32);
           final res = choose(a, [choice0, choice1], mode: ChooseMode.wrap);
           expect(res.toList(), [10, 40]);
         }),
@@ -333,9 +361,17 @@ void main() {
       test(
         'choose clip mode',
         () => NDArray.scope(() {
-          final choice0 = NDArray<AnyInt>.fromList([10, 20], [2], DType.int32);
-          final choice1 = NDArray<AnyInt>.fromList([30, 40], [2], DType.int32);
-          final a = NDArray<AnyInt>.fromList([-5, 10], [2], DType.int32);
+          final choice0 = NDArray<DTypeTag>.fromList(
+            [10, 20],
+            [2],
+            DType.int32,
+          );
+          final choice1 = NDArray<DTypeTag>.fromList(
+            [30, 40],
+            [2],
+            DType.int32,
+          );
+          final a = NDArray<DTypeTag>.fromList([-5, 10], [2], DType.int32);
           final res = choose(a, [choice0, choice1], mode: ChooseMode.clip);
           expect(res.toList(), [10, 40]);
         }),
@@ -345,7 +381,7 @@ void main() {
         'choose error cases',
         () => NDArray.scope(() {
           final choice0 = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-          final a = NDArray<AnyInt>.fromList([0, 5], [2], DType.int32);
+          final a = NDArray<DTypeTag>.fromList([0, 5], [2], DType.int32);
           expect(() => choose(a, [choice0]), throwsRangeError);
           expect(() => choose(a, []), throwsArgumentError);
         }),
@@ -394,12 +430,12 @@ void main() {
             [2, 1],
             DType.boolean,
           );
-          final choice1 = NDArray<AnyInt>.fromList(
+          final choice1 = NDArray<DTypeTag>.fromList(
             [10, 20],
             [2, 1],
             DType.int32,
           );
-          final choice2 = NDArray<AnyInt>.fromList(
+          final choice2 = NDArray<DTypeTag>.fromList(
             [100, 200],
             [1, 2],
             DType.int32,
@@ -410,7 +446,7 @@ void main() {
             DType.boolean,
           );
 
-          final out = NDArray<AnyInt>.create([2, 2], DType.int32);
+          final out = NDArray<DTypeTag>.create([2, 2], DType.int32);
           final res = select(
             [cond1, cond2],
             [choice1, choice2],

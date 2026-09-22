@@ -104,7 +104,7 @@ NDArray<Float64> _promoteToFloat64(NDArray a) {
 /// - Space complexity is $O(M^2)$ for the output array.
 ///
 /// {@example /example/distance_example.dart}
-NDArray<Float64> pdist<T extends AnyDType>(
+NDArray<Float64> pdist<T extends DTypeTag>(
   NDArray<T> x, {
   DistanceMetric metric = DistanceMetric.euclidean,
   NDArray<Float64>? out,
@@ -217,7 +217,7 @@ NDArray<Float64> pdist<T extends AnyDType>(
 /// - Space complexity is $O(M K)$ for the output array.
 ///
 /// {@example /example/distance_example.dart}
-NDArray<Float64> cdist<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Float64> cdist<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> xa,
   NDArray<Tb> xb, {
   DistanceMetric metric = DistanceMetric.euclidean,
@@ -287,8 +287,8 @@ NDArray<Float64> cdist<Ta extends AnyDType, Tb extends AnyDType>(
       }
     }
 
-    NDArray<AnyDType> xaReal = xa;
-    NDArray<AnyDType> xbReal = xb;
+    NDArray<DTypeTag> xaReal = xa;
+    NDArray<DTypeTag> xbReal = xb;
     if (xa.dtype != xb.dtype) {
       xaReal = _promoteToFloat64(xa);
       xbReal = _promoteToFloat64(xb);
@@ -327,7 +327,7 @@ NDArray<Float64> cdist<Ta extends AnyDType, Tb extends AnyDType>(
 
 /// Helper for optimized Cosine pdist implementation in Dart.
 /// Cosine pdist is implemented using ndarray operations, not in a single intrinsic.
-NDArray<Float64> _pdistCosine<T extends AnyDType>(
+NDArray<Float64> _pdistCosine<T extends DTypeTag>(
   NDArray<T> x, {
   NDArray<Float64>? out,
 }) {
@@ -347,17 +347,11 @@ NDArray<Float64> _pdistCosine<T extends AnyDType>(
     final NDArray<Float64> xSum = sum(xSq, axis: 1);
     final NDArray<Float64> normX = sqrt(xSum);
 
-    final NDArray<Float64> dot = matmul<Float64, Float64, Float64>(
-      xDouble,
-      xDouble.transposed,
-    );
+    final NDArray<Float64> dot = matmul<Float64>(xDouble, xDouble.transposed);
 
     final NDArray<Float64> normX2D = normX.reshape([m, 1]);
     final NDArray<Float64> normXT2D = normX.reshape([1, m]);
-    final NDArray<Float64> denom = matmul<Float64, Float64, Float64>(
-      normX2D,
-      normXT2D,
-    );
+    final NDArray<Float64> denom = matmul<Float64>(normX2D, normXT2D);
 
     final NDArray<Float64> div = divide(dot, denom);
     final one = NDArray<Float64>.fromList([1.0], [1], DType.float64);
@@ -387,7 +381,7 @@ NDArray<Float64> _pdistCosine<T extends AnyDType>(
 
 /// Helper for optimized Cosine cdist implementation in Dart.
 /// Cosine cdist is implemented using ndarray operations, not in a single intrinsic.
-NDArray<Float64> _cdistCosine<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Float64> _cdistCosine<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> xa,
   NDArray<Tb> xb, {
   NDArray<Float64>? out,
@@ -410,17 +404,11 @@ NDArray<Float64> _cdistCosine<Ta extends AnyDType, Tb extends AnyDType>(
     final NDArray<Float64> xbSum = sum(xbSq, axis: 1);
     final NDArray<Float64> normXb = sqrt(xbSum);
 
-    final NDArray<Float64> dot = matmul<Float64, Float64, Float64>(
-      xaDouble,
-      xbDouble.transposed,
-    );
+    final NDArray<Float64> dot = matmul<Float64>(xaDouble, xbDouble.transposed);
 
     final NDArray<Float64> normXa2D = normXa.reshape([m, 1]);
     final NDArray<Float64> normXb2D = normXb.reshape([1, k]);
-    final NDArray<Float64> denom = matmul<Float64, Float64, Float64>(
-      normXa2D,
-      normXb2D,
-    );
+    final NDArray<Float64> denom = matmul<Float64>(normXa2D, normXb2D);
 
     final NDArray<Float64> div = divide(dot, denom);
     final one = NDArray<Float64>.fromList([1.0], [1], DType.float64);

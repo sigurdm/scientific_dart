@@ -50,14 +50,18 @@ void main() {
       '3. atUfunc missing C cases (floorDivide, remainder, power) & unsupported op',
       () {
         NDArray.scope(() {
-          final aInt = NDArray<AnyInt>.fromList([10, 20, 30], [3], DType.int32);
-          final idx = NDArray<AnyInt>.fromList([0, 1, 2], [3], DType.int64);
-          final bInt = NDArray<AnyInt>.fromList([3, 3, 2], [3], DType.int32);
+          final aInt = NDArray<DTypeTag>.fromList(
+            [10, 20, 30],
+            [3],
+            DType.int32,
+          );
+          final idx = NDArray<DTypeTag>.fromList([0, 1, 2], [3], DType.int64);
+          final bInt = NDArray<DTypeTag>.fromList([3, 3, 2], [3], DType.int32);
 
           atUfunc(aInt, idx, bInt, op: BinaryOp.floorDivide);
           expect(aInt.toList(), equals([3, 6, 15]));
 
-          final aIntMod = NDArray<AnyInt>.fromList(
+          final aIntMod = NDArray<DTypeTag>.fromList(
             [10, 20, 30],
             [3],
             DType.int32,
@@ -65,8 +69,12 @@ void main() {
           atUfunc(aIntMod, idx, bInt, op: BinaryOp.remainder);
           expect(aIntMod.toList(), equals([1, 2, 0]));
 
-          final aIntPow = NDArray<AnyInt>.fromList([2, 3, 4], [3], DType.int32);
-          final bPow = NDArray<AnyInt>.fromList([3, 2, 1], [3], DType.int32);
+          final aIntPow = NDArray<DTypeTag>.fromList(
+            [2, 3, 4],
+            [3],
+            DType.int32,
+          );
+          final bPow = NDArray<DTypeTag>.fromList([3, 2, 1], [3], DType.int32);
           atUfunc(aIntPow, idx, bPow, op: BinaryOp.power);
           expect(aIntPow.toList(), equals([8, 9, 4]));
 

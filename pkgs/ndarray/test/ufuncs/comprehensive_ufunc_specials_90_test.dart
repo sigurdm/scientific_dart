@@ -679,7 +679,7 @@ void main() {
               [8],
               DType.float64,
             );
-            final indices1D = NDArray<AnyInt>.fromList(
+            final indices1D = NDArray<DTypeTag>.fromList(
               [0, 4, 1, 5, 2],
               [5],
               DType.int64,
@@ -694,7 +694,7 @@ void main() {
               [4],
               DType.float32,
             );
-            final idx = NDArray<AnyInt>.fromList([0, 2], [2], DType.int64);
+            final idx = NDArray<DTypeTag>.fromList([0, 2], [2], DType.int64);
             expect(
               aF32.reduceat(idx, op: BinaryOp.add).toList(),
               equals([3.0, 7.0]),
@@ -844,7 +844,7 @@ void main() {
           NDArray.scope(() {
             // Float64
             final targetF64 = NDArray<Float64>.zeros([5], DType.float64);
-            final indices = NDArray<AnyInt>.fromList(
+            final indices = NDArray<DTypeTag>.fromList(
               [0, 1, 0, 2, 1],
               [5],
               DType.int64,
@@ -859,7 +859,11 @@ void main() {
 
             // Float32
             final targetF32 = NDArray<Float32>.zeros([3], DType.float32);
-            final idx3 = NDArray<AnyInt>.fromList([0, 0, 1], [3], DType.int64);
+            final idx3 = NDArray<DTypeTag>.fromList(
+              [0, 0, 1],
+              [3],
+              DType.int64,
+            );
             final valsF32 = NDArray<Float32>.fromList(
               [2.0, 3.0, 5.0],
               [3],
@@ -875,7 +879,7 @@ void main() {
               DType.int64,
             );
             final valsI64 = NDArray<Int64>.fromList([2, 5], [2], DType.int64);
-            final idx2 = NDArray<AnyInt>.fromList([0, 1], [2], DType.int64);
+            final idx2 = NDArray<DTypeTag>.fromList([0, 1], [2], DType.int64);
             targetI64.at(idx2, valsI64, op: BinaryOp.subtract);
             expect(targetI64.toList(), equals([8, 15, 30]));
 
@@ -1007,7 +1011,7 @@ void main() {
             final accumulated = accumulate(a, op: BinaryOp.add);
             expect(accumulated.toList(), equals([10.0, 30.0, 60.0]));
 
-            final idx = NDArray<AnyInt>.fromList([0, 1], [2], DType.int64);
+            final idx = NDArray<DTypeTag>.fromList([0, 1], [2], DType.int64);
             final redAt = reduceat(a, idx, op: BinaryOp.add);
             expect(redAt.toList(), equals([10.0, 50.0]));
 

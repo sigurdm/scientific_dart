@@ -37,9 +37,9 @@ import '../helpers.dart';
 /// final b = i0(a);
 /// print(b.toList()); // [1.0, ~1.266066, ~2.279585]
 /// ```
-NDArray<R> i0<T extends AnyDType, R extends AnyDType>(
+NDArray<R> i0<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -238,9 +238,9 @@ NDArray<R> i0<T extends AnyDType, R extends AnyDType>(
 /// final b = gamma(a);
 /// print(b.toList()); // [1.0, 1.0, 2.0, 6.0]
 /// ```
-NDArray<R> gamma<T extends AnyDType, R extends AnyDType>(
+NDArray<R> gamma<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -393,9 +393,9 @@ NDArray<R> gamma<T extends AnyDType, R extends AnyDType>(
 /// final b = erf(a);
 /// print(b.toList()); // [0.0, ~0.8427]
 /// ```
-NDArray<R> erf<T extends AnyDType, R extends AnyDType>(
+NDArray<R> erf<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||

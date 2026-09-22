@@ -49,7 +49,7 @@ void main() async {
           List.generate(30000, (_) => rand.nextDouble()),
         );
 
-        c.bench<NDArray<AnyFloat>>(
+        c.bench<NDArray<DTypeTag>>(
           'Native C Heap sort() (Contiguous vector) [size=30,000]',
           (arr) {
             final res = sort(arr);
@@ -57,14 +57,14 @@ void main() async {
             res.dispose();
             arr.dispose();
           },
-          setup: () => NDArray<AnyFloat>.fromList(templateContig, [
+          setup: () => NDArray<DTypeTag>.fromList(templateContig, [
             30000,
           ], DType.float64),
           batchSize: BatchSize.largeInput,
           throughput: Throughput.elements(30000),
         );
 
-        c.bench<NDArray<AnyFloat>>(
+        c.bench<NDArray<DTypeTag>>(
           'Native C Heap sort() (Random vector) [size=30,000]',
           (arr) {
             final res = sort(arr);
@@ -72,7 +72,7 @@ void main() async {
             res.dispose();
             arr.dispose();
           },
-          setup: () => NDArray<AnyFloat>.fromList(templateRandom, [
+          setup: () => NDArray<DTypeTag>.fromList(templateRandom, [
             30000,
           ], DType.float64),
           batchSize: BatchSize.largeInput,
@@ -89,7 +89,7 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(100000));
 
-        c.bench<NDArray<AnyFloat>>(
+        c.bench<NDArray<DTypeTag>>(
           'Argsort (argsort) [size=30,000]',
           (arr) {
             final indices = argsort(arr);
@@ -97,7 +97,7 @@ void main() async {
             indices.dispose();
             arr.dispose();
           },
-          setup: () => NDArray<AnyFloat>.fromList(templateContig, [
+          setup: () => NDArray<DTypeTag>.fromList(templateContig, [
             30000,
           ], DType.float64),
           batchSize: BatchSize.largeInput,
@@ -226,7 +226,7 @@ void main() async {
         }, throughput: Throughput.elements(300000));
 
         c.bench('Zeros Array Creation (zeros) [size=1,000,000]', () {
-          final arr = NDArray<AnyFloat>.zeros([1000, 1000], DType.float64);
+          final arr = NDArray<DTypeTag>.zeros([1000, 1000], DType.float64);
           blackhole(arr);
           arr.dispose();
         }, throughput: Throughput.elements(1000000));

@@ -124,7 +124,7 @@ void main() {
   );
 
   group('Review Cycle 16 — Issue #2: All 8 Integer DTypes in Bitwise Operations', () {
-    final intDTypes = <DType<AnyInt>>[
+    final intDTypes = <DType<DTypeTag>>[
       DType.int8,
       DType.int16,
       DType.int32,
@@ -140,12 +140,12 @@ void main() {
       () {
         for (final dt in intDTypes) {
           NDArray.scope(() {
-            final aFull = NDArray<AnyInt>.fromList(
+            final aFull = NDArray<DTypeTag>.fromList(
               [3, 5, 6, 12, 15, 9, 10, 7],
               [8],
               dt,
             );
-            final bFull = NDArray<AnyInt>.fromList(
+            final bFull = NDArray<DTypeTag>.fromList(
               [1, 3, 2, 4, 7, 5, 6, 3],
               [8],
               dt,
@@ -309,17 +309,17 @@ void main() {
       () {
         for (final dt in intDTypes) {
           NDArray.scope(() {
-            final a = NDArray<AnyInt>.fromList([7, 3, 5, 1], [4], dt);
-            final b = NDArray<AnyInt>.fromList([6, 2, 4, 1], [4], dt);
+            final a = NDArray<DTypeTag>.fromList([7, 3, 5, 1], [4], dt);
+            final b = NDArray<DTypeTag>.fromList([6, 2, 4, 1], [4], dt);
 
-            final bAnd = binaryUfunc<AnyInt, AnyInt>(
+            final bAnd = binaryUfunc<DTypeTag, DTypeTag>(
               a,
               b,
               op: BinaryOp.bitwiseAnd,
             );
             expect(bAnd.toList(), equals([6, 2, 4, 1]));
 
-            final uInv = unaryUfunc<AnyInt, AnyInt>(a, op: UnaryOp.invert);
+            final uInv = unaryUfunc<DTypeTag, DTypeTag>(a, op: UnaryOp.invert);
             expect(uInv.getCell([0]), equals(invert(a).getCell([0])));
 
             final redAnd = reduceUfunc(a, op: BinaryOp.bitwiseAnd);
@@ -345,7 +345,7 @@ void main() {
             atUfunc(
               target,
               NDArray<Int64>.fromList([0, 3], [2], DType.int64),
-              NDArray<AnyInt>.fromList([8, 2], [2], dt),
+              NDArray<DTypeTag>.fromList([8, 2], [2], dt),
               op: BinaryOp.bitwiseOr,
             );
             expect(target.toList(), equals([7 | 8, 3, 5, 1 | 2]));

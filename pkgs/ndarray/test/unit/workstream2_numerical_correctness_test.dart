@@ -17,7 +17,7 @@ void main() {
 
       test('int8 + 1 maintains Int8 dtype', () {
         NDArray.scope(() {
-          final a = NDArray<AnyInt>.fromList([10, 20], [2], DType.int8);
+          final a = NDArray<DTypeTag>.fromList([10, 20], [2], DType.int8);
           final res = a + 1;
           expect(res.dtype, equals(DType.int8));
           expect(res.getCellFlat(0), equals(11));
@@ -36,7 +36,7 @@ void main() {
 
       test('int16 * 3 maintains Int16 dtype', () {
         NDArray.scope(() {
-          final a = NDArray<AnyInt>.fromList([10, 20], [2], DType.int16);
+          final a = NDArray<DTypeTag>.fromList([10, 20], [2], DType.int16);
           final res = a * 3;
           expect(res.dtype, equals(DType.int16));
           expect(res.getCellFlat(0), equals(30));
@@ -195,7 +195,7 @@ void main() {
       test('sum with explicit dtype widening prevents overflow', () {
         NDArray.scope(() {
           // 100 + 100 = 200 (overflows int8 if not widened)
-          final a = NDArray<AnyInt>.fromList([100, 100], [2], DType.int8);
+          final a = NDArray<DTypeTag>.fromList([100, 100], [2], DType.int8);
           final s = sum(a, dtype: DType.int64);
           expect(s.dtype, equals(DType.int64));
           expect(s.scalar, equals(200));
@@ -239,7 +239,7 @@ void main() {
           const uHigh = -0x8000000000000000;
           const uLow = 100;
 
-          final a = NDArray<AnyInt>.fromList(
+          final a = NDArray<DTypeTag>.fromList(
             [uMax, uLow, uHigh],
             [3],
             DType.uint64,
@@ -257,7 +257,7 @@ void main() {
           const uHigh = -0x8000000000000000;
           const uLow = 100;
 
-          final a = NDArray<AnyInt>.fromList(
+          final a = NDArray<DTypeTag>.fromList(
             [uMax, uLow, uHigh],
             [3],
             DType.uint64,
@@ -276,12 +276,12 @@ void main() {
           const uHigh = -0x8000000000000000;
           const uMax = -1;
 
-          final sortedA = NDArray<AnyInt>.fromList(
+          final sortedA = NDArray<DTypeTag>.fromList(
             [uLow, uHigh, uMax],
             [3],
             DType.uint64,
           );
-          final query = NDArray<AnyInt>.fromList(
+          final query = NDArray<DTypeTag>.fromList(
             [50, uHigh, -2],
             [3],
             DType.uint64,
@@ -301,14 +301,14 @@ void main() {
           const uHigh = -0x8000000000000000;
           const uMax = -1;
 
-          final odd = NDArray<AnyInt>.fromList(
+          final odd = NDArray<DTypeTag>.fromList(
             [uMax, uLow, uHigh],
             [3],
             DType.uint64,
           );
           expect(median(odd).scalar, equals(uHigh));
 
-          final even = NDArray<AnyInt>.fromList([10, 20], [2], DType.uint64);
+          final even = NDArray<DTypeTag>.fromList([10, 20], [2], DType.uint64);
           expect(median(even).scalar, equals(15));
         });
       });
@@ -322,7 +322,11 @@ void main() {
             [3],
             DType.float64,
           );
-          final sorter = NDArray<AnyInt>.fromList([1, 2, 0], [3], DType.int32);
+          final sorter = NDArray<DTypeTag>.fromList(
+            [1, 2, 0],
+            [3],
+            DType.int32,
+          );
           final v = NDArray<Float64>.fromList([15.0], [1], DType.float64);
 
           final idx = searchsorted(a, v, sorter: sorter);
@@ -339,7 +343,7 @@ void main() {
           );
           final v = NDArray<Float64>.fromList([15.0], [1], DType.float64);
 
-          final oobSorter1 = NDArray<AnyInt>.fromList(
+          final oobSorter1 = NDArray<DTypeTag>.fromList(
             [1, 2, 5],
             [3],
             DType.int32,
@@ -349,7 +353,7 @@ void main() {
             throwsArgumentError,
           );
 
-          final oobSorter2 = NDArray<AnyInt>.fromList(
+          final oobSorter2 = NDArray<DTypeTag>.fromList(
             [-1, 1, 2],
             [3],
             DType.int32,
@@ -370,7 +374,7 @@ void main() {
           );
           final v = NDArray<Float64>.fromList([15.0], [1], DType.float64);
 
-          final badShapeSorter = NDArray<AnyInt>.fromList(
+          final badShapeSorter = NDArray<DTypeTag>.fromList(
             [1, 2],
             [2],
             DType.int32,

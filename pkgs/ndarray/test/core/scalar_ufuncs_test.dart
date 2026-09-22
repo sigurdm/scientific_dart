@@ -28,9 +28,9 @@ void main() {
         final outMul = NDArray<Float64>.zeros(<int>[], DType.float64);
         final outDiv = NDArray<Float64>.zeros(<int>[], DType.float64);
 
-        add<Float64, Float64, Float64>(a, b, out: outAdd);
-        subtract<Float64, Float64, Float64>(a, b, out: outSub);
-        multiply<Float64, Float64, Float64>(a, b, out: outMul);
+        add<Float64>(a, b, out: outAdd);
+        subtract<Float64>(a, b, out: outSub);
+        multiply<Float64>(a, b, out: outMul);
         divide<Float64, Float64, Float64>(a, b, out: outDiv);
 
         expect((outAdd.scalar as num).toDouble(), closeTo(8.0, 1e-12));
@@ -73,13 +73,13 @@ void main() {
         expect(viewA.isContiguous, isTrue);
         expect(viewOut.isContiguous, isTrue);
 
-        add<Float64, Float64, Float64>(viewA, viewB, out: viewOut);
+        add<Float64>(viewA, viewB, out: viewOut);
         expect((viewOut.scalar as num).toDouble(), closeTo(8.0, 1e-12));
 
-        subtract<Float64, Float64, Float64>(viewA, viewB, out: viewOut);
+        subtract<Float64>(viewA, viewB, out: viewOut);
         expect((viewOut.scalar as num).toDouble(), closeTo(4.0, 1e-12));
 
-        multiply<Float64, Float64, Float64>(viewA, viewB, out: viewOut);
+        multiply<Float64>(viewA, viewB, out: viewOut);
         expect((viewOut.scalar as num).toDouble(), closeTo(12.0, 1e-12));
 
         divide<Float64, Float64, Float64>(viewA, viewB, out: viewOut);

@@ -17,7 +17,7 @@ import 'trigonometric.dart';
 import 'utility.dart';
 
 /// Extension methods for generalized ufunc operations on [NDArray].
-extension UfuncNDArrayExtension<T extends AnyDType> on NDArray<T> {
+extension UfuncNDArrayExtension<T extends DTypeTag> on NDArray<T> {
   /// Reduces this array along [axis] using [op].
   ///
   /// **Preconditions:**
@@ -62,7 +62,7 @@ extension UfuncNDArrayExtension<T extends AnyDType> on NDArray<T> {
   /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
   /// - It is an error if [out] (if provided) has incompatible shape or dtype.
   NDArray<T> reduceat(
-    NDArray<AnyInt> indices, {
+    NDArray<DTypeTag> indices, {
     required BinaryOp op,
     int axis = 0,
     NDArray<T>? out,
@@ -76,7 +76,7 @@ extension UfuncNDArrayExtension<T extends AnyDType> on NDArray<T> {
   NDArray<T> outer(
     NDArray<T> b, {
     BinaryOp op = BinaryOp.multiply,
-    NDArray<AnyDType>? where,
+    NDArray<DTypeTag>? where,
     NDArray<T>? out,
   }) => outerUfunc(this, b, op: op, where: where, out: out);
 
@@ -85,13 +85,13 @@ extension UfuncNDArrayExtension<T extends AnyDType> on NDArray<T> {
   /// **Preconditions:**
   /// - It is an error if this array, [indices], or [b] is disposed.
   void at(
-    NDArray<AnyInt> indices,
-    NDArray<AnyDType> b, {
+    NDArray<DTypeTag> indices,
+    NDArray<DTypeTag> b, {
     required BinaryOp op,
   }) => atUfunc(this, indices, b, op: op);
 }
 
-NDArray<U> _asView<U extends AnyDType>(NDArray a) {
+NDArray<U> _asView<U extends DTypeTag>(NDArray a) {
   if (a is NDArray<U>) return a;
   return NDArray<U>.view(
     a,
@@ -101,12 +101,12 @@ NDArray<U> _asView<U extends AnyDType>(NDArray a) {
   );
 }
 
-NDArray<U>? _asViewNullable<U extends AnyDType>(NDArray? a) {
+NDArray<U>? _asViewNullable<U extends DTypeTag>(NDArray? a) {
   if (a == null) return null;
   return _asView<U>(a);
 }
 
-NDArray<R> _createTyped<R extends AnyDType>(
+NDArray<R> _createTyped<R extends DTypeTag>(
   List<int> shape,
   DType dtype, {
   bool zeroInit = false,
@@ -188,11 +188,11 @@ NDArray<R> _createTyped<R extends AnyDType>(
 }
 
 /// Evaluates binary operation [op] element-wise between [a] and [b].
-NDArray<R> binaryUfunc<T extends AnyDType, R extends AnyDType>(
+NDArray<R> binaryUfunc<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   required BinaryOp op,
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   switch (op) {
@@ -272,31 +272,31 @@ NDArray<R> binaryUfunc<T extends AnyDType, R extends AnyDType>(
         }
       }
     case BinaryOp.logaddexp:
-      final res = logaddexp<AnyReal, AnyReal>(
-        _asView<AnyReal>(a),
-        _asView<AnyReal>(b),
+      final res = logaddexp<DTypeTag, DTypeTag>(
+        _asView<DTypeTag>(a),
+        _asView<DTypeTag>(b),
         where: where,
         out: _asViewNullable<Float64>(out),
       );
       return out ?? _asView<R>(res);
     case BinaryOp.logaddexp2:
-      final res = logaddexp2<AnyReal, AnyReal>(
-        _asView<AnyReal>(a),
-        _asView<AnyReal>(b),
+      final res = logaddexp2<DTypeTag, DTypeTag>(
+        _asView<DTypeTag>(a),
+        _asView<DTypeTag>(b),
         where: where,
         out: _asViewNullable<Float64>(out),
       );
       return out ?? _asView<R>(res);
     case BinaryOp.arctan2:
-      final res = atan2<AnyReal, AnyReal>(
-        _asView<AnyReal>(a),
-        _asView<AnyReal>(b),
+      final res = atan2<DTypeTag, DTypeTag>(
+        _asView<DTypeTag>(a),
+        _asView<DTypeTag>(b),
         where: where,
         out: _asViewNullable<Float64>(out),
       );
       return out ?? _asView<R>(res);
     case BinaryOp.hypot:
-      return hypot<AnyDType, AnyDType, R>(a, b, where: where, out: out);
+      return hypot<DTypeTag, DTypeTag, R>(a, b, where: where, out: out);
     case BinaryOp.copysign:
       final res = copysign<R>(
         _asView<R>(a),
@@ -306,15 +306,20 @@ NDArray<R> binaryUfunc<T extends AnyDType, R extends AnyDType>(
       );
       return out ?? _asView<R>(res);
     case BinaryOp.bitwiseAnd:
-      return bitwise_and<AnyDType, AnyDType, R>(a, b, where: where, out: out);
+      final res = bitwise_and<DTypeTag>(a, b, where: where, out: out);
+      return out ?? _asView<R>(res);
     case BinaryOp.bitwiseOr:
-      return bitwise_or<AnyDType, AnyDType, R>(a, b, where: where, out: out);
+      final res = bitwise_or<DTypeTag>(a, b, where: where, out: out);
+      return out ?? _asView<R>(res);
     case BinaryOp.bitwiseXor:
-      return bitwise_xor<AnyDType, AnyDType, R>(a, b, where: where, out: out);
+      final res = bitwise_xor<DTypeTag>(a, b, where: where, out: out);
+      return out ?? _asView<R>(res);
     case BinaryOp.leftShift:
-      return left_shift<AnyDType, AnyDType, R>(a, b, where: where, out: out);
+      final res = left_shift<DTypeTag>(a, b, where: where, out: out);
+      return out ?? _asView<R>(res);
     case BinaryOp.rightShift:
-      return right_shift<AnyDType, AnyDType, R>(a, b, where: where, out: out);
+      final res = right_shift<DTypeTag>(a, b, where: where, out: out);
+      return out ?? _asView<R>(res);
     case BinaryOp.logicalAnd:
       final res = logical_and(
         a,
@@ -408,12 +413,12 @@ int _compareValues(dynamic a, dynamic b, DType dtype) {
   return (a as num).compareTo(b as num);
 }
 
-NDArray<R> _elementwiseMinMax<T extends AnyDType, R extends AnyDType>(
+NDArray<R> _elementwiseMinMax<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   required bool isMax,
   required bool ignoreNaN,
-  NDArray<AnyDType>? whereMask,
+  NDArray<DTypeTag>? whereMask,
   NDArray<R>? out,
 }) {
   final targetShape = broadcastShapes(a.shape, b.shape);
@@ -521,7 +526,7 @@ NDArray<R> _elementwiseMinMax<T extends AnyDType, R extends AnyDType>(
 /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
 /// - It is an error if [a] is empty without [initial].
 /// - It is an error if [out] (if provided) has incompatible shape or dtype.
-NDArray<T> reduce<T extends AnyDType>(
+NDArray<T> reduce<T extends DTypeTag>(
   NDArray<T> a, {
   required BinaryOp op,
   int? axis,
@@ -544,7 +549,7 @@ NDArray<T> reduce<T extends AnyDType>(
 /// - It is an error if [a] or [out] (if provided) is disposed.
 /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
 /// - It is an error if [out] (if provided) has incompatible shape or dtype.
-NDArray<T> accumulate<T extends AnyDType>(
+NDArray<T> accumulate<T extends DTypeTag>(
   NDArray<T> a, {
   required BinaryOp op,
   int axis = 0,
@@ -558,9 +563,9 @@ NDArray<T> accumulate<T extends AnyDType>(
 /// - It is an error if [a], [indices], or [out] is disposed.
 /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
 /// - It is an error if [out] (if provided) has incompatible shape or dtype.
-NDArray<T> reduceat<T extends AnyDType>(
+NDArray<T> reduceat<T extends DTypeTag>(
   NDArray<T> a,
-  NDArray<AnyInt> indices, {
+  NDArray<DTypeTag> indices, {
   required BinaryOp op,
   int axis = 0,
   NDArray<T>? out,
@@ -570,15 +575,15 @@ NDArray<T> reduceat<T extends AnyDType>(
 ///
 /// **Preconditions:**
 /// - It is an error if [a], [indices], or [b] is disposed.
-void at<T extends AnyDType>(
+void at<T extends DTypeTag>(
   NDArray<T> a,
-  NDArray<AnyInt> indices,
-  NDArray<AnyDType> b, {
+  NDArray<DTypeTag> indices,
+  NDArray<DTypeTag> b, {
   required BinaryOp op,
 }) => atUfunc(a, indices, b, op: op);
 
 /// Generalized ufunc reduction function.
-NDArray<T> reduceUfunc<T extends AnyDType>(
+NDArray<T> reduceUfunc<T extends DTypeTag>(
   NDArray<T> a, {
   required BinaryOp op,
   int? axis,
@@ -1461,7 +1466,7 @@ NDArray<T> reduceUfunc<T extends AnyDType>(
 }
 
 /// Generalized ufunc accumulation function.
-NDArray<T> accumulateUfunc<T extends AnyDType>(
+NDArray<T> accumulateUfunc<T extends DTypeTag>(
   NDArray<T> a, {
   required BinaryOp op,
   int axis = 0,
@@ -2278,9 +2283,9 @@ NDArray<T> accumulateUfunc<T extends AnyDType>(
 }
 
 /// Generalized ufunc reduceat function.
-NDArray<T> reduceatUfunc<T extends AnyDType>(
+NDArray<T> reduceatUfunc<T extends DTypeTag>(
   NDArray<T> a,
-  NDArray<AnyInt> indices, {
+  NDArray<DTypeTag> indices, {
   required BinaryOp op,
   int axis = 0,
   NDArray<T>? out,
@@ -2653,11 +2658,11 @@ NDArray<T> reduceatUfunc<T extends AnyDType>(
 }
 
 /// Generalized ufunc outer operation.
-NDArray<T> outerUfunc<T extends AnyDType>(
+NDArray<T> outerUfunc<T extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   BinaryOp op = BinaryOp.multiply,
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -2809,10 +2814,10 @@ NDArray<T> outerUfunc<T extends AnyDType>(
 }
 
 /// Generalized ufunc at operation.
-void atUfunc<T extends AnyDType>(
+void atUfunc<T extends DTypeTag>(
   NDArray<T> a,
-  NDArray<AnyInt> indices,
-  NDArray<AnyDType> b, {
+  NDArray<DTypeTag> indices,
+  NDArray<DTypeTag> b, {
   required BinaryOp op,
 }) {
   if (a.isDisposed || indices.isDisposed || b.isDisposed) {
@@ -3100,10 +3105,10 @@ void atUfunc<T extends AnyDType>(
 }
 
 /// Evaluates unary operation [op] element-wise on [x].
-NDArray<R> unaryUfunc<T extends AnyDType, R extends AnyDType>(
+NDArray<R> unaryUfunc<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> x, {
   required UnaryOp op,
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   switch (op) {
@@ -3120,7 +3125,7 @@ NDArray<R> unaryUfunc<T extends AnyDType, R extends AnyDType>(
     case UnaryOp.absolute:
     case UnaryOp.abs:
     case UnaryOp.fabs:
-      final res = abs(x, where: where, out: _asViewNullable<AnyDType>(out));
+      final res = abs(x, where: where, out: _asViewNullable<DTypeTag>(out));
       return out ?? _asView<R>(res);
     case UnaryOp.rint:
       final res = rint(x, where: where, out: _asViewNullable<T>(out));

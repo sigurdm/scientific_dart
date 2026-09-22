@@ -457,7 +457,7 @@ void main() {
               [8],
               DType.float64,
             );
-            final idx64 = NDArray<AnyInt>.fromList(
+            final idx64 = NDArray<DTypeTag>.fromList(
               [0, 4, 1, 5],
               [4],
               DType.int64,
@@ -470,7 +470,7 @@ void main() {
               [4],
               DType.float32,
             );
-            final idx32 = NDArray<AnyInt>.fromList([0, 2], [2], DType.int32);
+            final idx32 = NDArray<DTypeTag>.fromList([0, 2], [2], DType.int32);
             final res32 = f32.reduceat(idx32, op: BinaryOp.multiply);
             expect(res32.toList(), equals([2.0, 12.0]));
 
@@ -479,7 +479,7 @@ void main() {
               [4],
               DType.int32,
             );
-            final idxI32 = NDArray<AnyInt>.fromList([0, 2], [2], DType.int64);
+            final idxI32 = NDArray<DTypeTag>.fromList([0, 2], [2], DType.int64);
             expect(
               i32Arr.reduceat(idxI32, op: BinaryOp.add).toList(),
               equals([30, 70]),
@@ -524,7 +524,7 @@ void main() {
               [2],
               DType.complex64,
             );
-            final idx1 = NDArray<AnyInt>.fromList([0], [1], DType.int64);
+            final idx1 = NDArray<DTypeTag>.fromList([0], [1], DType.int64);
             expect(
               c64Arr.reduceat(idx1, op: BinaryOp.add).getCell([0]),
               equals(Complex(3.0, 3.0)),
@@ -541,12 +541,12 @@ void main() {
             DType.float64,
           );
 
-          final indices0 = NDArray<AnyInt>.fromList([0, 2], [2], DType.int64);
+          final indices0 = NDArray<DTypeTag>.fromList([0, 2], [2], DType.int64);
           final red0 = mat.reduceat(indices0, op: BinaryOp.add, axis: 0);
           expect(red0.shape, equals([2, 3]));
           expect(red0.toList(), equals([5.0, 7.0, 9.0, 17.0, 19.0, 21.0]));
 
-          final indices1 = NDArray<AnyInt>.fromList([0, 1], [2], DType.int64);
+          final indices1 = NDArray<DTypeTag>.fromList([0, 1], [2], DType.int64);
           final red1 = mat.reduceat(indices1, op: BinaryOp.add, axis: 1);
           expect(red1.shape, equals([4, 2]));
         });
@@ -559,7 +559,7 @@ void main() {
             [4],
             DType.float16,
           );
-          final idx = NDArray<AnyInt>.fromList([0, 2], [2], DType.int64);
+          final idx = NDArray<DTypeTag>.fromList([0, 2], [2], DType.int64);
           final res = f16.reduceat(idx, op: BinaryOp.add);
           expect(res.shape, equals([2]));
           expect(res.getCell([0]), closeTo(3.0, 1e-2));
@@ -699,7 +699,7 @@ void main() {
             [3],
             DType.float64,
           );
-          final idx = NDArray<AnyInt>.fromList([0, 1, 0], [3], DType.int64);
+          final idx = NDArray<DTypeTag>.fromList([0, 1, 0], [3], DType.int64);
           final valF64 = NDArray<Float64>.fromList(
             [5.0, 10.0, 2.0],
             [3],
@@ -714,7 +714,7 @@ void main() {
             [2],
             DType.float32,
           );
-          final idxF32 = NDArray<AnyInt>.fromList([0, 1], [2], DType.int32);
+          final idxF32 = NDArray<DTypeTag>.fromList([0, 1], [2], DType.int32);
           final valF32 = NDArray<Float32>.fromList(
             [3.0, 5.0],
             [2],
@@ -731,7 +731,7 @@ void main() {
 
           // Uint8
           final u8 = NDArray<Uint8>.fromList([0x0F, 0xF0], [2], DType.uint8);
-          final idxU8 = NDArray<AnyInt>.fromList([0, 1], [2], DType.int64);
+          final idxU8 = NDArray<DTypeTag>.fromList([0, 1], [2], DType.int64);
           final valU8 = NDArray<Uint8>.fromList([0x01, 0x10], [2], DType.uint8);
           u8.at(idxU8, valU8, op: BinaryOp.bitwiseOr);
           expect(u8.toList(), equals([0x0F, 0xF0]));
@@ -776,7 +776,7 @@ void main() {
       test('at with extended DTypes (Float16, Int8, Uint64)', () {
         NDArray.scope(() {
           final f16 = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float16);
-          final idx = NDArray<AnyInt>.fromList([0, 1], [2], DType.int64);
+          final idx = NDArray<DTypeTag>.fromList([0, 1], [2], DType.int64);
           final val = NDArray.fromList([10.0, 20.0], [2], DType.float16);
           f16.at(idx, val, op: BinaryOp.add);
           expect(f16.getCell([0]), closeTo(11.0, 1e-1));
@@ -792,7 +792,7 @@ void main() {
             [3],
             DType.float64,
           );
-          final idx = NDArray<AnyInt>.fromList([0, 1, 2], [3], DType.int64);
+          final idx = NDArray<DTypeTag>.fromList([0, 1, 2], [3], DType.int64);
           final bPower = NDArray<Float64>.fromList(
             [3.0, 2.0, 0.5],
             [3],
@@ -946,7 +946,7 @@ void main() {
     group('Error Handling across Ufunc Methods', () {
       test('Disposed array checks', () {
         final a = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
-        final indices = NDArray<AnyInt>.fromList([0], [1], DType.int64);
+        final indices = NDArray<DTypeTag>.fromList([0], [1], DType.int64);
         final b = NDArray<Float64>.fromList([3.0], [1], DType.float64);
         final out = NDArray<Float64>.zeros([2], DType.float64);
 
@@ -967,7 +967,7 @@ void main() {
         () {
           NDArray.scope(() {
             final a = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
-            final indices = NDArray<AnyInt>.fromList([0], [1], DType.int64);
+            final indices = NDArray<DTypeTag>.fromList([0], [1], DType.int64);
 
             expect(() => a.reduce(op: BinaryOp.subtract), throwsArgumentError);
             expect(
@@ -985,7 +985,7 @@ void main() {
       test('Axis out of range throws RangeError', () {
         NDArray.scope(() {
           final a = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
-          final indices = NDArray<AnyInt>.fromList([0], [1], DType.int64);
+          final indices = NDArray<DTypeTag>.fromList([0], [1], DType.int64);
 
           expect(() => a.reduce(op: BinaryOp.add, axis: 5), throwsRangeError);
           expect(() => a.reduce(op: BinaryOp.add, axis: -5), throwsRangeError);

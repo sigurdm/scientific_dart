@@ -127,7 +127,7 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        final outW = NDArray<AnyComplex>.zeros([2], DType.complex128);
+        final outW = NDArray<DTypeTag>.zeros([2], DType.complex128);
 
         final w = eigvals(a, out: outW);
 

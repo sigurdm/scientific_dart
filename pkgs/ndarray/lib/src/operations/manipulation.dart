@@ -36,7 +36,7 @@ export 'helpers.dart' show castNDArray, sharesMemory;
 ///
 /// Refer to the [NumPy concatenate reference](https://numpy.org/doc/stable/reference/generated/numpy.concatenate.html)
 /// for details.
-NDArray<T> concatenate<T extends AnyDType>(
+NDArray<T> concatenate<T extends DTypeTag>(
   List<NDArray<T>> arrays, {
   int axis = 0,
   NDArray<T>? out,
@@ -190,7 +190,7 @@ NDArray<T> concatenate<T extends AnyDType>(
 ///
 /// Refer to the [NumPy stack reference](https://numpy.org/doc/stable/reference/generated/numpy.stack.html)
 /// for details.
-NDArray<T> stack<T extends AnyDType>(
+NDArray<T> stack<T extends DTypeTag>(
   List<NDArray<T>> arrays, {
   int axis = 0,
   NDArray<T>? out,
@@ -325,7 +325,7 @@ NDArray<T> stack<T extends AnyDType>(
 /// **Memory Ownership & Lifetime View Warning:**
 /// > [!WARNING]
 /// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose] on the returned view does nothing.
-NDArray<T> expand_dims<T extends AnyDType>(NDArray<T> a, int axis) {
+NDArray<T> expand_dims<T extends DTypeTag>(NDArray<T> a, int axis) {
   if (a.isDisposed) {
     throw StateError('Cannot execute expand_dims() on a disposed array.');
   }
@@ -375,7 +375,7 @@ NDArray<T> expand_dims<T extends AnyDType>(NDArray<T> a, int axis) {
 /// **Memory Ownership & Lifetime View Warning:**
 /// > [!WARNING]
 /// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose] on the returned view does nothing.
-NDArray<T> squeeze<T extends AnyDType>(NDArray<T> a, {List<int>? axis}) {
+NDArray<T> squeeze<T extends DTypeTag>(NDArray<T> a, {List<int>? axis}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute squeeze() on a disposed array.');
   }
@@ -457,7 +457,7 @@ NDArray<T> squeeze<T extends AnyDType>(NDArray<T> a, {List<int>? axis}) {
 /// **Memory Ownership & Lifetime View Warning:**
 /// > [!WARNING]
 /// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose] on the returned view does nothing.
-NDArray<T> slidingWindowView<T extends AnyDType>(
+NDArray<T> slidingWindowView<T extends DTypeTag>(
   NDArray<T> a,
   List<int> windowShape, {
   List<int>? axis,
@@ -551,7 +551,7 @@ NDArray<T> slidingWindowView<T extends AnyDType>(
 /// **Memory Ownership & Lifetime View Warning:**
 /// > [!WARNING]
 /// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose] on the returned view does nothing.
-NDArray<T> flip<T extends AnyDType>(NDArray<T> a, {dynamic axis}) {
+NDArray<T> flip<T extends DTypeTag>(NDArray<T> a, {dynamic axis}) {
   if (a.isDisposed) {
     throw StateError('Cannot flip a disposed array.');
   }
@@ -626,7 +626,7 @@ NDArray<T> flip<T extends AnyDType>(NDArray<T> a, {dynamic axis}) {
 /// Refer to [NumPy fliplr documentation](https://numpy.org/doc/stable/reference/generated/numpy.fliplr.html).
 ///
 /// {@example /example/rearranging_example.dart lang=dart}
-NDArray<T> fliplr<T extends AnyDType>(NDArray<T> a) {
+NDArray<T> fliplr<T extends DTypeTag>(NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot fliplr a disposed array.');
   }
@@ -658,7 +658,7 @@ NDArray<T> fliplr<T extends AnyDType>(NDArray<T> a) {
 /// Refer to [NumPy flipud documentation](https://numpy.org/doc/stable/reference/generated/numpy.flipud.html).
 ///
 /// {@example /example/rearranging_example.dart lang=dart}
-NDArray<T> flipud<T extends AnyDType>(NDArray<T> a) {
+NDArray<T> flipud<T extends DTypeTag>(NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot flipud a disposed array.');
   }
@@ -678,7 +678,7 @@ NDArray<T> flipud<T extends AnyDType>(NDArray<T> a) {
 /// - [axes] must be a list of 2 distinct axes.
 ///
 /// Refer to [NumPy rot90 documentation](https://numpy.org/doc/stable/reference/generated/numpy.rot90.html).
-NDArray<T> rot90<T extends AnyDType>(
+NDArray<T> rot90<T extends DTypeTag>(
   NDArray<T> a, [
   int k = 1,
   List<int> axes = const [0, 1],
@@ -731,7 +731,7 @@ NDArray<T> rot90<T extends AnyDType>(
 /// Stacks arrays in sequence vertically (row wise).
 ///
 /// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.
-NDArray<T> vstack<T extends AnyDType>(
+NDArray<T> vstack<T extends DTypeTag>(
   List<NDArray<T>> arrays, {
   NDArray<T>? out,
 }) {
@@ -744,7 +744,7 @@ NDArray<T> vstack<T extends AnyDType>(
 /// except for 1-D arrays where it concatenates along the first axis (axis 0).
 ///
 /// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.
-NDArray<T> hstack<T extends AnyDType>(
+NDArray<T> hstack<T extends DTypeTag>(
   List<NDArray<T>> arrays, {
   NDArray<T>? out,
 }) {
@@ -776,7 +776,7 @@ NDArray<T> hstack<T extends AnyDType>(
 /// b[0] = 99;
 /// print(a[0]); // 1 (decoupled memory!)
 /// ```
-NDArray<T> copy<T extends AnyDType>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> copy<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute copy() on a disposed array.');
   }
@@ -793,7 +793,7 @@ NDArray<T> copy<T extends AnyDType>(NDArray<T> a, {NDArray<T>? out}) {
 /// {@example /example/diag_example.dart lang=dart}
 ///
 /// Reference: [Diagonal Matrix](https://en.wikipedia.org/wiki/Diagonal_matrix)
-NDArray<T> diag<T extends AnyDType>(
+NDArray<T> diag<T extends DTypeTag>(
   NDArray<T> v, {
   int k = 0,
   NDArray<T>? out,
@@ -912,7 +912,7 @@ NDArray<T> diag<T extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
-NDArray<T> tril<T extends AnyDType>(
+NDArray<T> tril<T extends DTypeTag>(
   NDArray<T> a, {
   int k = 0,
   NDArray<T>? out,
@@ -1024,7 +1024,7 @@ NDArray<T> tril<T extends AnyDType>(
 ///
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
-NDArray<T> triu<T extends AnyDType>(
+NDArray<T> triu<T extends DTypeTag>(
   NDArray<T> a, {
   int k = 0,
   NDArray<T>? out,
@@ -1140,7 +1140,7 @@ NDArray<T> triu<T extends AnyDType>(
 /// final a = NDArray.fromList([1, 2, 4, 7, 0], [5], DType.int32);
 /// final res = diff(a); // [1, 2, 3, -7]
 /// ```
-NDArray<T> diff<T extends AnyDType>(
+NDArray<T> diff<T extends DTypeTag>(
   NDArray<T> a, {
   int n = 1,
   int axis = -1,
@@ -1333,7 +1333,7 @@ NDArray<T> diff<T extends AnyDType>(
 /// Refer to [NumPy roll documentation](https://numpy.org/doc/stable/reference/generated/numpy.roll.html).
 ///
 /// {@example /example/rearranging_example.dart lang=dart}
-NDArray<T> roll<T extends AnyDType>(
+NDArray<T> roll<T extends DTypeTag>(
   NDArray<T> a,
   dynamic shift, {
   dynamic axis,
@@ -1525,7 +1525,7 @@ NDArray<T> roll<T extends AnyDType>(
   });
 }
 
-NDArray<T> _roll1D<T extends AnyDType>(
+NDArray<T> _roll1D<T extends DTypeTag>(
   NDArray<T> a,
   int shift, {
   NDArray<T>? out,
@@ -1577,7 +1577,7 @@ NDArray<T> _roll1D<T extends AnyDType>(
   return targetResult;
 }
 
-NDArray<T> _rollSingleND<T extends AnyDType>(
+NDArray<T> _rollSingleND<T extends DTypeTag>(
   NDArray<T> a,
   int shift,
   int axis, {
@@ -1675,7 +1675,7 @@ NDArray<T> _rollSingleND<T extends AnyDType>(
 /// final b = astype(a, DType.float64);
 /// print(b.dtype); // DType.float64
 /// ```
-NDArray<R> astype<R extends AnyDType>(
+NDArray<R> astype<R extends DTypeTag>(
   NDArray a,
   DType<R> targetDType, {
   bool copy = true,

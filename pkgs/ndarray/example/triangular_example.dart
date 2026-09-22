@@ -34,7 +34,7 @@ void main() {
     _printMatrix(upperKM1);
 
     // 5. Memory-efficient Recycling Buffer Reuse
-    final recycler = NDArray<AnyFloat>.zeros([3, 3], DType.float64);
+    final recycler = NDArray<DTypeTag>.zeros([3, 3], DType.float64);
     final recycledLower = tril(a, k: 0, out: recycler);
     print(
       '\nRecycled Output Buffer (identical check): ${identical(recycledLower, recycler) ? "PASS" : "FAIL"}',

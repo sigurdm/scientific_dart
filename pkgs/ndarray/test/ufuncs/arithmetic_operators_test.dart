@@ -70,7 +70,7 @@ void main() {
         final b = NDArray.fromList([10.0, 20.0], [2], DType.float64);
 
         // Explicit generic call to allow promotion
-        final res = add<AnyComplex, AnyFloat, AnyComplex>(a, b);
+        final res = add<DTypeTag>(a, b);
         expect(res.dtype, DType.complex128);
         final resList = res.toList();
         expect(resList[0].real, 11.0);
@@ -86,19 +86,19 @@ void main() {
         final b = NDArray.fromList([2.0, 2.0], [2], DType.float64);
         final outValid = NDArray<Float64>.create([2], DType.float64);
 
-        final res = add<AnyFloat, AnyFloat, AnyFloat>(a, b, out: outValid);
+        final res = add<DTypeTag>(a, b, out: outValid);
         expect(identical(res, outValid), true);
         expect(outValid.toList(), [3.0, 4.0]);
 
         final outInvalidShape = NDArray<Float64>.create([3], DType.float64);
         expect(
-          () => add<AnyFloat, AnyFloat, AnyFloat>(a, b, out: outInvalidShape),
+          () => add<DTypeTag>(a, b, out: outInvalidShape),
           throwsArgumentError,
         );
 
         final outInvalidDType = NDArray<Int32>.create([2], DType.int32);
         expect(
-          () => add<AnyFloat, AnyFloat, AnyInt>(a, b, out: outInvalidDType),
+          () => add<DTypeTag>(a, b, out: outInvalidDType),
           throwsArgumentError,
         );
       });
@@ -226,7 +226,7 @@ void main() {
     test(
       'Mixed Type Arithmetic',
       () => NDArray.scope(() {
-        final a = NDArray.fromList([1, 2], [2], DType.int32);
+        final NDArray a = NDArray.fromList([1, 2], [2], DType.int32);
         final b = NDArray.fromList([0.5, 1.5], [2], DType.float64);
 
         final c = a + b;
@@ -405,7 +405,7 @@ void main() {
         expect(svdRes.vh.dtype, DType.complex128);
 
         final sDiag = diag(svdRes.s);
-        final NDArray<AnyComplex> uS = matmul(svdRes.u, sDiag);
+        final NDArray<DTypeTag> uS = matmul(svdRes.u, sDiag);
         final reconstructed = matmul(uS, svdRes.vh);
 
         expect(allClose(reconstructed, a, rtol: 1e-5, atol: 1e-5), isTrue);
@@ -423,7 +423,7 @@ void main() {
         expect(svdRes64.vh.dtype, DType.complex64);
 
         final sDiag64 = diag(svdRes64.s);
-        final NDArray<AnyComplex> uS64 = matmul(svdRes64.u, sDiag64);
+        final NDArray<DTypeTag> uS64 = matmul(svdRes64.u, sDiag64);
         final reconstructed64 = matmul(uS64, svdRes64.vh);
         expect(
           allClose(reconstructed64, a64, rtol: 1e-3, atol: 1e-3),
@@ -515,7 +515,7 @@ void main() {
       'fft with out parameter (no transpose)',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
-        final outBuffer = NDArray<AnyComplex>.zeros([4], DType.complex128);
+        final outBuffer = NDArray<DTypeTag>.zeros([4], DType.complex128);
         final res = fft(a, out: outBuffer);
         expect(identical(res, outBuffer), true);
         // Expected FFT result: [10, -2+2i, -2, -2-2i]
@@ -531,7 +531,7 @@ void main() {
       'fft with out parameter (with transpose)',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-        final outBuffer = NDArray<AnyComplex>.zeros([2, 2], DType.complex128);
+        final outBuffer = NDArray<DTypeTag>.zeros([2, 2], DType.complex128);
         // FFT along axis 0
         final res = fft(a, axis: 0, out: outBuffer);
         expect(identical(res, outBuffer), true);
@@ -565,7 +565,7 @@ void main() {
           [4],
           DType.complex128,
         );
-        final outBuffer = NDArray<AnyComplex>.zeros([4], DType.complex128);
+        final outBuffer = NDArray<DTypeTag>.zeros([4], DType.complex128);
         final res = ifft(a, out: outBuffer);
         expect(identical(res, outBuffer), true);
         final outBufferList = outBuffer.toList();
@@ -688,13 +688,13 @@ void main() {
 
           // out Recycler parameter
           final intoBuf = NDArray<Float64>.create([2, 2], DType.float64);
-          final resInto = add<AnyFloat, AnyFloat, AnyFloat>(a, b, out: intoBuf);
+          final resInto = add<DTypeTag>(a, b, out: intoBuf);
           expect(resInto, intoBuf);
           expect(resInto.toList(), [11.0, 22.0, 33.0, 44.0]);
 
           // out incompatible shape/dtype throws ArgumentError
           expect(
-            () => add<AnyFloat, AnyFloat, AnyFloat>(
+            () => add<DTypeTag>(
               a,
               b,
               out: NDArray<Float64>.create([3], DType.float64),
@@ -779,14 +779,11 @@ void main() {
 
           // Recycler
           final intoBuf = NDArray<Float32>.create([2, 2], DType.float32);
-          expect(
-            add<AnyFloat, AnyFloat, AnyFloat>(a, b, out: intoBuf),
-            intoBuf,
-          );
+          expect(add<DTypeTag>(a, b, out: intoBuf), intoBuf);
 
           // Incompatible recycler
           expect(
-            () => add<AnyFloat, AnyFloat, AnyFloat>(
+            () => add<DTypeTag>(
               a,
               b,
               out: NDArray<Float32>.create([3], DType.float32),
@@ -852,17 +849,17 @@ void main() {
 
           // Recycler
           final intoBuf = NDArray<Int64>.create([2, 2], DType.int64);
-          expect(add<AnyInt, AnyInt, AnyInt>(a, b, out: intoBuf), intoBuf);
+          expect(add<DTypeTag>(a, b, out: intoBuf), intoBuf);
 
           final intoDoubleBuf = NDArray<Float64>.create([2, 2], DType.float64);
           expect(
-            divide<AnyInt, AnyInt, AnyFloat>(b, a, out: intoDoubleBuf),
+            divide<DTypeTag, DTypeTag, DTypeTag>(b, a, out: intoDoubleBuf),
             intoDoubleBuf,
           );
 
           // Incompatible recycler
           expect(
-            () => add<AnyInt, AnyInt, AnyInt>(
+            () => add<DTypeTag>(
               a,
               b,
               out: NDArray<Int64>.create([3], DType.int64),
@@ -870,7 +867,7 @@ void main() {
             throwsArgumentError,
           );
           expect(
-            () => divide<AnyInt, AnyInt, AnyFloat>(
+            () => divide<DTypeTag, DTypeTag, DTypeTag>(
               b,
               a,
               out: NDArray<Float64>.create([3], DType.float64),
@@ -933,17 +930,17 @@ void main() {
 
           // Recycler
           final intoBuf = NDArray<Int32>.create([2, 2], DType.int32);
-          expect(add<AnyInt, AnyInt, AnyInt>(a, b, out: intoBuf), intoBuf);
+          expect(add<DTypeTag>(a, b, out: intoBuf), intoBuf);
 
           final intoDoubleBuf = NDArray<Float64>.create([2, 2], DType.float64);
           expect(
-            divide<AnyInt, AnyInt, AnyFloat>(b, a, out: intoDoubleBuf),
+            divide<DTypeTag, DTypeTag, DTypeTag>(b, a, out: intoDoubleBuf),
             intoDoubleBuf,
           );
 
           // Incompatible recycler
           expect(
-            () => add<AnyInt, AnyInt, AnyInt>(
+            () => add<DTypeTag>(
               a,
               b,
               out: NDArray<Int32>.create([3], DType.int32),
@@ -951,7 +948,7 @@ void main() {
             throwsArgumentError,
           );
           expect(
-            () => divide<AnyInt, AnyInt, AnyFloat>(
+            () => divide<DTypeTag, DTypeTag, DTypeTag>(
               b,
               a,
               out: NDArray<Float64>.create([3], DType.float64),
@@ -1022,18 +1019,15 @@ void main() {
           // Strided view and recycler
           final aView = a.slice([const Slice(start: 0, stop: 2, step: 1)]);
           final bView = b.slice([const Slice(start: 0, stop: 2, step: 1)]);
-          final intoBuf = NDArray<AnyComplex>.create([2], DType.complex128);
-          expect(
-            add<AnyComplex, AnyComplex, AnyComplex>(aView, bView, out: intoBuf),
-            intoBuf,
-          );
+          final intoBuf = NDArray<DTypeTag>.create([2], DType.complex128);
+          expect(add<DTypeTag>(aView, bView, out: intoBuf), intoBuf);
 
           // Incompatible recycler
           expect(
-            () => add<AnyComplex, AnyComplex, AnyComplex>(
+            () => add<DTypeTag>(
               a,
               b,
-              out: NDArray<AnyComplex>.create([3], DType.complex128),
+              out: NDArray<DTypeTag>.create([3], DType.complex128),
             ),
             throwsArgumentError,
           );
@@ -1146,7 +1140,7 @@ void main() {
     });
 
     test("abs with strided out (complex -> real)", () {
-      final baseA = NDArray<AnyComplex>.fromList(
+      final baseA = NDArray<DTypeTag>.fromList(
         [Complex(0, 0), Complex(-3, 4), Complex(5, -12), Complex(0, 0)],
         [4],
         DType.complex128,
@@ -1178,14 +1172,14 @@ void main() {
     });
 
     test("conj with strided out (complex)", () {
-      final baseA = NDArray<AnyComplex>.fromList(
+      final baseA = NDArray<DTypeTag>.fromList(
         [Complex(0, 0), Complex(1, -2), Complex(3, -4), Complex(0, 0)],
         [4],
         DType.complex128,
       );
       final a = baseA.slice([Slice(start: 1, stop: 3)]);
 
-      final baseOut = NDArray<AnyComplex>.fromList(
+      final baseOut = NDArray<DTypeTag>.fromList(
         [Complex(0, 0), Complex(0, 0), Complex(0, 0), Complex(0, 0)],
         [4],
         DType.complex128,
@@ -1288,7 +1282,7 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([-1.0, -2.0]), [
         2,
       ], DType.float64);
-      final out = NDArray<AnyFloat>.create([2], DType.float64);
+      final out = NDArray<DTypeTag>.create([2], DType.float64);
       abs(a, out: out);
       expect(out.toList(), [1.0, 2.0]);
     });
@@ -1363,7 +1357,7 @@ void main() {
       final b = NDArray.fromList(Float64List.fromList([4.0, 12.0]), [
         2,
       ], DType.float64);
-      final out = NDArray<AnyFloat>.create([2], DType.float64);
+      final out = NDArray<DTypeTag>.create([2], DType.float64);
 
       final res = hypot(a, b, out: out);
       expect(identical(res, out), isTrue);
@@ -1372,7 +1366,7 @@ void main() {
       expect(outList[1], closeTo(13.0, 1e-10));
 
       // Incompatible shape/dtype validation
-      final badOut = NDArray<AnyFloat>.create([3], DType.float64);
+      final badOut = NDArray<DTypeTag>.create([3], DType.float64);
       expect(() => hypot(a, b, out: badOut), throwsArgumentError);
     });
 
@@ -1393,7 +1387,7 @@ void main() {
       expect(() => power(a, b, out: badOut), throwsArgumentError);
 
       final diffDType = NDArray.fromList([2, 3], [2], DType.int64);
-      expect(() => power<AnyReal>(a, diffDType), throwsArgumentError);
+      expect(() => power<DTypeTag>(a, diffDType), throwsArgumentError);
     });
 
     test('integer power contiguous and strided', () {
@@ -1680,13 +1674,13 @@ void main() {
     test(
       'add() cross-type complex/int and int/complex additions coverage',
       () => NDArray.scope(() {
-        final c = NDArray<AnyComplex>.fromList(
+        final c = NDArray<DTypeTag>.fromList(
           [Complex(1.0, 1.0)],
           [1],
           DType.complex128,
         );
-        final i = NDArray<AnyInt>.fromList([2], [1], DType.int64);
-        final d = NDArray<AnyFloat>.fromList([3.0], [1], DType.float64);
+        final i = NDArray<DTypeTag>.fromList([2], [1], DType.int64);
+        final d = NDArray<DTypeTag>.fromList([3.0], [1], DType.float64);
 
         // 1. Complex + int
         final res1 = add(c, i);
@@ -1710,13 +1704,13 @@ void main() {
     test(
       'Cross-type arithmetic coverage for subtract, multiply, and divide',
       () {
-        final c = NDArray<AnyComplex>.fromList(
+        final c = NDArray<DTypeTag>.fromList(
           [Complex(10.0, 10.0)],
           [1],
           DType.complex128,
         );
-        final i = NDArray<AnyInt>.fromList([2], [1], DType.int64);
-        final d = NDArray<AnyFloat>.fromList([4.0], [1], DType.float64);
+        final i = NDArray<DTypeTag>.fromList([2], [1], DType.int64);
+        final d = NDArray<DTypeTag>.fromList([4.0], [1], DType.float64);
 
         // --- subtract() Gaps ---
         // 1. Complex - int
@@ -1851,7 +1845,7 @@ void main() {
           expect(resDiv.toList(), [10.0, 10.0, 10.0]);
 
           // complex128 strided
-          final z1 = NDArray<AnyComplex>.fromList(
+          final z1 = NDArray<DTypeTag>.fromList(
             [
               Complex(1.0, 2.0),
               Complex(9, 9),
@@ -1862,7 +1856,7 @@ void main() {
             DType.complex128,
           ).slice([const Slice(start: 0, stop: 4, step: 2)]);
 
-          final z2 = NDArray<AnyComplex>.fromList(
+          final z2 = NDArray<DTypeTag>.fromList(
             [
               Complex(10.0, 20.0),
               Complex(9, 9),
@@ -1888,20 +1882,20 @@ void main() {
     test('Phase 2: Combinatorial DType Promotions', () {
       NDArray.scope(() {
         // int32 + float64 -> float64
-        final i32 = NDArray.fromList([1, 2], [2], DType.int32);
+        final NDArray i32 = NDArray.fromList([1, 2], [2], DType.int32);
         final f64 = NDArray.fromList([0.5, 1.5], [2], DType.float64);
         final res1 = i32 + f64;
         expect(res1.dtype, DType.float64);
         expect(res1.toList(), [1.5, 3.5]);
 
         // int64 * int32 -> int64
-        final i64 = NDArray.fromList([3, 4], [2], DType.int64);
+        final NDArray i64 = NDArray.fromList([3, 4], [2], DType.int64);
         final res2 = i64 * i32;
         expect(res2.dtype, DType.int64);
         expect(res2.toList(), [3, 8]);
 
         // uint8 + int16 -> int16 (promoted to int16 as it can represent all uint8 values)
-        final u8 = NDArray.fromList([10, 20], [2], DType.uint8);
+        final NDArray u8 = NDArray.fromList([10, 20], [2], DType.uint8);
         final i16 = NDArray.fromList([100, 200], [2], DType.int16);
         final res3 = u8 + i16;
         expect(res3.dtype, DType.int16);
@@ -1989,11 +1983,11 @@ void main() {
           // Incompatible DType for out buffer
           final outBadDType = NDArray<Int32>.create([2], DType.int32);
           expect(
-            () => add<AnyFloat, AnyFloat, AnyInt>(a, b, out: outBadDType),
+            () => add<DTypeTag>(a, b, out: outBadDType),
             throwsArgumentError,
           );
           expect(
-            () => sin<AnyFloat, AnyInt>(a, out: outBadDType),
+            () => sin<DTypeTag, DTypeTag>(a, out: outBadDType),
             throwsArgumentError,
           );
         });

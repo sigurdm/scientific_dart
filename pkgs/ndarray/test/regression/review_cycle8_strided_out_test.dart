@@ -46,21 +46,25 @@ void main() {
           final b = NDArray.fromList([2, 3, 4], [3], DType.int64);
 
           // intersect1d -> [2, 3]
-          final bufInter = NDArray<AnyInt>.zeros([2], DType.int64);
-          intersect1d<AnyInt>(a, b, out: flip(bufInter));
+          final bufInter = NDArray<DTypeTag>.zeros([2], DType.int64);
+          intersect1d<DTypeTag>(a, b, out: flip(bufInter));
           expect(bufInter[0].scalar, equals(3));
           expect(bufInter[1].scalar, equals(2));
 
-          final bufInterStep = NDArray<AnyInt>.zeros([4], DType.int64);
-          intersect1d<AnyInt>(a, b, out: bufInterStep.slice([Slice(step: 2)]));
+          final bufInterStep = NDArray<DTypeTag>.zeros([4], DType.int64);
+          intersect1d<DTypeTag>(
+            a,
+            b,
+            out: bufInterStep.slice([Slice(step: 2)]),
+          );
           expect(bufInterStep[0].scalar, equals(2));
           expect(bufInterStep[1].scalar, equals(0));
           expect(bufInterStep[2].scalar, equals(3));
           expect(bufInterStep[3].scalar, equals(0));
 
           // setdiff1d -> [1]
-          final bufDiff = NDArray<AnyInt>.zeros([2], DType.int64);
-          setdiff1d<AnyInt>(
+          final bufDiff = NDArray<DTypeTag>.zeros([2], DType.int64);
+          setdiff1d<DTypeTag>(
             a,
             b,
             out: bufDiff.slice([Slice(start: 1, stop: 2)]),
@@ -69,28 +73,28 @@ void main() {
           expect(bufDiff[1].scalar, equals(1));
 
           // setxor1d -> [1, 4]
-          final bufXor = NDArray<AnyInt>.zeros([2], DType.int64);
-          setxor1d<AnyInt>(a, b, out: flip(bufXor));
+          final bufXor = NDArray<DTypeTag>.zeros([2], DType.int64);
+          setxor1d<DTypeTag>(a, b, out: flip(bufXor));
           expect(bufXor[0].scalar, equals(4));
           expect(bufXor[1].scalar, equals(1));
 
-          final bufXorStep = NDArray<AnyInt>.zeros([4], DType.int64);
-          setxor1d<AnyInt>(a, b, out: bufXorStep.slice([Slice(step: 2)]));
+          final bufXorStep = NDArray<DTypeTag>.zeros([4], DType.int64);
+          setxor1d<DTypeTag>(a, b, out: bufXorStep.slice([Slice(step: 2)]));
           expect(bufXorStep[0].scalar, equals(1));
           expect(bufXorStep[1].scalar, equals(0));
           expect(bufXorStep[2].scalar, equals(4));
           expect(bufXorStep[3].scalar, equals(0));
 
           // union1d -> [1, 2, 3, 4]
-          final bufUnion = NDArray<AnyInt>.zeros([4], DType.int64);
-          union1d<AnyInt>(a, b, out: flip(bufUnion));
+          final bufUnion = NDArray<DTypeTag>.zeros([4], DType.int64);
+          union1d<DTypeTag>(a, b, out: flip(bufUnion));
           expect(bufUnion[0].scalar, equals(4));
           expect(bufUnion[1].scalar, equals(3));
           expect(bufUnion[2].scalar, equals(2));
           expect(bufUnion[3].scalar, equals(1));
 
-          final bufUnionStep = NDArray<AnyInt>.zeros([8], DType.int64);
-          union1d<AnyInt>(a, b, out: bufUnionStep.slice([Slice(step: 2)]));
+          final bufUnionStep = NDArray<DTypeTag>.zeros([8], DType.int64);
+          union1d<DTypeTag>(a, b, out: bufUnionStep.slice([Slice(step: 2)]));
           expect(bufUnionStep[0].scalar, equals(1));
           expect(bufUnionStep[2].scalar, equals(2));
           expect(bufUnionStep[4].scalar, equals(3));
@@ -106,7 +110,7 @@ void main() {
 
         final bufFlip = NDArray<Boolean>.create([4], DType.boolean);
         final flipped = flip(bufFlip);
-        isin<AnyInt>(elem, testElem, out: flipped);
+        isin<DTypeTag>(elem, testElem, out: flipped);
         // Logical flipped result should be [false, true, false, true]
         expect(flipped[0].scalar, isFalse);
         expect(flipped[1].scalar, isTrue);
@@ -121,7 +125,7 @@ void main() {
         final bufStep = NDArray<Boolean>.fromList(List.filled(8, false), [
           8,
         ], DType.boolean);
-        isin<AnyInt>(elem, testElem, out: bufStep.slice([Slice(step: 2)]));
+        isin<DTypeTag>(elem, testElem, out: bufStep.slice([Slice(step: 2)]));
         expect(bufStep[0].scalar, isFalse);
         expect(bufStep[2].scalar, isTrue);
         expect(bufStep[4].scalar, isFalse);

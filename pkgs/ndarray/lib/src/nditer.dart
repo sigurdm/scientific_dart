@@ -240,7 +240,7 @@ final class NDIter {
 ///   print('coords: ${en.coords}, value: ${en.value}');
 /// }
 /// ```
-final class NDEnumerate<T extends AnyDType> {
+final class NDEnumerate<T extends DTypeTag> {
   final NDArray<T> _array;
   final NDIter _iter;
 
@@ -274,15 +274,19 @@ final class NDEnumerate<T extends AnyDType> {
 /// [T] through its [DTypeTag] bound, so `NDEnumerate<Float64>.value` has
 /// static type `double` and `NDEnumerate<Int32>.value` has static type `int`.
 ///
-/// In code that is generic over all dtypes (`T extends AnyDType`), [E]
+/// In code that is generic over all dtypes (`T extends DTypeTag`), [E]
 /// resolves to `Object?`.
-extension NDEnumerateElements<T extends DTypeTag<E>, E> on NDEnumerate<T> {
+extension NDEnumerateElements<
+  T extends DTypeSpec<DTypeTag, E, DTypeTag, DTypeTag, DTypeTag>,
+  E
+>
+    on NDEnumerate<T> {
   /// The current element value.
   E get value => valueRaw as E;
 }
 
-/// Element access for an [NDEnumerate] whose dtype tag is widened to [AnyDType].
-extension NDEnumerateAnyDTypeElements on NDEnumerate<AnyDType> {
+/// Element access for an [NDEnumerate] typed as the base [DTypeTag].
+extension NDEnumerateBaseElements on NDEnumerate<DTypeTag> {
   /// The current element value.
   dynamic get value => valueRaw;
 }

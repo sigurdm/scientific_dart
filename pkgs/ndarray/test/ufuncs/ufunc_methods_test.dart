@@ -190,7 +190,7 @@ void main() {
           [8],
           DType.float64,
         );
-        final indices = NDArray<AnyInt>.fromList(
+        final indices = NDArray<DTypeTag>.fromList(
           [0, 4, 1, 5],
           [4],
           DType.int64,
@@ -240,7 +240,7 @@ void main() {
           [3],
           DType.float64,
         );
-        final indices = NDArray<AnyInt>.fromList(
+        final indices = NDArray<DTypeTag>.fromList(
           [0, 1, 0, 1, 0],
           [5],
           DType.int64,
@@ -262,7 +262,7 @@ void main() {
     test('at scatter multiplication on integer array', () {
       NDArray.scope(() {
         final a = NDArray<Int64>.fromList([1, 1, 1], [3], DType.int64);
-        final indices = NDArray<AnyInt>.fromList([0, 0, 1], [3], DType.int64);
+        final indices = NDArray<DTypeTag>.fromList([0, 0, 1], [3], DType.int64);
         final b = NDArray<Int64>.fromList([2, 3, 5], [3], DType.int64);
 
         a.at(indices, b, op: BinaryOp.multiply);
@@ -276,7 +276,7 @@ void main() {
   group('Error Handling & Edge Cases', () {
     test('Disposed array throws StateError for all ufunc methods', () {
       final a = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
-      final indices = NDArray<AnyInt>.fromList([0], [1], DType.int64);
+      final indices = NDArray<DTypeTag>.fromList([0], [1], DType.int64);
       final b = NDArray<Float64>.fromList([5.0], [1], DType.float64);
       a.dispose();
 
@@ -300,7 +300,7 @@ void main() {
         );
         expect(
           () => a.reduceat(
-            NDArray<AnyInt>.fromList([0], [1], DType.int64),
+            NDArray<DTypeTag>.fromList([0], [1], DType.int64),
             op: BinaryOp.add,
             axis: 2,
           ),
@@ -366,7 +366,7 @@ void main() {
         final cumsum = accumulate(a, op: BinaryOp.add);
         expect(cumsum.toList(), equals([1.0, 3.0, 6.0, 10.0]));
 
-        final indices = NDArray<AnyInt>.fromList([0, 2], [2], DType.int64);
+        final indices = NDArray<DTypeTag>.fromList([0, 2], [2], DType.int64);
         final redAt = reduceat(a, indices, op: BinaryOp.add);
         expect(redAt.toList(), equals([3.0, 7.0]));
 
@@ -375,7 +375,11 @@ void main() {
         expect(outRes.shape, equals([4, 2]));
 
         final target = NDArray<Float64>.zeros([3], DType.float64);
-        final atIndices = NDArray<AnyInt>.fromList([0, 0, 1], [3], DType.int64);
+        final atIndices = NDArray<DTypeTag>.fromList(
+          [0, 0, 1],
+          [3],
+          DType.int64,
+        );
         final valBuffer = NDArray<Float64>.fromList(
           [2.0, 3.0, 5.0],
           [3],

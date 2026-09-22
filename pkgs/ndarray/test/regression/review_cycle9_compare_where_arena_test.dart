@@ -8,8 +8,8 @@ void main() {
       'equal, notEqual, greater, greaterEqual, less, lessEqual with where mask do not leak tempRes',
       () {
         NDArray.clearTrackedAllocations();
-        final a = NDArray<AnyInt>.fromList([1, 5, 3, 4], [4], DType.int32);
-        final b = NDArray<AnyInt>.fromList([1, 2, 6, 4], [4], DType.int32);
+        final a = NDArray<DTypeTag>.fromList([1, 5, 3, 4], [4], DType.int32);
+        final b = NDArray<DTypeTag>.fromList([1, 2, 6, 4], [4], DType.int32);
         final mask = NDArray<Boolean>.fromList(
           [true, false, true, false],
           [4],
@@ -177,7 +177,7 @@ void main() {
           [3],
           DType.float64,
         );
-        final aInt = NDArray<AnyInt>.fromList([1, 2, 3], [3], DType.int32);
+        final aInt = NDArray<DTypeTag>.fromList([1, 2, 3], [3], DType.int32);
         final badShapeMask = NDArray<Boolean>.fromList(
           [true, false],
           [2],
@@ -201,7 +201,7 @@ void main() {
           expect(ScratchArena.marker.offset, equals(baselineMarker.offset));
         }
 
-        for (final badMask in <NDArray<AnyDType>>[badShapeMask, badDTypeMask]) {
+        for (final badMask in <NDArray<DTypeTag>>[badShapeMask, badDTypeMask]) {
           expect(() => equal(aF64, bF64, where: badMask), throwsArgumentError);
           verifyNoLeak();
 

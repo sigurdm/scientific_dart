@@ -194,7 +194,7 @@ void main() {
           final result = NDArray.returning<Float64>(() {
             a = NDArray<Float64>.zeros([10], DType.float64);
             b = NDArray<Float64>.ones([10], DType.float64);
-            c = add<Float64, Float64, Float64>(a, b);
+            c = add<Float64>(a, b);
             return c;
           });
 
@@ -215,7 +215,7 @@ void main() {
           innerRes = NDArray.returning<Float64>(() {
             final temp = NDArray<Float64>.zeros([5], DType.float64);
             final ones = NDArray<Float64>.ones([5], DType.float64);
-            return add<Float64, Float64, Float64>(temp, ones);
+            return add<Float64>(temp, ones);
           });
 
           // Inside outer scope, innerRes is alive because it was promoted to outer scope
@@ -576,7 +576,7 @@ void main() {
           pointer[i] = (i + 1) * 10.0;
         }
 
-        final arr = NDArray<AnyFloat>.fromPointer(pointer.cast(), [
+        final arr = NDArray<DTypeTag>.fromPointer(pointer.cast(), [
           2,
           2,
         ], DType.float64);
@@ -610,7 +610,7 @@ void main() {
           pointer[i] = (i + 1) * 2.0;
         }
 
-        final arr = NDArray<AnyFloat>.fromPointer(
+        final arr = NDArray<DTypeTag>.fromPointer(
           pointer.cast(),
           [4],
           DType.float64,
@@ -632,10 +632,10 @@ void main() {
         pointer[0] = 1.0;
         pointer[1] = 2.0;
 
-        NDArray<AnyFloat>? arrRef;
+        NDArray<DTypeTag>? arrRef;
 
         NDArray.scope(() {
-          final arr = NDArray<AnyFloat>.fromPointer(pointer.cast(), [
+          final arr = NDArray<DTypeTag>.fromPointer(pointer.cast(), [
             2,
           ], DType.float64);
           arrRef = arr;

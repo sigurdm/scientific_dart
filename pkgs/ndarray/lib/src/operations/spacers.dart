@@ -84,7 +84,7 @@ enum SearchSide {
 /// ```dart
 /// linspace(0.0, 10.0, 5, dtype: DType.float64); // [0.0, 2.5, 5.0, 7.5, 10.0]
 /// ```
-NDArray<T> linspace<T extends AnyDType>(
+NDArray<T> linspace<T extends DTypeTag>(
   Object? start,
   Object? stop,
   int numSamples, {
@@ -114,7 +114,7 @@ NDArray<T> linspace<T extends AnyDType>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-({NDArray<T> samples, dynamic step}) linspaceWithStep<T extends AnyDType>(
+({NDArray<T> samples, dynamic step}) linspaceWithStep<T extends DTypeTag>(
   Object? start,
   Object? stop,
   int numSamples, {
@@ -157,7 +157,7 @@ NDArray<T> linspace<T extends AnyDType>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-NDArray<T> linspaceGrid<T extends AnyDType>(
+NDArray<T> linspaceGrid<T extends DTypeTag>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -205,7 +205,7 @@ NDArray<T> linspaceGrid<T extends AnyDType>(
 /// **Memory Ownership & Lifetime:**
 /// - Allocates new arrays on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 ({NDArray<T> samples, NDArray<T> step})
-linspaceGridWithStep<T extends AnyDType>(
+linspaceGridWithStep<T extends DTypeTag>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -231,7 +231,7 @@ linspaceGridWithStep<T extends AnyDType>(
 }
 
 ({NDArray<T> samples, NDArray<T> step})
-_linspaceGridInternal<T extends AnyDType>(
+_linspaceGridInternal<T extends DTypeTag>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -480,7 +480,7 @@ _linspaceGridInternal<T extends AnyDType>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-NDArray<T> logspace<T extends AnyDType>(
+NDArray<T> logspace<T extends DTypeTag>(
   Object? start,
   Object? stop,
   int numSamples, {
@@ -604,7 +604,7 @@ NDArray<T> logspace<T extends AnyDType>(
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
 ///   - [out.dtype] if [out] is provided, or
 ///   - the resolved dtype between [start] and [stop].
-NDArray<T> logspaceGrid<T extends AnyDType>(
+NDArray<T> logspaceGrid<T extends DTypeTag>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -693,7 +693,7 @@ NDArray<T> logspaceGrid<T extends AnyDType>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-NDArray<T> geomspace<T extends AnyDType>(
+NDArray<T> geomspace<T extends DTypeTag>(
   Object? start,
   Object? stop,
   int numSamples, {
@@ -855,7 +855,7 @@ NDArray<T> geomspace<T extends AnyDType>(
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
 ///   - [out.dtype] if [out] is provided, or
 ///   - the resolved dtype between [start] and [stop].
-NDArray<T> geomspaceGrid<T extends AnyDType>(
+NDArray<T> geomspaceGrid<T extends DTypeTag>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -938,7 +938,7 @@ NDArray<T> geomspaceGrid<T extends AnyDType>(
       final expandedSignShape = List<int>.from(commonShape)
         ..insert(actualAxis, 1);
       final signsExpanded = signs.reshape(expandedSignShape);
-      final res = multiply<T, T, T>(signsExpanded, powRes);
+      final res = multiply<T>(signsExpanded, powRes);
       if (out != null) {
         if (!listEquals(out.shape, res.shape) || out.dtype != resolvedDType) {
           throw ArgumentError('Incompatible out buffer shape or dtype.');

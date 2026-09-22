@@ -10,20 +10,20 @@ void main() async {
     (c) {
       c.group('1. DSP Windowing Functions (100k points)', () {
         c.bench('hanning(100k)', () {
-          final res = hanning<AnyFloat>(size);
+          final res = hanning<DTypeTag>(size);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
 
         c.bench('hamming(100k)', () {
-          final res = hamming<AnyFloat>(size);
+          final res = hamming<DTypeTag>(size);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
       });
 
       c.group('2. Special Mathematical Functions (100k elements)', () {
-        final floatVec = linspace<AnyFloat>(
+        final floatVec = linspace<DTypeTag>(
           0.0,
           10.0,
           size,
@@ -31,25 +31,25 @@ void main() async {
         );
 
         c.bench('i0(x) (Bessel I0) [100k]', () {
-          final res = i0<AnyFloat, AnyFloat>(floatVec);
+          final res = i0<DTypeTag, DTypeTag>(floatVec);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
 
         c.bench('sinc(x) (Normalized Sinc) [100k]', () {
-          final res = sinc<AnyFloat, AnyFloat>(floatVec);
+          final res = sinc<DTypeTag, DTypeTag>(floatVec);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
       });
 
       c.group('3. Bitwise Integer Operations (100k elements)', () {
-        final intA = NDArray<AnyInt>.fromList(
+        final intA = NDArray<DTypeTag>.fromList(
           List.generate(size, (i) => i * 13),
           [size],
           DType.int32,
         );
-        final intB = NDArray<AnyInt>.fromList(
+        final intB = NDArray<DTypeTag>.fromList(
           List.generate(size, (i) => i * 7 + 1),
           [size],
           DType.int32,
@@ -79,7 +79,7 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(size));
 
-        final shiftAmt = NDArray<AnyInt>.fromList(
+        final shiftAmt = NDArray<DTypeTag>.fromList(
           List.generate(size, (i) => (i % 8)),
           [size],
           DType.int32,

@@ -85,13 +85,13 @@ void main() async {
         });
 
         c.bench('inner(A, B) [200x100, 200x100 -> 200x200]', () {
-          final res = inner<Float64, Float64, Float64>(innerA, innerB);
+          final res = inner<Float64>(innerA, innerB);
           blackhole(res);
           res.dispose();
         });
 
         c.bench('vdot(a, b) [100k Float64]', () {
-          final res = vdot<Float64, Float64, Float64>(vdotA, vdotB);
+          final res = vdot<Float64>(vdotA, vdotB);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));

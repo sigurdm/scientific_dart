@@ -37,7 +37,7 @@ final class RandomGenerator {
   }
 
   /// Generates an array with random values uniformly distributed in the half-open interval `[0.0, 1.0)`.
-  NDArray<T> uniform<T extends AnyDType>(
+  NDArray<T> uniform<T extends DTypeTag>(
     List<int> shape, {
     DType<T>? dtype,
     NDArray<T>? out,
@@ -53,7 +53,7 @@ final class RandomGenerator {
   }
 
   /// Returns random integers from the half-open interval `[low, high)`.
-  NDArray<T> randint<T extends AnyReal>(
+  NDArray<T> randint<T extends DTypeTag>(
     List<int> shape, {
     required int low,
     required int high,
@@ -73,7 +73,7 @@ final class RandomGenerator {
   }
 
   /// Draws random samples from a normal (Gaussian) distribution.
-  NDArray<T> normal<T extends AnyDType>(
+  NDArray<T> normal<T extends DTypeTag>(
     List<int> shape, {
     double loc = 0.0,
     double scale = 1.0,
@@ -93,7 +93,7 @@ final class RandomGenerator {
   }
 
   /// Draws samples from an exponential distribution.
-  NDArray<T> exponential<T extends AnyDType>(
+  NDArray<T> exponential<T extends DTypeTag>(
     List<int> shape, {
     double scale = 1.0,
     double? lam,
@@ -113,7 +113,7 @@ final class RandomGenerator {
   }
 }
 
-void _validateOutBuffer<T extends AnyDType>(
+void _validateOutBuffer<T extends DTypeTag>(
   NDArray<T>? out,
   List<int> expectedShape,
   DType<T> expectedDType,
@@ -127,7 +127,7 @@ void _validateOutBuffer<T extends AnyDType>(
   }
 }
 
-NDArray<T> _uniformImpl<T extends AnyDType>(
+NDArray<T> _uniformImpl<T extends DTypeTag>(
   List<int> shape, {
   DType<T>? dtype,
   required int seedVal,
@@ -188,7 +188,7 @@ NDArray<T> _uniformImpl<T extends AnyDType>(
   return arr;
 }
 
-NDArray<T> _randintImpl<T extends AnyReal>(
+NDArray<T> _randintImpl<T extends DTypeTag>(
   List<int> shape, {
   required int low,
   required int high,
@@ -330,7 +330,7 @@ NDArray<T> _randintImpl<T extends AnyReal>(
   return arr;
 }
 
-NDArray<T> _normalImpl<T extends AnyDType>(
+NDArray<T> _normalImpl<T extends DTypeTag>(
   List<int> shape, {
   double loc = 0.0,
   double scale = 1.0,
@@ -432,7 +432,7 @@ NDArray<T> _normalImpl<T extends AnyDType>(
   return arr;
 }
 
-NDArray<T> _exponentialImpl<T extends AnyDType>(
+NDArray<T> _exponentialImpl<T extends DTypeTag>(
   List<int> shape, {
   double scale = 1.0,
   double? lam,
@@ -551,7 +551,7 @@ NDArray<T> _exponentialImpl<T extends AnyDType>(
 ///
 /// By default, uses Dart's standard [Random] class, which is not cryptographically secure.
 /// You can pass a secure random object via the [random] parameter if needed.
-NDArray<T> uniform<T extends AnyDType>(
+NDArray<T> uniform<T extends DTypeTag>(
   List<int> shape, {
   DType<T>? dtype,
   int? seed,
@@ -599,7 +599,7 @@ NDArray<T> uniform<T extends AnyDType>(
 /// print(a.toList()); // e.g., [3, 7, 1]
 /// a.dispose();
 /// ```
-NDArray<T> randint<T extends AnyReal>(
+NDArray<T> randint<T extends DTypeTag>(
   List<int> shape, {
   required int low,
   required int high,
@@ -645,7 +645,7 @@ NDArray<T> randint<T extends AnyReal>(
 ///
 /// Refer to the [Normal Distribution Reference](https://en.wikipedia.org/wiki/Normal_distribution)
 /// for details on standard Gaussian distributions.
-NDArray<T> normal<T extends AnyDType>(
+NDArray<T> normal<T extends DTypeTag>(
   List<int> shape, {
   double loc = 0.0,
   double scale = 1.0,
@@ -687,7 +687,7 @@ NDArray<T> normal<T extends AnyDType>(
 ///
 /// Refer to the [Exponential Distribution Reference](https://en.wikipedia.org/wiki/Exponential_distribution)
 /// for details on exponential variables.
-NDArray<T> exponential<T extends AnyDType>(
+NDArray<T> exponential<T extends DTypeTag>(
   List<int> shape, {
   double scale = 1.0,
   double? lam,
@@ -736,7 +736,7 @@ NDArray<T> exponential<T extends AnyDType>(
 ///
 /// Refer to the [Poisson Distribution Reference](https://en.wikipedia.org/wiki/Poisson_distribution)
 /// for details on Poisson processes.
-NDArray<T> poisson<T extends AnyReal>(
+NDArray<T> poisson<T extends DTypeTag>(
   List<int> shape, {
   double lam = 1.0,
   DType<T>? dtype,
@@ -828,7 +828,7 @@ NDArray<T> poisson<T extends AnyReal>(
 ///
 /// Refer to the [Binomial Distribution Reference](https://en.wikipedia.org/wiki/Binomial_distribution)
 /// for details on independent Bernoulli trials.
-NDArray<T> binomial<T extends AnyDType>(
+NDArray<T> binomial<T extends DTypeTag>(
   List<int> shape, {
   required int n,
   required double p,
@@ -933,7 +933,7 @@ NDArray<T> binomial<T extends AnyDType>(
 /// final samples = multivariateNormal(mean, cov, size: [1000]);
 /// print(samples.shape); // [1000, 2]
 /// ```
-NDArray<T> multivariateNormal<T extends AnyDType>(
+NDArray<T> multivariateNormal<T extends DTypeTag>(
   NDArray<T> mean,
   NDArray<T> cov, {
   List<int>? size,
@@ -1054,7 +1054,7 @@ NDArray<T> multivariateNormal<T extends AnyDType>(
 /// final samples = multinomial(10, pvals, size: [1000]);
 /// print(samples.shape); // [1000, 3]
 /// ```
-NDArray<T> multinomial<T extends AnyReal, P extends AnyDType>(
+NDArray<T> multinomial<T extends DTypeTag, P extends DTypeTag>(
   int n,
   NDArray<P> pvals, {
   List<int>? size,
@@ -1230,7 +1230,7 @@ NDArray<T> multinomial<T extends AnyReal, P extends AnyDType>(
 /// ```
 ///
 /// Reference: [NumPy choice](https://numpy.org/doc/stable/reference/generated/numpy.random.choice.html)
-NDArray<T> choice<T extends AnyDType>(
+NDArray<T> choice<T extends DTypeTag>(
   NDArray<T> a, {
   List<int>? size,
   bool replace = true,
@@ -1436,7 +1436,7 @@ NDArray<T> choice<T extends AnyDType>(
 /// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 /// shuffle(a); // a is now shuffled in-place, e.g., [2.0, 1.0, 3.0]
 /// ```
-void shuffle<T extends AnyDType>(
+void shuffle<T extends DTypeTag>(
   NDArray<T> a, {
   int? seed,
   bool secure = false,
@@ -1500,7 +1500,7 @@ void shuffle<T extends AnyDType>(
 /// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 /// final perm = permutation(a); // perm is a permuted copy, a remains unchanged
 /// ```
-NDArray<T> permutation<T extends AnyDType>(
+NDArray<T> permutation<T extends DTypeTag>(
   NDArray<T> a, {
   int? seed,
   bool secure = false,

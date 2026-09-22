@@ -1425,7 +1425,7 @@ void main() {
 
                 final res = vdot(a, b);
                 expect(res.shape, <int>[]);
-                final c = res.scalar as Complex;
+                final c = res.scalar;
                 expect(c.real, closeTo(3.0, 1e-9));
                 expect(c.imag, closeTo(-10.0, 1e-9));
 

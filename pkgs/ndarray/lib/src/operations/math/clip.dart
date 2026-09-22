@@ -31,11 +31,11 @@ import 'utility.dart';
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy clip](https://numpy.org/doc/stable/reference/generated/numpy.clip.html)
-NDArray<T> clip<T extends AnyDType>(
+NDArray<T> clip<T extends DTypeTag>(
   NDArray<T> a, {
   num? min,
   num? max,
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -109,7 +109,7 @@ NDArray<T> clip<T extends AnyDType>(
       case DType.uint64:
         final mn = _toUint64Bound(min, isMax: false);
         final mx = _toUint64Bound(max, isMax: true);
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -130,7 +130,7 @@ NDArray<T> clip<T extends AnyDType>(
       case DType.uint8:
         final mn = resolvedMin.toInt();
         final mx = resolvedMax.toInt();
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -145,7 +145,7 @@ NDArray<T> clip<T extends AnyDType>(
       default:
         final mn = resolvedMin.toDouble();
         final mx = resolvedMax.toDouble();
-        unaryOp<AnyDType, AnyDType>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -195,11 +195,11 @@ NDArray<T> clip<T extends AnyDType>(
 /// ```
 ///
 /// Reference: [NumPy clip](https://numpy.org/doc/stable/reference/generated/numpy.clip.html)
-NDArray<T> clipArray<T extends AnyDType>(
+NDArray<T> clipArray<T extends DTypeTag>(
   NDArray<T> a, {
   NDArray<T>? min,
   NDArray<T>? max,
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -398,7 +398,7 @@ NDArray<T> clipArray<T extends AnyDType>(
 
       switch (a.dtype) {
         case DType.uint64:
-          ternaryOp<AnyDType, AnyDType, AnyDType, AnyDType>(
+          ternaryOp<DTypeTag, DTypeTag, DTypeTag, DTypeTag>(
             result,
             broadcastA,
             broadcastMin,
@@ -421,7 +421,7 @@ NDArray<T> clipArray<T extends AnyDType>(
             maskHolder.pointer,
           );
         default:
-          ternaryOp<AnyDType, AnyDType, AnyDType, AnyDType>(
+          ternaryOp<DTypeTag, DTypeTag, DTypeTag, DTypeTag>(
             result,
             broadcastA,
             broadcastMin,

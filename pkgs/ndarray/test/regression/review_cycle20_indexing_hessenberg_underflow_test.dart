@@ -22,7 +22,11 @@ void main() {
                 DType.uint32,
                 DType.uint64,
               ]) {
-                final idx = NDArray<AnyInt>.fromList([3, 1, 0], [3], idxDType);
+                final idx = NDArray<DTypeTag>.fromList(
+                  [3, 1, 0],
+                  [3],
+                  idxDType,
+                );
                 final res = take_along_axis(arr1d, idx, 0);
                 expect(res[[0]], equals(40.0));
                 expect(res[[1]], equals(20.0));
@@ -74,7 +78,7 @@ void main() {
                   [4],
                   DType.float64,
                 );
-                final idx = NDArray<AnyInt>.fromList([3, 1], [2], idxDType);
+                final idx = NDArray<DTypeTag>.fromList([3, 1], [2], idxDType);
                 final vals = NDArray<Float64>.fromList(
                   [99.0, 88.0],
                   [2],
@@ -225,7 +229,7 @@ void main() {
           'geomspace succeeds for sub-1e-162 start and stop of same sign',
           () {
             NDArray.scope(() {
-              final pos = geomspace<AnyFloat>(
+              final pos = geomspace<DTypeTag>(
                 1e-200,
                 1e-180,
                 5,
@@ -236,7 +240,7 @@ void main() {
               expect(pos[[2]], closeTo(1e-190, 1e-202));
               expect(pos[[4]], closeTo(1e-180, 1e-192));
 
-              final neg = geomspace<AnyFloat>(
+              final neg = geomspace<DTypeTag>(
                 -1e-200,
                 -1e-180,
                 5,
@@ -246,7 +250,7 @@ void main() {
               expect(neg[[4]], closeTo(-1e-180, 1e-192));
 
               expect(
-                () => geomspace<AnyFloat>(
+                () => geomspace<DTypeTag>(
                   1e-200,
                   -1e-200,
                   5,

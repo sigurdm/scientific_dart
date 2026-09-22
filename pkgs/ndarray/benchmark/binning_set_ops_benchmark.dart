@@ -10,7 +10,7 @@ void main() async {
     'NDArray Binning, Histograms & Set Operations Benchmark Suite',
     (c) {
       final rand = math.Random(42);
-      final rawData = NDArray<AnyFloat>.fromList(
+      final rawData = NDArray<DTypeTag>.fromList(
         List.generate(size, (_) => rand.nextDouble() * 100.0),
         [size],
         DType.float64,
@@ -24,7 +24,7 @@ void main() async {
           res.binEdges.dispose();
         }, throughput: Throughput.elements(size));
 
-        final intData = NDArray<AnyInt>.fromList(
+        final intData = NDArray<DTypeTag>.fromList(
           List.generate(size, (_) => rand.nextInt(500)),
           [size],
           DType.int32,
@@ -36,7 +36,7 @@ void main() async {
           counts.dispose();
         }, throughput: Throughput.elements(size));
 
-        final bins = linspace<AnyFloat>(0.0, 100.0, 101, dtype: DType.float64);
+        final bins = linspace<DTypeTag>(0.0, 100.0, 101, dtype: DType.float64);
         c.bench('digitize(data, bins: 100) [size=100,000]', () {
           final binIdx = digitize(rawData, bins);
           blackhole(binIdx);
@@ -45,7 +45,7 @@ void main() async {
       });
 
       c.group('2. Set Operations', () {
-        final repeatedData = NDArray<AnyInt>.fromList(
+        final repeatedData = NDArray<DTypeTag>.fromList(
           List.generate(size, (_) => rand.nextInt(10000)),
           [size],
           DType.int32,
@@ -57,12 +57,12 @@ void main() async {
           u.dispose();
         }, throughput: Throughput.elements(size));
 
-        final setA = NDArray<AnyInt>.fromList(
+        final setA = NDArray<DTypeTag>.fromList(
           List.generate(50000, (_) => rand.nextInt(50000)),
           [50000],
           DType.int32,
         );
-        final setB = NDArray<AnyInt>.fromList(
+        final setB = NDArray<DTypeTag>.fromList(
           List.generate(50000, (_) => rand.nextInt(50000)),
           [50000],
           DType.int32,

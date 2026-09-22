@@ -35,7 +35,7 @@ enum _SendableMode { copy, borrow }
 ///   `Isolate.run` inside an [NDArray.scope]).
 ///
 /// {@example /example/sendable_ndarray_example.dart}
-final class SendableNDArray<T extends AnyDType> {
+final class SendableNDArray<T extends DTypeTag> {
   final _SendableMode _mode;
   final TransferableTypedData? _transferableData;
   final int? _address;

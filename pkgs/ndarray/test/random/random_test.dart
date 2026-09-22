@@ -496,7 +496,8 @@ void main() {
       test('choice and shuffle edge cases and exceptions', () {
         NDArray.scope(() {
           final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
-          final disposed = NDArray<AnyInt>.create([3], DType.int32)..dispose();
+          final disposed = NDArray<DTypeTag>.create([3], DType.int32)
+            ..dispose();
 
           // Disposed exceptions
           expect(() => choice(disposed), throwsStateError);
@@ -522,9 +523,9 @@ void main() {
           );
 
           // Out buffer mismatch
-          final outBad = NDArray<AnyInt>.create([4], DType.int32);
+          final outBad = NDArray<DTypeTag>.create([4], DType.int32);
           expect(() => choice(a, size: [3], out: outBad), throwsArgumentError);
-          final outDisposed = NDArray<AnyInt>.create([3], DType.int32)
+          final outDisposed = NDArray<DTypeTag>.create([3], DType.int32)
             ..dispose();
           expect(
             () => choice(a, size: [3], out: outDisposed),
@@ -581,7 +582,7 @@ void main() {
           expect(i64Sample.dtype, DType.int64);
 
           final f32 = NDArray.fromList([1.5, 2.5, 3.5], [3], DType.float32);
-          final f32Out = NDArray<AnyFloat>.create([3], DType.float32);
+          final f32Out = NDArray<DTypeTag>.create([3], DType.float32);
           permutation(f32, seed: 42, out: f32Out);
           expect(f32Out.toList(), containsAll([1.5, 2.5, 3.5]));
         });
@@ -627,7 +628,7 @@ void main() {
 
           // Choice with out recycler buffer
           final pool = NDArray.fromList([10, 20, 30, 40, 50], [5], DType.int32);
-          final outChoice = NDArray<AnyInt>.create([2, 3], DType.int32);
+          final outChoice = NDArray<DTypeTag>.create([2, 3], DType.int32);
           choice(pool, size: [2, 3], replace: true, seed: 42, out: outChoice);
           expect(outChoice.shape, [2, 3]);
           for (var i = 0; i < 6; i++) {
@@ -638,7 +639,7 @@ void main() {
 
       test('shuffle 0-length and 1-length arrays', () {
         NDArray.scope(() {
-          final a0 = NDArray<AnyFloat>.create([0], DType.float64);
+          final a0 = NDArray<DTypeTag>.create([0], DType.float64);
           shuffle(a0);
           expect(a0.size, 0);
 

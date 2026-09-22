@@ -68,12 +68,12 @@ void main() {
         // v_next = d * (M * v) + (1 - d)/N
 
         // Matrix-vector multiplication
-        final mv = matmul<Float64, Float64, Float64>(m, v);
+        final mv = matmul<Float64>(m, v);
 
         // Wrap scalar d as a 0D array for broadcasting
         final dArr = NDArray<Float64>.scalar(d, dtype: DType.float64);
         // Apply damping factor (scalar multiplication via broadcasting)
-        final damped = multiply<Float64, Float64, Float64>(mv, dArr);
+        final damped = multiply<Float64>(mv, dArr);
 
         // Wrap scalar teleport as a 0D array for broadcasting
         final teleportArr = NDArray<Float64>.scalar(
@@ -81,7 +81,7 @@ void main() {
           dtype: DType.float64,
         );
         // Add teleportation (scalar addition via broadcasting)
-        final rawNext = add<Float64, Float64, Float64>(damped, teleportArr);
+        final rawNext = add<Float64>(damped, teleportArr);
 
         // Normalize using L1 norm (sum) to handle potential numerical drift
         final s = sum<Float64>(rawNext);

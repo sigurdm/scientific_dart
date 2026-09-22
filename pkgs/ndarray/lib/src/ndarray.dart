@@ -16,105 +16,98 @@ import 'operations/helpers.dart' as helpers;
 import 'float16_utils.dart';
 import 'sendable_ndarray.dart';
 
-/// An array of any dtype whatsoever. This is the top of the tag hierarchy.
-sealed class AnyDType {
-  const AnyDType();
-}
-
-/// An array of any real (non-complex, non-boolean) numeric dtype.
-///
-/// This is the least upper bound of [AnyFloat] and [AnyInt].
-sealed class AnyReal extends AnyDType {
-  const AnyReal();
-}
-
-/// The tag type identifying the element dtype of an [NDArray].
-///
-/// Tags are *phantom* types: they are never instantiated, and carry no data.
-/// They exist only so that the dtype of an array is part of its static type
-/// and is reified at runtime, which makes `is` and `as` checks on
-/// `NDArray<...>` meaningful.
-///
-/// The type argument [E] is the Dart type of a single element. It is
-/// recovered at a use site through the [NDArrayElements] extension, so that
-/// `NDArray<Float64>.scalar` has static type `double` without `NDArray`
-/// needing a second type parameter.
-///
-/// See also:
-/// - [DType], the runtime value describing the same information.
-/// - [AnyFloat], [AnyInt], [AnyComplex], [AnyReal], [AnyDType] for widened
-///   array types.
-sealed class DTypeTag<E> extends AnyDType {
+/// Root marker for all [NDArray] dtype tags.
+sealed class DTypeTag {
   const DTypeTag();
 }
 
-/// The tag type identifying a real numeric (`double` or `int`) dtype of an
-/// [NDArray].
-sealed class RealDTypeTag<E extends num> extends AnyReal
-    implements DTypeTag<E> {
-  const RealDTypeTag();
+/// Type-level specification of a concrete [DTypeTag].
+///
+/// Each of the 15 concrete tag classes (`Float64`, `Float32`, `Int32`, …)
+/// extends [DTypeSpec] with its deterministic type-level counterparts so that
+/// operations can infer concrete return types without explicit type arguments:
+/// - [Self]: the concrete tag itself.
+/// - [E]: the Dart element type (`double`, `int`, [Complex], `bool`).
+/// - [F]: the corresponding real-float tag (`Float32` for `Float32`/`Complex64`;
+///   `Float16` for `Float16`; `BFloat16` for `BFloat16`; `Float64` otherwise).
+/// - [C]: the corresponding complex tag (`Complex64` for 16/32-bit floats and
+///   `Complex64`; `Complex128` otherwise).
+/// - [M]: the inexact/math-promoted tag (`Self` for `Float64`, `Float32`,
+///   `Complex128`, `Complex64`; `Float64` for integers, booleans, and half
+///   floats).
+sealed class DTypeSpec<
+  Self extends DTypeTag,
+  E,
+  F extends DTypeTag,
+  C extends DTypeTag,
+  M extends DTypeTag
+>
+    extends DTypeTag {
+  const DTypeSpec();
 }
 
-/// An array of any floating-point dtype (`float16`, `bfloat16`, `float32`,
-/// `float64`).
-///
-/// Because generics are covariant, `NDArray<Float32>` and `NDArray<Float64>`
-/// are both subtypes of `NDArray<AnyFloat>`.
-typedef AnyFloat = RealDTypeTag<double>;
-
-/// An array of any integer dtype (`int8`..`int64`, `uint8`..`uint64`).
-typedef AnyInt = RealDTypeTag<int>;
-
-/// An array of any complex dtype (`complex64`, `complex128`).
-typedef AnyComplex = DTypeTag<Complex>;
-
 /// Tag for the `float64` dtype. Elements are `double`.
-abstract final class Float64 extends RealDTypeTag<double> {}
+abstract final class Float64
+    extends DTypeSpec<Float64, double, Float64, Complex128, Float64> {}
 
 /// Tag for the `float32` dtype. Elements are `double`.
-abstract final class Float32 extends RealDTypeTag<double> {}
+abstract final class Float32
+    extends DTypeSpec<Float32, double, Float32, Complex64, Float32> {}
 
 /// Tag for the `float16` dtype. Elements are `double`.
-abstract final class Float16 extends RealDTypeTag<double> {}
+abstract final class Float16
+    extends DTypeSpec<Float16, double, Float16, Complex64, Float64> {}
 
 /// Tag for the `bfloat16` dtype. Elements are `double`.
-abstract final class BFloat16 extends RealDTypeTag<double> {}
+abstract final class BFloat16
+    extends DTypeSpec<BFloat16, double, BFloat16, Complex64, Float64> {}
 
 /// Tag for the `int64` dtype. Elements are `int`.
-abstract final class Int64 extends RealDTypeTag<int> {}
+abstract final class Int64
+    extends DTypeSpec<Int64, int, Float64, Complex128, Float64> {}
 
 /// Tag for the `int32` dtype. Elements are `int`.
-abstract final class Int32 extends RealDTypeTag<int> {}
+abstract final class Int32
+    extends DTypeSpec<Int32, int, Float64, Complex128, Float64> {}
 
 /// Tag for the `int16` dtype. Elements are `int`.
-abstract final class Int16 extends RealDTypeTag<int> {}
+abstract final class Int16
+    extends DTypeSpec<Int16, int, Float64, Complex128, Float64> {}
 
 /// Tag for the `int8` dtype. Elements are `int`.
-abstract final class Int8 extends RealDTypeTag<int> {}
+abstract final class Int8
+    extends DTypeSpec<Int8, int, Float64, Complex128, Float64> {}
 
 /// Tag for the `uint64` dtype. Elements are `int`.
 ///
 /// Dart `int` is signed 64-bit; bit patterns with the MSB set represent
 /// negative values. Use [uint64Compare] for unsigned comparisons.
-abstract final class Uint64 extends RealDTypeTag<int> {}
+abstract final class Uint64
+    extends DTypeSpec<Uint64, int, Float64, Complex128, Float64> {}
 
 /// Tag for the `uint32` dtype. Elements are `int`.
-abstract final class Uint32 extends RealDTypeTag<int> {}
+abstract final class Uint32
+    extends DTypeSpec<Uint32, int, Float64, Complex128, Float64> {}
 
 /// Tag for the `uint16` dtype. Elements are `int`.
-abstract final class Uint16 extends RealDTypeTag<int> {}
+abstract final class Uint16
+    extends DTypeSpec<Uint16, int, Float64, Complex128, Float64> {}
 
 /// Tag for the `uint8` dtype. Elements are `int`.
-abstract final class Uint8 extends RealDTypeTag<int> {}
+abstract final class Uint8
+    extends DTypeSpec<Uint8, int, Float64, Complex128, Float64> {}
 
 /// Tag for the `complex64` dtype. Elements are [Complex].
-abstract final class Complex64 extends DTypeTag<Complex> {}
+abstract final class Complex64
+    extends DTypeSpec<Complex64, Complex, Float32, Complex64, Complex64> {}
 
 /// Tag for the `complex128` dtype. Elements are [Complex].
-abstract final class Complex128 extends DTypeTag<Complex> {}
+abstract final class Complex128
+    extends DTypeSpec<Complex128, Complex, Float64, Complex128, Complex128> {}
 
 /// Tag for the `boolean` dtype. Elements are `bool`.
-abstract final class Boolean extends DTypeTag<bool> {}
+abstract final class Boolean
+    extends DTypeSpec<Boolean, bool, Float64, Complex128, Float64> {}
 
 /// Supported data types for the elements of an [NDArray].
 
@@ -168,7 +161,7 @@ int checkTotalSize(List<int> shape) => _computeCheckedTotalSize(shape);
 /// The type parameter [T] is the corresponding [DTypeTag], which ties a
 /// `DType` value to the static type of the arrays it can describe: a
 /// `DType<Float64>` can only be used to build an `NDArray<Float64>`.
-enum DType<T extends AnyDType> {
+enum DType<T extends DTypeTag> {
   float64<Float64>('float64', 8, '<f8'),
   float32<Float32>('float32', 4, '<f4'),
   float16<Float16>('float16', 2, '<f2'),
@@ -269,7 +262,7 @@ enum DType<T extends AnyDType> {
 /// // Explicitly free memory when done
 /// a.dispose();
 /// ```
-final class NDArray<T extends AnyDType>
+final class NDArray<T extends DTypeTag>
     implements ffi.Finalizable, ScopedResource {
   /// Pointer to the raw C memory allocated for this array (logical origin).
   final ffi.Pointer<ffi.Void> _pointer;
@@ -391,7 +384,7 @@ final class NDArray<T extends AnyDType>
   /// print(a.hasSameShape(b)); // true
   /// print(a.hasSameShape(c)); // false
   /// ```
-  bool hasSameShape(NDArray<AnyDType> other) => listEquals(shape, other.shape);
+  bool hasSameShape(NDArray<DTypeTag> other) => listEquals(shape, other.shape);
 
   static final _finalizer = ffi.NativeFinalizer(malloc.nativeFree);
 
@@ -424,7 +417,7 @@ final class NDArray<T extends AnyDType>
   /// `returning` calls [detachToParentScope] on the result. To return a slice or
   /// view of an inner temporary array, return `view.copy()` so that a compact
   /// owning array is promoted and the temporary parent buffer is freed on scope exit.
-  static NDArray<T> returning<T extends AnyDType>(
+  static NDArray<T> returning<T extends DTypeTag>(
     NDArray<T> Function() callback,
   ) => ResourceScope.returning(callback);
 
@@ -1113,7 +1106,7 @@ final class NDArray<T extends AnyDType>
   /// - **Shared Mutations**: Modifications to the view affect the parent and vice versa.
   /// - **No Ownership**: Calling `dispose()` on a view does nothing.
   factory NDArray.view(
-    NDArray<AnyDType> parent, {
+    NDArray<DTypeTag> parent, {
     required List<int> shape,
     required List<int> strides,
     int offsetElements = 0,
@@ -1641,7 +1634,7 @@ final class NDArray<T extends AnyDType>
   /// final b = a.astype(DType.float64);
   /// print(b.dtype); // DType.float64
   /// ```
-  NDArray<R> astype<R extends AnyDType>(
+  NDArray<R> astype<R extends DTypeTag>(
     DType<R> targetDType, {
     bool copy = true,
   }) {
@@ -2408,7 +2401,7 @@ final class NDArray<T extends AnyDType>
   /// When [axis] is `0`, equivalent to calling `this[ [indices] ] = value` (advanced row stack scalar mutation).
   ///
   void setIndicesScalar(
-    NDArray<AnyInt> indices,
+    NDArray<DTypeTag> indices,
     Object? value, {
     int axis = 0,
   }) {
@@ -2423,7 +2416,7 @@ final class NDArray<T extends AnyDType>
     final sliceStrides = List<int>.from(strides)..removeAt(axis);
 
     for (var idx = 0; idx < indices.size; idx++) {
-      var targetIdx = indices.getCellFlat(idx);
+      var targetIdx = indices.getCellFlat(idx) as int;
       if (targetIdx < 0) targetIdx += shape[axis];
       if (targetIdx < 0 || targetIdx >= shape[axis]) {
         throw RangeError.range(
@@ -2453,7 +2446,7 @@ final class NDArray<T extends AnyDType>
   /// **Polymorphic Equivalence:**
   /// When [axis] is `0`, equivalent to calling `this[ [indices] ] = values` (advanced row stack array assignment).
   ///
-  void setIndices(NDArray<AnyInt> indices, NDArray values, {int axis = 0}) {
+  void setIndices(NDArray<DTypeTag> indices, NDArray values, {int axis = 0}) {
     if (isDisposed || indices.isDisposed || values.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
     }
@@ -2493,7 +2486,7 @@ final class NDArray<T extends AnyDType>
     var valOffset = 0;
 
     for (var idx = 0; idx < indices.size; idx++) {
-      var targetIdx = indices.getCellFlat(idx);
+      var targetIdx = indices.getCellFlat(idx) as int;
       if (targetIdx < 0) targetIdx += shape[axis];
       if (targetIdx < 0 || targetIdx >= shape[axis]) {
         throw RangeError.range(
@@ -3366,7 +3359,7 @@ final class NDArray<T extends AnyDType>
   NDArray<T> operator &(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_and<T, AnyDType, T>(this, otherArr),
+      (otherArr) => ops.bitwise_and<T>(this, otherArr as NDArray<T>),
     );
   }
 
@@ -3374,7 +3367,7 @@ final class NDArray<T extends AnyDType>
   NDArray<T> operator |(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_or<T, AnyDType, T>(this, otherArr),
+      (otherArr) => ops.bitwise_or<T>(this, otherArr as NDArray<T>),
     );
   }
 
@@ -3382,20 +3375,20 @@ final class NDArray<T extends AnyDType>
   NDArray<T> operator ^(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_xor<T, AnyDType, T>(this, otherArr),
+      (otherArr) => ops.bitwise_xor<T>(this, otherArr as NDArray<T>),
     );
   }
 
   /// Element-wise bitwise NOT.
   NDArray<T> operator ~() {
-    return ops.invert<T, T>(this);
+    return ops.invert<T>(this);
   }
 
   /// Element-wise left shift with full broadcasting support.
   NDArray<T> operator <<(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.left_shift<T, AnyDType, T>(this, otherArr),
+      (otherArr) => ops.left_shift<T>(this, otherArr as NDArray<T>),
     );
   }
 
@@ -3403,7 +3396,7 @@ final class NDArray<T extends AnyDType>
   NDArray<T> operator >>(dynamic other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.right_shift<T, AnyDType, T>(this, otherArr),
+      (otherArr) => ops.right_shift<T>(this, otherArr as NDArray<T>),
     );
   }
 
@@ -4375,17 +4368,17 @@ final class NDArray<T extends AnyDType>
     if (invocation.isMethod && invocation.positionalArguments.length == 1) {
       final arg = invocation.positionalArguments[0];
       if (invocation.memberName == #+) {
-        return NDArrayGenericArithmetic(this) + arg;
+        return NDArrayArithmetic(this) + arg;
       } else if (invocation.memberName == #-) {
-        return NDArrayGenericArithmetic(this) - arg;
+        return NDArrayArithmetic(this) - arg;
       } else if (invocation.memberName == #*) {
-        return NDArrayGenericArithmetic(this) * arg;
+        return NDArrayArithmetic(this) * arg;
       } else if (invocation.memberName == #/) {
-        return NDArrayGenericArithmetic(this) / arg;
+        return NDArrayBaseDivide(this) / arg;
       } else if (invocation.memberName == #~/) {
-        return NDArrayGenericArithmetic(this) ~/ arg;
+        return NDArrayArithmetic(this) ~/ arg;
       } else if (invocation.memberName == #%) {
-        return NDArrayGenericArithmetic(this) % arg;
+        return NDArrayArithmetic(this) % arg;
       }
     }
     if (invocation.isGetter) {
@@ -4423,181 +4416,47 @@ final class NDArray<T extends AnyDType>
   String toString() => _ndarrayToString(this);
 }
 
-/// Strongly-typed arithmetic operators for [NDArray] of [Float64].
-extension NDArrayFloat64Arithmetic on NDArray<Float64> {
-  /// Element-wise addition preserving [NDArray<Float64>] when [other] is real/scalar.
-  NDArray<Float64> operator +(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
-          as NDArray<Float64>;
-
-  /// Element-wise subtraction preserving [NDArray<Float64>] when [other] is real/scalar.
-  NDArray<Float64> operator -(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
-          as NDArray<Float64>;
-
-  /// Element-wise multiplication preserving [NDArray<Float64>] when [other] is real/scalar.
-  NDArray<Float64> operator *(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
-          as NDArray<Float64>;
-
-  /// Element-wise division preserving [NDArray<Float64>].
-  NDArray<Float64> operator /(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr))
-          as NDArray<Float64>;
-
-  /// Element-wise floor division preserving [NDArray<Float64>].
-  NDArray<Float64> operator ~/(dynamic other) =>
-      _withWrappedScalar(
-            other,
-            (otherArr) => ops.floor_divide(
-              this as NDArray<AnyReal>,
-              otherArr as NDArray<AnyReal>,
-            ),
-          )
-          as NDArray<Float64>;
-
-  /// Element-wise remainder preserving [NDArray<Float64>].
-  NDArray<Float64> operator %(dynamic other) =>
-      _withWrappedScalar(
-            other,
-            (otherArr) => ops.remainder(
-              this as NDArray<AnyReal>,
-              otherArr as NDArray<AnyReal>,
-            ),
-          )
-          as NDArray<Float64>;
-}
-
-/// Strongly-typed arithmetic operators for [NDArray] of [Float32].
-extension NDArrayFloat32Arithmetic on NDArray<Float32> {
-  /// Element-wise addition preserving [NDArray<Float32>].
-  NDArray<Float32> operator +(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
-          as NDArray<Float32>;
-
-  /// Element-wise subtraction preserving [NDArray<Float32>].
-  NDArray<Float32> operator -(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
-          as NDArray<Float32>;
-
-  /// Element-wise multiplication preserving [NDArray<Float32>].
-  NDArray<Float32> operator *(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
-          as NDArray<Float32>;
-
-  /// Element-wise division preserving [NDArray<Float32>].
-  NDArray<Float32> operator /(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr))
-          as NDArray<Float32>;
-
-  /// Element-wise floor division preserving [NDArray<Float32>].
-  NDArray<Float32> operator ~/(dynamic other) =>
-      _withWrappedScalar(
-            other,
-            (otherArr) => ops.floor_divide(
-              this as NDArray<AnyReal>,
-              otherArr as NDArray<AnyReal>,
-            ),
-          )
-          as NDArray<Float32>;
-
-  /// Element-wise remainder preserving [NDArray<Float32>].
-  NDArray<Float32> operator %(dynamic other) =>
-      _withWrappedScalar(
-            other,
-            (otherArr) => ops.remainder(
-              this as NDArray<AnyReal>,
-              otherArr as NDArray<AnyReal>,
-            ),
-          )
-          as NDArray<Float32>;
-}
-
-/// Strongly-typed arithmetic operators for [NDArray] of [Complex128].
-extension NDArrayComplex128Arithmetic on NDArray<Complex128> {
-  /// Element-wise addition preserving [NDArray<Complex128>].
-  NDArray<Complex128> operator +(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
-          as NDArray<Complex128>;
-
-  /// Element-wise subtraction preserving [NDArray<Complex128>].
-  NDArray<Complex128> operator -(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
-          as NDArray<Complex128>;
-
-  /// Element-wise multiplication preserving [NDArray<Complex128>].
-  NDArray<Complex128> operator *(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
-          as NDArray<Complex128>;
-
-  /// Element-wise division preserving [NDArray<Complex128>].
-  NDArray<Complex128> operator /(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr))
-          as NDArray<Complex128>;
-}
-
-/// Strongly-typed arithmetic operators for [NDArray] of [Complex64].
-extension NDArrayComplex64Arithmetic on NDArray<Complex64> {
-  /// Element-wise addition preserving [NDArray<Complex64>].
-  NDArray<Complex64> operator +(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
-          as NDArray<Complex64>;
-
-  /// Element-wise subtraction preserving [NDArray<Complex64>].
-  NDArray<Complex64> operator -(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
-          as NDArray<Complex64>;
-
-  /// Element-wise multiplication preserving [NDArray<Complex64>].
-  NDArray<Complex64> operator *(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
-          as NDArray<Complex64>;
-
-  /// Element-wise division preserving [NDArray<Complex64>].
-  NDArray<Complex64> operator /(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr))
-          as NDArray<Complex64>;
-}
-
-/// General arithmetic operators for [NDArray].
-extension NDArrayGenericArithmetic<T extends AnyDType> on NDArray<T> {
+/// Arithmetic operators (`+`, `-`, `*`, `~/`, `%`) preserving the concrete
+/// dtype tag [T] of the left operand.
+extension NDArrayArithmetic<T extends DTypeTag> on NDArray<T> {
   /// Element-wise addition with full broadcasting support.
-  NDArray operator +(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr));
+  NDArray<T> operator +(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
+          as NDArray<T>;
 
   /// Element-wise subtraction with full broadcasting support.
-  NDArray operator -(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr));
+  NDArray<T> operator -(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
+          as NDArray<T>;
 
   /// Element-wise multiplication with full broadcasting support.
-  NDArray operator *(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr));
-
-  /// Element-wise division with full broadcasting support.
-  NDArray operator /(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr));
+  NDArray<T> operator *(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
+          as NDArray<T>;
 
   /// Element-wise floor division with full broadcasting support.
   NDArray<T> operator ~/(dynamic other) =>
-      _withWrappedScalar(
-            other,
-            (otherArr) => ops.floor_divide(
-              this as NDArray<AnyReal>,
-              otherArr as NDArray<AnyReal>,
-            ),
-          )
+      _withWrappedScalar(other, (otherArr) => ops.floor_divide(this, otherArr))
           as NDArray<T>;
 
   /// Element-wise remainder with full broadcasting support.
   NDArray<T> operator %(dynamic other) =>
-      _withWrappedScalar(
-            other,
-            (otherArr) => ops.remainder(
-              this as NDArray<AnyReal>,
-              otherArr as NDArray<AnyReal>,
-            ),
-          )
+      _withWrappedScalar(other, (otherArr) => ops.remainder(this, otherArr))
           as NDArray<T>;
+}
+
+/// True division operator (`/`) inferring the concrete math-promoted dtype [M]
+/// (`Float64` for integer arrays, and preserving [T] for floating-point and
+/// complex arrays).
+extension NDArrayDivide<
+  T extends DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, M>,
+  M extends DTypeTag
+>
+    on NDArray<T> {
+  /// Element-wise true division with full broadcasting support.
+  NDArray<M> operator /(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr))
+          as NDArray<M>;
 }
 
 String _ndarrayToString(NDArray arr) {
@@ -5124,10 +4983,14 @@ void _initializeOpenBLASOnce() {
 /// `double` and `NDArray<Int32>.scalar` has static type `int`, without
 /// [NDArray] needing a second type parameter.
 ///
-/// In code that is generic over all dtypes (`T extends AnyDType`), [E]
+/// In code that is generic over all dtypes (`T extends DTypeTag`), [E]
 /// resolves to `Object?`, which is the correct answer for dtype-agnostic
 /// operations.
-extension NDArrayElements<T extends DTypeTag<E>, E> on NDArray<T> {
+extension NDArrayElements<
+  T extends DTypeSpec<DTypeTag, E, DTypeTag, DTypeTag, DTypeTag>,
+  E
+>
+    on NDArray<T> {
   /// A Dart list view of the raw C memory, typed as the element type.
   ///
   /// **Restrictions:**
@@ -5205,77 +5068,25 @@ extension NDArrayElements<T extends DTypeTag<E>, E> on NDArray<T> {
   void fill(E value) => fillUntyped(value);
 }
 
-/// Typed element access (`num`) for an [NDArray] whose dtype tag is [AnyReal].
-extension NDArrayAnyRealElements on NDArray<AnyReal> {
-  /// A Dart list view of the raw C memory, typed as `List<num>`.
-  List<num> get data => dataRaw as List<num>;
-
-  /// The single value of a 0-dimensional real array.
-  num get scalar => scalarRaw as num;
-
-  /// The elements of this array as a `List<num>`, in C (row-major) order.
-  List<num> toList() => toListRaw().cast<num>();
-
-  /// The element at the given multi-dimensional [coords].
-  num getCell(List<int> coords) => getCellUntyped(coords) as num;
-
-  /// Writes [value] at the given multi-dimensional [coords].
-  void setCell(List<int> coords, num value) => setCellUntyped(coords, value);
-
-  /// The element at [rawOffset] elements into the backing buffer.
-  num getCellRaw(int rawOffset) => getCellRawUntyped(rawOffset) as num;
-
-  /// Writes [value] at [rawOffset] elements into the backing buffer.
-  void setCellRaw(int rawOffset, num value) =>
-      setCellRawUntyped(rawOffset, value);
-
-  /// The element at logical flat index [flatIndex] in C (row-major) order.
-  num getCellFlat(int flatIndex) => getCellFlatUntyped(flatIndex) as num;
-
-  /// Writes [value] at logical flat index [flatIndex] in C (row-major) order.
-  void setCellFlat(int flatIndex, num value) =>
-      setCellFlatUntyped(flatIndex, value);
-
-  /// Sets every element of this array to [value].
-  void fill(num value) => fillUntyped(value);
-}
-
-/// Element access for an [NDArray] whose dtype tag is widened to [AnyDType].
-///
-/// When an array has a more specific [DTypeTag] (such as [Float64] or
-/// [AnyFloat]), [NDArrayElements] is strictly more specific and is selected by
-/// Dart's extension resolution rules instead.
-extension NDArrayAnyDTypeElements on NDArray<AnyDType> {
-  /// A Dart list view of the raw C memory.
+/// Fallback element access when the type argument is widened to [DTypeTag].
+extension NDArrayBaseElements on NDArray<DTypeTag> {
   List<dynamic> get data => dataRaw;
-
-  /// The single value of a 0-dimensional array.
   dynamic get scalar => scalarRaw;
-
-  /// The elements of this array as a Dart list, in C (row-major) order.
   List<dynamic> toList() => toListRaw();
-
-  /// The element at the given multi-dimensional [coords].
   dynamic getCell(List<int> coords) => getCellUntyped(coords);
-
-  /// Writes [value] at the given multi-dimensional [coords].
   void setCell(List<int> coords, Object? value) =>
       setCellUntyped(coords, value);
-
-  /// The element at [rawOffset] elements into the backing buffer.
   dynamic getCellRaw(int rawOffset) => getCellRawUntyped(rawOffset);
-
-  /// Writes [value] at [rawOffset] elements into the backing buffer.
   void setCellRaw(int rawOffset, Object? value) =>
       setCellRawUntyped(rawOffset, value);
-
-  /// The element at logical flat index [flatIndex] in C (row-major) order.
   dynamic getCellFlat(int flatIndex) => getCellFlatUntyped(flatIndex);
-
-  /// Writes [value] at logical flat index [flatIndex] in C (row-major) order.
   void setCellFlat(int flatIndex, Object? value) =>
       setCellFlatUntyped(flatIndex, value);
-
-  /// Sets every element of this array to [value].
   void fill(Object? value) => fillUntyped(value);
+}
+
+/// Fallback true division operator (`/`) when the receiver is typed as [DTypeTag].
+extension NDArrayBaseDivide on NDArray<DTypeTag> {
+  NDArray<DTypeTag> operator /(dynamic other) =>
+      _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr));
 }

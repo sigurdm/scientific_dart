@@ -34,7 +34,7 @@ typedef Float = double;
 /// ```
 ///
 /// Reference: [NumPy angle](https://numpy.org/doc/stable/reference/generated/numpy.angle.html)
-NDArray<R> angle<T extends AnyDType, R extends AnyFloat>(
+NDArray<R> angle<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a, {
   NDArray<R>? out,
 }) {
@@ -220,8 +220,9 @@ NDArray<R> angle<T extends AnyDType, R extends AnyFloat>(
 /// ```
 ///
 /// Reference: [NumPy unwrap](https://numpy.org/doc/stable/reference/generated/numpy.unwrap.html)
-NDArray<T> unwrap<T extends AnyReal>(
-  NDArray<AnyDType> a, {
+NDArray<T>
+unwrap<T extends DTypeSpec<DTypeTag, num, DTypeTag, DTypeTag, DTypeTag>>(
+  NDArray<DTypeTag> a, {
   double discont = math.pi,
   int axis = -1,
   NDArray<T>? out,
@@ -416,9 +417,9 @@ NDArray<T> unwrap<T extends AnyReal>(
 
 /// Internal helper executing direct stencil N-D valid cross-correlation.
 NDArray<R> _correlateValid<
-  T extends AnyDType,
-  K extends AnyDType,
-  R extends AnyDType
+  T extends DTypeTag,
+  K extends DTypeTag,
+  R extends DTypeTag
 >(NDArray<T> in1, NDArray<K> in2, {NDArray<R>? out}) {
   final rank = in1.rank;
   final outShape = List<int>.generate(
@@ -624,12 +625,11 @@ enum ConvMode {
 /// - [NumPy correlate Documentation](https://numpy.org/doc/stable/reference/generated/numpy.correlate.html)
 /// - [SciPy signal.correlate Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate.html)
 /// - [Wikipedia: Cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation)
-NDArray<R>
-correlate<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
+NDArray<T> correlate<T extends DTypeTag>(
   NDArray<T> in1,
-  NDArray<K> in2, {
+  NDArray<T> in2, {
   ConvMode mode = ConvMode.valid,
-  NDArray<R>? out,
+  NDArray<T>? out,
 }) {
   if (in1.isDisposed || in2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute correlate() on a disposed array.');
@@ -666,12 +666,12 @@ correlate<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
       }
       if (out != null && (sharesMemory(in1, out) || sharesMemory(in2, out))) {
         return NDArray.scope(() {
-          final temp = _correlateValid<T, K, R>(in1, in2);
+          final temp = _correlateValid<T, T, T>(in1, in2);
           temp.copy(out: out);
           return out;
         });
       }
-      return _correlateValid<T, K, R>(in1, in2, out: out);
+      return _correlateValid<T, T, T>(in1, in2, out: out);
     case ConvMode.full:
       final expectedShape = List<int>.generate(
         rank,
@@ -682,7 +682,7 @@ correlate<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
       }
       if (out != null && (sharesMemory(in1, out) || sharesMemory(in2, out))) {
         return NDArray.scope(() {
-          final temp = correlate<T, K, R>(in1, in2, mode: ConvMode.full);
+          final temp = correlate<T>(in1, in2, mode: ConvMode.full);
           temp.copy(out: out);
           return out;
         });
@@ -698,7 +698,7 @@ correlate<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
           PadWidth.axes(padWidths),
           mode: PaddingMode.constant,
         );
-        final res = _correlateValid<T, K, R>(padded1, in2, out: out);
+        final res = _correlateValid<T, T, T>(padded1, in2, out: out);
         if (out != null) return out;
         return res.detachToParentScope();
       });
@@ -707,7 +707,7 @@ correlate<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
         throw ArgumentError('Provided out buffer has incompatible shape.');
       }
       return NDArray.scope(() {
-        final fullCorr = correlate<T, K, R>(in1, in2, mode: ConvMode.full);
+        final fullCorr = correlate<T>(in1, in2, mode: ConvMode.full);
         final selectors = List<Selector>.generate(rank, (i) {
           final start = (in2.shape[i] - 1) ~/ 2;
           return Slice(start: start, stop: start + in1.shape[i]);
@@ -747,11 +747,11 @@ correlate<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
 /// - [NumPy convolve Documentation](https://numpy.org/doc/stable/reference/generated/numpy.convolve.html)
 /// - [SciPy signal.convolve Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.convolve.html)
 /// - [Wikipedia: Convolution](https://en.wikipedia.org/wiki/Convolution)
-NDArray<R> convolve<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
+NDArray<T> convolve<T extends DTypeTag>(
   NDArray<T> in1,
-  NDArray<K> in2, {
+  NDArray<T> in2, {
   ConvMode mode = ConvMode.full,
-  NDArray<R>? out,
+  NDArray<T>? out,
 }) {
   if (in1.isDisposed || in2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute convolve() on a disposed array.');
@@ -761,7 +761,7 @@ NDArray<R> convolve<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
   }
   if (out != null && (sharesMemory(in1, out) || sharesMemory(in2, out))) {
     return NDArray.scope(() {
-      final temp = convolve<T, K, R>(in1, in2, mode: mode);
+      final temp = convolve<T>(in1, in2, mode: mode);
       if (out.dtype != temp.dtype || !listEquals(out.shape, temp.shape)) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
@@ -781,7 +781,7 @@ NDArray<R> convolve<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
     final contiguousKernel = flippedKernel.isContiguous
         ? flippedKernel
         : flippedKernel.copy();
-    final res = correlate<T, K, R>(in1, contiguousKernel, mode: mode, out: out);
+    final res = correlate<T>(in1, contiguousKernel, mode: mode, out: out);
     if (out != null) return out;
     return res.detachToParentScope();
   });
@@ -804,15 +804,14 @@ NDArray<R> convolve<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
 ///
 /// ### References & Further Reading
 /// - [SciPy signal.convolve2d Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.convolve2d.html)
-NDArray<R>
-convolve2d<T extends AnyDType, K extends AnyDType, R extends AnyDType>(
+NDArray<T> convolve2d<T extends DTypeTag>(
   NDArray<T> in1,
-  NDArray<K> in2, {
+  NDArray<T> in2, {
   ConvMode mode = ConvMode.full,
-  NDArray<R>? out,
+  NDArray<T>? out,
 }) {
   if (in1.rank != 2 || in2.rank != 2) {
     throw ArgumentError('convolve2d requires 2-dimensional arrays.');
   }
-  return convolve<T, K, R>(in1, in2, mode: mode, out: out);
+  return convolve<T>(in1, in2, mode: mode, out: out);
 }

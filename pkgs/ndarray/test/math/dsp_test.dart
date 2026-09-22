@@ -377,11 +377,7 @@ void main() {
           DType.complex128,
         );
 
-        final res = correlate<Complex128, Complex128, Complex128>(
-          a,
-          v,
-          mode: ConvMode.valid,
-        );
+        final res = correlate<Complex128>(a, v, mode: ConvMode.valid);
         expect(res.dtype, DType.complex128);
         expect(res.shape, equals([1]));
         final val = res.getCell([0]);

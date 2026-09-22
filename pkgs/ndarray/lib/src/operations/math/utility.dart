@@ -48,7 +48,7 @@ void setNumThreads(int numThreads) {
 /// // ([1, 0], 30)
 /// // ([1, 1], 40)
 /// ```
-Iterable<(List<int> coordinate, E value)> ndenumerate<T extends DTypeTag<E>, E>(
+Iterable<(List<int> coordinate, dynamic value)> ndenumerate<T extends DTypeTag>(
   NDArray<T> a,
 ) sync* {
   if (a.isDisposed) {
@@ -104,7 +104,7 @@ NDArray nan_to_num(
   double nan = 0.0,
   double? posinf,
   double? neginf,
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray? out,
 }) {
   if (a.isDisposed ||

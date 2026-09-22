@@ -47,7 +47,7 @@ void main() {
       DType.uint8,
     ];
 
-    NDArray<AnyDType> createArray(
+    NDArray<DTypeTag> createArray(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -64,11 +64,11 @@ void main() {
 
       final dtObj = dt;
       if (strided) {
-        final flatArr = NDArray<AnyDType>.fromList(rawList, [size * 2], dtObj);
+        final flatArr = NDArray<DTypeTag>.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<AnyDType>.fromList(rawList, shape, dtObj);
+        return NDArray<DTypeTag>.fromList(rawList, shape, dtObj);
       }
     }
 

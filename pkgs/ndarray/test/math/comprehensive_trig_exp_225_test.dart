@@ -21,7 +21,7 @@ void main() {
       DType.boolean,
     ];
 
-    NDArray<AnyDType> makeArr(DType dt, List<int> shape, {int seed = 2}) {
+    NDArray<DTypeTag> makeArr(DType dt, List<int> shape, {int seed = 2}) {
       final size = shape.reduce((a, b) => a * b);
       final rawList = List<Object>.generate(size, (i) {
         final val = ((i + seed) % 5) + 2;
@@ -32,7 +32,7 @@ void main() {
         return val;
       });
 
-      return NDArray<AnyDType>.fromList(rawList, shape, dt);
+      return NDArray<DTypeTag>.fromList(rawList, shape, dt);
     }
 
     test(

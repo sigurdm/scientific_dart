@@ -96,7 +96,7 @@ final class PadWidth {
 /// name its element type; they must match the array's dtype (`double` for the
 /// float dtypes, `int` for the integer dtypes, [Complex] for the complex
 /// dtypes and `bool` for [DType.boolean]).
-final class PadValues<T extends AnyDType> {
+final class PadValues<T extends DTypeTag> {
   final (Object? before, Object? after)? _uniform;
   final List<(Object? before, Object? after)>? _axes;
 
@@ -259,7 +259,7 @@ Object _getDefaultValue(DType dtype) {
 ///
 /// **Example:**
 /// {@example /example/padding_example.dart}
-NDArray<T> pad<T extends AnyDType>(
+NDArray<T> pad<T extends DTypeTag>(
   NDArray<T> array,
   PadWidth padWidth, {
   PadMode mode = PadMode.constant,
@@ -510,7 +510,7 @@ _prepareConstants(
   return (cbPtr, caPtr, isUniform);
 }
 
-bool _padArgsShareMemoryWithOut<T extends AnyDType>(
+bool _padArgsShareMemoryWithOut<T extends DTypeTag>(
   NDArray<T> array,
   NDArray<T> out,
   List<(Object? before, Object? after)> normConstantValues,
@@ -530,7 +530,7 @@ bool _padArgsShareMemoryWithOut<T extends AnyDType>(
   return false;
 }
 
-NDArray<T> _padNativeFast<T extends AnyDType>(
+NDArray<T> _padNativeFast<T extends DTypeTag>(
   NDArray<T> array,
   List<(int before, int after)> normPadWidths,
   PadMode mode,
@@ -641,7 +641,7 @@ NDArray<T> _padNativeFast<T extends AnyDType>(
   });
 }
 
-NDArray<T> _padAxisByAxis<T extends AnyDType>(
+NDArray<T> _padAxisByAxis<T extends DTypeTag>(
   NDArray<T> array,
   List<(int before, int after)> normPadWidths,
   PadMode mode,
@@ -734,7 +734,7 @@ NDArray<T> _padAxisByAxis<T extends AnyDType>(
   });
 }
 
-void _padAxis<T extends AnyDType>(
+void _padAxis<T extends DTypeTag>(
   NDArray<T> src,
   NDArray<T> dest,
   int axis,

@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('Reified Phantom DTypeTag Hierarchy', () {
-    test('runtime type checks distinguish all 15 dtypes and tag families', () {
+    test('runtime type checks distinguish all 15 dtypes and DTypeTag', () {
       NDArray.scope(() {
         final f64 = NDArray.fromList([1.0, 2.0], [2], DType.float64);
         final f32 = NDArray.fromList([1.0, 2.0], [2], DType.float32);
@@ -21,11 +21,7 @@ void main() {
         expect(erasedF64 is NDArray<Float64>, isTrue);
         expect(erasedF64 is NDArray<Float32>, isFalse);
         expect(erasedF64 is NDArray<Float16>, isFalse);
-        expect(erasedF64 is NDArray<AnyFloat>, isTrue);
-        expect(erasedF64 is NDArray<AnyReal>, isTrue);
-        expect(erasedF64 is NDArray<AnyInt>, isFalse);
-        expect(erasedF64 is NDArray<AnyComplex>, isFalse);
-        expect(erasedF64 is NDArray<AnyDType>, isTrue);
+        expect(erasedF64 is NDArray<DTypeTag>, isTrue);
 
         expect((f32 as Object) is NDArray<Float32>, isTrue);
         expect((f32 as Object) is NDArray<Float64>, isFalse);
@@ -33,15 +29,24 @@ void main() {
         expect((i32 as Object) is NDArray<Int32>, isTrue);
         expect((i32 as Object) is NDArray<Int64>, isFalse);
         expect((i64 as Object) is NDArray<Int64>, isTrue);
-        expect((i64 as Object) is NDArray<AnyInt>, isTrue);
-        expect((i64 as Object) is NDArray<AnyReal>, isTrue);
+        expect((i64 as Object) is NDArray<DTypeTag>, isTrue);
         expect((c128 as Object) is NDArray<Complex128>, isTrue);
         expect((c128 as Object) is NDArray<Complex64>, isFalse);
-        expect((c128 as Object) is NDArray<AnyComplex>, isTrue);
-        expect((c128 as Object) is NDArray<AnyReal>, isFalse);
+        expect((c128 as Object) is NDArray<DTypeTag>, isTrue);
         expect((b as Object) is NDArray<Boolean>, isTrue);
-        expect((b as Object) is NDArray<AnyReal>, isFalse);
-        expect((b as Object) is NDArray<AnyDType>, isTrue);
+        expect((b as Object) is NDArray<DTypeTag>, isTrue);
+
+        // Unannotated binary and unary operations statically infer concrete NDArray<T>:
+        final NDArray<Float64> sumF64 = add(f64, f64);
+        final NDArray<Float32> prodF32 = multiply(f32, f32);
+        final NDArray<Int32> diffI32 = subtract(i32, i32);
+        final NDArray<Float64> divI32 = i32 / i32;
+        final NDArray<Float32> divF32 = f32 / f32;
+        expect(sumF64.toList(), [2.0, 4.0]);
+        expect(prodF32.toList(), [1.0, 4.0]);
+        expect(diffI32.toList(), [0, 0]);
+        expect(divI32.toList(), [1.0, 1.0]);
+        expect(divF32.toList(), [1.0, 1.0]);
       });
     });
 

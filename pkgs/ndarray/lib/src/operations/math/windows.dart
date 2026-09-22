@@ -25,7 +25,7 @@ import '../helpers.dart';
 /// ```dart
 /// final window = hanning(512);
 /// ```
-NDArray<T> hanning<T extends AnyDType>(
+NDArray<T> hanning<T extends DTypeTag>(
   int M, {
   DType<T>? dtype,
   NDArray<T>? out,
@@ -120,7 +120,7 @@ NDArray<T> hanning<T extends AnyDType>(
 /// ```dart
 /// final window = hamming(512);
 /// ```
-NDArray<T> hamming<T extends AnyDType>(
+NDArray<T> hamming<T extends DTypeTag>(
   int M, {
   DType<T>? dtype,
   NDArray<T>? out,

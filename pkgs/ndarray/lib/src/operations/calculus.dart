@@ -83,7 +83,7 @@ bool _listEquals(List a, List b) {
 /// final y = NDArray.fromList([1.0, 2.0, 4.0], [3], DType.float64);
 /// final res = trapz(y, spacing: Spacing.step(1.0)); // 4.5
 /// ```
-NDArray<T> trapz<T extends AnyDType>(
+NDArray<T> trapz<T extends DTypeTag>(
   NDArray y, {
   Spacing spacing = const Spacing.step(1.0),
   int axis = -1,
@@ -342,9 +342,9 @@ NDArray<T> trapz<T extends AnyDType>(
                 );
                 dxStruct.ref.r = 1.0;
                 dxStruct.ref.i = 0.0;
-                NDArray<AnyComplex>? spacingArray;
+                NDArray<DTypeTag>? spacingArray;
                 try {
-                  spacingArray = NDArray<AnyComplex>.fromList(complexValues, [
+                  spacingArray = NDArray<DTypeTag>.fromList(complexValues, [
                     N,
                   ], DType.complex128);
                   s_trapz_complex128_all(
@@ -368,9 +368,9 @@ NDArray<T> trapz<T extends AnyDType>(
                 );
                 dxStruct.ref.r = 1.0;
                 dxStruct.ref.i = 0.0;
-                NDArray<AnyComplex>? spacingArray;
+                NDArray<DTypeTag>? spacingArray;
                 try {
-                  spacingArray = NDArray<AnyComplex>.fromList(complexValues, [
+                  spacingArray = NDArray<DTypeTag>.fromList(complexValues, [
                     N,
                   ], DType.complex64);
                   s_trapz_complex64_all(
@@ -392,7 +392,7 @@ NDArray<T> trapz<T extends AnyDType>(
                 throw ArgumentError('Unsupported DType for trapz: ${y.dtype}');
             }
           } else {
-            NDArray<AnyReal>? spacingArray;
+            NDArray<DTypeTag>? spacingArray;
             try {
               final bool useFloat =
                   y.dtype == DType.float32 || y.dtype == DType.complex64;
@@ -532,7 +532,7 @@ NDArray<T> trapz<T extends AnyDType>(
 /// final f = NDArray.fromList([1.0, 2.0, 4.0, 7.0], [4], DType.float64);
 /// final res = gradient(f, spacing: Spacing.step(1.0)); // [1.0, 1.5, 2.5, 3.0]
 /// ```
-NDArray<T> gradient<T extends AnyDType>(
+NDArray<T> gradient<T extends DTypeTag>(
   NDArray f, {
   Spacing spacing = const Spacing.step(1.0),
   int axis = 0,
@@ -808,9 +808,9 @@ NDArray<T> gradient<T extends AnyDType>(
                 );
                 dxStruct.ref.r = 1.0;
                 dxStruct.ref.i = 0.0;
-                NDArray<AnyComplex>? spacingArray;
+                NDArray<DTypeTag>? spacingArray;
                 try {
-                  spacingArray = NDArray<AnyComplex>.fromList(complexValues, [
+                  spacingArray = NDArray<DTypeTag>.fromList(complexValues, [
                     N,
                   ], DType.complex128);
                   s_gradient_complex128_all(
@@ -835,9 +835,9 @@ NDArray<T> gradient<T extends AnyDType>(
                 );
                 dxStruct.ref.r = 1.0;
                 dxStruct.ref.i = 0.0;
-                NDArray<AnyComplex>? spacingArray;
+                NDArray<DTypeTag>? spacingArray;
                 try {
-                  spacingArray = NDArray<AnyComplex>.fromList(complexValues, [
+                  spacingArray = NDArray<DTypeTag>.fromList(complexValues, [
                     N,
                   ], DType.complex64);
                   s_gradient_complex64_all(
@@ -862,7 +862,7 @@ NDArray<T> gradient<T extends AnyDType>(
                 );
             }
           } else {
-            NDArray<AnyReal>? spacingArray;
+            NDArray<DTypeTag>? spacingArray;
             try {
               final bool useFloat =
                   f.dtype == DType.float32 || f.dtype == DType.complex64;
@@ -1004,7 +1004,7 @@ NDArray<T> gradient<T extends AnyDType>(
 /// // Specific per axis:
 /// final grads2 = gradientArray(f, spacings: [Spacing.step(1.0), Spacing.step(2.0)]);
 /// ```
-List<NDArray<T>> gradientArray<T extends AnyDType>(
+List<NDArray<T>> gradientArray<T extends DTypeTag>(
   NDArray f, {
   Spacing? spacing,
   List<Spacing>? spacings,

@@ -40,7 +40,7 @@ void main() async {
                   }
                 }
                 final res = coordinateLists.map((list) {
-                  return NDArray<AnyInt>.fromList(list, [
+                  return NDArray<DTypeTag>.fromList(list, [
                     list.length,
                   ], DType.int32);
                 }).toList();

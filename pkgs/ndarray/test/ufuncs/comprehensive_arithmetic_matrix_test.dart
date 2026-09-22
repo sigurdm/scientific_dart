@@ -138,19 +138,19 @@ void main() {
               final a = createArray([2, 2], dtA, seedOffset: 1);
               final b = createArray([2, 2], dtB, seedOffset: 2);
 
-              final sum = add<AnyDType, AnyDType, AnyDType>(a, b);
+              final sum = add<DTypeTag>(a, b);
               expect(sum.shape, [2, 2]);
               expect(sum.dtype, resolveDType(dtA, dtB));
 
-              final diff = subtract<AnyDType, AnyDType, AnyDType>(a, b);
+              final diff = subtract<DTypeTag>(a, b);
               expect(diff.shape, [2, 2]);
               expect(diff.dtype, resolveDType(dtA, dtB));
 
-              final prod = multiply<AnyDType, AnyDType, AnyDType>(a, b);
+              final prod = multiply<DTypeTag>(a, b);
               expect(prod.shape, [2, 2]);
               expect(prod.dtype, resolveDType(dtA, dtB));
 
-              final quot = divide<AnyDType, AnyDType, AnyDType>(a, b);
+              final quot = divide<DTypeTag, DTypeTag, DTypeTag>(a, b);
               expect(quot.shape, [2, 2]);
             }
           }
@@ -264,7 +264,7 @@ void main() {
           );
           final outBuffer = NDArray<Float64>.create([2, 2], DType.float64);
 
-          final res = add<AnyFloat, AnyFloat, AnyFloat>(a, b, out: outBuffer);
+          final res = add<DTypeTag>(a, b, out: outBuffer);
           expect(identical(res, outBuffer), true);
           expect(outBuffer.toList(), [11.0, 22.0, 33.0, 44.0]);
 
@@ -274,11 +274,7 @@ void main() {
           expect(stridedOut.isContiguous, false);
           expect(stridedOut.shape, [2, 2]);
 
-          final resStrided = add<AnyFloat, AnyFloat, AnyFloat>(
-            a,
-            b,
-            out: stridedOut,
-          );
+          final resStrided = add<DTypeTag>(a, b, out: stridedOut);
           expect(resStrided.toList(), [11.0, 22.0, 33.0, 44.0]);
 
           // Incompatible shape throws ArgumentError
@@ -287,14 +283,14 @@ void main() {
             2,
           ], DType.float64);
           expect(
-            () => add<AnyFloat, AnyFloat, AnyFloat>(a, b, out: invalidShapeOut),
+            () => add<DTypeTag>(a, b, out: invalidShapeOut),
             throwsArgumentError,
           );
 
           // Incompatible dtype throws ArgumentError
           final invalidDTypeOut = NDArray<Int32>.create([2, 2], DType.int32);
           expect(
-            () => add<AnyFloat, AnyFloat, AnyInt>(a, b, out: invalidDTypeOut),
+            () => add<DTypeTag>(a, b, out: invalidDTypeOut),
             throwsArgumentError,
           );
         });
@@ -1384,7 +1380,7 @@ void main() {
         final res = NDArray<Float64>.zeros([2, 2], DType.float64);
 
         // unaryOp
-        unaryOp<AnyFloat, AnyFloat>(
+        unaryOp<DTypeTag, DTypeTag>(
           res,
           a,
           [2, 2],
@@ -1398,7 +1394,7 @@ void main() {
         expect(res.toList(), [2.0, 4.0, 6.0, 8.0]);
 
         // elementWiseOp
-        elementWiseOp<AnyFloat, AnyFloat, AnyFloat>(
+        elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
           res,
           a,
           b,
@@ -1415,7 +1411,7 @@ void main() {
         expect(res.toList(), [11.0, 22.0, 33.0, 44.0]);
 
         // ternaryOp
-        ternaryOp<AnyFloat, AnyFloat, AnyFloat, AnyFloat>(
+        ternaryOp<DTypeTag, DTypeTag, DTypeTag, DTypeTag>(
           res,
           a,
           b,
@@ -1454,7 +1450,7 @@ void main() {
           DType.float64,
         );
         final dest = NDArray<Float64>.zeros([2], DType.float64);
-        reduceRecursive<AnyFloat, AnyFloat>(
+        reduceRecursive<DTypeTag, DTypeTag>(
           src,
           dest,
           List.filled(2, 0),
@@ -1473,7 +1469,7 @@ void main() {
         );
         final nanDest = NDArray<Float64>.zeros([2], DType.float64);
         final counts = NDArray<Int64>.zeros([2], DType.int64);
-        nanReduceRecursive<AnyFloat>(
+        nanReduceRecursive<DTypeTag>(
           nanSrc,
           nanDest,
           counts,

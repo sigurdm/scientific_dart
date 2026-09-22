@@ -139,7 +139,7 @@ void main() {
           expect(r10.real.abs(), lessThan(1e-12));
           expect(r10.imag.abs(), lessThan(1e-12));
 
-          final qConj = NDArray<AnyComplex>.zeros([2, 2], DType.complex128);
+          final qConj = NDArray<DTypeTag>.zeros([2, 2], DType.complex128);
           for (var i = 0; i < 2; i++) {
             for (var j = 0; j < 2; j++) {
               final val = q.getCell([j, i]);
@@ -164,7 +164,7 @@ void main() {
           final qrProd = matmul(q, r);
           for (var i = 0; i < 2; i++) {
             for (var j = 0; j < 2; j++) {
-              final prodVal = qrProd.getCell([i, j]) as Complex;
+              final prodVal = qrProd.getCell([i, j]);
               final aVal = a.getCell([i, j]);
               expect(prodVal.real, closeTo(aVal.real, 1e-12));
               expect(prodVal.imag, closeTo(aVal.imag, 1e-12));
@@ -193,7 +193,7 @@ void main() {
           final qrProd = matmul(res.q, res.r);
           for (var i = 0; i < 2; i++) {
             for (var j = 0; j < 2; j++) {
-              final prodVal = qrProd.getCell([i, j]) as Complex;
+              final prodVal = qrProd.getCell([i, j]);
               final aVal = a.getCell([i, j]);
               expect(prodVal.real, closeTo(aVal.real, 1e-5));
               expect(prodVal.imag, closeTo(aVal.imag, 1e-5));
@@ -224,7 +224,7 @@ void main() {
           final qrProd = matmul(res.q, res.r);
           for (var i = 0; i < 3; i++) {
             for (var j = 0; j < 2; j++) {
-              final prodVal = qrProd.getCell([i, j]) as Complex;
+              final prodVal = qrProd.getCell([i, j]);
               final aVal = a.getCell([i, j]);
               expect(prodVal.real, closeTo(aVal.real, 1e-12));
               expect(prodVal.imag, closeTo(aVal.imag, 1e-12));
@@ -258,7 +258,7 @@ void main() {
           for (var b = 0; b < 2; b++) {
             for (var i = 0; i < 2; i++) {
               for (var j = 0; j < 2; j++) {
-                final prodVal = qrProd.getCell([b, i, j]) as Complex;
+                final prodVal = qrProd.getCell([b, i, j]);
                 final aVal = a.getCell([b, i, j]);
                 expect(prodVal.real, closeTo(aVal.real, 1e-12));
                 expect(prodVal.imag, closeTo(aVal.imag, 1e-12));
@@ -507,13 +507,13 @@ void main() {
             [5],
             DType.float64,
           );
-          final outBuffer = NDArray<AnyFloat>.zeros([5], DType.float64);
+          final outBuffer = NDArray<DTypeTag>.zeros([5], DType.float64);
 
           final shifted = fftshift(x, out: outBuffer);
           expect(identical(shifted, outBuffer), true);
           expect(shifted.toList(), [3.0, 4.0, 0.0, 1.0, 2.0]);
 
-          final unshiftedBuffer = NDArray<AnyFloat>.zeros([5], DType.float64);
+          final unshiftedBuffer = NDArray<DTypeTag>.zeros([5], DType.float64);
           final unshifted = ifftshift(shifted, out: unshiftedBuffer);
           expect(identical(unshifted, unshiftedBuffer), true);
           expect(unshifted.toList(), [0.0, 1.0, 2.0, 3.0, 4.0]);
@@ -546,14 +546,14 @@ void main() {
         '8. Zero-Sized Matrix (n == 0) Fast Paths & Consistent Scope Protection',
         () {
           test('solve on n == 0 matrix returns bCopy without LAPACK call', () {
-            final a = NDArray<AnyFloat>.zeros([0, 0], DType.float64);
-            final b1 = NDArray<AnyFloat>.zeros([0], DType.float64);
+            final a = NDArray<DTypeTag>.zeros([0, 0], DType.float64);
+            final b1 = NDArray<DTypeTag>.zeros([0], DType.float64);
             final x1 = solve(a, b1);
             expect(x1.shape, [0]);
             expect(x1.isDisposed, false);
             x1.dispose();
 
-            final b2 = NDArray<AnyFloat>.zeros([0, 3], DType.float64);
+            final b2 = NDArray<DTypeTag>.zeros([0, 3], DType.float64);
             final x2 = solve(a, b2);
             expect(x2.shape, [0, 3]);
             expect(x2.isDisposed, false);
@@ -567,7 +567,7 @@ void main() {
           test(
             'eig, eigvals, eigvalsh, eigh on n == 0 matrix return empty arrays',
             () {
-              final a = NDArray<AnyFloat>.zeros([0, 0], DType.float64);
+              final a = NDArray<DTypeTag>.zeros([0, 0], DType.float64);
 
               final resEig = eig(a);
               expect(resEig.eigenvalues.shape, [0]);
@@ -598,7 +598,7 @@ void main() {
           );
 
           test('hessenberg, qr, svd on n == 0 matrix and scope safety', () {
-            final a = NDArray<AnyFloat>.zeros([0, 0], DType.float64);
+            final a = NDArray<DTypeTag>.zeros([0, 0], DType.float64);
 
             final resHess = hessenberg(a);
             expect(resHess.h.shape, [0, 0]);

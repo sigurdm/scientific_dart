@@ -22,7 +22,7 @@ void runMixedTypeArithmeticExample() {
   NDArray.scope(() {
     print('--- Mixed Real & Complex Arithmetic Upcasting ---');
     // Create a 1D complex array
-    final a = NDArray<AnyComplex>.create([2], DType.complex128);
+    final a = NDArray<DTypeTag>.create([2], DType.complex128);
     a.setCell([0], Complex(1.0, 2.0));
     a.setCell([1], Complex(3.0, 4.0));
 
@@ -82,7 +82,7 @@ void runTrigAndRoundingExample() {
 void runComplexAbsoluteValueExample() {
   NDArray.scope(() {
     print('\n--- Complex Absolute Value (Magnitude) ---');
-    final a = NDArray<AnyComplex>.create([2], DType.complex128);
+    final a = NDArray<DTypeTag>.create([2], DType.complex128);
     a.setCell([0], Complex(3.0, 4.0)); // magnitude = sqrt(3^2 + 4^2) = 5.0
     a.setCell([1], Complex(0.0, -12.0)); // magnitude = 12.0
 
@@ -188,7 +188,7 @@ void runEnumerateAndComplexComponentsExample() {
     }
 
     print('\n--- Complex Components Extractors (real, imag) ---');
-    final c = NDArray<AnyComplex>.create([2], DType.complex128);
+    final c = NDArray<DTypeTag>.create([2], DType.complex128);
     c.setCell([0], Complex(3.0, 4.0));
     c.setCell([1], Complex(-1.0, 0.0));
 

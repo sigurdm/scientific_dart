@@ -79,7 +79,7 @@ void main() {
         expect(svdRes.s.shape, [2]);
         expect(svdRes.vh.shape, [2, 2]);
 
-        final cMat = NDArray<AnyComplex>.fromList(
+        final cMat = NDArray<DTypeTag>.fromList(
           [
             Complex(1.0, 2.0),
             Complex(3.0, 4.0),

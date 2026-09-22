@@ -77,7 +77,7 @@ NDArray _createView(
   ),
 };
 
-NDArray<R> _asTyped<R extends AnyDType>(NDArray arr) {
+NDArray<R> _asTyped<R extends DTypeTag>(NDArray arr) {
   if (arr is NDArray<R>) return arr;
   return _createView(arr, arr.shape, arr.strides) as NDArray<R>;
 }
@@ -111,7 +111,7 @@ bool _arraysOverlap(NDArray x, NDArray y) {
   return startX < endY && startY < endX;
 }
 
-NDArray<R> _returnFromScope<R extends AnyDType>(
+NDArray<R> _returnFromScope<R extends DTypeTag>(
   NDArray res,
   List<NDArray> callerInputs, {
   NDArray<R>? out,
@@ -137,7 +137,7 @@ NDArray<R> _returnFromScope<R extends AnyDType>(
   return rootCopy.detachToParentScope();
 }
 
-NDArray<T> _diagonalView<T extends AnyDType>(NDArray<T> arr, int ax1, int ax2) {
+NDArray<T> _diagonalView<T extends DTypeTag>(NDArray<T> arr, int ax1, int ax2) {
   if (arr.shape[ax1] != arr.shape[ax2]) {
     throw ArgumentError(
       "Dimension mismatch for diagonal extraction: axis $ax1 size (${arr.shape[ax1]}) != axis $ax2 size (${arr.shape[ax2]}).",
@@ -306,12 +306,11 @@ final class TensordotAxes {
 /// ```
 ///
 /// Reference: [NumPy tensordot](https://numpy.org/doc/stable/reference/generated/numpy.tensordot.html)
-NDArray<R>
-tensordot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
+NDArray<T> tensordot<T extends DTypeTag>(
+  NDArray<T> a,
+  NDArray<T> b, {
   Object axes = const TensordotAxes.count(2),
-  NDArray<R>? out,
+  NDArray<T>? out,
 }) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError("Cannot execute tensordot() on a disposed array.");
@@ -366,8 +365,8 @@ tensordot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
       final aView = a.reshape(aShapeExpanded);
       final bView = b.reshape(bShapeExpanded);
 
-      final res = multiply<AnyDType, AnyDType, R>(aView, bView, out: out);
-      return _returnFromScope<R>(res, [a, b], out: out);
+      final res = multiply<DTypeTag>(aView, bView, out: out);
+      return _returnFromScope<T>(res, [a, b], out: out);
     });
   }
 
@@ -419,7 +418,7 @@ tensordot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
             bToUse.pointer.cast<ffi.Double>(),
             1,
           );
-          return _returnFromScope<R>(
+          return _returnFromScope<T>(
             NDArray.scalar(val, dtype: DType.float64),
             [a, b],
             out: out,
@@ -432,7 +431,7 @@ tensordot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
             bToUse.pointer.cast<ffi.Float>(),
             1,
           );
-          return _returnFromScope<R>(
+          return _returnFromScope<T>(
             NDArray.scalar(val, dtype: DType.float32),
             [a, b],
             out: out,
@@ -451,12 +450,12 @@ tensordot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
     final a2D = aPerm.reshape([m, k]);
     final b2D = bPerm.reshape([k, n]);
 
-    final res2D = matmul<AnyDType, AnyDType, R>(a2D, b2D);
+    final res2D = matmul<DTypeTag>(a2D, b2D);
     final res = listEquals(res2D.shape, targetShape)
         ? res2D
         : res2D.reshape(targetShape);
 
-    return _returnFromScope<R>(res, [a, b], out: out);
+    return _returnFromScope<T>(res, [a, b], out: out);
   });
 }
 
@@ -672,10 +671,10 @@ final class EinsumSubscripts {
 /// ```
 ///
 /// Reference: [NumPy einsum](https://numpy.org/doc/stable/reference/generated/numpy.einsum.html)
-NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
+NDArray<T> einsum<T extends DTypeTag>(
   EinsumSubscripts subscripts,
   List<NDArray<T>> operands, {
-  NDArray<R>? out,
+  NDArray<T>? out,
 }) {
   if (operands.isEmpty) {
     throw ArgumentError("einsum requires at least one operand.");
@@ -821,7 +820,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
     }
 
     if (operands.length == 1) {
-      var op = _asTyped<AnyDType>(operands[0]);
+      var op = _asTyped<T>(operands[0]);
       var sub = operandSubs[0];
 
       final seenInOp = <int, int>{};
@@ -855,7 +854,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
       NDArray res = op;
       axesToSum.sort((a, b) => b.compareTo(a));
       for (final ax in axesToSum) {
-        res = sum<AnyDType>(res, axis: ax);
+        res = sum<T>(res, axis: ax);
       }
 
       if (keptIds.length > 1) {
@@ -874,7 +873,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
           );
         }
       }
-      return _returnFromScope<R>(res, operands, out: out);
+      return _returnFromScope<T>(res, operands, out: out);
     }
 
     if (operands.length == 2) {
@@ -899,12 +898,8 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             subA[1] == subB[0] &&
             subA[0] == finalOutSub[0] &&
             subB[1] == finalOutSub[1]) {
-          final res = matmul<AnyDType, AnyDType, AnyDType>(
-            operands[0],
-            operands[1],
-            out: out,
-          );
-          return _returnFromScope<R>(res, operands, out: out);
+          final res = matmul<T>(operands[0], operands[1], out: out);
+          return _returnFromScope<T>(res, operands, out: out);
         }
 
         if (subA.length == 3 &&
@@ -915,24 +910,16 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             subA[2] == subB[1] &&
             subA[1] == finalOutSub[1] &&
             subB[2] == finalOutSub[2]) {
-          final res = matmul<AnyDType, AnyDType, AnyDType>(
-            operands[0],
-            operands[1],
-            out: out,
-          );
-          return _returnFromScope<R>(res, operands, out: out);
+          final res = matmul<T>(operands[0], operands[1], out: out);
+          return _returnFromScope<T>(res, operands, out: out);
         }
 
         if (subA.length == 1 &&
             subB.length == 1 &&
             finalOutSub.isEmpty &&
             subA[0] == subB[0]) {
-          final res = matmul<AnyDType, AnyDType, AnyDType>(
-            operands[0],
-            operands[1],
-            out: out,
-          );
-          return _returnFromScope<R>(res, operands, out: out);
+          final res = matmul<T>(operands[0], operands[1], out: out);
+          return _returnFromScope<T>(res, operands, out: out);
         }
 
         if (subA.length == 1 &&
@@ -942,12 +929,8 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             subB[0] == finalOutSub[1]) {
           final aCol = operands[0].reshape([operands[0].shape[0], 1]);
           final bRow = operands[1].reshape([1, operands[1].shape[0]]);
-          final res = multiply<AnyDType, AnyDType, AnyDType>(
-            aCol,
-            bRow,
-            out: out,
-          );
-          return _returnFromScope<R>(res, operands, out: out);
+          final res = multiply<T>(aCol, bRow, out: out);
+          return _returnFromScope<T>(res, operands, out: out);
         }
 
         if (subA.length >= 3 &&
@@ -965,12 +948,8 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
               subA[kBatch + 1] == subB[kBatch] &&
               subA[kBatch] == finalOutSub[kBatch] &&
               subB[kBatch + 1] == finalOutSub[kBatch + 1]) {
-            final res = matmul<AnyDType, AnyDType, AnyDType>(
-              operands[0],
-              operands[1],
-              out: out,
-            );
-            return _returnFromScope<R>(res, operands, out: out);
+            final res = matmul<T>(operands[0], operands[1], out: out);
+            return _returnFromScope<T>(res, operands, out: out);
           }
         }
 
@@ -996,7 +975,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
 
           if (allFreeInOut) {
             fast2OpResIds = [...freeA, ...freeB];
-            fast2OpRes = tensordot<AnyDType, AnyDType, R>(
+            fast2OpRes = tensordot<T>(
               operands[0],
               operands[1],
               axes: TensordotAxes.explicit(axesA, axesB),
@@ -1058,7 +1037,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
               b3D = operands[1].transpose(permB).reshape([numBatch, k, n]);
             }
 
-            final res3D = matmul<AnyDType, AnyDType, AnyDType>(a3D, b3D);
+            final res3D = matmul<DTypeTag>(a3D, b3D);
 
             final freeAShapes = freeA.map((id) => labelSizes[id]!);
             final freeBShapes = freeB.map((id) => labelSizes[id]!);
@@ -1094,7 +1073,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
               );
             }
           }
-          return _returnFromScope<R>(finalRes, operands, out: out);
+          return _returnFromScope<T>(finalRes, operands, out: out);
         }
       }
     }
@@ -1161,7 +1140,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             ], bestInterOut);
 
             final interRes = NDArray.unmanaged(
-              () => einsum<AnyDType, AnyDType>(specInter, [opI, opJ]),
+              () => einsum<DTypeTag>(specInter, [opI, opJ]),
             );
             toDispose.add(interRes);
 
@@ -1178,11 +1157,11 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
             currentSubs[0],
             currentSubs[1],
           ], finalOutSub);
-          final finalRes = einsum<AnyDType, R>(specFinal, [
+          final finalRes = einsum<DTypeTag>(specFinal, [
             currentOps[0],
             currentOps[1],
           ], out: out);
-          return _returnFromScope<R>(finalRes, operands, out: out);
+          return _returnFromScope<T>(finalRes, operands, out: out);
         }
       } finally {
         for (final temp in toDispose) {
@@ -1207,20 +1186,21 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
 
     final expandedOperands = <NDArray>[];
     for (var i = 0; i < operands.length; i++) {
-      var op = _asTyped<AnyDType>(operands[i]);
+      var op = _asTyped<DTypeTag>(operands[i]);
       var sub = operandSubs[i];
 
-      final seen = <int, int>{};
+      final seenInOp = <int, int>{};
       for (var j = 0; j < sub.length; j++) {
         final id = sub[j];
-        if (seen.containsKey(id)) {
-          final firstAx = seen[id]!;
-          op = _diagonalView(op, firstAx, j);
-          final newSub = List<int>.from(sub)..removeAt(j);
+        if (seenInOp.containsKey(id)) {
+          final firstAx = seenInOp[id]!;
+          final secondAx = j;
+          op = _diagonalView(op, firstAx, secondAx);
+          final newSub = List<int>.from(sub)..removeAt(secondAx);
           sub = newSub;
           j--;
         } else {
-          seen[id] = j;
+          seenInOp[id] = j;
         }
       }
 
@@ -1243,16 +1223,13 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
 
     NDArray combined = expandedOperands[0];
     for (var i = 1; i < expandedOperands.length; i++) {
-      combined = multiply<AnyDType, AnyDType, AnyDType>(
-        combined,
-        expandedOperands[i],
-      );
+      combined = multiply<DTypeTag>(combined, expandedOperands[i]);
     }
 
     for (var j = allIds.length - 1; j >= 0; j--) {
       final id = allIds[j];
       if (!finalOutSub.contains(id)) {
-        combined = sum<AnyDType>(combined, axis: j);
+        combined = sum<DTypeTag>(combined, axis: j);
       }
     }
 
@@ -1264,7 +1241,7 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
         );
       }
     }
-    return _returnFromScope<R>(combined, operands, out: out);
+    return _returnFromScope<T>(combined, operands, out: out);
   });
 }
 
@@ -1295,10 +1272,10 @@ NDArray<R> einsum<T extends AnyDType, R extends AnyDType>(
 /// ```
 ///
 /// Reference: [NumPy inner](https://numpy.org/doc/stable/reference/generated/numpy.inner.html)
-NDArray<R> inner<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<R>? out,
+NDArray<T> inner<T extends DTypeTag>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  NDArray<T>? out,
 }) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError("Cannot execute inner() on a disposed array.");
@@ -1309,8 +1286,8 @@ NDArray<R> inner<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
 
   if (a.rank == 0 || b.rank == 0) {
     return NDArray.scope(() {
-      final res = multiply<AnyDType, AnyDType, R>(a, b, out: out);
-      return _returnFromScope<R>(res, [a, b], out: out);
+      final res = multiply<T>(a, b, out: out);
+      return _returnFromScope<T>(res, [a, b], out: out);
     });
   }
 
@@ -1320,7 +1297,7 @@ NDArray<R> inner<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
     );
   }
 
-  return tensordot<Ta, Tb, R>(
+  return tensordot<T>(
     a,
     b,
     axes: TensordotAxes.pair(a.rank - 1, b.rank - 1),
@@ -1358,10 +1335,10 @@ NDArray<R> inner<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
 /// ```
 ///
 /// Reference: [NumPy vdot](https://numpy.org/doc/stable/reference/generated/numpy.vdot.html)
-NDArray<R> vdot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<R>? out,
+NDArray<T> vdot<T extends DTypeTag>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  NDArray<T>? out,
 }) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError("Cannot execute vdot() on a disposed array.");
@@ -1379,8 +1356,8 @@ NDArray<R> vdot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
     final flatA = a.reshape([a.size]);
     final flatB = b.reshape([b.size]);
     final conjA = a.dtype.isComplex ? conjugate(flatA) : flatA;
-    final res = matmul<AnyDType, AnyDType, R>(conjA, flatB, out: out);
-    return _returnFromScope<R>(res, [a, b], out: out);
+    final res = matmul<T>(conjA, flatB, out: out);
+    return _returnFromScope<T>(res, [a, b], out: out);
   });
 }
 
@@ -1405,10 +1382,10 @@ NDArray<R> vdot<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy kron](https://numpy.org/doc/stable/reference/generated/numpy.kron.html)
-NDArray<R> kron<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
-  NDArray<Ta> a,
-  NDArray<Tb> b, {
-  NDArray<R>? out,
+NDArray<T> kron<T extends DTypeTag>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  NDArray<T>? out,
 }) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute kron() on a disposed array.');
@@ -1470,7 +1447,7 @@ NDArray<R> kron<Ta extends AnyDType, Tb extends AnyDType, R extends AnyDType>(
             _arraysOverlap(out, aCast) ||
             _arraysOverlap(out, bCast));
     final result = (out == null || needTempOut)
-        ? _createRootArray(expectedShape, targetDType) as NDArray<R>
+        ? _createRootArray(expectedShape, targetDType) as NDArray<T>
         : out;
 
     if (maxRank <= 2) {

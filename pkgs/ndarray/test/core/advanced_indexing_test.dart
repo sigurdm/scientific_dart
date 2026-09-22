@@ -168,11 +168,11 @@ void main() {
         test(
           'Contiguous fill for float32 and int64',
           () => NDArray.scope(() {
-            final a = NDArray<AnyFloat>.create([3], DType.float32);
+            final a = NDArray<DTypeTag>.create([3], DType.float32);
             a.fill(42.0);
             expect(a.toList(), [42.0, 42.0, 42.0]);
 
-            final b = NDArray<AnyInt>.create([3], DType.int64);
+            final b = NDArray<DTypeTag>.create([3], DType.int64);
             b.fill(99);
             expect(b.toList(), [99, 99, 99]);
           }),

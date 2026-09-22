@@ -228,7 +228,7 @@ Object normalizeScalar(Object o, DType dtype) {
   }
 }
 
-NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
+NDArray<T> toNDArray<T extends DTypeTag>(Object o, DType<T> dtype) {
   if (o is NDArray) {
     if (o.isDisposed) {
       throw StateError('Cannot convert a disposed NDArray to NDArray.');
@@ -243,7 +243,7 @@ NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
   return NDArray<T>.scalar(normalized, dtype: dtype);
 }
 
-({NDArray<T> samples, dynamic step}) linspaceInternal<T extends AnyDType>(
+({NDArray<T> samples, dynamic step}) linspaceInternal<T extends DTypeTag>(
   Object? start,
   Object? stop,
   int numSamples, {
@@ -370,7 +370,7 @@ NDArray<T> toNDArray<T extends AnyDType>(Object o, DType<T> dtype) {
 }
 
 void
-elementWiseOp<Ta extends AnyDType, Tb extends AnyDType, Tr extends AnyDType>(
+elementWiseOp<Ta extends DTypeTag, Tb extends DTypeTag, Tr extends DTypeTag>(
   NDArray<Tr> result,
   NDArray<Ta> a,
   NDArray<Tb> b,
@@ -542,11 +542,11 @@ NDArray<Float64> promoteToDouble(NDArray a) {
   return res;
 }
 
-NDArray<AnyComplex> promoteToComplex(NDArray a) {
+NDArray<DTypeTag> promoteToComplex(NDArray a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute promoteToComplex on a disposed array.');
   }
-  final res = NDArray<AnyComplex>.create(a.shape, DType.complex128);
+  final res = NDArray<DTypeTag>.create(a.shape, DType.complex128);
   final ndim = a.shape.length;
   final marker = ScratchArena.marker;
   try {
@@ -575,10 +575,10 @@ NDArray<AnyComplex> promoteToComplex(NDArray a) {
 }
 
 /// Recursive helper to accumulate sum and count of non-NaN elements along an axis.
-void nanReduceRecursive<T extends AnyDType>(
+void nanReduceRecursive<T extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> result,
-  NDArray<AnyInt> counts,
+  NDArray<DTypeTag> counts,
   List<int> coordA,
   List<int> coordRes,
   int axis,
@@ -649,7 +649,7 @@ void walkStackCoords(
 }
 
 /// Recursive helper to traverse and reduce an array along an axis.
-void reduceRecursive<S extends AnyDType, D extends AnyDType>(
+void reduceRecursive<S extends DTypeTag, D extends DTypeTag>(
   NDArray<S> src,
   NDArray<D> dest,
   List<int> currentPos,
@@ -700,7 +700,7 @@ void reduceRecursive<S extends AnyDType, D extends AnyDType>(
   }
 }
 
-void unaryOp<Ta extends AnyDType, Tr extends AnyDType>(
+void unaryOp<Ta extends DTypeTag, Tr extends DTypeTag>(
   NDArray<Tr> result,
   NDArray<Ta> a,
   List<int> shape,
@@ -795,10 +795,10 @@ void unaryOp<Ta extends AnyDType, Tr extends AnyDType>(
 }
 
 void ternaryOp<
-  Ta extends AnyDType,
-  Tb extends AnyDType,
-  Tc extends AnyDType,
-  Tr extends AnyDType
+  Ta extends DTypeTag,
+  Tb extends DTypeTag,
+  Tc extends DTypeTag,
+  Tr extends DTypeTag
 >(
   NDArray<Tr> result,
   NDArray<Ta> a,
@@ -1036,7 +1036,7 @@ dynamic castValue(dynamic val, DType dtype, {DType? sourceDType}) {
 
 enum CumOpType { sum, prod, min, max }
 
-NDArray<R> cumOpFFI<T extends AnyDType, R extends AnyDType>(
+NDArray<R> cumOpFFI<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a,
   int axis,
   NDArray<R> result,
@@ -1392,7 +1392,7 @@ int _dtypeToCode(DType dtype) {
   }
 }
 
-NDArray<R> castNDArray<R extends AnyDType>(NDArray a, DType<R> targetDType) {
+NDArray<R> castNDArray<R extends DTypeTag>(NDArray a, DType<R> targetDType) {
   if (a.dtype == targetDType) {
     if (a is NDArray<R>) return a;
     return NDArray<R>.view(a, shape: a.shape, strides: a.strides);
@@ -1443,7 +1443,7 @@ NDArray<R> castNDArray<R extends AnyDType>(NDArray a, DType<R> targetDType) {
   return result;
 }
 
-void _cumOpFallbackHelper<T extends AnyDType, R extends AnyDType>(
+void _cumOpFallbackHelper<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a,
   NDArray<R> result,
   int axis,
@@ -1593,7 +1593,7 @@ final class MaskHolder {
   final ffi.Pointer<ffi.Uint8> pointer;
 
   /// Optional temporary array allocation requiring disposal after kernel execution.
-  final NDArray<AnyDType>? _tempAllocated;
+  final NDArray<DTypeTag>? _tempAllocated;
 
   /// Creates a new [MaskHolder] with the given [pointer] and optional [_tempAllocated].
   MaskHolder(this.pointer, [this._tempAllocated]);
@@ -1615,7 +1615,7 @@ final class MaskHolder {
 /// Returns a [MaskHolder] containing the native pointer and any transient allocations.
 /// Time complexity is $O(1)$ for contiguous masks of matching shape, or $O(N)$
 /// where $N$ is the element count when broadcasting or copying strided masks.
-MaskHolder prepareMask(NDArray<AnyDType>? where, List<int> targetShape) {
+MaskHolder prepareMask(NDArray<DTypeTag>? where, List<int> targetShape) {
   if (where == null) {
     return MaskHolder(ffi.nullptr);
   }

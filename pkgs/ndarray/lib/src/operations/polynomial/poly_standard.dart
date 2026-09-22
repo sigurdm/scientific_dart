@@ -32,7 +32,7 @@ bool _isZeroScalar(Object a) {
   return (a as num) == 0;
 }
 
-NDArray<R> _ensureDType<T extends AnyDType, R extends AnyDType>(
+NDArray<R> _ensureDType<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a,
   DType<R> targetDType,
 ) {
@@ -42,7 +42,7 @@ NDArray<R> _ensureDType<T extends AnyDType, R extends AnyDType>(
   return castNDArray(a, targetDType);
 }
 
-void _copyInto<R extends AnyDType>(NDArray src, NDArray<R> out) {
+void _copyInto<R extends DTypeTag>(NDArray src, NDArray<R> out) {
   src.copy(out: out);
 }
 
@@ -61,9 +61,9 @@ void _copyInto<R extends AnyDType>(NDArray src, NDArray<R> out) {
 ///
 /// Reference: [NumPy polyval](https://numpy.org/doc/stable/reference/generated/numpy.polyval.html)
 NDArray<R> polyval<
-  Tc extends AnyDType,
-  Tx extends AnyDType,
-  R extends AnyDType
+  Tc extends DTypeTag,
+  Tx extends DTypeTag,
+  R extends DTypeTag
 >(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
   if (c.isDisposed || x.isDisposed || (out != null && out.isDisposed)) {
     throw StateError("Cannot execute polyval() on a disposed array.");
@@ -248,10 +248,10 @@ NDArray<R> polyval<
 ///
 /// Reference: [NumPy polyfit](https://numpy.org/doc/stable/reference/generated/numpy.polyfit.html)
 NDArray<R> polyfit<
-  Tx extends AnyDType,
-  Ty extends AnyDType,
-  Tw extends AnyDType,
-  R extends AnyDType
+  Tx extends DTypeTag,
+  Ty extends DTypeTag,
+  Tw extends DTypeTag,
+  R extends DTypeTag
 >(
   NDArray<Tx> x,
   NDArray<Ty> y,
@@ -663,7 +663,7 @@ NDArray<R> polyfit<
 /// Computes the roots of a polynomial with coefficients [p].
 ///
 /// The coefficient array [p] is ordered from highest degree to constant term.
-/// Returns an `NDArray<AnyComplex>` containing the roots.
+/// Returns an `NDArray<DTypeTag>` containing the roots.
 ///
 /// **Preconditions:**
 /// - [p] and optional [out] must not be disposed.
@@ -672,9 +672,9 @@ NDArray<R> polyfit<
 /// - It is an error if [p] is not 1-dimensional.
 ///
 /// Reference: [NumPy roots](https://numpy.org/doc/stable/reference/generated/numpy.roots.html)
-NDArray<AnyComplex> roots<T extends AnyDType>(
+NDArray<DTypeTag> roots<T extends DTypeTag>(
   NDArray<T> p, {
-  NDArray<AnyComplex>? out,
+  NDArray<DTypeTag>? out,
 }) {
   if (p.isDisposed || (out != null && out.isDisposed)) {
     throw StateError("Cannot execute roots() on a disposed array.");
@@ -683,7 +683,7 @@ NDArray<AnyComplex> roots<T extends AnyDType>(
     throw ArgumentError("Coefficient array p must be 1-dimensional.");
   }
 
-  final DType<AnyComplex> targetComplexDType = p.dtype == DType.complex64
+  final DType<DTypeTag> targetComplexDType = p.dtype == DType.complex64
       ? DType.complex64
       : DType.complex128;
 
@@ -715,7 +715,7 @@ NDArray<AnyComplex> roots<T extends AnyDType>(
     }
 
     if (deg == 0) {
-      final res = NDArray<AnyComplex>.zeros([0], targetComplexDType);
+      final res = NDArray<DTypeTag>.zeros([0], targetComplexDType);
       if (out != null) {
         _copyInto(res, out);
         return out;
@@ -730,7 +730,7 @@ NDArray<AnyComplex> roots<T extends AnyDType>(
       final complexRoot = rootVal is Complex
           ? rootVal
           : Complex((rootVal as num).toDouble(), 0.0);
-      final res = NDArray<AnyComplex>.fromList(
+      final res = NDArray<DTypeTag>.fromList(
         [complexRoot],
         [1],
         targetComplexDType,
@@ -748,10 +748,7 @@ NDArray<AnyComplex> roots<T extends AnyDType>(
     switch (p.dtype) {
       case DType.complex64:
       case DType.complex128:
-        aMat = NDArray<AnyComplex>.zeros([
-          deg,
-          deg,
-        ], p.dtype as DType<AnyComplex>);
+        aMat = NDArray<DTypeTag>.zeros([deg, deg], p.dtype as DType<DTypeTag>);
         break;
       default:
         aMat = NDArray<Float64>.zeros([deg, deg], DType.float64);

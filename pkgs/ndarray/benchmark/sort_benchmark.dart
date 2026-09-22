@@ -19,7 +19,7 @@ void main() async {
           for (final size in sizes) {
             final template = templateGen(size);
 
-            c.bench<NDArray<AnyFloat>>(
+            c.bench<NDArray<DTypeTag>>(
               'Direct sort() [$size]',
               (arr) {
                 final res = sort(arr);
@@ -28,12 +28,12 @@ void main() async {
                 arr.dispose();
               },
               setup: () =>
-                  NDArray<AnyFloat>.fromList(template, [size], DType.float64),
+                  NDArray<DTypeTag>.fromList(template, [size], DType.float64),
               batchSize: BatchSize.largeInput,
               throughput: Throughput.elements(size),
             );
 
-            c.bench<NDArray<AnyFloat>>(
+            c.bench<NDArray<DTypeTag>>(
               'Indirect argsort() [$size]',
               (arr) {
                 final res = argsort(arr);
@@ -42,7 +42,7 @@ void main() async {
                 arr.dispose();
               },
               setup: () =>
-                  NDArray<AnyFloat>.fromList(template, [size], DType.float64),
+                  NDArray<DTypeTag>.fromList(template, [size], DType.float64),
               batchSize: BatchSize.largeInput,
               throughput: Throughput.elements(size),
             );

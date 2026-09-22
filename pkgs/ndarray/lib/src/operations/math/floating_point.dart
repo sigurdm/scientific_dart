@@ -21,9 +21,9 @@ import '../../nditer.dart';
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// final mask = isnan(a); // [false, true, false]
 /// ```
-NDArray<Boolean> isnan<T extends AnyDType>(
+NDArray<Boolean> isnan<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -211,9 +211,9 @@ NDArray<Boolean> isnan<T extends AnyDType>(
 /// final a = NDArray.fromList([1.0, double.infinity, 3.0], [3], DType.float64);
 /// final mask = isinf(a); // [false, true, false]
 /// ```
-NDArray<Boolean> isinf<T extends AnyDType>(
+NDArray<Boolean> isinf<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -401,9 +401,9 @@ NDArray<Boolean> isinf<T extends AnyDType>(
 /// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], DType.float64);
 /// final mask = isfinite(a); // [true, false, false]
 /// ```
-NDArray<Boolean> isfinite<T extends AnyDType>(
+NDArray<Boolean> isfinite<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -587,10 +587,10 @@ NDArray<Boolean> isfinite<T extends AnyDType>(
 /// ```dart
 /// final res = copysign(x1, x2);
 /// ```
-NDArray<T> copysign<T extends AnyDType>(
+NDArray<T> copysign<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (x1.isDisposed ||
@@ -703,7 +703,7 @@ NDArray<T> copysign<T extends AnyDType>(
     }
 
     if (targetDType.isFloating) {
-      elementWiseOp<AnyDType, AnyDType, AnyDType>(
+      elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
         result,
         x1,
         x2,
@@ -722,7 +722,7 @@ NDArray<T> copysign<T extends AnyDType>(
         maskHolder.pointer,
       );
     } else {
-      elementWiseOp<AnyDType, AnyDType, AnyDType>(
+      elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
         result,
         x1,
         x2,
@@ -761,13 +761,13 @@ NDArray<T> copysign<T extends AnyDType>(
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.isclose.html)
-NDArray<Boolean> isClose<Ta extends AnyDType, Tb extends AnyDType>(
+NDArray<Boolean> isClose<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double rtol = 1e-05,
   double atol = 1e-08,
   bool equalNan = false,
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
@@ -1106,7 +1106,7 @@ bool _isCloseInt(int aVal, int bVal, double rtol, double atol) {
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.allclose.html)
-bool allClose<Ta extends AnyDType, Tb extends AnyDType>(
+bool allClose<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double rtol = 1e-05,
@@ -1230,7 +1230,7 @@ bool allClose<Ta extends AnyDType, Tb extends AnyDType>(
 }
 
 /// Extension providing positional accessors and disposal for [modf] results.
-extension ModfRecordExtension<R extends AnyDType>
+extension ModfRecordExtension<R extends DTypeTag>
     on ({NDArray<R> fractional, NDArray<R> integral}) {
   /// The fractional part of the input array.
   NDArray<R> get $1 => fractional;
@@ -1246,7 +1246,7 @@ extension ModfRecordExtension<R extends AnyDType>
 }
 
 /// Extension providing positional accessors and disposal for [frexp] results.
-extension FrexpRecordExtension<R extends AnyDType>
+extension FrexpRecordExtension<R extends DTypeTag>
     on ({NDArray<R> mantissa, NDArray<Int32> exponent}) {
   /// The mantissa array in the interval $[0.5, 1)$ (or $(-1, -0.5]$).
   NDArray<R> get $1 => mantissa;
@@ -1275,9 +1275,9 @@ extension FrexpRecordExtension<R extends AnyDType>
 ///
 /// Reference: [NumPy modf](https://numpy.org/doc/stable/reference/generated/numpy.modf.html)
 ({NDArray<R> fractional, NDArray<R> integral})
-modf<T extends AnyDType, R extends AnyDType>(
+modf<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> x, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out1,
   NDArray<R>? out2,
 }) {
@@ -1413,9 +1413,9 @@ modf<T extends AnyDType, R extends AnyDType>(
 ///
 /// Reference: [NumPy frexp](https://numpy.org/doc/stable/reference/generated/numpy.frexp.html)
 ({NDArray<R> mantissa, NDArray<Int32> exponent})
-frexp<T extends AnyDType, R extends AnyDType>(
+frexp<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> x, {
-  NDArray<AnyDType>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out1,
   NDArray<Int32>? out2,
 }) {

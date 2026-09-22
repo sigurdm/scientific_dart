@@ -36,7 +36,7 @@ void main() {
       test(
         'integer linspace',
         () => NDArray.scope(() {
-          final a = linspace<AnyInt>(0, 10, 5, dtype: DType.int64);
+          final a = linspace<DTypeTag>(0, 10, 5, dtype: DType.int64);
           expect(a.dtype, DType.int64);
           expect(a.data, [
             0,
@@ -141,7 +141,7 @@ void main() {
       test(
         'linspace complex',
         () => NDArray.scope(() {
-          final a = linspace<AnyComplex>(
+          final a = linspace<DTypeTag>(
             Complex(0, 0),
             Complex(1, 1),
             3,
@@ -157,7 +157,7 @@ void main() {
       test(
         'logspace complex',
         () => NDArray.scope(() {
-          final a = logspace<AnyComplex>(
+          final a = logspace<DTypeTag>(
             Complex(0, 0),
             Complex(0, 2),
             3,
@@ -178,7 +178,7 @@ void main() {
       test(
         'geomspace complex',
         () => NDArray.scope(() {
-          final a = geomspace<AnyComplex>(
+          final a = geomspace<DTypeTag>(
             Complex(1, 0),
             Complex(-1, 0),
             3,
@@ -250,7 +250,7 @@ void main() {
     });
 
     group('Exhaustive DType Grid Coverage', () {
-      void testDTypeGrid<T extends AnyDType>(
+      void testDTypeGrid<T extends DTypeTag>(
         DType<T> dtype,
         List<Object?> startList,
         List<Object?> stopList,

@@ -72,12 +72,10 @@ void main() {
           Complex(-math.pi / 4, 0.5),
           Complex(1.0, -2.0),
         ];
-        final aC128 = NDArray<AnyComplex>.fromList(c128List, [
+        final aC128 = NDArray<DTypeTag>.fromList(c128List, [
           4,
         ], DType.complex128);
-        final aC64 = NDArray<AnyComplex>.fromList(c128List, [
-          4,
-        ], DType.complex64);
+        final aC64 = NDArray<DTypeTag>.fromList(c128List, [4], DType.complex64);
 
         // Sin complex: sin(x + iy) = sin(x)cosh(y) + i cos(x)sinh(y)
         final sC128 = sin(aC128);
@@ -258,8 +256,8 @@ void main() {
     test('asin, acos, atan complex types', () {
       NDArray.scope(() {
         final cList = [Complex(0.0, 0.0), Complex(2.0, 0.0), Complex(0.0, 1.0)];
-        final c128 = NDArray<AnyComplex>.fromList(cList, [3], DType.complex128);
-        final c64 = NDArray<AnyComplex>.fromList(cList, [3], DType.complex64);
+        final c128 = NDArray<DTypeTag>.fromList(cList, [3], DType.complex128);
+        final c64 = NDArray<DTypeTag>.fromList(cList, [3], DType.complex64);
 
         final resAsin = asin(c128);
         expect(resAsin.dtype, DType.complex128);
@@ -345,7 +343,7 @@ void main() {
         expect(outAtan2.getCell([2]), closeTo(math.pi, 1e-14));
 
         // Complex throws UnsupportedError
-        final cArray = NDArray<AnyComplex>.fromList(
+        final cArray = NDArray<DTypeTag>.fromList(
           [Complex(1, 0)],
           [1],
           DType.complex128,
@@ -405,10 +403,8 @@ void main() {
             Complex(1.0, math.pi / 4),
             Complex(-0.5, 0.5),
           ];
-          final a128 = NDArray<AnyComplex>.fromList(cVals, [
-            3,
-          ], DType.complex128);
-          final a64 = NDArray<AnyComplex>.fromList(cVals, [3], DType.complex64);
+          final a128 = NDArray<DTypeTag>.fromList(cVals, [3], DType.complex128);
+          final a64 = NDArray<DTypeTag>.fromList(cVals, [3], DType.complex64);
 
           final s = sinh(a128);
           final c = cosh(a128);
@@ -471,9 +467,7 @@ void main() {
 
           // Complex inverse hyperbolic
           final cVals = [Complex(1.0, 0.5), Complex(0.0, 2.0)];
-          final cArr = NDArray<AnyComplex>.fromList(cVals, [
-            2,
-          ], DType.complex128);
+          final cArr = NDArray<DTypeTag>.fromList(cVals, [2], DType.complex128);
           expect(asinh(cArr).dtype, DType.complex128);
           expect(acosh(cArr).dtype, DType.complex128);
           expect(atanh(cArr).dtype, DType.complex128);
@@ -513,7 +507,7 @@ void main() {
         );
 
         // Complex sinc
-        final cA = NDArray<AnyComplex>.fromList(
+        final cA = NDArray<DTypeTag>.fromList(
           [Complex(0.0, 0.0), Complex(0.5, 0.0)],
           [2],
           DType.complex128,
@@ -565,7 +559,7 @@ void main() {
         expect(radInt.getCell([0]), closeTo(math.pi, 1e-14));
 
         // Complex throws UnsupportedError
-        final cArr = NDArray<AnyComplex>.fromList(
+        final cArr = NDArray<DTypeTag>.fromList(
           [Complex(180, 0)],
           [1],
           DType.complex128,
@@ -595,12 +589,12 @@ void main() {
         expect(hMat.getCell([1, 1]), closeTo(13.0, 1e-14));
 
         // Complex hypot
-        final aCpx = NDArray<AnyComplex>.fromList(
+        final aCpx = NDArray<DTypeTag>.fromList(
           [Complex(3.0, 0.0)],
           [1],
           DType.complex128,
         );
-        final bCpx = NDArray<AnyComplex>.fromList(
+        final bCpx = NDArray<DTypeTag>.fromList(
           [Complex(4.0, 0.0)],
           [1],
           DType.complex128,
@@ -685,12 +679,10 @@ void main() {
             Complex(0.0, math.pi / 2),
             Complex(2.0, 1.0),
           ];
-          final aC128 = NDArray<AnyComplex>.fromList(cVals, [
+          final aC128 = NDArray<DTypeTag>.fromList(cVals, [
             4,
           ], DType.complex128);
-          final aC64 = NDArray<AnyComplex>.fromList(cVals, [
-            4,
-          ], DType.complex64);
+          final aC64 = NDArray<DTypeTag>.fromList(cVals, [4], DType.complex64);
 
           // exp(0) = 1, exp(1 + i*pi) = -e, exp(i*pi/2) = i
           final expC = exp(aC128);
@@ -750,9 +742,7 @@ void main() {
             Complex(1e-10, 1e-10),
             Complex(1.0, 1.0),
           ];
-          final aCpx = NDArray<AnyComplex>.fromList(cList, [
-            3,
-          ], DType.complex128);
+          final aCpx = NDArray<DTypeTag>.fromList(cList, [3], DType.complex128);
           final expm1C = expm1(aCpx);
           final log1pC = log1p(aCpx);
           expect(expm1C.getCell([0]).real, closeTo(0.0, 1e-14));
@@ -820,7 +810,7 @@ void main() {
           Complex(1.0, 1.0),
           Complex(20.0, 0.0),
         ];
-        final cArr = NDArray<AnyComplex>.fromList(cList, [3], DType.complex128);
+        final cArr = NDArray<DTypeTag>.fromList(cList, [3], DType.complex128);
         final cRes = i0(cArr);
         expect(cRes.dtype, DType.complex128);
         expect(cRes.getCell([0]).real, closeTo(1.0, 1e-14));
@@ -863,7 +853,7 @@ void main() {
         expect(resInt.getCell([3]), closeTo(6.0, 1e-14));
 
         // Complex throws UnsupportedError
-        final cArr = NDArray<AnyComplex>.fromList(
+        final cArr = NDArray<DTypeTag>.fromList(
           [Complex(1, 0)],
           [1],
           DType.complex128,
@@ -891,7 +881,7 @@ void main() {
         expect(erf(a32).dtype, DType.float32);
 
         // Complex throws UnsupportedError
-        final cArr = NDArray<AnyComplex>.fromList(
+        final cArr = NDArray<DTypeTag>.fromList(
           [Complex(1, 0)],
           [1],
           DType.complex128,
@@ -916,7 +906,7 @@ void main() {
             [3],
             DType.float32,
           );
-          final c128 = NDArray<AnyComplex>.fromList(
+          final c128 = NDArray<DTypeTag>.fromList(
             [
               Complex(1.0, 0.0),
               Complex(double.nan, 1.0),
@@ -948,7 +938,7 @@ void main() {
             [4],
             DType.float64,
           );
-          final c128 = NDArray<AnyComplex>.fromList(
+          final c128 = NDArray<DTypeTag>.fromList(
             [
               Complex(1.0, 0.0),
               Complex(double.infinity, 0.0),
@@ -979,7 +969,7 @@ void main() {
               [5],
               DType.float64,
             );
-            final c128 = NDArray<AnyComplex>.fromList(
+            final c128 = NDArray<DTypeTag>.fromList(
               [
                 Complex(1.0, 2.0),
                 Complex(double.infinity, 1.0),
@@ -1045,7 +1035,7 @@ void main() {
           expect(resBcast.getCell([1, 1]), 5.0);
 
           // Complex throws UnsupportedError
-          final cArr = NDArray<AnyComplex>.fromList(
+          final cArr = NDArray<DTypeTag>.fromList(
             [Complex(1, 0)],
             [1],
             DType.complex128,
@@ -1080,12 +1070,12 @@ void main() {
           expect(allClose(a, b, equalNan: true), isTrue);
 
           // Complex isClose
-          final cA = NDArray<AnyComplex>.fromList(
+          final cA = NDArray<DTypeTag>.fromList(
             [Complex(1.0, 2.0), Complex(1.0, double.nan)],
             [2],
             DType.complex128,
           );
-          final cB = NDArray<AnyComplex>.fromList(
+          final cB = NDArray<DTypeTag>.fromList(
             [Complex(1.0000001, 2.0000001), Complex(1.0, double.nan)],
             [2],
             DType.complex128,
@@ -1248,7 +1238,7 @@ void main() {
   group('11. Special Functions Asymptotic and Extreme Regimes', () {
     test('i0 large complex asymptotic regime (|z| > 15)', () {
       NDArray.scope(() {
-        final cLarge = NDArray<AnyComplex>.fromList(
+        final cLarge = NDArray<DTypeTag>.fromList(
           [Complex(20.0, 5.0), Complex(-25.0, 10.0)],
           [2],
           DType.complex128,
