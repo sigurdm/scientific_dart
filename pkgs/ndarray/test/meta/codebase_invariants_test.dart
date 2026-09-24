@@ -1048,7 +1048,160 @@ void main() {
         expect(mismatches, isEmpty, reason: mismatches.join('\n'));
       },
     );
+
+    test(
+      'Package-level pubspec.yaml files do not contain buildMode: source or git dependencies',
+      () {
+        final targetPkgs = ['ndarray', 'openblas', 'pocketfft'];
+        final violations = <String>[];
+
+        for (final pkgName in targetPkgs) {
+          final pubspecFile = File('${pkgsDir.path}/$pkgName/pubspec.yaml');
+          if (!pubspecFile.existsSync()) continue;
+          final lines = pubspecFile.readAsLinesSync();
+
+          for (var i = 0; i < lines.length; i++) {
+            final line = lines[i];
+            if (line.contains('buildMode: source')) {
+              violations.add(
+                'pkgs/$pkgName/pubspec.yaml:${i + 1} — contains `buildMode: source` (belongs only in workspace root pubspec.yaml).',
+              );
+            }
+            if (line.trim().startsWith('git:')) {
+              violations.add(
+                'pkgs/$pkgName/pubspec.yaml:${i + 1} — contains `git:` dependency (prohibited in publishable packages).',
+              );
+            }
+          }
+        }
+
+        expect(
+          violations,
+          isEmpty,
+          reason:
+              'Package-level pubspec.yaml must not contain buildMode: source or git dependencies:\n'
+              '${violations.join('\n')}',
+        );
+      },
+    );
+
+    test(
+      'AST scan of error messages in pkgs/ndarray/lib/ has no broken empty interpolation patterns',
+      () {
+        final violations = <String>[];
+        for (final file in libFiles) {
+          final parsed = parseFile(
+            path: _native(file.path),
+            featureSet: featureSet,
+            throwIfDiagnostics: false,
+          );
+          final visitor = _ErrorMessageInterpolationVisitor(
+            file.path,
+            parsed.lineInfo,
+          );
+          parsed.unit.accept(visitor);
+          violations.addAll(visitor.violations);
+        }
+
+        expect(
+          violations,
+          isEmpty,
+          reason:
+              'Found error instantiation with missing variable interpolation:\n'
+              '${violations.join('\n')}',
+        );
+      },
+    );
   });
+}
+
+class _ErrorMessageInterpolationVisitor extends RecursiveAstVisitor<void> {
+  final String filePath;
+  final dynamic lineInfo;
+  final List<String> violations = [];
+
+  static const _errorClasses = {
+    'ArgumentError',
+    'RangeError',
+    'StateError',
+    'UnsupportedError',
+    'FormatException',
+  };
+
+  static final _brokenPattern = RegExp(
+    r'(?:'
+    r'was rank \)|'
+    r'of rank \.|'
+    r'of rank \x27|'
+    r'of rank \x22|'
+    r'\(was \)'
+    r')',
+  );
+
+  _ErrorMessageInterpolationVisitor(this.filePath, this.lineInfo);
+
+  @override
+  void visitThrowExpression(ThrowExpression node) {
+    _checkExpression(node.expression);
+    super.visitThrowExpression(node);
+  }
+
+  void _checkExpression(Expression expr) {
+    if (expr is InstanceCreationExpression) {
+      final typeName = expr.constructorName.type.name.lexeme;
+      if (_errorClasses.contains(typeName)) {
+        for (final arg in expr.argumentList.arguments) {
+          _inspectArgument(arg);
+        }
+      }
+    } else if (expr is MethodInvocation) {
+      final target = expr.target?.toSource();
+      if (target != null && _errorClasses.contains(target)) {
+        for (final arg in expr.argumentList.arguments) {
+          _inspectArgument(arg);
+        }
+      }
+    }
+  }
+
+  void _inspectArgument(AstNode arg) {
+    final finder = _BrokenStringVisitor(filePath, lineInfo, _brokenPattern);
+    arg.accept(finder);
+    violations.addAll(finder.violations);
+  }
+}
+
+class _BrokenStringVisitor extends RecursiveAstVisitor<void> {
+  final String filePath;
+  final dynamic lineInfo;
+  final RegExp pattern;
+  final List<String> violations = [];
+
+  _BrokenStringVisitor(this.filePath, this.lineInfo, this.pattern);
+
+  @override
+  void visitSimpleStringLiteral(SimpleStringLiteral node) {
+    if (pattern.hasMatch(node.value)) {
+      final line = lineInfo.getLocation(node.offset).lineNumber;
+      violations.add(
+        '$filePath:$line — broken string literal: "${node.value}"',
+      );
+    }
+    super.visitSimpleStringLiteral(node);
+  }
+
+  @override
+  void visitStringInterpolation(StringInterpolation node) {
+    for (final element in node.elements) {
+      if (element is InterpolationString && pattern.hasMatch(element.value)) {
+        final line = lineInfo.getLocation(element.offset).lineNumber;
+        violations.add(
+          '$filePath:$line — broken interpolation string element: "${element.value}" in "${node.toSource()}"',
+        );
+      }
+    }
+    super.visitStringInterpolation(node);
+  }
 }
 
 class _ResolvedSemanticVisitor extends RecursiveAstVisitor<void> {

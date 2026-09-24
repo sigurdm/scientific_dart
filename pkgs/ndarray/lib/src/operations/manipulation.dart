@@ -692,7 +692,7 @@ NDArray<T> rot90<T extends DTypeTag>(
   }
   final rank = a.rank;
   if (rank < 2) {
-    throw ArgumentError('Input must be >= 2-D (was rank ).');
+    throw ArgumentError('Input must be >= 2-D (was rank $rank).');
   }
   if (axes.length != 2) {
     throw ArgumentError('len(axes) must be 2.');
@@ -700,7 +700,7 @@ NDArray<T> rot90<T extends DTypeTag>(
   final ax0 = axes[0] < 0 ? rank + axes[0] : axes[0];
   final ax1 = axes[1] < 0 ? rank + axes[1] : axes[1];
   if (ax0 < 0 || ax0 >= rank || ax1 < 0 || ax1 >= rank) {
-    throw RangeError('axes out of range for array of rank ');
+    throw RangeError('axes out of range for array of rank $rank.');
   }
   if (ax0 == ax1) {
     throw ArgumentError('Axes must be different.');

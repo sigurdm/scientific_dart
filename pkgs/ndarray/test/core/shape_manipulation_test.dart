@@ -2577,6 +2577,36 @@ void main() {
         expect(mgridRes.shape, [2, 2, 3]);
         mgridRes.dispose();
       });
+
+      test('rot90 error message validation includes formatted rank', () {
+        final a1d = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        expect(
+          () => rot90(a1d),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              contains('(was rank 1).'),
+            ),
+          ),
+        );
+
+        final a2d = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        expect(
+          () => rot90(a2d, 1, [0, 5]),
+          throwsA(
+            isA<RangeError>().having(
+              (e) => e.message,
+              'message',
+              contains('for array of rank 2.'),
+            ),
+          ),
+        );
+      });
     });
   });
 }
