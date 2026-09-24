@@ -109,7 +109,7 @@ void processInLoop(NDArray<Float64> input) {
 
   for (var i = 0; i < 10000; i++) {
     // 2. Zero new allocations! The ufunc writes directly into the buffer.
-    multiply(input, Float64(2.0), out: outputBuffer);
+    multiply(input, NDArray.scalar(2.0), out: outputBuffer);
     
     // Use the outputBuffer results...
   }
@@ -125,27 +125,57 @@ To create a buffer of the right shape for the result of a broadcasted operation,
 
 ## Returning Views from Scopes
 
-When returning a **view** (such as a `reshape`, `transpose`, `slice`, or index-view) of an internally allocated array from a scope, the backing array still belongs to the parent array.
+When returning a **view** (such as a `reshape`, `transpose`, `slice`, or index-view) of an internally allocated array from a scope, the backing memory belongs to the root parent array.
 
-However, the detaching methods (`detachFromScope()` and `detachToParentScope()`) will attach/detach the parent array!
+Calling `detachToParentScope()` or `detachFromScope()` directly on a view throws a `StateError` (`Cannot call detachToParentScope() on a view`). This restriction is intentional: allowing a view to be detached directly would secretly keep the entire backing allocation alive in memory to serve a potentially tiny slice, leading to severe native memory leaks.
 
-Therefore, you can call detaching methods directly on the returned view, and the system will seamlessly promote the parent memory block, keeping the view fully valid and safe outside the scope:
+To return data from a view out of a scope, use one of the two valid patterns:
+
+### 1. Recommended: Compact Copy
+Materialize an owning copy of the view and detach the copy. This frees the large temporary parent buffer at scope exit and promotes only the compact slice to the enclosing scope:
 
 ```dart
 NDArray<Float64> getReshapedSamples() {
   return NDArray.scope(() {
-    // 1. Allocate parent array (registered inside the scope)
+    // 1. Allocate large temporary parent array (registered inside the scope)
     final parent = NDArray<Float64>.create([1000], DType.float64);
     
     // 2. Reshape to get a view
     final view = parent.reshape([10, 100]);
     
-    // 3. Call detach directly on the view!
-    // The parent array is automatically detached behind the scenes, keeping the view memory 100% safe!
-    return view.detachToParentScope();
+    // 3. Materialize a compact owning copy and detach it!
+    // The large temporary parent buffer is freed at scope exit.
+    return view.copy().detachToParentScope();
   }); 
 }
 ```
+
+### 2. Zero-Copy Root Promotion
+If keeping the full parent buffer alive is intentional (e.g. to avoid the cost of copying large buffers), detach the **root owning array** and return the view:
+
+```dart
+NDArray<Float64> getReshapedSamplesZeroCopy() {
+  return NDArray.scope(() {
+    // 1. Allocate parent array
+    final largeTemp = NDArray<Float64>.create([1000], DType.float64);
+    
+    // 2. Reshape to get a view
+    final view = largeTemp.reshape([10, 100]);
+    
+    // 3. Detach the root parent array; return the view!
+    largeTemp.detachToParentScope();
+    return view;
+  });
+}
+```
+
+---
+
+## Maximum Element Count Limit ($2^{31} - 1$)
+
+Individual `NDArray` allocations support up to **$2^{31} - 1$ (2,147,483,647) total elements**. Attempting to allocate an array whose total element count exceeds this limit throws an `UnsupportedError`.
+
+This limit is inherent to native SIMD and strided kernel indexing: C/C++ ufunc loops, Google Highway vectorization routines, and OpenBLAS/LAPACK matrix routines index strides, offsets, and loop dimensions using 32-bit signed integers (`ffi.Int` / `int32_t`).
 
 ---
 
@@ -177,7 +207,7 @@ void processExternalBuffer() {
   final ffi.Pointer<ffi.Double> rawBuffer = malloc<ffi.Double>(100);
 
   // 2. Wrap it in an NDArray. Since no finalizer is passed, this is externally managed.
-  final arr = NDArray<double>.fromPointer(rawBuffer.cast(), [10, 10], DType.float64);
+  final arr = NDArray<Float64>.fromPointer(rawBuffer.cast(), [10, 10], DType.float64);
 
   // 3. Run calculations on it zero-copy
   final columnSlice = arr.slice([Slice.all(), Slice(start: 5)]);
@@ -205,7 +235,7 @@ void useSelfManagedBuffer() {
 
   // Wrap and pass malloc.nativeFree as the custom native finalizer.
   // The array now owns the lifecycle of the buffer!
-  final arr = NDArray<double>.fromPointer(
+  final arr = NDArray<Float64>.fromPointer(
     rawBuffer.cast(),
     [100],
     DType.float64,
