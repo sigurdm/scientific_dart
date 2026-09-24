@@ -5,28 +5,36 @@ import 'package:analyzer/dart/element/type.dart';
 
 /// Names of methods, getters, and top-level functions in `package:ndarray` that
 /// always return a zero-copy view ([NDArray.isView] is `true`).
-const Set<String> kViewProducingNames = {
+const Set<String> kAlwaysViewNames = {
   'slice',
   'transpose',
   'T',
-  'reshape',
-  'ravel',
   'squeeze',
   'expandDims',
   'expand_dims',
   'swapaxes',
   'moveaxis',
-  'diagonal',
   'broadcastTo',
   'broadcast_to',
   'flip',
   'fliplr',
   'flipud',
   'rot90',
+};
+
+/// Names of operations that return a view for contiguous input but a fresh
+/// copy otherwise (e.g. `reshape` and `ravel` of a non-contiguous array).
+///
+/// Whether the result is a view cannot be decided statically, so rules must
+/// neither assume it is a view nor assume it is a fresh allocation.
+const Set<String> kMaybeViewNames = {
+  'reshape',
+  'ravel',
+  'diagonal',
   'materializeView',
 };
 
-/// Subset of [kViewProducingNames] that produce read-only broadcast views
+/// Subset of [kAlwaysViewNames] that produce read-only broadcast views
 /// (`stride == 0` along broadcasted axes).
 const Set<String> kBroadcastViewNames = {'broadcastTo', 'broadcast_to'};
 
@@ -340,7 +348,7 @@ bool isViewProducingExpression(
         return isViewProducingExpression(target, decls, depth: depth + 1);
       }
     }
-    if (kViewProducingNames.contains(name)) {
+    if (kAlwaysViewNames.contains(name)) {
       final targetType = unwrapped.realTarget?.staticType;
       if (targetType == null ||
           isNDArrayType(targetType) ||
@@ -414,10 +422,12 @@ bool isAxislessReductionExpression(
   if (unwrapped is MethodInvocation) {
     final name = unwrapped.methodName.name;
     if (kReductionNames.contains(name) && isNDArrayType(unwrapped.staticType)) {
-      final hasAxis = unwrapped.argumentList.arguments.any(
-        (arg) => arg is NamedArgument && arg.name.lexeme == 'axis',
+      final hasAxisOrKeepdims = unwrapped.argumentList.arguments.any(
+        (arg) =>
+            arg is NamedArgument &&
+            (arg.name.lexeme == 'axis' || arg.name.lexeme == 'keepdims'),
       );
-      return !hasAxis;
+      return !hasAxisOrKeepdims;
     }
   } else if (unwrapped is SimpleIdentifier) {
     final element = unwrapped.element;
@@ -447,7 +457,9 @@ bool isFreshScopedResourceAllocation(Expression expr) {
   }
   if (unwrapped is MethodInvocation) {
     final name = unwrapped.methodName.name;
-    if (kViewProducingNames.contains(name)) return false;
+    if (kAlwaysViewNames.contains(name) || kMaybeViewNames.contains(name)) {
+      return false;
+    }
     if (name == 'detachToParentScope' ||
         name == 'detachFromScope' ||
         name == 'scope' ||
@@ -491,7 +503,7 @@ bool isFreshScopedResourceAllocation(Expression expr) {
     }
   } else if (unwrapped is MethodInvocation) {
     final name = unwrapped.methodName.name;
-    if (kViewProducingNames.contains(name)) {
+    if (kAlwaysViewNames.contains(name) || kMaybeViewNames.contains(name)) {
       final target =
           unwrapped.realTarget ??
           (unwrapped.argumentList.arguments.isNotEmpty

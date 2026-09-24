@@ -189,11 +189,14 @@ final class _Uint64SignedComparisonVisitor extends SimpleAstVisitor<void> {
 // =============================================================================
 
 /// Flags passing a `broadcastTo` view as an `out:` argument.
+///
+/// Broadcast views have `isWriteable == false`, so operations reject them as
+/// `out:` at runtime.
 final class BroadcastViewAsOutRule extends AnalysisRule {
   static const LintCode code = LintCode(
     'ndarray_broadcast_view_as_out',
-    'Passing a broadcastTo() view as an out: buffer writes multiple output '
-        'elements to the same stride-0 memory address.',
+    'broadcastTo() returns a read-only view (isWriteable is false); passing '
+        'it as out: throws at runtime.',
     correctionMessage:
         'Allocate a writable array (e.g., zeros(...) or empty(...)) or call '
         '.copy() on the broadcast view before passing it as out:.',
@@ -240,80 +243,19 @@ final class _BroadcastViewAsOutVisitor extends SimpleAstVisitor<void> {
 }
 
 // =============================================================================
-// 4. ndarray_raw_generic_type
+// 4. ndarray_hot_loop_element_indexing
 // =============================================================================
 
-/// Flags bare `NDArray` type annotations that omit an explicit `DTypeTag` type
-/// argument (`NDArray<Float64>`, `NDArray<T>`, etc.).
-final class RawGenericTypeRule extends AnalysisRule {
-  static const LintCode code = LintCode(
-    'ndarray_raw_generic_type',
-    'Raw NDArray type annotation erases the compile-time DTypeSpec tag, '
-        'degrading .scalar to dynamic and disabling static return-type '
-        'inference.',
-    correctionMessage:
-        'Specify a concrete DTypeSpec type argument such as NDArray<Float64>, '
-        'NDArray<Float32>, NDArray<Int32>, or a generic type parameter '
-        'NDArray<T>.',
-    severity: DiagnosticSeverity.INFO,
-  );
-
-  RawGenericTypeRule()
-    : super(
-        name: code.lowerCaseName,
-        description:
-            'Always specify a DTypeTag type argument on NDArray<T> type '
-            'annotations.',
-      );
-
-  @override
-  DiagnosticCode get diagnosticCode => code;
-
-  @override
-  void registerNodeProcessors(
-    RuleVisitorRegistry registry,
-    RuleContext context,
-  ) {
-    final visitor = _RawGenericTypeVisitor(this);
-    registry.addNamedType(this, visitor);
-  }
-}
-
-final class _RawGenericTypeVisitor extends SimpleAstVisitor<void> {
-  final RawGenericTypeRule rule;
-
-  _RawGenericTypeVisitor(this.rule);
-
-  @override
-  void visitNamedType(NamedType node) {
-    if (node.name.lexeme != 'NDArray') return;
-    if (node.typeArguments != null) return;
-    if (!isNDArrayType(node.type)) return;
-
-    // Allow `is NDArray` / `is! NDArray` runtime type tests where Dart does
-    // not check generic type arguments when narrowing from Object?.
-    if (node.parent is IsExpression) return;
-
-    // Allow constructor invocations (`NDArray.zeros(...)`, `NDArray.scope(...)`)
-    // where `NDArray` is parsed as a NamedType inside ConstructorName or target.
-    if (node.parent is ConstructorName) return;
-
-    rule.reportAtNode(node);
-  }
-}
-
-// =============================================================================
-// 5. ndarray_hot_loop_element_indexing
-// =============================================================================
-
-/// Flags scalar indexing `arr[[i, j]]` inside nested loops or calling
-/// `.toList()` on an `NDArray`.
+/// Flags scalar reads `arr[[i, j]]` inside nested loops.
+///
+/// Each read allocates an index list, crosses into typed-data accessors, and
+/// boxes the result; vectorized operations or `NDIter` are usually much
+/// faster.
 final class HotLoopElementIndexingRule extends AnalysisRule {
   static const LintCode code = LintCode(
     'ndarray_hot_loop_element_indexing',
-    'Element-by-element NDArray indexing inside nested loops or .toList() heap '
-        'conversion allocates per-element Dart objects and crosses FFI on each '
-        'scalar.',
+    'Element-by-element NDArray indexing inside nested loops allocates an '
+        'index list and boxes a scalar on every access.',
     correctionMessage:
         'Prefer vectorized NDArray operations, slicing views, or NDIter for '
         'multi-dimensional traversal.',
@@ -323,9 +265,7 @@ final class HotLoopElementIndexingRule extends AnalysisRule {
   HotLoopElementIndexingRule()
     : super(
         name: code.lowerCaseName,
-        description:
-            'Avoid per-element NDArray[[i, j]] indexing in nested loops and '
-            '.toList() heap dumps.',
+        description: 'Avoid per-element NDArray[[i, j]] reads in nested loops.',
       );
 
   @override
@@ -338,7 +278,6 @@ final class HotLoopElementIndexingRule extends AnalysisRule {
   ) {
     final visitor = _HotLoopElementIndexingVisitor(this);
     registry.addIndexExpression(this, visitor);
-    registry.addMethodInvocation(this, visitor);
   }
 }
 
@@ -350,15 +289,9 @@ final class _HotLoopElementIndexingVisitor extends SimpleAstVisitor<void> {
   @override
   void visitIndexExpression(IndexExpression node) {
     if (!isNDArrayType(node.realTarget.staticType)) return;
+    // Writes (`a[[i, j]] = v`) are often unavoidable when filling results.
+    if (node.inSetterContext()) return;
     if (_enclosingLoopDepth(node) >= 2) {
-      rule.reportAtNode(node);
-    }
-  }
-
-  @override
-  void visitMethodInvocation(MethodInvocation node) {
-    if (node.methodName.name == 'toList' &&
-        isNDArrayType(node.realTarget?.staticType)) {
       rule.reportAtNode(node);
     }
   }

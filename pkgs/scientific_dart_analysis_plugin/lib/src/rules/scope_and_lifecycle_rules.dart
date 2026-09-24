@@ -5,7 +5,6 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
-import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/error/error.dart';
 
 import '../type_utils.dart';
@@ -15,16 +14,23 @@ import '../type_utils.dart';
 // =============================================================================
 
 /// Flags `NDArray` / `ScopedResource` instances allocated inside
-/// `NDArray.scope` or `ResourceScope.scope` that escape via `return` or outer
-/// assignment without calling `.detachToParentScope()` or `.detachFromScope()`.
+/// `NDArray.scope` or `ResourceScope.scope` (or views of them) that escape via
+/// `return` or outer assignment without calling `.detachToParentScope()` or
+/// `.detachFromScope()`.
+///
+/// Only values that look allocated in the scope callback are flagged:
+/// constructors, operators, and non-view calls without `out:`. Parameters,
+/// outer variables, and results of `reshape`/`ravel` (which may or may not be
+/// views) are not flagged.
 final class UnescapedScopeReturnRule extends AnalysisRule {
   static const LintCode code = LintCode(
     'ndarray_unescaped_scope_return',
-    'Returning or escaping a locally allocated ScopedResource from '
-        'NDArray.scope disposes it before the caller can use it.',
+    'This array (or the array it is a view of) was allocated inside '
+        'NDArray.scope and is disposed when the scope exits, so it escapes '
+        'as freed memory.',
     correctionMessage:
-        'Call .detachToParentScope() (or .detachFromScope()) on the returned '
-        'array, or replace NDArray.scope with NDArray.returning.',
+        'Call .detachToParentScope() on the returned array (use '
+        '.copy().detachToParentScope() for views), or use NDArray.returning.',
     severity: DiagnosticSeverity.WARNING,
   );
 
@@ -112,23 +118,42 @@ bool _isUnescapedLocalResource(
     return false;
   }
 
+  // A view of an array allocated inside the scope dangles once the scope
+  // disposes the parent, even though the view itself is not tracked.
+  final trace = traceRootArrayAndView(unwrapped, decls);
+  if (trace.throughView) {
+    final root = trace.rootElement;
+    if (root == null || !decls.elements.contains(root)) return false;
+    return _isUndetachedFreshLocal(root, scopeCallback, decls, expr.offset);
+  }
+
   if (unwrapped is SimpleIdentifier) {
     final element = unwrapped.element;
     if (element == null) return false;
-    // If declared outside the scope callback (e.g., an `out` parameter or
-    // outer variable), returning it does not dispose it on inner scope exit.
-    if (!decls.elements.contains(element)) return false;
-    final varDecl = decls.variableDeclarations[element];
-    final init = varDecl?.initializer;
-    if (init != null && isDirectlyDetachedExpression(init)) return false;
-    if (wasElementDetachedBefore(element, scopeCallback.body, expr.offset)) {
-      return false;
-    }
-    return true;
+    return _isUndetachedFreshLocal(element, scopeCallback, decls, expr.offset);
   }
 
-  // Any fresh allocation / operation call inside the scope that is not detached.
-  return true;
+  // Direct allocations: constructors, operators, and non-view calls without
+  // `out:`.
+  return isFreshScopedResourceAllocation(unwrapped);
+}
+
+/// Whether [element] is a local of [scopeCallback] initialized with a fresh
+/// allocation that has not been detached before [offset].
+bool _isUndetachedFreshLocal(
+  Element element,
+  FunctionExpression scopeCallback,
+  SubtreeDeclarations decls,
+  int offset,
+) {
+  // Declared outside the scope callback (e.g. an `out` parameter or outer
+  // variable): the inner scope does not dispose it.
+  if (!decls.elements.contains(element)) return false;
+  final init = decls.variableDeclarations[element]?.initializer;
+  if (init == null) return false;
+  if (isDirectlyDetachedExpression(init)) return false;
+  if (!isFreshScopedResourceAllocation(init)) return false;
+  return !wasElementDetachedBefore(element, scopeCallback.body, offset);
 }
 
 final class _ScopeBodyEscapeVisitor extends RecursiveAstVisitor<void> {
@@ -179,14 +204,16 @@ final class _ScopeBodyEscapeVisitor extends RecursiveAstVisitor<void> {
 // 2. ndarray_view_lifecycle_misuse
 // =============================================================================
 
-/// Flags calling `.detachToParentScope()`, `.detachFromScope()`, or `.dispose()`
-/// on a view (`isView == true`), or returning a view from `NDArray.returning`.
+/// Flags calling `.detachToParentScope()` or `.detachFromScope()` on a view
+/// (`isView == true`), or returning a view from `NDArray.returning`. All of
+/// these throw a `StateError` at runtime.
+///
+/// `dispose()` on a view is a documented no-op and is not flagged.
 final class ViewLifecycleMisuseRule extends AnalysisRule {
   static const LintCode code = LintCode(
     'ndarray_view_lifecycle_misuse',
-    'Views do not own native memory; detaching or returning a view from '
-        'NDArray.returning throws a StateError at runtime, and disposing a '
-        'view is a no-op.',
+    'Views do not own native memory; detaching a view or returning one from '
+        'NDArray.returning throws a StateError at runtime.',
     correctionMessage:
         'Materialize an owning copy with .copy() before detaching/returning, '
         'or manage the lifetime of the owning parent array instead.',
@@ -197,9 +224,8 @@ final class ViewLifecycleMisuseRule extends AnalysisRule {
     : super(
         name: code.lowerCaseName,
         description:
-            'Do not call detachToParentScope(), detachFromScope(), or '
-            'dispose() on an NDArray view, or return a view from '
-            'NDArray.returning.',
+            'Do not call detachToParentScope() or detachFromScope() on an '
+            'NDArray view, or return a view from NDArray.returning.',
       );
 
   @override
@@ -223,14 +249,12 @@ final class _ViewLifecycleMisuseVisitor extends SimpleAstVisitor<void> {
   @override
   void visitMethodInvocation(MethodInvocation node) {
     final name = node.methodName.name;
-    final enclosingBody = node.thisOrAncestorOfType<FunctionBody>();
-    final decls = enclosingBody != null
-        ? SubtreeDeclarations.collect(enclosingBody)
-        : SubtreeDeclarations();
 
-    if (name == 'detachToParentScope' ||
-        name == 'detachFromScope' ||
-        name == 'dispose') {
+    if (name == 'detachToParentScope' || name == 'detachFromScope') {
+      final enclosingBody = node.thisOrAncestorOfType<FunctionBody>();
+      final decls = enclosingBody != null
+          ? SubtreeDeclarations.collect(enclosingBody)
+          : SubtreeDeclarations();
       final target = node.realTarget;
       if (target != null && isViewProducingExpression(target, decls)) {
         rule.reportAtNode(node);
@@ -288,12 +312,17 @@ final class _ReturningViewVisitor extends RecursiveAstVisitor<void> {
 
 /// Flags `curr = op(curr)` inside a `for`/`while`/`do` loop without `out: curr`,
 /// `.dispose()`, or a per-iteration `NDArray.scope`.
+///
+/// The previous buffers are not leaked permanently: each is released when the
+/// enclosing scope ends, or eventually by its `NativeFinalizer`. But the GC
+/// does not see native memory pressure, so a long loop can accumulate a large
+/// amount of native memory before anything is reclaimed.
 final class LoopReassignmentLeakRule extends AnalysisRule {
   static const LintCode code = LintCode(
     'ndarray_loop_reassignment_leak',
-    'Reassigning an outer NDArray variable inside a loop without disposing the '
-        'previous buffer or passing out: leaks off-heap native memory each '
-        'iteration.',
+    'Reassigning an outer NDArray variable inside a loop accumulates native '
+        'memory: every previous buffer stays alive until the enclosing scope '
+        'ends or the GC finalizes it.',
     correctionMessage:
         'Pass out: to reuse the existing buffer in-place, dispose the previous '
         'array before reassigning, or wrap the loop body in NDArray.scope.',
@@ -584,30 +613,30 @@ final class _IdentityCastDisposeVisitor extends SimpleAstVisitor<void> {
 }
 
 // =============================================================================
-// 5. ndarray_isolate_capture_and_borrow
+// 5. ndarray_sendable_borrow_outlives_scope
 // =============================================================================
 
-/// Flags capturing raw `NDArray` instances across `Isolate.run` / `SendPort.send`
-/// or calling `.toSendableBorrow()` in a synchronous or un-awaited `NDArray.scope`.
-final class IsolateCaptureAndBorrowRule extends AnalysisRule {
+/// Flags `.toSendableBorrow()` inside an `NDArray.scope` whose callback is
+/// synchronous or never awaits, so the scope can dispose the borrowed buffer
+/// while a worker isolate is still reading it.
+final class SendableBorrowOutlivesScopeRule extends AnalysisRule {
   static const LintCode code = LintCode(
-    'ndarray_isolate_capture_and_borrow',
-    'Raw NDArray instances cannot be safely captured across isolates, and '
-        'toSendableBorrow() requires awaiting the worker isolate before '
-        'NDArray.scope exits.',
+    'ndarray_sendable_borrow_outlives_scope',
+    'toSendableBorrow() does not copy; if the enclosing NDArray.scope exits '
+        'before the worker isolate is done, the borrowed buffer is freed '
+        'while still in use.',
     correctionMessage:
-        'Convert the array with .toSendable() (or .toSendableBorrow() inside '
-        'an async scope that awaits Isolate.run) before crossing isolate '
-        'boundaries.',
+        'Make the scope callback async and await the isolate work, or use '
+        '.toSendable() to transfer an owned copy.',
     severity: DiagnosticSeverity.WARNING,
   );
 
-  IsolateCaptureAndBorrowRule()
+  SendableBorrowOutlivesScopeRule()
     : super(
         name: code.lowerCaseName,
         description:
-            'Ensure safe cross-isolate transfer and lifetime management for '
-            'NDArray and SendableNDArray.',
+            'Only call toSendableBorrow() inside an async NDArray.scope that '
+            'awaits the isolate work.',
       );
 
   @override
@@ -618,70 +647,26 @@ final class IsolateCaptureAndBorrowRule extends AnalysisRule {
     RuleVisitorRegistry registry,
     RuleContext context,
   ) {
-    final visitor = _IsolateCaptureAndBorrowVisitor(this);
+    final visitor = _SendableBorrowVisitor(this);
     registry.addMethodInvocation(this, visitor);
   }
 }
 
-final class _IsolateCaptureAndBorrowVisitor extends SimpleAstVisitor<void> {
-  final IsolateCaptureAndBorrowRule rule;
+final class _SendableBorrowVisitor extends SimpleAstVisitor<void> {
+  final SendableBorrowOutlivesScopeRule rule;
 
-  _IsolateCaptureAndBorrowVisitor(this.rule);
+  _SendableBorrowVisitor(this.rule);
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    final name = node.methodName.name;
-
-    // Case 1: `Isolate.run(() => ...)` capturing an outer `NDArray` variable.
-    if (name == 'run' && _isIsolateTarget(node.target)) {
-      final args = node.argumentList.arguments;
-      if (args.isNotEmpty) {
-        final callback = unwrapParenthesized(args.first.argumentExpression);
-        if (callback is FunctionExpression) {
-          final innerDecls = SubtreeDeclarations.collect(callback);
-          final captureFinder = _CapturedNDArrayFinder(innerDecls.elements);
-          callback.accept(captureFinder);
-          for (final capturedNode in captureFinder.capturedNodes) {
-            rule.reportAtNode(capturedNode);
-          }
-        }
-      }
+    if (node.methodName.name != 'toSendableBorrow') return;
+    if (!isNDArrayType(node.realTarget?.staticType)) return;
+    final scopeCallback = _findEnclosingScopeCallback(node);
+    if (scopeCallback == null) return;
+    if (!scopeCallback.body.isAsynchronous ||
+        !_hasAwaitExpression(scopeCallback.body)) {
+      rule.reportAtNode(node);
     }
-
-    // Case 2: `sendPort.send(arr)` where `arr` contains an `NDArray`.
-    if (name == 'send') {
-      final targetType = node.realTarget?.staticType;
-      if (targetType is InterfaceType &&
-          targetType.element.name == 'SendPort') {
-        for (final arg in node.argumentList.arguments) {
-          final expr = arg.argumentExpression;
-          if (containsScopedResourceType(expr.staticType)) {
-            rule.reportAtNode(expr);
-          }
-        }
-      }
-    }
-
-    // Case 3: `a.toSendableBorrow()` inside an `NDArray.scope` whose callback
-    // is synchronous or does not `await` the isolate work before scope exit.
-    if (name == 'toSendableBorrow' &&
-        isNDArrayType(node.realTarget?.staticType)) {
-      final enclosingScopeCallback = _findEnclosingScopeCallback(node);
-      if (enclosingScopeCallback != null) {
-        if (!enclosingScopeCallback.body.isAsynchronous ||
-            !_hasAwaitExpression(enclosingScopeCallback.body)) {
-          rule.reportAtNode(node);
-        }
-      }
-    }
-  }
-
-  bool _isIsolateTarget(Expression? target) {
-    if (target is SimpleIdentifier) return target.name == 'Isolate';
-    if (target is PrefixedIdentifier) {
-      return target.identifier.name == 'Isolate';
-    }
-    return false;
   }
 
   FunctionExpression? _findEnclosingScopeCallback(AstNode node) {
@@ -707,24 +692,6 @@ final class _IsolateCaptureAndBorrowVisitor extends SimpleAstVisitor<void> {
     final finder = _AwaitFinder();
     body.accept(finder);
     return finder.found;
-  }
-}
-
-final class _CapturedNDArrayFinder extends RecursiveAstVisitor<void> {
-  final Set<Element> innerElements;
-  final List<SimpleIdentifier> capturedNodes = [];
-
-  _CapturedNDArrayFinder(this.innerElements);
-
-  @override
-  void visitSimpleIdentifier(SimpleIdentifier node) {
-    if (node.inDeclarationContext()) return;
-    final element = node.element;
-    if (element is VariableElement || element is FormalParameterElement) {
-      if (!innerElements.contains(element) && isNDArrayType(node.staticType)) {
-        capturedNodes.add(node);
-      }
-    }
   }
 }
 

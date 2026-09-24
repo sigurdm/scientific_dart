@@ -9,30 +9,27 @@ import 'package:analyzer/error/error.dart';
 import '../type_utils.dart';
 
 // =============================================================================
-// 11. ndarray_0d_reduction_indexing_and_leak
+// 11. ndarray_0d_reduction_indexing
 // =============================================================================
 
-/// Flags non-empty coordinate indexing `r[[0]]` on a 0-dimensional reduction
-/// result (which throws `RangeError` at runtime) and unscoped `sum(a).scalar`
-/// calls (which leak the 0-D native buffer).
-final class ZeroDimReductionIndexingAndLeakRule extends AnalysisRule {
+/// Flags non-empty coordinate indexing (`r[[0]]`) on the result of an
+/// axis-less reduction such as `sum(a)`, which is 0-dimensional and throws a
+/// `RangeError` for any non-empty index.
+final class ZeroDimReductionIndexingRule extends AnalysisRule {
   static const LintCode code = LintCode(
-    'ndarray_0d_reduction_indexing_and_leak',
-    'Axis-less reductions return a 0-dimensional (shape []) NDArray: indexing '
-        'with non-empty coordinates throws a RangeError, and calling '
-        'sum(a).scalar outside NDArray.scope leaks the 0-D native buffer.',
-    correctionMessage:
-        'Use .scalar inside NDArray.scope (or dispose the 0-D reduction array '
-        'after reading .scalar).',
+    'ndarray_0d_reduction_indexing',
+    'Axis-less reductions return a 0-dimensional (shape []) NDArray; indexing '
+        'it with non-empty coordinates throws a RangeError.',
+    correctionMessage: 'Read the value with .scalar (or index with []).',
     severity: DiagnosticSeverity.WARNING,
   );
 
-  ZeroDimReductionIndexingAndLeakRule()
+  ZeroDimReductionIndexingRule()
     : super(
         name: code.lowerCaseName,
         description:
-            'Prevent rank-0 RangeError when indexing axis-less reductions and '
-            'off-heap leaks when chaining .scalar outside NDArray.scope.',
+            'Do not index the 0-dimensional result of an axis-less reduction '
+            'with non-empty coordinates.',
       );
 
   @override
@@ -45,12 +42,11 @@ final class ZeroDimReductionIndexingAndLeakRule extends AnalysisRule {
   ) {
     final visitor = _ZeroDimReductionVisitor(this);
     registry.addIndexExpression(this, visitor);
-    registry.addPropertyAccess(this, visitor);
   }
 }
 
 final class _ZeroDimReductionVisitor extends SimpleAstVisitor<void> {
-  final ZeroDimReductionIndexingAndLeakRule rule;
+  final ZeroDimReductionIndexingRule rule;
 
   _ZeroDimReductionVisitor(this.rule);
 
@@ -63,96 +59,8 @@ final class _ZeroDimReductionVisitor extends SimpleAstVisitor<void> {
     if (!isAxislessReductionExpression(node.realTarget, decls)) return;
 
     final indexExpr = unwrapParenthesized(node.index);
-    // Indexing a 0-D array with `[0]` (non-empty list) or an int `0` fails at
-    // runtime because rank == 0 requires `[]` or `.scalar`.
     if (indexExpr is ListLiteral && indexExpr.elements.isEmpty) return;
     rule.reportAtNode(node);
-  }
-
-  @override
-  void visitPropertyAccess(PropertyAccess node) {
-    if (node.propertyName.name != 'scalar') return;
-    if (isInsideActiveScope(node)) return;
-    final target = unwrapParenthesized(node.realTarget);
-    if (target is MethodInvocation &&
-        isAxislessReductionExpression(target, SubtreeDeclarations())) {
-      rule.reportAtNode(node);
-    }
-  }
-}
-
-// =============================================================================
-// 12. scoped_resource_chained_intermediate_leak
-// =============================================================================
-
-/// Flags nested `ScopedResource` allocations (`add(multiply(a, b), c)` or
-/// `(a * b) + c`) outside `NDArray.scope` / `ResourceScope.scope`, where the
-/// intermediate native buffer has no variable reference and cannot be disposed.
-final class ScopedResourceChainedIntermediateLeakRule extends AnalysisRule {
-  static const LintCode code = LintCode(
-    'scoped_resource_chained_intermediate_leak',
-    'Chaining ScopedResource allocations outside NDArray.scope / '
-        'ResourceScope.scope leaks the intermediate off-heap buffer.',
-    correctionMessage:
-        'Wrap the compound expression in NDArray.returning(() => ...) or '
-        'NDArray.scope(() { ... }), or bind and dispose the intermediate.',
-    severity: DiagnosticSeverity.WARNING,
-  );
-
-  ScopedResourceChainedIntermediateLeakRule()
-    : super(
-        name: code.lowerCaseName,
-        description:
-            'Avoid anonymous intermediate ScopedResource allocations outside '
-            'an active ResourceScope.',
-      );
-
-  @override
-  DiagnosticCode get diagnosticCode => code;
-
-  @override
-  void registerNodeProcessors(
-    RuleVisitorRegistry registry,
-    RuleContext context,
-  ) {
-    final visitor = _ChainedIntermediateLeakVisitor(this);
-    registry.addMethodInvocation(this, visitor);
-    registry.addBinaryExpression(this, visitor);
-  }
-}
-
-final class _ChainedIntermediateLeakVisitor extends SimpleAstVisitor<void> {
-  final ScopedResourceChainedIntermediateLeakRule rule;
-
-  _ChainedIntermediateLeakVisitor(this.rule);
-
-  @override
-  void visitMethodInvocation(MethodInvocation node) {
-    if (isInsideActiveScope(node)) return;
-    if (!isScopedResourceType(node.staticType)) return;
-    if (isScopeInvocation(node) || isReturningInvocation(node)) return;
-    if (node.methodName.name == 'where') return;
-
-    for (final arg in node.argumentList.arguments) {
-      if (arg is NamedArgument && arg.name.lexeme == 'out') continue;
-      final argExpr = arg.argumentExpression;
-      if (isFreshScopedResourceAllocation(argExpr)) {
-        rule.reportAtNode(argExpr);
-      }
-    }
-  }
-
-  @override
-  void visitBinaryExpression(BinaryExpression node) {
-    if (isInsideActiveScope(node)) return;
-    if (!isScopedResourceType(node.staticType)) return;
-
-    if (isFreshScopedResourceAllocation(node.leftOperand)) {
-      rule.reportAtNode(node.leftOperand);
-    }
-    if (isFreshScopedResourceAllocation(node.rightOperand)) {
-      rule.reportAtNode(node.rightOperand);
-    }
   }
 }
 
@@ -272,100 +180,6 @@ final class _NDIterCoordsVisitor extends SimpleAstVisitor<void> {
 }
 
 // =============================================================================
-// 14. ndarray_overlapping_view_out_or_where
-// =============================================================================
-
-/// Flags passing an `out:` argument that aliases the `where:` mask or is a
-/// slice/transpose/flip view of one of the operation's input arrays.
-final class OverlappingViewOutOrWhereRule extends AnalysisRule {
-  static const LintCode code = LintCode(
-    'ndarray_overlapping_view_out_or_where',
-    'Passing an out: array that aliases the where: mask or is a non-identical '
-        'view (slice/transpose/flip) of an input array corrupts in-place '
-        'execution.',
-    correctionMessage:
-        'Use an independent output buffer or pass the exact input array '
-        '(out: a) when in-place execution is supported.',
-    severity: DiagnosticSeverity.WARNING,
-  );
-
-  OverlappingViewOutOrWhereRule()
-    : super(
-        name: code.lowerCaseName,
-        description:
-            'Prevent memory aliasing between out: and where: or non-identical '
-            'views of input arrays.',
-      );
-
-  @override
-  DiagnosticCode get diagnosticCode => code;
-
-  @override
-  void registerNodeProcessors(
-    RuleVisitorRegistry registry,
-    RuleContext context,
-  ) {
-    final visitor = _OverlappingViewOutOrWhereVisitor(this);
-    registry.addMethodInvocation(this, visitor);
-  }
-}
-
-final class _OverlappingViewOutOrWhereVisitor extends SimpleAstVisitor<void> {
-  final OverlappingViewOutOrWhereRule rule;
-
-  _OverlappingViewOutOrWhereVisitor(this.rule);
-
-  @override
-  void visitMethodInvocation(MethodInvocation node) {
-    Expression? outExpr;
-    Expression? whereExpr;
-    final positionalInputs = <Expression>[];
-
-    for (final arg in node.argumentList.arguments) {
-      if (arg is NamedArgument) {
-        final name = arg.name.lexeme;
-        if (name == 'out') {
-          outExpr = arg.argumentExpression;
-        } else if (name == 'where') {
-          whereExpr = arg.argumentExpression;
-        }
-      } else {
-        positionalInputs.add(arg.argumentExpression);
-      }
-    }
-
-    if (outExpr == null) return;
-    final body = node.thisOrAncestorOfType<FunctionBody>();
-    final decls = body != null
-        ? SubtreeDeclarations.collect(body)
-        : SubtreeDeclarations();
-
-    final outTrace = traceRootArrayAndView(outExpr, decls);
-    if (outTrace.rootElement == null) return;
-
-    // Case 1: `out:` shares root buffer with `where:` mask.
-    if (whereExpr != null) {
-      final whereTrace = traceRootArrayAndView(whereExpr, decls);
-      if (whereTrace.rootElement == outTrace.rootElement) {
-        rule.reportAtNode(outExpr);
-        return;
-      }
-    }
-
-    // Case 2: `out:` shares root buffer with a positional input AND at least
-    // one of them went through a view (`slice`, `transpose`, `flip`, etc.).
-    for (final input in positionalInputs) {
-      final inTrace = traceRootArrayAndView(input, decls);
-      if (inTrace.rootElement == outTrace.rootElement &&
-          (outTrace.throughView || inTrace.throughView)) {
-        rule.reportAtNode(outExpr);
-        return;
-      }
-    }
-  }
-}
-
-// =============================================================================
 // 15. ndarray_lost_mutation_on_copy
 // =============================================================================
 
@@ -463,7 +277,8 @@ final class FromPointerDanglingArenaRule extends AnalysisRule {
         'an immediate use-after-free.',
     correctionMessage:
         'Return .copy() (detached if inside a scope) before the pointer is '
-        'freed, or transfer pointer ownership via customNativeFinalizer.',
+        'freed, or transfer ownership of the pointer by passing '
+        'nativeFinalizer: to NDArray.fromPointer instead of freeing it.',
     severity: DiagnosticSeverity.WARNING,
   );
 
@@ -692,17 +507,17 @@ final class _LocalScopedResourceRefFinder extends RecursiveAstVisitor<void> {
 }
 
 // =============================================================================
-// 18. symbolic_lambdify_or_subs_in_loop
+// 18. symbolic_lambdify_in_loop
 // =============================================================================
 
-/// Flags calling `expr.lambdify(...)` or `expr.subs(...).evalf()` inside a
-/// `for`/`while`/`do` loop when `expr` was declared outside the loop.
+/// Flags `expr.lambdify(...)` inside a `for`/`while`/`do` loop when `expr` is
+/// a variable declared outside the loop and not reassigned inside it, so the
+/// same expression is compiled again on every iteration.
 final class SymbolicLambdifyInLoopRule extends AnalysisRule {
   static const LintCode code = LintCode(
-    'symbolic_lambdify_or_subs_in_loop',
-    'Calling lambdify() or subs().evalf() on a loop-invariant symbolic '
-        'expression inside a loop recompiles or re-traverses the symbolic AST '
-        'on every iteration.',
+    'symbolic_lambdify_in_loop',
+    'Calling lambdify() on a loop-invariant symbolic expression inside a loop '
+        'recompiles it on every iteration.',
     correctionMessage:
         'Hoist `final fn = expr.lambdify(vars);` outside the loop and '
         'evaluate `fn.callScalar(...)` or `fn.callArray(...)`.',
@@ -737,25 +552,24 @@ final class _SymbolicLambdifyInLoopVisitor extends SimpleAstVisitor<void> {
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    final methodName = node.methodName.name;
-    if (methodName != 'lambdify' && methodName != 'subs') return;
+    if (node.methodName.name != 'lambdify') return;
+    final receiver = node.realTarget;
+    if (receiver == null) return;
+    final target = unwrapParenthesized(receiver);
+    if (target is! SimpleIdentifier) return;
+    final element = target.element;
+    if (element == null) return;
+
     final loopNode = _findEnclosingLoop(node);
     if (loopNode == null) return;
-    final loopDecls = SubtreeDeclarations.collect(loopNode);
-
-    final target = node.realTarget != null
-        ? unwrapParenthesized(node.realTarget!)
-        : (node.argumentList.arguments.isNotEmpty
-              ? unwrapParenthesized(
-                  node.argumentList.arguments.first.argumentExpression,
-                )
-              : null);
-    if (target is SimpleIdentifier) {
-      final elem = target.element;
-      if (elem != null && !loopDecls.elements.contains(elem)) {
-        rule.reportAtNode(node);
-      }
+    if (SubtreeDeclarations.collect(loopNode).elements.contains(element)) {
+      return;
     }
+    final assignments = _AssignmentFinder(element);
+    loopNode.accept(assignments);
+    if (assignments.found) return;
+
+    rule.reportAtNode(node);
   }
 
   AstNode? _findEnclosingLoop(AstNode node) {
@@ -772,65 +586,20 @@ final class _SymbolicLambdifyInLoopVisitor extends SimpleAstVisitor<void> {
   }
 }
 
-// =============================================================================
-// 19. ndarray_where_both_branches_eager_alloc
-// =============================================================================
+/// Finds assignments to [target] (`target = ...`, `target += ...`).
+final class _AssignmentFinder extends RecursiveAstVisitor<void> {
+  final Element target;
+  bool found = false;
 
-/// Flags calling `where(cond, branchA, branchB)` outside `NDArray.scope` when
-/// `branchA` or `branchB` is an inline `NDArray`-allocating call, since both
-/// branches are eagerly allocated and immediately leaked.
-final class WhereEagerBranchAllocationRule extends AnalysisRule {
-  static const LintCode code = LintCode(
-    'ndarray_where_both_branches_eager_alloc',
-    'where(condition, x, y) eagerly evaluates both x and y; passing inline '
-        'NDArray allocations outside NDArray.scope leaks the temporary branch '
-        'buffers.',
-    correctionMessage:
-        'Wrap the where(...) call in NDArray.returning(() => ...) or '
-        'NDArray.scope(() { ... }).',
-    severity: DiagnosticSeverity.WARNING,
-  );
-
-  WhereEagerBranchAllocationRule()
-    : super(
-        name: code.lowerCaseName,
-        description:
-            'Wrap eager branch allocations in where(condition, x, y) inside '
-            'NDArray.scope.',
-      );
+  _AssignmentFinder(this.target);
 
   @override
-  DiagnosticCode get diagnosticCode => code;
-
-  @override
-  void registerNodeProcessors(
-    RuleVisitorRegistry registry,
-    RuleContext context,
-  ) {
-    final visitor = _WhereEagerBranchVisitor(this);
-    registry.addMethodInvocation(this, visitor);
-  }
-}
-
-final class _WhereEagerBranchVisitor extends SimpleAstVisitor<void> {
-  final WhereEagerBranchAllocationRule rule;
-
-  _WhereEagerBranchVisitor(this.rule);
-
-  @override
-  void visitMethodInvocation(MethodInvocation node) {
-    if (node.methodName.name != 'where') return;
-    final args = node.argumentList.arguments;
-    if (args.length < 3) return;
-    if (!isNDArrayType(args[0].argumentExpression.staticType)) return;
-
-    final branchX = args[1].argumentExpression;
-    final branchY = args[2].argumentExpression;
-    final xAlloc = isFreshScopedResourceAllocation(branchX);
-    final yAlloc = isFreshScopedResourceAllocation(branchY);
-    if ((xAlloc && yAlloc) ||
-        (!isInsideActiveScope(node) && (xAlloc || yAlloc))) {
-      rule.reportAtNode(node);
+  void visitAssignmentExpression(AssignmentExpression node) {
+    final lhs = node.leftHandSide;
+    if (lhs is SimpleIdentifier && lhs.element == target) {
+      found = true;
+      return;
     }
+    super.visitAssignmentExpression(node);
   }
 }

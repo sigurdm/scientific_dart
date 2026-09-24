@@ -5,6 +5,8 @@ import 'package:analyzer/source/source_range.dart';
 import 'package:analyzer_plugin/utilities/change_builder/change_builder_core.dart';
 import 'package:analyzer_plugin/utilities/fixes/fixes.dart';
 
+import '../type_utils.dart';
+
 /// Quick fix that replaces `a == b` with `a.equals(b)` (or `!a.equals(b)` for
 /// `a != b`).
 final class ReplaceWithEqualsFix extends ResolvedCorrectionProducer {
@@ -82,7 +84,8 @@ final class ReplaceWithIdenticalFix extends ResolvedCorrectionProducer {
 }
 
 /// Quick fix that appends `.detachToParentScope()` to an unescaped `NDArray`
-/// returned from `NDArray.scope`.
+/// returned from `NDArray.scope`, or `.copy().detachToParentScope()` when the
+/// returned value is a view (views cannot be detached).
 final class AddDetachToParentScopeFix extends ResolvedCorrectionProducer {
   static const FixKind _addDetachKind = FixKind(
     'scientific_dart_analysis_plugin.fix.addDetachToParentScope',
@@ -106,8 +109,17 @@ final class AddDetachToParentScopeFix extends ResolvedCorrectionProducer {
         : node.thisOrAncestorOfType<Expression>();
     if (expr == null) return;
 
+    final body = expr.thisOrAncestorOfType<FunctionBody>();
+    final decls = body != null
+        ? SubtreeDeclarations.collect(body)
+        : SubtreeDeclarations();
+    final isView = traceRootArrayAndView(expr, decls).throughView;
+    final insertion = isView
+        ? '.copy().detachToParentScope()'
+        : '.detachToParentScope()';
+
     await builder.addDartFileEdit(file, (builder) {
-      builder.addSimpleInsertion(expr.end, '.detachToParentScope()');
+      builder.addSimpleInsertion(expr.end, insertion);
     });
   }
 }

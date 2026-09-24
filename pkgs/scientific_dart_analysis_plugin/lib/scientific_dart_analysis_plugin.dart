@@ -4,7 +4,9 @@ import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/diagnostic/diagnostic.dart';
 import 'package:analyzer/error/listener.dart';
+// ignore: implementation_imports
 import 'package:analyzer/src/analysis_rule/rule_context.dart';
+// ignore: implementation_imports
 import 'package:analyzer/src/lint/linter_visitor.dart';
 
 import 'src/fixes/ndarray_fixes.dart';
@@ -23,7 +25,7 @@ List<AnalysisRule> createScopeAndLifecycleRules() => [
   ViewLifecycleMisuseRule(),
   LoopReassignmentLeakRule(),
   IdentityCastDisposeRule(),
-  IsolateCaptureAndBorrowRule(),
+  SendableBorrowOutlivesScopeRule(),
 ];
 
 /// API contract, DType safety, and performance analysis rules.
@@ -31,24 +33,20 @@ List<AnalysisRule> createApiAndPerformanceRules() => [
   EqualityOperatorRule(),
   Uint64SignedComparisonRule(),
   BroadcastViewAsOutRule(),
-  RawGenericTypeRule(),
   HotLoopElementIndexingRule(),
 ];
 
 /// Advanced memory-lifetime, view-aliasing, iterator, and symbolic rules.
 List<AnalysisRule> createAdvancedMemoryAndViewRules() => [
-  ZeroDimReductionIndexingAndLeakRule(),
-  ScopedResourceChainedIntermediateLeakRule(),
+  ZeroDimReductionIndexingRule(),
   NDIterCoordsAliasingOrMutationRule(),
-  OverlappingViewOutOrWhereRule(),
   LostMutationOnCopyRule(),
   FromPointerDanglingArenaRule(),
   UnawaitedAsyncInScopeRule(),
   SymbolicLambdifyInLoopRule(),
-  WhereEagerBranchAllocationRule(),
 ];
 
-/// All 19 `scientific_dart_analysis_plugin` analysis rules.
+/// All `scientific_dart_analysis_plugin` analysis rules.
 List<AnalysisRule> createAllScientificDartRules() => [
   ...createScopeAndLifecycleRules(),
   ...createApiAndPerformanceRules(),
