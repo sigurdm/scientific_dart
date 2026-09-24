@@ -389,9 +389,9 @@ void main() {
     var correct = true;
     for (var i = 0; i < outMag.shape[0]; i++) {
       for (var j = 0; j < outMag.shape[1]; j++) {
-        final valNaive = magnitudeNaive.getCell([i, j]);
-        final valGeneric = magnitudeGenericPre.getCell([i, j]);
-        final valSpecial = outMag.getCell([i, j]);
+        final valNaive = magnitudeNaive.getCell([i, j]) as num;
+        final valGeneric = magnitudeGenericPre.getCell([i, j]) as num;
+        final valSpecial = outMag.getCell([i, j]) as num;
         if ((valNaive - valGeneric).abs() > 1e-5 ||
             (valNaive - valSpecial).abs() > 1e-5) {
           correct = false;

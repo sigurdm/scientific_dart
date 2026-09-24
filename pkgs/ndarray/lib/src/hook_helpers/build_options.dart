@@ -19,6 +19,9 @@ final class BuildOptions {
   /// Selected build mode (`fetch`, `local`, or `source`).
   final BuildModeEnum buildMode;
 
+  /// Whether [buildMode] was explicitly specified via user defines or environment variables.
+  final bool isExplicit;
+
   /// Path to a prebuilt dynamic library when [buildMode] is [BuildModeEnum.local].
   final Uri? localPath;
 
@@ -28,6 +31,7 @@ final class BuildOptions {
   /// Creates a [BuildOptions] configuration.
   const BuildOptions({
     required this.buildMode,
+    this.isExplicit = false,
     this.localPath,
     this.checkoutPath,
   });
@@ -64,6 +68,7 @@ final class BuildOptions {
 
     return BuildOptions(
       buildMode: buildMode,
+      isExplicit: rawMode != null,
       localPath: localPath,
       checkoutPath: checkoutPath,
     );

@@ -10,8 +10,127 @@
 #include "hwy/contrib/sort/vqsort.h"
 #include "hwy/highway.h"
 #include "hwy/per_target.h"
-#include <vector>
 #include <type_traits>
+
+static thread_local int g_ndarray_oom_flag = 0;
+
+extern "C" {
+void ndarray_set_oom_flag(void) {
+    g_ndarray_oom_flag = 1;
+}
+
+int ndarray_consume_oom_flag(void) {
+    int prev = g_ndarray_oom_flag;
+    g_ndarray_oom_flag = 0;
+    return prev;
+}
+}
+
+template <typename T>
+struct NoThrowBuffer {
+    T *ptr_ = nullptr;
+    size_t size_ = 0;
+    size_t cap_ = 0;
+    bool ok_ = true;
+
+    NoThrowBuffer() noexcept = default;
+    explicit NoThrowBuffer(size_t n) noexcept {
+        resize(n);
+    }
+    NoThrowBuffer(size_t n, T val) noexcept {
+        assign(n, val);
+    }
+    ~NoThrowBuffer() noexcept {
+        std::free(ptr_);
+    }
+    NoThrowBuffer(const NoThrowBuffer &) = delete;
+    NoThrowBuffer &operator=(const NoThrowBuffer &) = delete;
+
+    bool resize(size_t n) noexcept {
+        std::free(ptr_);
+        ptr_ = nullptr;
+        size_ = 0;
+        cap_ = 0;
+        if (n == 0) {
+            ok_ = true;
+            return true;
+        }
+        if (n > static_cast<size_t>(-1) / sizeof(T)) {
+            ok_ = false;
+            ndarray_set_oom_flag();
+            return false;
+        }
+        ptr_ = static_cast<T *>(std::calloc(n, sizeof(T)));
+        if (!ptr_) {
+            ok_ = false;
+            ndarray_set_oom_flag();
+            return false;
+        }
+        size_ = n;
+        cap_ = n;
+        ok_ = true;
+        return true;
+    }
+
+    bool assign(size_t n, T val) noexcept {
+        if (!resize(n)) return false;
+        const unsigned char *bytes = reinterpret_cast<const unsigned char *>(&val);
+        bool is_zero = true;
+        for (size_t b = 0; b < sizeof(T); ++b) {
+            if (bytes[b] != 0) {
+                is_zero = false;
+                break;
+            }
+        }
+        if (!is_zero) {
+            for (size_t i = 0; i < n; ++i) {
+                ptr_[i] = val;
+            }
+        }
+        return true;
+    }
+
+    bool assign(const T *first, const T *last) noexcept {
+        size_t n = static_cast<size_t>(last - first);
+        if (!resize(n)) return false;
+        if (n > 0 && first != nullptr) {
+            std::memcpy(ptr_, first, n * sizeof(T));
+        }
+        return true;
+    }
+
+    bool push_back(const T &val) noexcept {
+        if (size_ == cap_) {
+            size_t new_cap = cap_ == 0 ? 8 : (cap_ < 1024 ? cap_ * 2 : cap_ + cap_ / 2);
+            if (new_cap <= cap_ || new_cap > static_cast<size_t>(-1) / sizeof(T)) {
+                ok_ = false;
+                ndarray_set_oom_flag();
+                return false;
+            }
+            T *new_ptr = static_cast<T *>(std::realloc(ptr_, new_cap * sizeof(T)));
+            if (!new_ptr) {
+                ok_ = false;
+                ndarray_set_oom_flag();
+                return false;
+            }
+            ptr_ = new_ptr;
+            cap_ = new_cap;
+        }
+        ptr_[size_++] = val;
+        return true;
+    }
+
+    T *data() noexcept { return ptr_; }
+    const T *data() const noexcept { return ptr_; }
+    T *begin() noexcept { return ptr_; }
+    T *end() noexcept { return ptr_ + size_; }
+    const T *begin() const noexcept { return ptr_; }
+    const T *end() const noexcept { return ptr_ + size_; }
+    size_t size() const noexcept { return size_; }
+    bool ok() const noexcept { return ok_; }
+    T &operator[](size_t i) noexcept { return ptr_[i]; }
+    const T &operator[](size_t i) const noexcept { return ptr_[i]; }
+};
 
 // ----------------------------------------------------------------------------
 // Struct definitions for Complex number representations
@@ -571,11 +690,12 @@ static void partition_impl(T *array, int size, const int *k_list, int k_size) {
 
     if (valid_len <= 1) return;
 
-    std::vector<int> sorted_k;
+    NoThrowBuffer<int> sorted_k;
     const int *k_ptr = k_list;
     int num_k = k_size;
     if (!std::is_sorted(k_list, k_list + k_size)) {
         sorted_k.assign(k_list, k_list + k_size);
+        if (!sorted_k.ok()) return;
         std::sort(sorted_k.begin(), sorted_k.end());
         k_ptr = sorted_k.data();
     }
@@ -626,11 +746,12 @@ static void argpartition_impl(const T *data, int *indices, int size, const int *
 
     if (valid_len <= 1) return;
 
-    std::vector<int> sorted_k;
+    NoThrowBuffer<int> sorted_k;
     const int *k_ptr = k_list;
     int num_k = k_size;
     if (!std::is_sorted(k_list, k_list + k_size)) {
         sorted_k.assign(k_list, k_list + k_size);
+        if (!sorted_k.ok()) return;
         std::sort(sorted_k.begin(), sorted_k.end());
         k_ptr = sorted_k.data();
     }
@@ -735,12 +856,12 @@ static void sort_float_impl(T *array, int size, int kind) {
     int non_nan_size = size;
     if (first_nan != -1) {
         if (kind == 1) { // stable sort: preserve NaN order
-            std::vector<T> nans;
-            nans.push_back(array[first_nan]);
+            NoThrowBuffer<T> nans;
+            if (!nans.push_back(array[first_nan])) return;
             int write_pos = first_nan;
             for (int i = first_nan + 1; i < size; i++) {
                 if (std::isnan(array[i])) {
-                    nans.push_back(array[i]);
+                    if (!nans.push_back(array[i])) return;
                 } else {
                     array[write_pos++] = array[i];
                 }
@@ -885,11 +1006,12 @@ static void to_bool_mask(
         return;
     }
     if (shape == nullptr || strides == nullptr || rank <= 0) return;
-    std::vector<int> coord_vec;
+    NoThrowBuffer<int> coord_vec;
     int coord_stack[32] = {0};
     int *coord = coord_stack;
     if (rank > 32) {
         coord_vec.assign(rank, 0);
+        if (!coord_vec.ok()) return;
         coord = coord_vec.data();
     }
     int offset = 0;
@@ -993,7 +1115,7 @@ static void argminmax(
     for (int d = 0; d < rank; d++) {
         if (d != axis) dest_size *= shape[d];
     }
-    std::vector<int> coord_dest_vec, strides_dest_vec, shape_dest_vec;
+    NoThrowBuffer<int> coord_dest_vec, strides_dest_vec, shape_dest_vec;
     int coord_dest_stack[32] = {0};
     int strides_dest_stack[32] = {0};
     int shape_dest_stack[32] = {0};
@@ -1004,6 +1126,7 @@ static void argminmax(
         coord_dest_vec.assign(rank, 0);
         strides_dest_vec.assign(rank, 0);
         shape_dest_vec.assign(rank, 0);
+        if (!coord_dest_vec.ok() || !strides_dest_vec.ok() || !shape_dest_vec.ok()) return;
         coord_dest = coord_dest_vec.data();
         strides_dest_clean = strides_dest_vec.data();
         shape_dest_clean = shape_dest_vec.data();
@@ -1089,7 +1212,7 @@ static void count_nonzero(
     for (int d = 0; d < rank; d++) {
         if (d != axis) dest_size *= shape[d];
     }
-    std::vector<int> coord_dest_vec, strides_dest_vec, shape_dest_vec;
+    NoThrowBuffer<int> coord_dest_vec, strides_dest_vec, shape_dest_vec;
     int coord_dest_stack[32] = {0};
     int strides_dest_stack[32] = {0};
     int shape_dest_stack[32] = {0};
@@ -1100,6 +1223,7 @@ static void count_nonzero(
         coord_dest_vec.assign(rank, 0);
         strides_dest_vec.assign(rank, 0);
         shape_dest_vec.assign(rank, 0);
+        if (!coord_dest_vec.ok() || !strides_dest_vec.ok() || !shape_dest_vec.ok()) return;
         coord_dest = coord_dest_vec.data();
         strides_dest_clean = strides_dest_vec.data();
         shape_dest_clean = shape_dest_vec.data();
@@ -1305,12 +1429,12 @@ extern "C" void native_sort_float16(uint16_t *array, int size, int kind) {
     int non_nan_size = size;
     if (first_nan != -1) {
         if (kind == 1) {
-            std::vector<uint16_t> nans;
-            nans.push_back(array[first_nan]);
+            NoThrowBuffer<uint16_t> nans;
+            if (!nans.push_back(array[first_nan])) return;
             int write_pos = first_nan;
             for (int i = first_nan + 1; i < size; i++) {
                 if (is_nan_float16(array[i])) {
-                    nans.push_back(array[i]);
+                    if (!nans.push_back(array[i])) return;
                 } else {
                     array[write_pos++] = array[i];
                 }
@@ -1380,12 +1504,12 @@ extern "C" void native_sort_bfloat16(uint16_t *array, int size, int kind) {
     int non_nan_size = size;
     if (first_nan != -1) {
         if (kind == 1) {
-            std::vector<uint16_t> nans;
-            nans.push_back(array[first_nan]);
+            NoThrowBuffer<uint16_t> nans;
+            if (!nans.push_back(array[first_nan])) return;
             int write_pos = first_nan;
             for (int i = first_nan + 1; i < size; i++) {
                 if (is_nan_bfloat16(array[i])) {
-                    nans.push_back(array[i]);
+                    if (!nans.push_back(array[i])) return;
                 } else {
                     array[write_pos++] = array[i];
                 }
@@ -1627,11 +1751,12 @@ extern "C" void native_partition_uint8(uint8_t *array, int size, const int *k_li
 extern "C" void native_partition_complex128(double *array, int size, const int *k_list, int k_size) {
     if (array == nullptr || size <= 1 || k_list == nullptr || k_size <= 0) return;
     complex128_t *carr = (complex128_t *)array;
-    std::vector<int> sorted_k;
+    NoThrowBuffer<int> sorted_k;
     const int *k_ptr = k_list;
     int num_k = k_size;
     if (!std::is_sorted(k_list, k_list + k_size)) {
         sorted_k.assign(k_list, k_list + k_size);
+        if (!sorted_k.ok()) return;
         std::sort(sorted_k.begin(), sorted_k.end());
         k_ptr = sorted_k.data();
     }
@@ -1647,11 +1772,12 @@ extern "C" void native_partition_complex128(double *array, int size, const int *
 extern "C" void native_partition_complex64(float *array, int size, const int *k_list, int k_size) {
     if (array == nullptr || size <= 1 || k_list == nullptr || k_size <= 0) return;
     complex64_t *carr = (complex64_t *)array;
-    std::vector<int> sorted_k;
+    NoThrowBuffer<int> sorted_k;
     const int *k_ptr = k_list;
     int num_k = k_size;
     if (!std::is_sorted(k_list, k_list + k_size)) {
         sorted_k.assign(k_list, k_list + k_size);
+        if (!sorted_k.ok()) return;
         std::sort(sorted_k.begin(), sorted_k.end());
         k_ptr = sorted_k.data();
     }
@@ -1704,11 +1830,12 @@ extern "C" void native_partition_float16(uint16_t *array, int size, const int *k
 
     if (valid_len <= 1) return;
 
-    std::vector<int> sorted_k;
+    NoThrowBuffer<int> sorted_k;
     const int *k_ptr = k_list;
     int num_k = k_size;
     if (!std::is_sorted(k_list, k_list + k_size)) {
         sorted_k.assign(k_list, k_list + k_size);
+        if (!sorted_k.ok()) return;
         std::sort(sorted_k.begin(), sorted_k.end());
         k_ptr = sorted_k.data();
     }
@@ -1752,11 +1879,12 @@ extern "C" void native_partition_bfloat16(uint16_t *array, int size, const int *
 
     if (valid_len <= 1) return;
 
-    std::vector<int> sorted_k;
+    NoThrowBuffer<int> sorted_k;
     const int *k_ptr = k_list;
     int num_k = k_size;
     if (!std::is_sorted(k_list, k_list + k_size)) {
         sorted_k.assign(k_list, k_list + k_size);
+        if (!sorted_k.ok()) return;
         std::sort(sorted_k.begin(), sorted_k.end());
         k_ptr = sorted_k.data();
     }
@@ -1809,11 +1937,12 @@ extern "C" void native_argpartition_complex128(const double *data, int *indices,
     for (int i = 0; i < size; i++) indices[i] = i;
     if (size <= 1) return;
     const complex128_t *cdata = (const complex128_t *)data;
-    std::vector<int> sorted_k;
+    NoThrowBuffer<int> sorted_k;
     const int *k_ptr = k_list;
     int num_k = k_size;
     if (!std::is_sorted(k_list, k_list + k_size)) {
         sorted_k.assign(k_list, k_list + k_size);
+        if (!sorted_k.ok()) return;
         std::sort(sorted_k.begin(), sorted_k.end());
         k_ptr = sorted_k.data();
     }
@@ -1834,11 +1963,12 @@ extern "C" void native_argpartition_complex64(const float *data, int *indices, i
     for (int i = 0; i < size; i++) indices[i] = i;
     if (size <= 1) return;
     const complex64_t *cdata = (const complex64_t *)data;
-    std::vector<int> sorted_k;
+    NoThrowBuffer<int> sorted_k;
     const int *k_ptr = k_list;
     int num_k = k_size;
     if (!std::is_sorted(k_list, k_list + k_size)) {
         sorted_k.assign(k_list, k_list + k_size);
+        if (!sorted_k.ok()) return;
         std::sort(sorted_k.begin(), sorted_k.end());
         k_ptr = sorted_k.data();
     }
@@ -1893,11 +2023,12 @@ extern "C" void native_argpartition_float16(const uint16_t *data, int *indices, 
 
     if (valid_len <= 1) return;
 
-    std::vector<int> sorted_k;
+    NoThrowBuffer<int> sorted_k;
     const int *k_ptr = k_list;
     int num_k = k_size;
     if (!std::is_sorted(k_list, k_list + k_size)) {
         sorted_k.assign(k_list, k_list + k_size);
+        if (!sorted_k.ok()) return;
         std::sort(sorted_k.begin(), sorted_k.end());
         k_ptr = sorted_k.data();
     }
@@ -1943,11 +2074,12 @@ extern "C" void native_argpartition_bfloat16(const uint16_t *data, int *indices,
 
     if (valid_len <= 1) return;
 
-    std::vector<int> sorted_k;
+    NoThrowBuffer<int> sorted_k;
     const int *k_ptr = k_list;
     int num_k = k_size;
     if (!std::is_sorted(k_list, k_list + k_size)) {
         sorted_k.assign(k_list, k_list + k_size);
+        if (!sorted_k.ok()) return;
         std::sort(sorted_k.begin(), sorted_k.end());
         k_ptr = sorted_k.data();
     }
@@ -2058,11 +2190,12 @@ extern "C" void native_collect_nonzero_coords(
     int **out_coords
 ) {
     if (cond == nullptr || shape == nullptr || strides == nullptr || out_coords == nullptr || total_size <= 0 || rank <= 0) return;
-    std::vector<int> coord_vec;
+    NoThrowBuffer<int> coord_vec;
     int coord_stack[32] = {0};
     int *coord = coord_stack;
     if (rank > 32) {
         coord_vec.assign(rank, 0);
+        if (!coord_vec.ok()) return;
         coord = coord_vec.data();
     }
     int offset = 0;
@@ -2098,11 +2231,12 @@ extern "C" void native_collect_nonzero_coords_grouped(
     int *out_coords
 ) {
     if (cond == nullptr || shape == nullptr || strides == nullptr || out_coords == nullptr || total_size <= 0 || rank <= 0) return;
-    std::vector<int> coord_vec;
+    NoThrowBuffer<int> coord_vec;
     int coord_stack[32] = {0};
     int *coord = coord_stack;
     if (rank > 32) {
         coord_vec.assign(rank, 0);
+        if (!coord_vec.ok()) return;
         coord = coord_vec.data();
     }
     int offset = 0;
@@ -2573,7 +2707,11 @@ static int unique_template(const T *src, T *dest, int size,
                            Comp comp, Eq eq) {
     if (size <= 0) return 0;
     
-    std::vector<int> idx(size);
+    NoThrowBuffer<int> idx(size);
+    if (!idx.ok()) {
+        ndarray_set_oom_flag();
+        return -4;
+    }
     for (int i = 0; i < size; i++) idx[i] = i;
     
     std::stable_sort(idx.begin(), idx.end(), [&](int a, int b) {

@@ -96,12 +96,12 @@ NDArray<T> bincount<T extends DTypeTag>(
     }
 
     // Validate non-negative
-    final minVal = min(x).scalar;
+    final minVal = min(x).scalar as int;
     if (minVal < 0) {
       throw ArgumentError('Input array x must be non-negative.');
     }
 
-    final maxVal = max(x).scalar;
+    final maxVal = max(x).scalar as int;
     final minRequiredSize = math.max(maxVal + 1, minlength ?? 0);
 
     if (weights != null) {
@@ -584,8 +584,8 @@ digitizeAs<Tx extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
             minX = BigInt.from(minRes as int).toUnsigned(64).toDouble();
             maxX = BigInt.from(maxRes as int).toUnsigned(64).toDouble();
           } else {
-            minX = minRes.toDouble();
-            maxX = maxRes.toDouble();
+            minX = (minRes as num).toDouble();
+            maxX = (maxRes as num).toDouble();
           }
           if (!minX.isFinite || !maxX.isFinite || minX > maxX) {
             throw ArgumentError('range must be finite and min <= max.');

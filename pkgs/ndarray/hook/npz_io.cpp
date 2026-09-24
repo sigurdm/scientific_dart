@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include <mutex>
+#include <atomic>
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
@@ -46,10 +46,13 @@ static inline uint32_t read_u32_le(const uint8_t* p) {
 // Slicing-by-16 Fast IEEE 802.3 CRC-32
 // ---------------------------------------------------------------------------
 static uint32_t s_crc32_table[16][256];
-static std::once_flag s_crc32_once;
+static std::atomic<int> s_crc32_init_state{0};
 
-static void init_crc32_tables(void) {
-    std::call_once(s_crc32_once, []() {
+static void init_crc32_tables(void) noexcept {
+    int state = s_crc32_init_state.load(std::memory_order_acquire);
+    if (state == 2) return;
+    int expected = 0;
+    if (s_crc32_init_state.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
         for (uint32_t i = 0; i < 256; i++) {
             uint32_t c = i;
             for (int j = 0; j < 8; j++) {
@@ -62,7 +65,10 @@ static void init_crc32_tables(void) {
                 s_crc32_table[j][i] = s_crc32_table[0][s_crc32_table[j - 1][i] & 0xFF] ^ (s_crc32_table[j - 1][i] >> 8);
             }
         }
-    });
+        s_crc32_init_state.store(2, std::memory_order_release);
+    } else {
+        while (s_crc32_init_state.load(std::memory_order_acquire) != 2) {}
+    }
 }
 
 static uint32_t npz_fast_crc32(uint32_t initial_crc, const void* buf, size_t len) {
@@ -630,11 +636,21 @@ NDARRAY_EXPORT void* npz_open_reader(const char* filepath, int64_t* out_num_entr
             e->header_status = -2;
             continue;
         }
+        uint16_t lfh_flags = read_u16_le(lfh + 6);
+        uint32_t lfh_crc32 = read_u32_le(lfh + 14);
+        if ((lfh_flags & 8) == 0 && lfh_crc32 != 0 && lfh_crc32 != e->crc32) {
+            e->header_status = -6;
+            continue;
+        }
         uint16_t lfh_nlen = read_u16_le(lfh + 26);
         uint16_t lfh_elen = read_u16_le(lfh + 28);
+        if (lfh_off + 30 + lfh_nlen + lfh_elen > file_size) {
+            e->header_status = -2;
+            continue;
+        }
         e->data_offset = lfh_off + 30 + lfh_nlen + lfh_elen;
 
-        if (e->data_offset + e->comp_size > file_size) {
+        if (e->comp_size > file_size - e->data_offset) {
             e->header_status = -2;
             continue;
         }
@@ -714,6 +730,16 @@ NDARRAY_EXPORT int npz_reader_get_entry_info(
             return -9;
         }
         if (reader->mmap_data) {
+            if (e->data_offset + e->uncomp_size > reader->file_size) {
+                return -2;
+            }
+            mz_ulong computed_crc = mz_crc32(
+                MZ_CRC32_INIT,
+                reader->mmap_data + e->data_offset,
+                (size_t)e->uncomp_size);
+            if ((uint32_t)computed_crc != e->crc32) {
+                return -6;
+            }
             memcpy(header_buf, reader->mmap_data + e->data_offset, total_header_len);
         } else {
             fseek(reader->fp, (long)e->data_offset, SEEK_SET);
@@ -818,11 +844,16 @@ NDARRAY_EXPORT int npz_reader_extract_data(
     if (data_len > dest_capacity) return -5;
 
     NpzEntryInfo* e = &reader->entries[index];
+    if (header_len > e->uncomp_size || data_len != e->uncomp_size - header_len) {
+        return -4;
+    }
+
     if (e->comp_method == 0) {
         if (e->comp_size != e->uncomp_size) {
             return -4;
         }
-        if (header_len > e->uncomp_size || data_len > e->uncomp_size - header_len) {
+        if (e->data_offset > reader->file_size ||
+            e->uncomp_size > reader->file_size - e->data_offset) {
             return -4;
         }
         size_t src_offset = (size_t)e->data_offset + header_len;
@@ -830,11 +861,33 @@ NDARRAY_EXPORT int npz_reader_extract_data(
             return -4;
         }
         if (reader->mmap_data) {
+            mz_ulong computed_crc = mz_crc32(
+                MZ_CRC32_INIT,
+                reader->mmap_data + e->data_offset,
+                (size_t)e->uncomp_size);
+            if ((uint32_t)computed_crc != e->crc32) {
+                return -6;
+            }
             memcpy(dest_ptr, reader->mmap_data + src_offset, data_len);
         } else {
-            fseek(reader->fp, (long)src_offset, SEEK_SET);
+            fseek(reader->fp, (long)e->data_offset, SEEK_SET);
+            mz_ulong computed_crc = MZ_CRC32_INIT;
+            size_t skip_remaining = header_len;
+            uint8_t skip_buf[512];
+            while (skip_remaining > 0) {
+                size_t to_read = skip_remaining < 512 ? skip_remaining : 512;
+                if (fread(skip_buf, 1, to_read, reader->fp) != to_read) {
+                    return -4;
+                }
+                computed_crc = mz_crc32(computed_crc, skip_buf, to_read);
+                skip_remaining -= to_read;
+            }
             if (fread(dest_ptr, 1, data_len, reader->fp) != data_len) {
                 return -4;
+            }
+            computed_crc = mz_crc32(computed_crc, (const mz_uint8*)dest_ptr, data_len);
+            if ((uint32_t)computed_crc != e->crc32) {
+                return -6;
             }
         }
         return 0;
@@ -859,6 +912,7 @@ NDARRAY_EXPORT int npz_reader_extract_data(
         mz_zip_reader_extract_iter_state* iter = mz_zip_reader_extract_iter_new(&reader->zip, (mz_uint)index, 0);
         if (!iter) return -2;
 
+        mz_ulong computed_crc = MZ_CRC32_INIT;
         size_t skip_remaining = header_len;
         uint8_t skip_buf[512];
         while (skip_remaining > 0) {
@@ -868,12 +922,19 @@ NDARRAY_EXPORT int npz_reader_extract_data(
                 mz_zip_reader_extract_iter_free(iter);
                 return -3;
             }
+            computed_crc = mz_crc32(computed_crc, skip_buf, to_read);
             skip_remaining -= to_read;
         }
 
         size_t n = mz_zip_reader_extract_iter_read(iter, dest_ptr, data_len);
-        mz_zip_reader_extract_iter_free(iter);
+        if (n == data_len) {
+            computed_crc = mz_crc32(computed_crc, (const mz_uint8*)dest_ptr, data_len);
+        }
+        mz_bool iter_ok = mz_zip_reader_extract_iter_free(iter);
         if (n != data_len) return -4;
+        if (!iter_ok || (uint32_t)computed_crc != e->crc32) {
+            return -6;
+        }
 
         return 0;
     }

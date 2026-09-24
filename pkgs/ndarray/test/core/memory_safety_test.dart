@@ -464,6 +464,27 @@ void main() {
           ScratchArena.reset(marker);
         }
       });
+
+      test('reset throws StateError on stale or out-of-order marker', () {
+        final markerStart = ScratchArena.marker;
+        ScratchArena.allocate<ffi.Uint8>(128);
+        final markerMid = ScratchArena.marker;
+        ScratchArena.allocate<ffi.Uint8>(128);
+        final markerAhead = ScratchArena.marker;
+
+        // Reset back to markerMid
+        ScratchArena.reset(markerMid);
+
+        // Attempting to reset to markerAhead (which was allocated after markerMid and is now ahead of current offset) throws StateError
+        expect(() => ScratchArena.reset(markerAhead), throwsStateError);
+
+        // Reset all the way back to markerStart
+        ScratchArena.reset(markerStart);
+
+        // Attempting to reset to markerMid or markerAhead (both stale/ahead of markerStart) throws StateError
+        expect(() => ScratchArena.reset(markerMid), throwsStateError);
+        expect(() => ScratchArena.reset(markerAhead), throwsStateError);
+      });
     });
 
     group('Pointer Safety Tests', () {

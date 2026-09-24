@@ -103,6 +103,11 @@ void main() {
 > - To compute an element-wise boolean mask comparing two arrays (equivalent to NumPy's `a == b`), use **`equal(a, b)`**, which returns an `NDArray<Boolean>`.
 > - To check if two floating-point arrays are numerically equal within relative/absolute tolerances ($|a - b| \le \text{atol} + \text{rtol} \cdot |b|$, equivalent to `np.allclose(a, b)`), always use **`allClose(a, b, rtol: 1e-5, atol: 1e-8)`** or **`isClose(a, b)`**.
 
+> [!NOTE]
+> **Top-Level Math Functions and `dart:math` Namespace Conflicts**
+>
+> Because `package:ndarray/ndarray.dart` exports vectorized top-level math functions (`sin`, `cos`, `sqrt`, `max`, `min`, `exp`, `log`, etc.), files that also use `dart:math` for scalar operations should import `dart:math` with a prefix (`import 'dart:math' as math;`) or import `ndarray` with a prefix (`import 'package:ndarray/ndarray.dart' as np;`).
+
 ---
 
 ## Comprehensive Code Examples
@@ -308,7 +313,7 @@ void main() {
 
 `ndarray` is the foundation of the Dart Scientific Computing Workspace and integrates with companion packages in this monorepo:
 
-- **[`package:gpuarray`](../gpuarray)**: GPU-accelerated N-dimensional array computing with compute shaders and zero-copy/streaming `NDArray` interoperability.
+- **[`package:gpuarray`](https://github.com/sigurdm/scientific_dart/tree/main/pkgs/gpuarray)**: GPU-accelerated N-dimensional array computing with compute shaders and zero-copy/streaming `NDArray` interoperability.
 - **[`package:ndarray_ma`](../ndarray_ma)**: Masked arrays (`MaskedArray`) for `ndarray`, enabling robust computation and statistical reductions over datasets with missing or invalid entries.
 - **[`package:resource_scope`](../resource_scope)**: Zone-based lexical lifetime management (`ResourceScope`) underlying `NDArray.scope` and deterministic FFI memory disposal.
 - **[`package:symbolic_dart`](../symbolic_dart)**: Native Computer Algebra System (CAS) symbolic mathematics with symbolic-to-numerical `ndarray` evaluation.
@@ -325,4 +330,4 @@ For deep dives into architecture and usage patterns, see the guides in [`doc/`](
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0 — see the [LICENSE](../../LICENSE) file for details.
+This project is licensed under the Apache License, Version 2.0 — see the [LICENSE](https://github.com/sigurdm/scientific_dart/blob/main/pkgs/ndarray/LICENSE) file for details.

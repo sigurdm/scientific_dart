@@ -9,9 +9,84 @@
 
 #include "custom_indexing.h"
 #include <cstdint>
-#include <vector>
+#include <cstdlib>
 #include <cstring>
+#include <algorithm>
 #include <type_traits>
+
+template <typename T>
+struct NoThrowBuffer {
+    T *ptr_ = nullptr;
+    size_t size_ = 0;
+    size_t cap_ = 0;
+    bool ok_ = true;
+
+    NoThrowBuffer() noexcept = default;
+    explicit NoThrowBuffer(size_t n) noexcept {
+        resize(n);
+    }
+    NoThrowBuffer(size_t n, T val) noexcept {
+        assign(n, val);
+    }
+    ~NoThrowBuffer() noexcept {
+        std::free(ptr_);
+    }
+    NoThrowBuffer(const NoThrowBuffer &) = delete;
+    NoThrowBuffer &operator=(const NoThrowBuffer &) = delete;
+
+    bool resize(size_t n) noexcept {
+        std::free(ptr_);
+        ptr_ = nullptr;
+        size_ = 0;
+        cap_ = 0;
+        if (n == 0) {
+            ok_ = true;
+            return true;
+        }
+        if (n > static_cast<size_t>(-1) / sizeof(T)) {
+            ok_ = false;
+            return false;
+        }
+        ptr_ = static_cast<T *>(std::calloc(n, sizeof(T)));
+        if (!ptr_) {
+            ok_ = false;
+            return false;
+        }
+        size_ = n;
+        cap_ = n;
+        ok_ = true;
+        return true;
+    }
+
+    bool assign(size_t n, T val) noexcept {
+        if (!resize(n)) return false;
+        const unsigned char *bytes = reinterpret_cast<const unsigned char *>(&val);
+        bool is_zero = true;
+        for (size_t b = 0; b < sizeof(T); ++b) {
+            if (bytes[b] != 0) {
+                is_zero = false;
+                break;
+            }
+        }
+        if (!is_zero) {
+            for (size_t i = 0; i < n; ++i) {
+                ptr_[i] = val;
+            }
+        }
+        return true;
+    }
+
+    T *data() noexcept { return ptr_; }
+    const T *data() const noexcept { return ptr_; }
+    T *begin() noexcept { return ptr_; }
+    T *end() noexcept { return ptr_ + size_; }
+    const T *begin() const noexcept { return ptr_; }
+    const T *end() const noexcept { return ptr_ + size_; }
+    size_t size() const noexcept { return size_; }
+    bool ok() const noexcept { return ok_; }
+    T &operator[](size_t i) noexcept { return ptr_[i]; }
+    const T &operator[](size_t i) const noexcept { return ptr_[i]; }
+};
 
 #if defined(_MSC_VER)
 #define RESTRICT __restrict
@@ -192,12 +267,13 @@ static int take_along_axis_impl(
     // --- General Multi-Dimensional Strided Path ---
     int64_t eff_idx_strides[32];
     int64_t eff_arr_base_strides[32];
-    std::vector<int64_t> eff_idx_vec, eff_arr_vec;
+    NoThrowBuffer<int64_t> eff_idx_vec, eff_arr_vec;
     int64_t *p_eff_idx = eff_idx_strides;
     int64_t *p_eff_arr = eff_arr_base_strides;
     if (rank > 32) {
-        eff_idx_vec.resize(rank);
-        eff_arr_vec.resize(rank);
+        if (!eff_idx_vec.resize(rank) || !eff_arr_vec.resize(rank)) {
+            return -4;
+        }
         p_eff_idx = eff_idx_vec.data();
         p_eff_arr = eff_arr_vec.data();
     }
@@ -214,10 +290,12 @@ static int take_along_axis_impl(
     const int64_t axis_stride = arr_strides[axis];
 
     int64_t coord_stack[32] = {0};
-    std::vector<int64_t> coord_vec;
+    NoThrowBuffer<int64_t> coord_vec;
     int64_t *coord = coord_stack;
     if (rank > 32) {
-        coord_vec.assign(rank, 0);
+        if (!coord_vec.assign(rank, 0)) {
+            return -4;
+        }
         coord = coord_vec.data();
     }
 
@@ -559,12 +637,13 @@ static int put_along_axis_impl(
     // --- General Multi-Dimensional Strided Path ---
     int64_t eff_val_strides[32];
     int64_t eff_tgt_base_strides[32];
-    std::vector<int64_t> eff_val_vec, eff_tgt_vec;
+    NoThrowBuffer<int64_t> eff_val_vec, eff_tgt_vec;
     int64_t *p_eff_val = eff_val_strides;
     int64_t *p_eff_tgt = eff_tgt_base_strides;
     if (rank > 32) {
-        eff_val_vec.resize(rank);
-        eff_tgt_vec.resize(rank);
+        if (!eff_val_vec.resize(rank) || !eff_tgt_vec.resize(rank)) {
+            return -4;
+        }
         p_eff_val = eff_val_vec.data();
         p_eff_tgt = eff_tgt_vec.data();
     }
@@ -581,10 +660,12 @@ static int put_along_axis_impl(
     const int64_t axis_stride = target_strides[axis];
 
     int64_t coord_stack[32] = {0};
-    std::vector<int64_t> coord_vec;
+    NoThrowBuffer<int64_t> coord_vec;
     int64_t *coord = coord_stack;
     if (rank > 32) {
-        coord_vec.assign(rank, 0);
+        if (!coord_vec.assign(rank, 0)) {
+            return -4;
+        }
         coord = coord_vec.data();
     }
 
@@ -954,12 +1035,13 @@ extern "C" int native_tile_contiguous(
     // --- N-D General Path ---
     size_t src_block_bytes[32];
     size_t dest_block_bytes[32];
-    std::vector<size_t> src_block_vec, dest_block_vec;
+    NoThrowBuffer<size_t> src_block_vec, dest_block_vec;
     size_t *p_src_block = src_block_bytes;
     size_t *p_dest_block = dest_block_bytes;
     if (rank > 32) {
-        src_block_vec.resize(rank);
-        dest_block_vec.resize(rank);
+        if (!src_block_vec.resize(rank) || !dest_block_vec.resize(rank)) {
+            return -4;
+        }
         p_src_block = src_block_vec.data();
         p_dest_block = dest_block_vec.data();
     }
@@ -1009,10 +1091,12 @@ static int tile_strided_impl(
     if (total_elements == 0) return 0;
 
     int64_t coord_stack[32] = {0};
-    std::vector<int64_t> coord_vec;
+    NoThrowBuffer<int64_t> coord_vec;
     int64_t *coord = coord_stack;
     if (rank > 32) {
-        coord_vec.assign(rank, 0);
+        if (!coord_vec.assign(rank, 0)) {
+            return -4;
+        }
         coord = coord_vec.data();
     }
 
@@ -1351,15 +1435,15 @@ static int pad_2d_impl(
     // Precompute horizontal index maps if needed
     int64_t map_left_stack[256];
     int64_t map_right_stack[256];
-    std::vector<int64_t> map_left_vec, map_right_vec;
+    NoThrowBuffer<int64_t> map_left_vec, map_right_vec;
     int64_t *p_map_left = map_left_stack;
     int64_t *p_map_right = map_right_stack;
     if (pad_left > 256) {
-        map_left_vec.resize(pad_left);
+        if (!map_left_vec.resize(pad_left)) return -4;
         p_map_left = map_left_vec.data();
     }
     if (pad_right > 256) {
-        map_right_vec.resize(pad_right);
+        if (!map_right_vec.resize(pad_right)) return -4;
         p_map_right = map_right_vec.data();
     }
 
@@ -1534,10 +1618,10 @@ static int pad_nd_impl(
     int64_t inner_pad_after = pad_after[rank - 1];
 
     int64_t dest_strides[32];
-    std::vector<int64_t> dest_strides_vec;
+    NoThrowBuffer<int64_t> dest_strides_vec;
     int64_t *p_dest_strides = dest_strides;
     if (rank > 32) {
-        dest_strides_vec.resize(rank);
+        if (!dest_strides_vec.resize(rank)) return -4;
         p_dest_strides = dest_strides_vec.data();
     }
     p_dest_strides[rank - 1] = 1;
@@ -1551,25 +1635,25 @@ static int pad_nd_impl(
     }
 
     int64_t coord[32] = {0};
-    std::vector<int64_t> coord_vec;
+    NoThrowBuffer<int64_t> coord_vec;
     int64_t *p_coord = coord;
     if (rank > 32) {
-        coord_vec.assign(rank, 0);
+        if (!coord_vec.assign(rank, 0)) return -4;
         p_coord = coord_vec.data();
     }
 
     // Precompute inner left and right index maps
     int64_t map_left_stack[256];
     int64_t map_right_stack[256];
-    std::vector<int64_t> map_left_vec, map_right_vec;
+    NoThrowBuffer<int64_t> map_left_vec, map_right_vec;
     int64_t *p_map_left = map_left_stack;
     int64_t *p_map_right = map_right_stack;
     if (inner_pad_before > 256) {
-        map_left_vec.resize(inner_pad_before);
+        if (!map_left_vec.resize(inner_pad_before)) return -4;
         p_map_left = map_left_vec.data();
     }
     if (inner_pad_after > 256) {
-        map_right_vec.resize(inner_pad_after);
+        if (!map_right_vec.resize(inner_pad_after)) return -4;
         p_map_right = map_right_vec.data();
     }
 
@@ -1708,10 +1792,10 @@ static int pad_nd_impl(
         }
 
         int64_t coord_dim[32] = {0};
-        std::vector<int64_t> coord_dim_vec;
+        NoThrowBuffer<int64_t> coord_dim_vec;
         int64_t *p_coord_dim = coord_dim;
         if (dim > 32) {
-            coord_dim_vec.assign(dim, 0);
+            if (!coord_dim_vec.assign(dim, 0)) return -4;
             p_coord_dim = coord_dim_vec.data();
         }
 
@@ -2047,7 +2131,8 @@ extern "C" int native_roll_1d(
         memcpy(d_ptr, s_ptr + b2, b1);
         memcpy(d_ptr + b1, s_ptr, b2);
     } else {
-        std::vector<uint8_t> tmp(total_bytes);
+        NoThrowBuffer<uint8_t> tmp(total_bytes);
+        if (!tmp.ok()) return -4;
         memcpy(tmp.data(), s_ptr + b2, b1);
         memcpy(tmp.data() + b1, s_ptr, b2);
         memcpy(d_ptr, tmp.data(), total_bytes);
@@ -2083,8 +2168,9 @@ static int roll_strided_impl(
     int64_t s = shift % axis_size;
     if (s < 0) s += axis_size;
 
-    std::vector<T> temp(total_elements);
-    std::vector<int64_t> coords(rank, 0);
+    NoThrowBuffer<T> temp(total_elements);
+    NoThrowBuffer<int64_t> coords(rank, 0);
+    if (!temp.ok() || !coords.ok()) return -4;
 
     for (int64_t idx = 0; idx < total_elements; idx++) {
         int64_t src_offset = 0;
@@ -2244,7 +2330,8 @@ static int roll_contiguous_impl(
             memcpy(d_ptr, s_ptr + b2, b1);
             memcpy(d_ptr + b1, s_ptr, b2);
         } else {
-            std::vector<uint8_t> tmp(total_bytes);
+            NoThrowBuffer<uint8_t> tmp(total_bytes);
+            if (!tmp.ok()) return -4;
             memcpy(tmp.data(), s_ptr + b2, b1);
             memcpy(tmp.data() + b1, s_ptr, b2);
             memcpy(d_ptr, tmp.data(), total_bytes);
@@ -2275,7 +2362,8 @@ static int roll_contiguous_impl(
             memcpy(dest_outer + b1, src_outer, b2);
         }
     } else {
-        std::vector<uint8_t> tmp(total_bytes);
+        NoThrowBuffer<uint8_t> tmp(total_bytes);
+        if (!tmp.ok()) return -4;
         for (int64_t o = 0; o < outer_count; o++) {
             const uint8_t *src_outer = s_ptr + o * outer_stride_bytes;
             uint8_t *tmp_outer = tmp.data() + o * outer_stride_bytes;

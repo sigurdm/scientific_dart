@@ -1351,7 +1351,7 @@ NDArray<T> inv<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = inv<T>(a);
-        temp.copy(out: out as dynamic);
+        temp.copy(out: out);
         return out;
       });
     }
@@ -1637,7 +1637,7 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = det<T>(a);
-        temp.copy(out: out as dynamic);
+        temp.copy(out: out);
         return out;
       });
     }
@@ -2373,7 +2373,7 @@ NDArray<T> solve<T extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out) || sharesMemory(b, out)) {
       return NDArray.scope(() {
         final temp = solve<T>(a, b);
-        temp.copy(out: out as dynamic);
+        temp.copy(out: out);
         return out;
       });
     }
@@ -3187,7 +3187,7 @@ NDArray<T> pinv<T extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = pinv<T>(a, rcond: rcond);
-        temp.copy(out: out as dynamic);
+        temp.copy(out: out);
         return out;
       });
     }
@@ -3286,7 +3286,7 @@ NDArray<T> matrix_power<T extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = matrix_power<T>(a, n);
-        temp.copy(out: out as dynamic);
+        temp.copy(out: out);
         return out;
       });
     }
@@ -3440,7 +3440,7 @@ NDArray<T> cholesky<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = cholesky<T>(a);
-        temp.copy(out: out as dynamic);
+        temp.copy(out: out);
         return out;
       });
     }
@@ -4757,7 +4757,7 @@ eigh<F extends DTypeTag, R extends DTypeTag>(
           Slice.all(),
         ]);
         if (sliceView.dtype == targetDType) {
-          sliceView.copy(out: aCopy2D as dynamic);
+          (sliceView as NDArray<DTypeTag>).copy(out: aCopy2D);
         } else {
           final casted = castNDArray(sliceView, targetDType);
           casted.copy(out: aCopy2D);
@@ -4965,7 +4965,7 @@ NDArray<R> eigvalsh<R extends DTypeTag>(
       return NDArray.scope(() {
         final temp = eigvalsh<R>(a, uplo: uplo);
         if (out.dtype == temp.dtype) {
-          temp.copy(out: out as dynamic);
+          temp.copy(out: out as NDArray<R>);
         } else {
           castNDArray(temp, out.dtype).copy(out: out);
         }
@@ -5006,7 +5006,7 @@ NDArray<R> eigvalsh<R extends DTypeTag>(
           Slice.all(),
         ]);
         if (sliceView.dtype == targetDType) {
-          sliceView.copy(out: aCopy2D as dynamic);
+          (sliceView as NDArray<DTypeTag>).copy(out: aCopy2D);
         } else {
           final casted = castNDArray(sliceView, targetDType);
           casted.copy(out: aCopy2D);
@@ -5308,7 +5308,7 @@ NDArray<R> eigvalsh<R extends DTypeTag>(
         ]);
 
         if (sliceView.dtype == targetDType) {
-          sliceView.copy(out: aCopy2D as dynamic);
+          (sliceView as NDArray<DTypeTag>).copy(out: aCopy2D);
         } else {
           final casted = castNDArray(sliceView, targetDType);
           casted.copy(out: aCopy2D);
@@ -5600,7 +5600,7 @@ NDArray<R> eigvalsh<R extends DTypeTag>(
           Slice.all(),
         ]);
         if (sliceView.dtype == targetDType) {
-          sliceView.copy(out: aCopy2D as dynamic);
+          (sliceView as NDArray<DTypeTag>).copy(out: aCopy2D);
         } else {
           final casted = castNDArray(sliceView, targetDType);
           casted.copy(out: aCopy2D);
@@ -5849,7 +5849,7 @@ NDArray<T> outer<T extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out) || sharesMemory(b, out)) {
       return NDArray.scope(() {
         final temp = outer<DTypeTag>(a, b);
-        temp.copy(out: out as dynamic);
+        temp.copy(out: out);
         return out;
       });
     }
@@ -6097,7 +6097,7 @@ NDArray<T> cross<T extends DTypeTag>(
           axisc: axisc,
           axis: axis,
         );
-        temp.copy(out: out as dynamic);
+        temp.copy(out: out);
         return out;
       });
     }
@@ -6505,7 +6505,7 @@ NDArray<R> norm<R extends DTypeTag>(
     if (!out.isContiguous || sharesMemory(a, out)) {
       return NDArray.scope(() {
         final temp = norm<R>(a, ord: ord, axis: axis, keepdims: keepdims);
-        temp.copy(out: out as dynamic);
+        temp.copy(out: out);
         return out;
       });
     }
@@ -7405,10 +7405,12 @@ NDArray<R> cond<R extends DTypeTag>(
               strides: aUse.strides.sublist(rank - 2),
               offsetElements: offsetA,
             );
-      final froNormVal = norm<DTypeTag>(
-        aSlice as NDArray<AnySpec>,
-        ord: NormKind.frobenius,
-      ).scalar;
+      final froNormVal =
+          norm<DTypeTag>(
+                aSlice as NDArray<AnySpec>,
+                ord: NormKind.frobenius,
+              ).scalar
+              as double;
       double val;
       if (froNormVal.isNaN || froNormVal.isInfinite || froNormVal == 0.0) {
         val = double.nan;
@@ -7446,16 +7448,15 @@ NDArray<R> cond<R extends DTypeTag>(
       } else {
         final normAVal = (ord == NormKind.frobenius)
             ? froNormVal
-            : norm<DTypeTag>(aSlice, ord: ord).scalar;
+            : norm<DTypeTag>(aSlice, ord: ord).scalar as double;
         if (normAVal.isNaN) {
           val = double.nan;
         } else {
           try {
             final invSliceA = inv<DTypeTag>(aSlice);
-            final normInvAVal = norm<DTypeTag>(
-              invSliceA as NDArray<AnySpec>,
-              ord: ord,
-            ).scalar;
+            final normInvAVal =
+                norm<DTypeTag>(invSliceA as NDArray<AnySpec>, ord: ord).scalar
+                    as double;
             invSliceA.dispose();
             if (normInvAVal.isInfinite) {
               val = double.infinity;

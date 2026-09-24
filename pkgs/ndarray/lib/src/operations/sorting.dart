@@ -1420,7 +1420,7 @@ NDArray<R> searchsortedAs<T extends DTypeTag, R extends DTypeTag>(
           wroteResultDirectly = true;
           bool getElement(int idx) {
             return srcSorter != null
-                ? srcA.getCellFlat(srcSorter.getCellFlat(idx)) as bool
+                ? srcA.getCellFlat(srcSorter.getCellFlat(idx) as int) as bool
                 : srcA.getCellFlat(idx) as bool;
           }
 

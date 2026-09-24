@@ -20,6 +20,8 @@ include: package:lints/recommended.yaml
 #     - camel_case_types
 
 analyzer:
+  language:
+    strict-casts: true
   errors:
     doc_directive_unknown: ignore
 

@@ -147,7 +147,7 @@ NDArray<R> real<R extends DTypeTag>(
       default:
         // This path is taken if out != null or where != null and a is not complex.
         if (where == null) {
-          a.copy(out: result as dynamic);
+          (a as NDArray<DTypeTag>).copy(out: result);
         } else {
           final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
           final coord = List<int>.filled(a.shape.length, 0);

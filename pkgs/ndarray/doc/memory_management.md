@@ -4,6 +4,9 @@ NDArrays are backed by C-heap memory for interoperability with native libraries 
 
 Each root `NDArray` attaches a `dart:ffi` [`NativeFinalizer`](https://api.dart.dev/dart-ffi/NativeFinalizer-class.html) (`calloc.nativeFree`) so its backing C memory is eventually reclaimed when the Dart object becomes unreachable and is garbage collected. However, the Dart garbage collector cannot "feel" the memory pressure of large off-heap allocations because the `NDArray` wrapper on the Dart heap is tiny.
 
+> [!NOTE]
+> **Why `externalSize` is intentionally omitted:** `NativeFinalizer.attach` accepts an optional `externalSize` parameter, but per Dart VM team guidance, `externalSize` is a blunt heuristic—reporting large off-heap buffer sizes can trigger severe GC thrashing on the Dart heap rather than prompt native memory reclamation. Consequently, `NDArray` intentionally omits `externalSize` and relies on `NDArray.scope` (or explicit `.dispose()`) for deterministic lifecycle management, using `NativeFinalizer` strictly as a fallback safety net.
+
 This means memory should be explicitly freed for any serious programs.
 
 To make this safe and ergonomic, `ndarray` provides an **Automatic Disposal Scope** mechanism.

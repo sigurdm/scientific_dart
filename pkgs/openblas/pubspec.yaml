@@ -2,7 +2,7 @@ name: openblas
 description: FFI bindings for OpenBLAS.
 version: 0.0.1
 resolution: workspace
-repository: https://github.com/sigurdm/math
+repository: https://github.com/sigurdm/scientific_dart/tree/main/pkgs/openblas
 
 environment:
   sdk: ^3.10.0

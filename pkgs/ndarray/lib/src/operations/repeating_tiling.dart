@@ -426,7 +426,7 @@ NDArray<T> tile<T extends DTypeTag>(
         final cSrcShape = ScratchArena.copyInt64s(const <int>[]);
         final cReps = ScratchArena.copyInt64s(const <int>[]);
         final cOutShape = ScratchArena.copyInt64s(const <int>[]);
-        native_tile_contiguous(
+        final rc = native_tile_contiguous(
           src.dtype.index,
           src.pointer.cast(),
           cSrcShape,
@@ -435,6 +435,9 @@ NDArray<T> tile<T extends DTypeTag>(
           cOutShape,
           0,
         );
+        if (rc != 0) {
+          throw StateError('Native tile operation failed with code $rc');
+        }
       } finally {
         ScratchArena.reset(marker);
       }
@@ -453,8 +456,9 @@ NDArray<T> tile<T extends DTypeTag>(
       final cReps = ScratchArena.copyInt64s(tileReps);
       final cOutShape = ScratchArena.copyInt64s(outputShape);
 
+      final int rc;
       if (src.isContiguous && target.isContiguous) {
-        native_tile_contiguous(
+        rc = native_tile_contiguous(
           src.dtype.index,
           src.pointer.cast(),
           cSrcShape,
@@ -465,7 +469,7 @@ NDArray<T> tile<T extends DTypeTag>(
         );
       } else if (target.isContiguous) {
         final contigSrc = src.copy();
-        native_tile_contiguous(
+        rc = native_tile_contiguous(
           contigSrc.dtype.index,
           contigSrc.pointer.cast(),
           cSrcShape,
@@ -477,7 +481,7 @@ NDArray<T> tile<T extends DTypeTag>(
       } else {
         final cSrcStrides = ScratchArena.copyInt64s(src.strides);
         final cOutStrides = ScratchArena.copyInt64s(target.strides);
-        native_tile_strided(
+        rc = native_tile_strided(
           src.dtype.index,
           src.pointer.cast(),
           cSrcShape,
@@ -488,6 +492,9 @@ NDArray<T> tile<T extends DTypeTag>(
           cOutStrides,
           rank,
         );
+      }
+      if (rc != 0) {
+        throw StateError('Native tile operation failed with code $rc');
       }
     } finally {
       ScratchArena.reset(marker);

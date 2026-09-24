@@ -756,6 +756,13 @@ sealed class NDArray<T extends DTypeTag>
     _initializeOpenBLASOnce();
     if (_parent == null) {
       final ptrToFree = _allocPointer ?? _pointer;
+      // NOTE: Do NOT pass `externalSize` to `NativeFinalizer.attach`.
+      // Per Dart VM team guidance (Slava Egorov), `externalSize` is a blunt
+      // instrument and reporting large off-heap buffer sizes can trigger severe
+      // GC thrashing rather than prompt reclamation. Instead, users and
+      // internal operations should use `NDArray.scope` (or manual `dispose()`)
+      // for deterministic native memory cleanup, with `NativeFinalizer` acting
+      // strictly as a backstop safety net.
       if (!_isExternallyOwned) {
         _finalizer.attach(this, ptrToFree, detach: this);
       } else if (_customFinalizerInstance != null) {
@@ -2513,11 +2520,12 @@ sealed class NDArray<T extends DTypeTag>
     final sliceStrides = List<int>.from(strides)..removeAt(axis);
 
     for (var idx = 0; idx < indices.size; idx++) {
-      var targetIdx = indices.getCellFlat(idx) as int;
+      final rawIdx = indices.getCellFlat(idx) as int;
+      var targetIdx = rawIdx;
       if (targetIdx < 0) targetIdx += shape[axis];
       if (targetIdx < 0 || targetIdx >= shape[axis]) {
         throw RangeError.range(
-          indices.getCellFlat(idx),
+          rawIdx,
           0,
           shape[axis] - 1,
           'index entry at position $idx',
@@ -2584,11 +2592,12 @@ sealed class NDArray<T extends DTypeTag>
     var valOffset = 0;
 
     for (var idx = 0; idx < indices.size; idx++) {
-      var targetIdx = indices.getCellFlat(idx) as int;
+      final rawIdx = indices.getCellFlat(idx) as int;
+      var targetIdx = rawIdx;
       if (targetIdx < 0) targetIdx += shape[axis];
       if (targetIdx < 0 || targetIdx >= shape[axis]) {
         throw RangeError.range(
-          indices.getCellFlat(idx),
+          rawIdx,
           0,
           shape[axis] - 1,
           'index entry at position $idx',

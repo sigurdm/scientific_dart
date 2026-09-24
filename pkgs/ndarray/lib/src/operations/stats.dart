@@ -4755,7 +4755,7 @@ NDArray<Float64> cov<T extends DTypeTag>(
           'fweights must be 1D and have size equal to number of observations ($N).',
         );
       }
-      final minF = min(fweightsLocal).scalar;
+      final minF = min(fweightsLocal).scalar as num;
       if (minF < 0) {
         throw ArgumentError('fweights must be non-negative.');
       }
@@ -4766,7 +4766,7 @@ NDArray<Float64> cov<T extends DTypeTag>(
           'aweights must be 1D and have size equal to number of observations ($N).',
         );
       }
-      final minA = min(aweightsLocal).scalar;
+      final minA = min(aweightsLocal).scalar as num;
       if (minA < 0) {
         throw ArgumentError('aweights must be non-negative.');
       }

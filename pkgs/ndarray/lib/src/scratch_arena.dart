@@ -110,9 +110,13 @@ final class ScratchArena {
     final pageIndex = marker.pageIndex;
     final offset = marker.offset;
 
-    assert(pageIndex <= _currentPageIndex);
-    if (pageIndex == _currentPageIndex) {
-      assert(offset <= _offset);
+    if (pageIndex < 0 ||
+        pageIndex > _currentPageIndex ||
+        offset < 0 ||
+        (pageIndex == _currentPageIndex && offset > _offset)) {
+      throw StateError(
+        'Invalid or stale ScratchMarker: cannot reset ahead of current stack pointer or to an out-of-order marker.',
+      );
     }
 
     int? pruneFromIndex;
@@ -376,4 +380,16 @@ final class ScratchMarker {
   final int offset;
 
   const ScratchMarker._(this.pageIndex, this.offset);
+
+  @override
+  bool operator ==(Object other) =>
+      other is ScratchMarker &&
+      other.pageIndex == pageIndex &&
+      other.offset == offset;
+
+  @override
+  int get hashCode => Object.hash(pageIndex, offset);
+
+  @override
+  String toString() => 'ScratchMarker(pageIndex: $pageIndex, offset: $offset)';
 }

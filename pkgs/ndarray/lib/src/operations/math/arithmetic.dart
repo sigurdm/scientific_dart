@@ -1976,14 +1976,14 @@ NDArray<T> power<T extends DTypeTag>(
     final NDArray<DTypeTag> x2Num = x2;
     try {
       if (x2Num.rank == 0) {
-        if (x2Num.scalar < 0) {
+        if ((x2Num.scalar as num) < 0) {
           throw ArgumentError(
             'Integers to negative integer powers are not allowed.',
           );
         }
       } else {
         final minArr = min(x2Num);
-        final minVal = minArr.scalar;
+        final minVal = minArr.scalar as num;
         minArr.dispose();
         if (minVal < 0) {
           throw ArgumentError(
@@ -2224,6 +2224,14 @@ NDArray<T> power<T extends DTypeTag>(
   }
 }
 
+/// Computes the numerical negative of [a] element-wise (`-a`).
+///
+/// If [where] is provided, elements where [where] is truthy receive `-a` and
+/// remaining elements are untouched (when [out] is supplied) or zero-initialized.
+/// If [out] is provided, the result is written into [out] and returned.
+///
+/// The [out] array must match the shape and dtype of [a].
+/// None of [a], [where], or [out] may be disposed.
 NDArray<T> negative<T extends DTypeTag>(
   NDArray<T> a, {
   NDArray<DTypeTag>? where,
@@ -3698,6 +3706,13 @@ NDArray<T> heaviside<T extends DTypeTag>(
   }
 }
 
+/// Computes the absolute value (or magnitude for complex inputs) of [a] element-wise.
+///
+/// For real and integer arrays, the output has the same dtype as [a]. For
+/// [Complex64] and [Complex128] arrays, the output is the Euclidean magnitude
+/// with dtype [Float32] and [Float64], respectively.
+/// If [where] is provided, only elements where [where] is truthy are updated.
+/// If [out] is provided, the result is written into [out] and returned.
 NDArray<R> abs<R extends DTypeTag>(
   NDArray<
     DTypeSpec<R, Object?, DTypeTag, DTypeTag, DTypeTag, DTypeTag, DTypeTag>

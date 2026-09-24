@@ -7,6 +7,7 @@ import 'padding.dart';
 import '../scratch_arena.dart';
 import 'helpers.dart';
 
+/// Scalar double type alias used by DSP phase unwrap operations.
 typedef Float = double;
 
 /// Computes the element-wise phase/argument of complex or real numbers.

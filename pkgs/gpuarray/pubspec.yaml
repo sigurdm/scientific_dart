@@ -3,7 +3,7 @@ description: GPU-accelerated N-dimensional array computing with seamless NDArray
 version: 0.0.1
 publish_to: none
 resolution: workspace
-repository: https://github.com/sigurdm/math
+repository: https://github.com/sigurdm/scientific_dart/tree/main/pkgs/gpuarray
 
 environment:
   sdk: ^3.10.0

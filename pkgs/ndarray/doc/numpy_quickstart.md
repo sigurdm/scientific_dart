@@ -36,6 +36,10 @@ Before diving into code, understand the five structural differences between Pyth
    - **NumPy / C++**: Division by zero on integer arrays is undefined C behavior (`SIGFPE` crash).
    - **`package:ndarray`**: True floating-point division (`/`) follows IEEE 754 (`double.nan`, `double.infinity`) and automatically promotes integer arrays (`NDArray<Int32> / NDArray<Int32>` $\to$ `NDArray<Float64>`). Integer floor division (`~/`) and remainder (`%`) check for `0` divisors in the C kernel and throw an explicit `UnsupportedError('Integer division by zero')` to prevent uncatchable `SIGFPE` process crashes, since integer types lack representable `NaN` or `Infinity` states.
 
+6. **Top-Level Math Functions and `dart:math` Namespace Conflicts**:
+   - **NumPy**: Typically imported as `import numpy as np`, namespacing math functions under `np.sin`, `np.cos`, `np.sqrt`, etc.
+   - **`package:ndarray`**: Exports top-level vectorized math functions (`sin`, `cos`, `sqrt`, `max`, `min`, `exp`, `log`, etc.) directly from `package:ndarray/ndarray.dart`. Files that also use `dart:math` for scalar operations should import `dart:math` with a prefix (`import 'dart:math' as math;`) or import `ndarray` with a prefix (`import 'package:ndarray/ndarray.dart' as np;`) to avoid identifier collisions.
+
 ---
 
 ## 2. Comprehensive Quickstart Cheat Sheet: NumPy vs. Dart `package:ndarray`

@@ -33,13 +33,39 @@ void main(List<String> args) async {
       );
     }
 
-    final buildMode = switch (buildOptions.buildMode) {
+    BuildMode buildMode = switch (buildOptions.buildMode) {
       BuildModeEnum.fetch => FetchMode(input),
       BuildModeEnum.local => LocalMode(input, buildOptions.localPath),
       BuildModeEnum.source => SourceMode(input, buildOptions.checkoutPath),
     };
 
-    final builtLibrary = await buildMode.build();
+    Uri builtLibrary;
+    if (buildOptions.buildMode == BuildModeEnum.fetch &&
+        !buildOptions.isExplicit &&
+        currentSourceHash != nativeSourceHash) {
+      print(
+        'Prebuilt ndarray binary for release $version differs from local '
+        'native sources in hook/; falling back to `buildMode: source`.',
+      );
+      buildMode = SourceMode(input, buildOptions.checkoutPath);
+      builtLibrary = await buildMode.build();
+    } else {
+      try {
+        builtLibrary = await buildMode.build();
+      } catch (e) {
+        if (buildOptions.buildMode == BuildModeEnum.fetch &&
+            !buildOptions.isExplicit) {
+          print(
+            'Prebuilt ndarray binary unavailable ($e); '
+            'falling back to `buildMode: source`.',
+          );
+          buildMode = SourceMode(input, buildOptions.checkoutPath);
+          builtLibrary = await buildMode.build();
+        } else {
+          rethrow;
+        }
+      }
+    }
 
     output.assets.code.add(
       CodeAsset(
@@ -513,23 +539,7 @@ int128_t __divti3(int128_t a, int128_t b) {
         ]),
       ]);
 
-      final allExports = [
-        ...extractExportsFromBindings(
-          _root.resolve('lib/src/ndarray_bindings.dart').toFilePath(),
-        ),
-        ...extractExportsFromBindings(
-          _root
-              .resolve('lib/src/ndarray_extensions_bindings.dart')
-              .toFilePath(),
-        ),
-      ];
-
-      final defFile = File(
-        outputDir.uri.resolve('libndarray.def').toFilePath(),
-      );
-      await defFile.writeAsString(
-        ['LIBRARY libndarray', 'EXPORTS', ...allExports].join('\n'),
-      );
+      final defFile = await _generateWindowsDefFile(_root, outputDir);
 
       final res = await Process.run(cppCompilerPath, [
         '/LD',
@@ -572,8 +582,19 @@ int128_t __divti3(int128_t a, int128_t b) {
       final minizObj = sharedObjDir.uri.resolve('miniz.o').toFilePath();
       final npzIoObj = sharedObjDir.uri.resolve('npz_io.o').toFilePath();
 
-      String computeInputDigest(String src) {
+      final sanitizeEnv = Platform.environment['NDARRAY_SANITIZE']?.trim();
+      final sanitizeFlags = (sanitizeEnv != null && sanitizeEnv.isNotEmpty)
+          ? <String>[
+              '-fsanitize=$sanitizeEnv',
+              '-fno-sanitize-recover=all',
+              '-fno-omit-frame-pointer',
+              '-g',
+            ]
+          : const <String>[];
+
+      String computeInputDigest(String src, List<String> args) {
         final bytes = BytesBuilder(copy: false);
+        bytes.add(args.join(' ').codeUnits);
         bytes.add(File(src).readAsBytesSync());
         for (final header in const [
           'hook/custom_indexing.h',
@@ -598,7 +619,7 @@ int128_t __divti3(int128_t a, int128_t b) {
       ) async {
         final objF = File(obj);
         final hashF = File('$obj.sha256');
-        final digest = computeInputDigest(src);
+        final digest = computeInputDigest(src, args);
         if (objF.existsSync() &&
             hashF.existsSync() &&
             hashF.readAsStringSync().trim() == digest) {
@@ -630,6 +651,8 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-c',
           '-fPIC',
           '-O2',
+          '-fno-exceptions',
+          ...sanitizeFlags,
           if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
           '-DVECTORIZED_TARGETS=',
           '-fno-math-errno',
@@ -647,6 +670,8 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-c',
           '-fPIC',
           '-O2',
+          '-fno-exceptions',
+          ...sanitizeFlags,
           if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
           '-DHWY_COMPILE_ONLY_STATIC=1',
           '-fno-math-errno',
@@ -665,6 +690,8 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-c',
           '-fPIC',
           '-O2',
+          '-fno-exceptions',
+          ...sanitizeFlags,
           if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
           '-fno-math-errno',
           '-I${_root.toFilePath()}',
@@ -680,6 +707,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-c',
           '-fPIC',
           '-O3',
+          ...sanitizeFlags,
           '-I${_root.toFilePath()}',
           minizSrc,
           '-o',
@@ -694,6 +722,8 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-c',
           '-fPIC',
           '-O3',
+          '-fno-exceptions',
+          ...sanitizeFlags,
           '-I${_root.toFilePath()}',
           npzIoSrc,
           '-o',
@@ -713,6 +743,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           ],
           '-shared',
           '-fPIC',
+          ...sanitizeFlags,
           if (os == OS.android) '-Wl,-z,max-page-size=16384',
           ufuncsObj,
           sortingObj,
@@ -782,9 +813,33 @@ Future<Uint8List> _downloadBytesWithRedirects(Uri url) async {
   }
 }
 
+Future<File> _generateWindowsDefFile(Uri root, Directory outputDir) async {
+  final allExports = [
+    ...extractExportsFromBindings(
+      root.resolve('lib/src/ndarray_bindings.dart').toFilePath(),
+    ),
+    ...extractExportsFromBindings(
+      root.resolve('lib/src/ndarray_extensions_bindings.dart').toFilePath(),
+    ),
+  ];
+  if (allExports.isEmpty) {
+    throw StateError('No exported symbols found for Windows .def file.');
+  }
+
+  final defFile = File(outputDir.uri.resolve('libndarray.def').toFilePath());
+  await defFile.writeAsString(
+    ['LIBRARY libndarray', 'EXPORTS', ...allExports].join('\n'),
+  );
+  return defFile;
+}
+
 List<String> extractExportsFromBindings(String bindingsPath) {
   final file = File(bindingsPath);
-  if (!file.existsSync()) return [];
+  if (!file.existsSync()) {
+    throw StateError(
+      'Cannot generate Windows .def file: bindings file does not exist at $bindingsPath',
+    );
+  }
 
   final content = file.readAsStringSync();
   final regex = RegExp(r'external\s+[\w\d_<>.]+\s+(\w+)\s*\(');
@@ -795,6 +850,11 @@ List<String> extractExportsFromBindings(String bindingsPath) {
     if (name != null && !exports.contains(name)) {
       exports.add(name);
     }
+  }
+  if (exports.isEmpty) {
+    throw StateError(
+      'Cannot generate Windows .def file: 0 exported symbols found in $bindingsPath',
+    );
   }
   return exports;
 }

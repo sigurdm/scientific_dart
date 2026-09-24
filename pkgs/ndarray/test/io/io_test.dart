@@ -506,6 +506,35 @@ void main() {
           expect(() => loadz(path), throwsFormatException);
         },
       );
+
+      test(
+        'loadz() throws FormatException when NPZ entry fails CRC32 check',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+          final path = '${tempDir.path}/corrupted_crc.npz';
+          savez(path, {'a': a}, compressed: false);
+
+          // Flip a byte inside the raw float64 payload (leaving ZIP headers and CRC32 intact)
+          final bytes = File(path).readAsBytesSync();
+          // Find the NPY magic inside the ZIP and corrupt the last byte of the 32-byte float64 payload
+          for (var i = 0; i < bytes.length - 6; i++) {
+            if (bytes[i] == 0x93 &&
+                bytes[i + 1] == 0x4e &&
+                bytes[i + 2] == 0x55 &&
+                bytes[i + 3] == 0x4d &&
+                bytes[i + 4] == 0x50 &&
+                bytes[i + 5] == 0x59) {
+              final hlen = bytes[i + 8] | (bytes[i + 9] << 8);
+              final dataStart = i + 10 + hlen;
+              bytes[dataStart] ^= 0xff;
+              break;
+            }
+          }
+          File(path).writeAsBytesSync(bytes, flush: true);
+
+          expect(() => loadz(path), throwsFormatException);
+        }),
+      );
     });
 
     group('Additional I/O Coverage Tests', () {

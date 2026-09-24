@@ -1430,24 +1430,32 @@ NDArray<T> roll<T extends DTypeTag>(
     if (a.isContiguous) {
       final targetResult = out ?? NDArray<T>.create(a.shape, a.dtype);
       if (targetResult.isContiguous) {
-        native_roll_1d(
+        final rc = native_roll_1d(
           a.dtype.index,
           a.pointer.cast(),
           a.size,
           shifts[0],
           targetResult.pointer.cast(),
         );
+        if (rc != 0) {
+          if (out == null) targetResult.dispose();
+          throw StateError('Native roll operation failed with code $rc');
+        }
         return targetResult;
       } else {
         final contigRes = NDArray<T>.create(a.shape, a.dtype);
         try {
-          native_roll_1d(
+          final rc = native_roll_1d(
             a.dtype.index,
             a.pointer.cast(),
             a.size,
             shifts[0],
             contigRes.pointer.cast(),
           );
+          if (rc != 0) {
+            if (out == null) targetResult.dispose();
+            throw StateError('Native roll operation failed with code $rc');
+          }
           contigRes.copy(out: targetResult);
           return targetResult;
         } finally {
@@ -1459,23 +1467,31 @@ NDArray<T> roll<T extends DTypeTag>(
       try {
         final targetResult = out ?? NDArray<T>.create(a.shape, a.dtype);
         if (targetResult.isContiguous) {
-          native_roll_1d(
+          final rc = native_roll_1d(
             contigA.dtype.index,
             contigA.pointer.cast(),
             contigA.size,
             shifts[0],
             targetResult.pointer.cast(),
           );
+          if (rc != 0) {
+            if (out == null) targetResult.dispose();
+            throw StateError('Native roll operation failed with code $rc');
+          }
         } else {
           final contigRes = NDArray<T>.create(a.shape, a.dtype);
           try {
-            native_roll_1d(
+            final rc = native_roll_1d(
               contigA.dtype.index,
               contigA.pointer.cast(),
               contigA.size,
               shifts[0],
               contigRes.pointer.cast(),
             );
+            if (rc != 0) {
+              if (out == null) targetResult.dispose();
+              throw StateError('Native roll operation failed with code $rc');
+            }
             contigRes.copy(out: targetResult);
           } finally {
             contigRes.dispose();
@@ -1501,7 +1517,12 @@ NDArray<T> roll<T extends DTypeTag>(
     try {
       _rollSingleND(a, shifts[0], nonNullAxes[0], out: temp);
       final targetResult = out ?? NDArray<T>.create(a.shape, a.dtype);
-      _rollSingleND(temp, shifts[1], nonNullAxes[1], out: targetResult);
+      try {
+        _rollSingleND(temp, shifts[1], nonNullAxes[1], out: targetResult);
+      } catch (_) {
+        if (out == null) targetResult.dispose();
+        rethrow;
+      }
       return targetResult;
     } finally {
       temp.dispose();
@@ -1545,13 +1566,17 @@ NDArray<T> _roll1D<T extends DTypeTag>(
 
   final targetResult = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (a.isContiguous && targetResult.isContiguous) {
-    native_roll_1d(
+    final rc = native_roll_1d(
       a.dtype.index,
       a.pointer.cast(),
       size,
       realShift,
       targetResult.pointer.cast(),
     );
+    if (rc != 0) {
+      if (out == null) targetResult.dispose();
+      throw StateError('Native roll operation failed with code $rc');
+    }
     return targetResult;
   }
 
@@ -1560,7 +1585,7 @@ NDArray<T> _roll1D<T extends DTypeTag>(
     final cShape = ScratchArena.copyInt64s(a.shape);
     final cSrcStrides = ScratchArena.copyInt64s(a.strides);
     final cDestStrides = ScratchArena.copyInt64s(targetResult.strides);
-    native_roll_nd(
+    final rc = native_roll_nd(
       a.dtype.index,
       a.pointer.cast(),
       cShape,
@@ -1571,6 +1596,10 @@ NDArray<T> _roll1D<T extends DTypeTag>(
       targetResult.pointer.cast(),
       cDestStrides,
     );
+    if (rc != 0) {
+      if (out == null) targetResult.dispose();
+      throw StateError('Native roll operation failed with code $rc');
+    }
   } finally {
     ScratchArena.reset(marker);
   }
@@ -1606,21 +1635,26 @@ NDArray<T> _rollSingleND<T extends DTypeTag>(
   final targetResult = out ?? NDArray<T>.create(a.shape, a.dtype);
 
   if (rank == 1 && a.isContiguous && targetResult.isContiguous) {
-    native_roll_1d(
+    final rc = native_roll_1d(
       a.dtype.index,
       a.pointer.cast(),
       a.size,
       realShift,
       targetResult.pointer.cast(),
     );
+    if (rc != 0) {
+      if (out == null) targetResult.dispose();
+      throw StateError('Native roll operation failed with code $rc');
+    }
     return targetResult;
   }
 
   final marker = ScratchArena.marker;
   try {
     final cShape = ScratchArena.copyInt64s(a.shape);
+    final int rc;
     if (a.isContiguous && targetResult.isContiguous) {
-      native_roll_nd(
+      rc = native_roll_nd(
         a.dtype.index,
         a.pointer.cast(),
         cShape,
@@ -1634,7 +1668,7 @@ NDArray<T> _rollSingleND<T extends DTypeTag>(
     } else {
       final cSrcStrides = ScratchArena.copyInt64s(a.strides);
       final cDestStrides = ScratchArena.copyInt64s(targetResult.strides);
-      native_roll_nd(
+      rc = native_roll_nd(
         a.dtype.index,
         a.pointer.cast(),
         cShape,
@@ -1645,6 +1679,10 @@ NDArray<T> _rollSingleND<T extends DTypeTag>(
         targetResult.pointer.cast(),
         cDestStrides,
       );
+    }
+    if (rc != 0) {
+      if (out == null) targetResult.dispose();
+      throw StateError('Native roll operation failed with code $rc');
     }
   } finally {
     ScratchArena.reset(marker);

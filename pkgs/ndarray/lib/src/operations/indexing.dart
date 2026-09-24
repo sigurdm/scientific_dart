@@ -871,7 +871,7 @@ NDArray<T> choose<T extends DTypeTag>(
       while (iter.moveNext()) {
         final coords = iter.coords;
         _mapCoordInPlace(coords, a.shape, aCoord);
-        var idxVal = a.getCell(aCoord);
+        var idxVal = a.getCell(aCoord) as int;
         if (isUint64 && idxVal < 0) {
           idxVal = mode == ChooseMode.wrap
               ? ((idxVal & 0x7FFFFFFFFFFFFFFF) % nChoices + twoPow63Mod) %
