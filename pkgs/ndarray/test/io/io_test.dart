@@ -205,7 +205,7 @@ void main() {
               "{'descr': '$descr', 'fortran_order': True, 'shape': (2, 3)}";
 
           final prefixLen = 6 + 2 + 2;
-          var paddedHeaderLen =
+          final paddedHeaderLen =
               ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
           final padCount = paddedHeaderLen - headerStr.length - 1;
           final paddedHeader = "$headerStr${' ' * padCount}\n";
@@ -282,7 +282,7 @@ void main() {
               "{'descr': '$descr', 'fortran_order': True, 'shape': (2, 3)}";
 
           final prefixLen = 6 + 2 + 2;
-          var paddedHeaderLen =
+          final paddedHeaderLen =
               ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
           final padCount = paddedHeaderLen - headerStr.length - 1;
           final paddedHeader = "$headerStr${' ' * padCount}\n";
@@ -608,7 +608,7 @@ void main() {
             '{"descr": "<f8", "fortran_order": False, "shape": (2, 2)}';
 
         final prefixLen = 6 + 2 + 2;
-        var paddedHeaderLen =
+        final paddedHeaderLen =
             ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
         final padCount = paddedHeaderLen - headerStr.length - 1;
         final paddedHeader = "$headerStr${' ' * padCount}\n";
@@ -767,7 +767,7 @@ void _writeFakeNpy(
   List<int> version = const [1, 0],
 }) {
   final prefixLen = 6 + 2 + 2;
-  var paddedHeaderLen =
+  final paddedHeaderLen =
       ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
   final padCount = paddedHeaderLen - headerStr.length - 1;
   final paddedHeader = "$headerStr${' ' * padCount}\n";

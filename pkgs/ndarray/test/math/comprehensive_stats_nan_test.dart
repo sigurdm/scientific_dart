@@ -65,19 +65,19 @@ void main() {
             );
             final p0 = ptp(a, axis: 0);
             expect(p0.shape, [3, 4]);
-            for (var val in p0.toList()) {
+            for (final val in p0.toList()) {
               expect(val, 12.0);
             }
 
             final p1 = ptp(a, axis: 1);
             expect(p1.shape, [2, 4]);
-            for (var val in p1.toList()) {
+            for (final val in p1.toList()) {
               expect(val, 8.0);
             }
 
             final p2 = ptp(a, axis: 2);
             expect(p2.shape, [2, 3]);
-            for (var val in p2.toList()) {
+            for (final val in p2.toList()) {
               expect(val, 3.0);
             }
 
@@ -85,7 +85,7 @@ void main() {
             final aT = a.transpose([2, 0, 1]);
             final pT = ptp(aT, axis: 0);
             expect(pT.shape, [2, 3]);
-            for (var val in pT.toList()) {
+            for (final val in pT.toList()) {
               expect(val, 3.0);
             }
           });
@@ -1488,7 +1488,7 @@ void main() {
 
             final ind = digitize(x, bins, right: false);
             expect(ind.shape, [4]);
-            for (var val in ind.toList()) {
+            for (final val in ind.toList()) {
               expect(val, greaterThanOrEqualTo(0));
               expect(val, lessThanOrEqualTo(5));
             }

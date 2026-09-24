@@ -3389,19 +3389,11 @@ void main() {
 
           expect(cummin(aInt).toList(), [1, 1, 1, 1]);
           expect(cummin(aDouble).toList(), [1.0, 1.0, 1.0, 1.0]);
-          try {
-            expect(cummin(aBool).toList(), [true, false, false, false]);
-          } on ArgumentError {
-            print('cummin: bool not supported');
-          }
+          expect(() => cummin(aBool), throwsArgumentError);
 
           expect(cummax(aInt).toList(), [1, 2, 3, 4]);
           expect(cummax(aDouble).toList(), [1.0, 2.0, 3.0, 4.0]);
-          try {
-            expect(cummax(aBool).toList(), [true, true, true, true]);
-          } on ArgumentError {
-            print('cummax: bool not supported');
-          }
+          expect(() => cummax(aBool), throwsArgumentError);
         }),
       );
 
@@ -4714,7 +4706,7 @@ void main() {
   });
 }
 
-void expectListEqualsWithNaNs(List actual, List expected) {
+void expectListEqualsWithNaNs(List<dynamic> actual, List<dynamic> expected) {
   expect(actual.length, expected.length);
   for (var i = 0; i < actual.length; i++) {
     final a = actual[i];

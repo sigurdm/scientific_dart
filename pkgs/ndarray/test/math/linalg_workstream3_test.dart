@@ -302,9 +302,7 @@ void main() {
           expect(res.eigenvalues.dtype, DType.float64);
           expect(res.eigenvectors.dtype, DType.float64);
 
-          final vals =
-              res.eigenvalues.toList().map((v) => v.toDouble()).toList()
-                ..sort();
+          final vals = res.eigenvalues.toList().map((v) => v).toList()..sort();
           expect(vals[0], closeTo(1.0, 1e-9));
           expect(vals[1], closeTo(3.0, 1e-9));
         });

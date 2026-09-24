@@ -132,7 +132,7 @@ void main() async {
             for (var j = 0; j < 30; j++) {
               qrA.data[i * 30 + j] = (i + j + 1.0) / 10.0;
               if (i == j) {
-                qrA.data[i * 30 + j] = qrA.data[i * 30 + j].toDouble() + 1.0;
+                qrA.data[i * 30 + j] = qrA.data[i * 30 + j] + 1.0;
               }
             }
           }
@@ -161,8 +161,7 @@ void main() async {
             for (var j = 0; j < 30; j++) {
               cholA.data[i * 30 + j] = (i + j + 1.0) / 10.0;
               if (i == j) {
-                cholA.data[i * 30 + j] =
-                    cholA.data[i * 30 + j].toDouble() + 30.0;
+                cholA.data[i * 30 + j] = cholA.data[i * 30 + j] + 30.0;
               }
             }
           }

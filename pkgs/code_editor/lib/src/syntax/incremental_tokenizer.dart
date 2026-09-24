@@ -90,8 +90,9 @@ class IncrementalTokenizer {
   }
 
   LineState getLineState(int lineIndex) {
-    if (lineIndex < 0 || lineIndex >= _lineStates.length)
+    if (lineIndex < 0 || lineIndex >= _lineStates.length) {
       return const EmptyLineState();
+    }
     return _lineStates[lineIndex];
   }
 

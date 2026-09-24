@@ -80,7 +80,7 @@ class LineHeightTree {
     }
 
     for (int step = mask; step > 0; step >>= 1) {
-      int nextIdx = idx + step;
+      final int nextIdx = idx + step;
       if (nextIdx <= _length) {
         if (currentSum + _tree[nextIdx] <= pixelY) {
           idx = nextIdx;
@@ -96,9 +96,9 @@ class LineHeightTree {
   void _rebuildTree() {
     _tree.fillRange(0, _length + 1, 0.0);
     for (int i = 0; i < _length; i++) {
-      int idx = i + 1;
+      final int idx = i + 1;
       _tree[idx] += _heights[i];
-      int parent = idx + (idx & -idx);
+      final int parent = idx + (idx & -idx);
       if (parent <= _length) {
         _tree[parent] += _tree[idx];
       }

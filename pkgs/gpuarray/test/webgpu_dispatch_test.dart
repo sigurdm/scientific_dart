@@ -400,7 +400,7 @@ void main() {
           name: 'test_validation',
           code: '@compute @workgroup_size(64, 1, 1) fn main() {}',
           bindings: [],
-          workgroupSize: const WgslWorkgroupSize(64, 1, 1),
+          workgroupSize: WgslWorkgroupSize.linear64,
         );
 
         // Throws on disposed buffer

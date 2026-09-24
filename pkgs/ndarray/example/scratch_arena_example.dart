@@ -1,7 +1,6 @@
 import 'dart:ffi' as ffi;
 
 import 'package:ndarray/ndarray.dart';
-import 'package:ndarray/src/scratch_arena.dart';
 
 void main() {
   print('=== ScratchArena Helper Examples ===\n');

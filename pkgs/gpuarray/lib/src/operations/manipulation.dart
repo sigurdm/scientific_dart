@@ -516,8 +516,8 @@ GpuArray<T> rot90<T extends DTypeTag>(
   if (axes.length != 2) {
     throw ArgumentError('len(axes) must be 2.');
   }
-  var ax1 = axes[0] < 0 ? axes[0] + rank : axes[0];
-  var ax2 = axes[1] < 0 ? axes[1] + rank : axes[1];
+  final ax1 = axes[0] < 0 ? axes[0] + rank : axes[0];
+  final ax2 = axes[1] < 0 ? axes[1] + rank : axes[1];
   if (ax1 == ax2) {
     throw ArgumentError('axes must be different.');
   }

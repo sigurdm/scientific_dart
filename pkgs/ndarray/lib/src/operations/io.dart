@@ -1,4 +1,3 @@
-// ignore_for_file: non_constant_identifier_names
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -112,7 +111,7 @@ void save<T extends DTypeTag>(String filepath, NDArray<T> a) {
     var prefixLen = 6 + 2 + 2;
     var paddedHeaderLen =
         ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
-    var isVersion2 = paddedHeaderLen > 65535;
+    final isVersion2 = paddedHeaderLen > 65535;
     if (isVersion2) {
       prefixLen = 6 + 2 + 4;
       paddedHeaderLen =
@@ -287,7 +286,7 @@ NDArray<DTypeTag> load(String filepath) {
     }
     final shapeTokens = shapeMatch.group(1)!.split(',');
     final shape = <int>[];
-    for (var tok in shapeTokens) {
+    for (final tok in shapeTokens) {
       final cleanTok = tok.trim();
       if (cleanTok.isNotEmpty) {
         shape.add(int.parse(cleanTok));

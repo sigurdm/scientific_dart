@@ -1,4 +1,3 @@
-// ignore_for_file: non_constant_identifier_names
 import 'dart:ffi' as ffi;
 import '../../ndarray.dart';
 import '../../ndarray_bindings.dart';

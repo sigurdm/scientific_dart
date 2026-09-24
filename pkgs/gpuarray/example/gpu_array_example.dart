@@ -1,5 +1,6 @@
 import 'package:ndarray/ndarray.dart';
 import 'package:gpuarray/gpuarray.dart';
+import 'package:resource_scope/resource_scope.dart';
 
 void main() {
   print('=== GpuArray Baseline Example ===\n');

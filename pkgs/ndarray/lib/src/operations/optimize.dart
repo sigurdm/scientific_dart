@@ -235,7 +235,7 @@ RootScalarResult brentq(
     }
 
     if (e.abs() >= tol1 && fa.abs() > fb.abs()) {
-      var s = fb / fa;
+      final s = fb / fa;
       var p = 0.0;
       var q = 0.0;
       if (a == c) {

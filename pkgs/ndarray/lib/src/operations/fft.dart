@@ -800,7 +800,7 @@ NDArray<T> fftshift<T extends DTypeTag>(
     resolvedAxes = [norm];
   } else if (axes is List<int>) {
     resolvedAxes = [];
-    for (var axis in axes) {
+    for (final axis in axes) {
       final norm = axis < 0 ? rank + axis : axis;
       if (norm < 0 || norm >= rank) {
         throw RangeError.range(axis, -rank, rank - 1, 'axes');
@@ -877,7 +877,7 @@ NDArray<T> ifftshift<T extends DTypeTag>(
     resolvedAxes = [norm];
   } else if (axes is List<int>) {
     resolvedAxes = [];
-    for (var axis in axes) {
+    for (final axis in axes) {
       final norm = axis < 0 ? rank + axis : axis;
       if (norm < 0 || norm >= rank) {
         throw RangeError.range(axis, -rank, rank - 1, 'axes');

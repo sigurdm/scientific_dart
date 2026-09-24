@@ -90,7 +90,7 @@ class LspClient {
       }
 
       if (_stdoutBuffer.length >= _expectedLength!) {
-        final bodyBytes = _stdoutBuffer.sublist(0, _expectedLength!);
+        final bodyBytes = _stdoutBuffer.sublist(0, _expectedLength);
         _stdoutBuffer.removeRange(0, _expectedLength!);
         _expectedLength = null;
 
@@ -200,15 +200,15 @@ class LspClient {
       if (!response.containsKey('result')) return [];
       final result = response['result'];
 
-      List itemsRaw = [];
+      List<dynamic> itemsRaw = [];
       if (result is List) {
         itemsRaw = result;
       } else if (result is Map && result.containsKey('items')) {
-        itemsRaw = result['items'] as List;
+        itemsRaw = result['items'] as List<dynamic>;
       }
 
       final results = <LspCompletionResult>[];
-      for (var item in itemsRaw) {
+      for (final item in itemsRaw) {
         if (item is Map) {
           final label = item['label'] as String;
           final kindInt = item['kind'] as int? ?? 0;
@@ -260,8 +260,9 @@ class LspClient {
         'position': {'line': line, 'character': character},
       });
 
-      if (!response.containsKey('result') || response['result'] == null)
+      if (!response.containsKey('result') || response['result'] == null) {
         return null;
+      }
       final result = response['result'] as Map<String, dynamic>;
       if (!result.containsKey('contents')) return null;
 
@@ -272,7 +273,7 @@ class LspClient {
       }
       if (contents is List) {
         final parts = <String>[];
-        for (var item in contents) {
+        for (final item in contents) {
           if (item is String) {
             parts.add(item);
           } else if (item is Map && item.containsKey('value')) {

@@ -158,8 +158,8 @@ final class Markdown extends Displayable {
   static String _simpleMarkdownToHtml(String text) {
     final lines = text.split('\n');
     final sb = StringBuffer();
-    for (var line in lines) {
-      var l = line.trimRight();
+    for (final line in lines) {
+      final l = line.trimRight();
       if (l.startsWith('# ')) {
         sb.writeln(
           '<h1 style="font-size: 1.6em; margin: 12px 0 6px 0; color: #89b4fa;">${_formatInlineMd(l.substring(2))}</h1>',
@@ -459,7 +459,7 @@ final class Plot extends Displayable {
 
     if (n == 0) return '<div>(Empty Plot)</div>';
 
-    double minX = xValues.reduce(math.min);
+    final double minX = xValues.reduce(math.min);
     double maxX = xValues.reduce(math.max);
     double minY = yValues.reduce(math.min);
     double maxY = yValues.reduce(math.max);
@@ -763,7 +763,7 @@ final class Histogram extends Displayable {
     final binWidth = range / bins;
 
     final counts = List<int>.filled(bins, 0);
-    for (var val in flatList) {
+    for (final val in flatList) {
       int idx = ((val - minV) / binWidth).floor();
       if (idx >= bins) idx = bins - 1;
       counts[idx]++;
@@ -1151,7 +1151,7 @@ class _NotebookStdout implements Stdout {
   }
 
   @override
-  void writeAll(Iterable objects, [String separator = ""]) {
+  void writeAll(Iterable<dynamic> objects, [String separator = ""]) {
     _buffer.writeAll(objects, separator);
   }
 
@@ -1168,12 +1168,13 @@ class _NotebookStdout implements Stdout {
   @override
   void addError(Object error, [StackTrace? stackTrace]) {}
   @override
-  Future addStream(Stream<List<int>> stream) async {}
-  Future clearLine([int length = 0]) => Future.value();
+  Future<void> addStream(Stream<List<int>> stream) async {}
+  Future<void> clearLine([int length = 0]) => Future.value();
   @override
-  Future close() => Future.value();
+  Future<void> close() => Future.value();
   @override
-  Future get done => _delegate.done;
+  Future<void> get done => _delegate.done;
+  @override
   Future<void> flush() => Future.value();
   @override
   bool get hasTerminal => false;

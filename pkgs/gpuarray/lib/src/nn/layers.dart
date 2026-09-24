@@ -71,7 +71,7 @@ class Linear extends Module {
     final wT = weight.swapaxes(-1, -2);
     final output = input.matmul(wT);
     if (bias != null) {
-      return output + bias!;
+      return output + bias;
     }
     return output;
   }
@@ -323,7 +323,7 @@ class Embedding extends Module {
     final outRows = <dynamic>[];
     for (final idx in idxList) {
       final row = weight[idx];
-      outRows.addAll(row.toList());
+      outRows.addAll(row.toList() as Iterable<dynamic>);
     }
     final outShape = [...indices.shape, embeddingDim];
     final out = GpuArray.fromList(

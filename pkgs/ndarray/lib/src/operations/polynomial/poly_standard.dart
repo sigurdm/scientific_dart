@@ -605,7 +605,7 @@ NDArray<R> polyfit<
               rhs.pointer.cast<ffi.Float>(),
               1,
               jpvt,
-              rcond.toDouble(),
+              rcond,
               rankPtr,
             );
           case DType.complex128:
@@ -633,7 +633,7 @@ NDArray<R> polyfit<
               rhs.pointer.cast<ffi.Float>(),
               1,
               jpvt,
-              rcond.toDouble(),
+              rcond,
               rankPtr,
             );
           default:

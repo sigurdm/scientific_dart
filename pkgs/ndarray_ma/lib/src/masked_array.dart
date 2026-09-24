@@ -1,4 +1,4 @@
-library ndarray_ma;
+library;
 
 import 'package:ndarray/ndarray.dart';
 import 'package:ndarray/ndarray.dart' as ndops;

@@ -77,22 +77,22 @@ void main() {
       NDArray.scope(() {
         final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
         final res = nelder_mead((x) {
-          final px = x.getCell([0]).toDouble();
-          final py = x.getCell([1]).toDouble();
+          final px = x.getCell([0]);
+          final py = x.getCell([1]);
           return (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
         }, x0);
 
         expect(res.success, isTrue);
-        expect(res.x.getCell([0]).toDouble(), closeTo(3.0, 1e-3));
-        expect(res.x.getCell([1]).toDouble(), closeTo(-2.0, 1e-3));
+        expect(res.x.getCell([0]), closeTo(3.0, 1e-3));
+        expect(res.x.getCell([1]), closeTo(-2.0, 1e-3));
         expect(res.fun, closeTo(0.0, 1e-5));
       });
     });
 
     test('Minimizes Rosenbrock function using camelCase alias nelderMead', () {
       double rosenbrock(NDArray<Float64> x) {
-        final x0 = x.getCell([0]).toDouble();
-        final x1 = x.getCell([1]).toDouble();
+        final x0 = x.getCell([0]);
+        final x1 = x.getCell([1]);
         return 100.0 * math.pow(x1 - x0 * x0, 2).toDouble() +
             math.pow(1.0 - x0, 2).toDouble();
       }
@@ -101,8 +101,8 @@ void main() {
       final result = nelderMead(rosenbrock, x0, maxiter: 2000);
 
       expect(result.success, isTrue);
-      expect(result.x.getCell([0]).toDouble(), closeTo(1.0, 1e-2));
-      expect(result.x.getCell([1]).toDouble(), closeTo(1.0, 1e-2));
+      expect(result.x.getCell([0]), closeTo(1.0, 1e-2));
+      expect(result.x.getCell([1]), closeTo(1.0, 1e-2));
     });
 
     test('Minimizes Rosenbrock function', () {
@@ -110,8 +110,8 @@ void main() {
         final x0 = NDArray<Float64>.fromList([-1.2, 1.0], [2], DType.float64);
         final res = nelder_mead(
           (x) {
-            final px = x.getCell([0]).toDouble();
-            final py = x.getCell([1]).toDouble();
+            final px = x.getCell([0]);
+            final py = x.getCell([1]);
             final term1 = 1.0 - px;
             final term2 = py - px * px;
             return term1 * term1 + 100.0 * term2 * term2;
@@ -121,8 +121,8 @@ void main() {
         );
 
         expect(res.success, isTrue);
-        expect(res.x.getCell([0]).toDouble(), closeTo(1.0, 1e-2));
-        expect(res.x.getCell([1]).toDouble(), closeTo(1.0, 1e-2));
+        expect(res.x.getCell([0]), closeTo(1.0, 1e-2));
+        expect(res.x.getCell([1]), closeTo(1.0, 1e-2));
       });
     });
   });
@@ -135,8 +135,8 @@ void main() {
           (x) => 0.0,
           x0,
           funAndGrad: (x) {
-            final px = x.getCell([0]).toDouble();
-            final py = x.getCell([1]).toDouble();
+            final px = x.getCell([0]);
+            final py = x.getCell([1]);
             final fVal = (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
             final g = NDArray<Float64>.fromList(
               [2.0 * (px - 3.0), 2.0 * (py + 2.0)],
@@ -148,8 +148,8 @@ void main() {
         );
 
         expect(res.success, isTrue);
-        expect(res.x.getCell([0]).toDouble(), closeTo(3.0, 1e-4));
-        expect(res.x.getCell([1]).toDouble(), closeTo(-2.0, 1e-4));
+        expect(res.x.getCell([0]), closeTo(3.0, 1e-4));
+        expect(res.x.getCell([1]), closeTo(-2.0, 1e-4));
         expect(res.fun, closeTo(0.0, 1e-7));
       });
     });
@@ -159,14 +159,14 @@ void main() {
         final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
         final res = lbfgs(
           (x) {
-            final px = x.getCell([0]).toDouble();
-            final py = x.getCell([1]).toDouble();
+            final px = x.getCell([0]);
+            final py = x.getCell([1]);
             return (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
           },
           x0,
           jac: (x) {
-            final px = x.getCell([0]).toDouble();
-            final py = x.getCell([1]).toDouble();
+            final px = x.getCell([0]);
+            final py = x.getCell([1]);
             return NDArray<Float64>.fromList(
               [2.0 * (px - 3.0), 2.0 * (py + 2.0)],
               [2],
@@ -176,8 +176,8 @@ void main() {
         );
 
         expect(res.success, isTrue);
-        expect(res.x.getCell([0]).toDouble(), closeTo(3.0, 1e-4));
-        expect(res.x.getCell([1]).toDouble(), closeTo(-2.0, 1e-4));
+        expect(res.x.getCell([0]), closeTo(3.0, 1e-4));
+        expect(res.x.getCell([1]), closeTo(-2.0, 1e-4));
       });
     });
 
@@ -187,15 +187,15 @@ void main() {
         NDArray.scope(() {
           final x0 = NDArray<Float64>.fromList([5.0, 5.0], [2], DType.float64);
           final res = lbfgs((x) {
-            final px = x.getCell([0]).toDouble();
-            final py = x.getCell([1]).toDouble();
+            final px = x.getCell([0]);
+            final py = x.getCell([1]);
             return (px - 1.0) * (px - 1.0) + (py - 2.0) * (py - 2.0);
           }, x0);
 
           expect(res.success, isTrue);
           expect(res.fun, closeTo(0.0, 1e-6));
-          expect(res.x.getCell([0]).toDouble(), closeTo(1.0, 1e-4));
-          expect(res.x.getCell([1]).toDouble(), closeTo(2.0, 1e-4));
+          expect(res.x.getCell([0]), closeTo(1.0, 1e-4));
+          expect(res.x.getCell([1]), closeTo(2.0, 1e-4));
         });
       },
     );
@@ -207,8 +207,8 @@ void main() {
         final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
         final res = minimize(
           (NDArray<Float64> x) {
-            final px = x.getCell([0]).toDouble();
-            final py = x.getCell([1]).toDouble();
+            final px = x.getCell([0]);
+            final py = x.getCell([1]);
             return (px - 2.0) * (px - 2.0) + (py - 4.0) * (py - 4.0);
           },
           x0,
@@ -216,8 +216,8 @@ void main() {
         );
 
         expect(res.success, isTrue);
-        expect(res.x.getCell([0]).toDouble(), closeTo(2.0, 1e-3));
-        expect(res.x.getCell([1]).toDouble(), closeTo(4.0, 1e-3));
+        expect(res.x.getCell([0]), closeTo(2.0, 1e-3));
+        expect(res.x.getCell([1]), closeTo(4.0, 1e-3));
       });
     });
 
@@ -226,15 +226,15 @@ void main() {
         final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
         final res = minimize(
           (NDArray<Float64> x) {
-            final px = x.getCell([0]).toDouble();
-            final py = x.getCell([1]).toDouble();
+            final px = x.getCell([0]);
+            final py = x.getCell([1]);
             return (px - 2.0) * (px - 2.0) + (py - 4.0) * (py - 4.0);
           },
           x0,
           method: MinimizeMethod.lbfgs,
           jac: (NDArray<Float64> x) {
-            final px = x.getCell([0]).toDouble();
-            final py = x.getCell([1]).toDouble();
+            final px = x.getCell([0]);
+            final py = x.getCell([1]);
             return NDArray<Float64>.fromList(
               [2.0 * (px - 2.0), 2.0 * (py - 4.0)],
               [2],
@@ -244,8 +244,8 @@ void main() {
         );
 
         expect(res.success, isTrue);
-        expect(res.x.getCell([0]).toDouble(), closeTo(2.0, 1e-4));
-        expect(res.x.getCell([1]).toDouble(), closeTo(4.0, 1e-4));
+        expect(res.x.getCell([0]), closeTo(2.0, 1e-4));
+        expect(res.x.getCell([1]), closeTo(4.0, 1e-4));
       });
     });
 
@@ -258,15 +258,15 @@ void main() {
           final outJ = NDArray<Float64>.zeros([2], DType.float64);
           final res = minimize(
             (NDArray<Float64> x) {
-              final px = x.getCell([0]).toDouble();
-              final py = x.getCell([1]).toDouble();
+              final px = x.getCell([0]);
+              final py = x.getCell([1]);
               return (px - 3.0) * (px - 3.0) + (py + 1.0) * (py + 1.0);
             },
             x0,
             method: MinimizeMethod.lbfgs,
             jacInto: (NDArray<Float64> x, NDArray<Float64> gOut) {
-              final px = x.getCell([0]).toDouble();
-              final py = x.getCell([1]).toDouble();
+              final px = x.getCell([0]);
+              final py = x.getCell([1]);
               gOut.setCell([0], 2.0 * (px - 3.0));
               gOut.setCell([1], 2.0 * (py + 1.0));
             },
@@ -277,8 +277,8 @@ void main() {
           expect(res.success, isTrue);
           expect(identical(res.x, outX), isTrue);
           expect(identical(res.jac, outJ), isTrue);
-          expect(outX.getCell([0]).toDouble(), closeTo(3.0, 1e-4));
-          expect(outX.getCell([1]).toDouble(), closeTo(-1.0, 1e-4));
+          expect(outX.getCell([0]), closeTo(3.0, 1e-4));
+          expect(outX.getCell([1]), closeTo(-1.0, 1e-4));
         });
       },
     );

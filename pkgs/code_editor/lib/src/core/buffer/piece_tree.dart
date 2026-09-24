@@ -236,8 +236,8 @@ class PieceTreeTextBuffer implements TextBuffer {
   @override
   void delete(int offset, int deleteLength) {
     if (deleteLength <= 0 || root == null) return;
-    var startOffset = _adjustOffsetForSurrogatePair(offset).clamp(0, length);
-    var endOffset = _adjustOffsetForSurrogatePair(
+    final startOffset = _adjustOffsetForSurrogatePair(offset).clamp(0, length);
+    final endOffset = _adjustOffsetForSurrogatePair(
       offset + deleteLength,
     ).clamp(0, length);
 

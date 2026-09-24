@@ -91,7 +91,7 @@ final class LineWrappingEngine {
         break;
       }
 
-      int candidateEnd = startCol + maxColumns;
+      final int candidateEnd = startCol + maxColumns;
       int breakCol = _findWordBoundary(lineText, startCol, candidateEnd);
 
       if (breakCol <= startCol) {

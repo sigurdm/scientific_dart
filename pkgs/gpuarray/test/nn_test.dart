@@ -74,7 +74,7 @@ void main() {
 
         expect(initialLoss, isNotNull);
         expect(finalLoss, isNotNull);
-        expect(finalLoss!, lessThan(initialLoss!)); // Loss decreased
+        expect(finalLoss, lessThan(initialLoss!)); // Loss decreased
       });
     });
 

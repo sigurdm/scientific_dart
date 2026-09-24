@@ -2,7 +2,7 @@
 ///
 /// Provides UTF-16 coordinate translation, incremental document sync manager,
 /// and feature adapters for completions, diagnostics, hover tooltips, symbols, and code actions.
-library code_editor.lsp;
+library;
 
 export 'src/lsp/completion_popup_model.dart';
 export 'src/lsp/hover_tooltip_model.dart';

@@ -136,7 +136,7 @@ class NotebookServer {
           _handleWebSocket(socket);
         } else {
           request.response.statusCode = HttpStatus.badRequest;
-          request.response.close();
+          await request.response.close();
         }
       } else if (path == '/api/export/ipynb') {
         final ipynbJson = IpynbNotebook.fromSessionCells(
@@ -270,9 +270,9 @@ class NotebookServer {
             try {
               final formattedCode = _kernel!.formatCode(code);
               final output = await _kernel!.execute(code);
-              List outputsList;
+              List<dynamic> outputsList;
               try {
-                outputsList = jsonDecode(output) as List;
+                outputsList = jsonDecode(output) as List<dynamic>;
               } catch (_) {
                 outputsList = [
                   {'mimeType': 'text/plain', 'data': output},

@@ -1,4 +1,3 @@
-// ignore_for_file: non_constant_identifier_names
 import 'dart:math' as math;
 import '../ndarray.dart';
 import 'dart:ffi' as ffi;
@@ -1404,6 +1403,7 @@ int _dtypeToCode(DType dtype) {
   }
 }
 
+/// Casts [a] to the specified [targetDType], returning a new [NDArray] (or a view if [a] already has [targetDType]).
 NDArray<R> castNDArray<R extends DTypeTag>(NDArray a, DType<R> targetDType) {
   if (a.dtype == targetDType) {
     if (a is NDArray<R>) return a;

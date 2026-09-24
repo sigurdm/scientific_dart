@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:ndarray/ndarray.dart';
 import 'package:ndarray/src/ndarray.dart';
-import 'package:ndarray/src/scratch_arena.dart';
 import 'package:test/test.dart';
 
 void main() {

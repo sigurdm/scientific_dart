@@ -148,10 +148,7 @@ void main() {
 
         final resEnd = fv(rate, nper, pmt, pvVal, when: PaymentDue.end);
         final resBegin = fv(rate, nper, pmt, pvVal, when: PaymentDue.begin);
-        expect(
-          resBegin.getCell([0]).toDouble(),
-          greaterThan(resEnd.getCell([0]).toDouble()),
-        );
+        expect(resBegin.getCell([0]), greaterThan(resEnd.getCell([0])));
       });
     });
 
@@ -179,7 +176,7 @@ void main() {
         final fp = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
         final interpRes = interp(x, xp, fp);
         expect(interpRes, isA<NDArray<Float64>>());
-        expect(interpRes.getCell([0]).toDouble(), equals(25.0));
+        expect(interpRes.getCell([0]), equals(25.0));
       });
     });
     test(

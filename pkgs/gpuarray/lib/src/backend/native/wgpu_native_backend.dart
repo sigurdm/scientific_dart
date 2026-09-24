@@ -76,18 +76,18 @@ final class WgpuNativeBackend extends GpuBackend {
   });
 
   /// Creates a mock/simulation backend for headless testing environments.
-  factory WgpuNativeBackend({bool isMock = true, bool isSimulated = true}) =>
-      WgpuNativeBackend.mock();
+  factory WgpuNativeBackend({bool isMock = true, bool isSimulated = false}) =>
+      WgpuNativeBackend.mock(isMock: isMock || isSimulated);
 
   /// Creates a mock/simulation backend for headless testing environments.
-  factory WgpuNativeBackend.mock() {
+  factory WgpuNativeBackend.mock({bool isMock = true}) {
     return WgpuNativeBackend._(
       lib: null,
       instance: ffi.nullptr,
       adapter: ffi.nullptr,
       device: ffi.nullptr,
       queue: ffi.nullptr,
-      isMock: true,
+      isMock: isMock,
     );
   }
 

@@ -209,8 +209,8 @@ double _geometricMean(Iterable<double> values) {
 }
 
 Future<void> main(List<String> args) async {
-  var reuseDart = !args.contains('--run-dart');
-  var reuseNumpy = args.contains('--reuse-numpy');
+  final reuseDart = !args.contains('--run-dart');
+  final reuseNumpy = args.contains('--reuse-numpy');
   String? suiteFilterArg;
   var markdownOut = 'benchmark/report/numpy_comparison.md';
 

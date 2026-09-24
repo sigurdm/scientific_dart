@@ -524,14 +524,8 @@ void main() {
                 DType.float64,
               );
               final resConst = histogram(constArr, bins: 2);
-              expect(
-                resConst.binEdges.getCell([0]).toDouble(),
-                closeTo(2.5, 1e-9),
-              );
-              expect(
-                resConst.binEdges.getCell([2]).toDouble(),
-                closeTo(3.5, 1e-9),
-              );
+              expect(resConst.binEdges.getCell([0]), closeTo(2.5, 1e-9));
+              expect(resConst.binEdges.getCell([2]), closeTo(3.5, 1e-9));
               expect(resConst.hist.toList(), equals([0, 3]));
 
               final emptyArr = NDArray<Float64>.fromList([], [
@@ -546,14 +540,8 @@ void main() {
                 bins: 2,
                 range: (5.0, 5.0),
               );
-              expect(
-                resRangeEqual.binEdges.getCell([0]).toDouble(),
-                closeTo(4.5, 1e-9),
-              );
-              expect(
-                resRangeEqual.binEdges.getCell([2]).toDouble(),
-                closeTo(5.5, 1e-9),
-              );
+              expect(resRangeEqual.binEdges.getCell([0]), closeTo(4.5, 1e-9));
+              expect(resRangeEqual.binEdges.getCell([2]), closeTo(5.5, 1e-9));
             });
           },
         );
@@ -2392,8 +2380,8 @@ void main() {
           expect(() => nanmax(cpx as dynamic), throwsUnsupportedError);
 
           final u8Arr = NDArray.fromList([10, 20, 5], [3], DType.uint8);
-          expect(nanmin(u8Arr).scalar.toInt(), equals(5));
-          expect(nanmax(u8Arr).scalar.toInt(), equals(20));
+          expect(nanmin(u8Arr).scalar, equals(5));
+          expect(nanmax(u8Arr).scalar, equals(20));
         });
       });
 

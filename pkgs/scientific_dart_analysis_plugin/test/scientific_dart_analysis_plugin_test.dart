@@ -103,7 +103,7 @@ void main() {
 
   group('Plugin Registration', () {
     test(
-      'ScientificDartAnalysisPlugin registers all 19 rules and quick fixes',
+      'ScientificDartAnalysisPlugin registers all rules and quick fixes',
       () {
         final registry = _FakePluginRegistry();
         final plugin = ScientificDartAnalysisPlugin();
@@ -114,36 +114,45 @@ void main() {
             .toSet();
         expect(
           registeredNames,
-          containsAll([
+          equals({
             'ndarray_unescaped_scope_return',
             'ndarray_view_lifecycle_misuse',
-            'ndarray_equality_operator',
             'ndarray_loop_reassignment_leak',
-            'ndarray_isolate_capture_and_borrow',
+            'ndarray_identity_cast_dispose',
+            'ndarray_sendable_borrow_outlives_scope',
+            'ndarray_equality_operator',
             'ndarray_uint64_signed_comparison',
             'ndarray_broadcast_view_as_out',
-            'ndarray_identity_cast_dispose',
-            'ndarray_raw_generic_type',
             'ndarray_hot_loop_element_indexing',
-            'ndarray_0d_reduction_indexing_and_leak',
-            'scoped_resource_chained_intermediate_leak',
+            'ndarray_0d_reduction_indexing',
             'nditer_coords_aliasing_or_mutation',
-            'ndarray_overlapping_view_out_or_where',
             'ndarray_lost_mutation_on_copy',
             'ndarray_from_pointer_dangling_arena',
             'scoped_resource_unawaited_in_scope',
-            'symbolic_lambdify_or_subs_in_loop',
-            'ndarray_where_both_branches_eager_alloc',
-          ]),
+            'symbolic_lambdify_in_loop',
+          }),
         );
         expect(registry.fixes, isNotEmpty);
       },
     );
   });
 
+  void expectOnly(List<Diagnostic> diagnostics, String code, int count) {
+    expect(
+      diagnostics.map((d) => d.diagnosticCode.lowerCaseName),
+      everyElement(code),
+    );
+    expect(
+      diagnostics,
+      hasLength(count),
+      reason: diagnostics.map((d) => '${d.offset}: ${d.message}').join('\n'),
+    );
+  }
+
   group('Scope & Lifecycle Rules', () {
     test(
-      '1. ndarray_unescaped_scope_return catches unescaped returns and allows detached returns',
+      'ndarray_unescaped_scope_return catches owned returns and local views, '
+      'allows detached returns and views of outer arrays',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -160,6 +169,13 @@ NDArray<Float64> badLocalReturn() {
   return NDArray.scope(() {
     final a = NDArray.ones([4], DType.float64);
     return a; // VIOLATION 2: unescaped local variable
+  });
+}
+
+NDArray<Float64> badLocalView() {
+  return NDArray.scope(() {
+    final a = NDArray.ones([4], DType.float64);
+    return a.slice([Slice(start: 0, stop: 2)]); // VIOLATION 3: view of scope-owned array
   });
 }
 
@@ -184,24 +200,30 @@ NDArray<Float64> goodOuterParamReturn(NDArray<Float64> out) {
     return out; // OK: `out` was declared outside the scope
   });
 }
+
+NDArray<Float64> goodOuterView(NDArray<Float64> outer) {
+  return NDArray.scope(() {
+    return outer.slice([Slice(start: 1)]); // OK: views are untracked
+  });
+}
+
+NDArray<Float64> goodOuterViewViaLocal(NDArray<Float64> outer) {
+  return NDArray.scope(() {
+    final v = outer.transpose();
+    return v; // OK: root buffer belongs to the caller
+  });
+}
 ''',
           rules: [UnescapedScopeReturnRule()],
         );
 
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'ndarray_unescaped_scope_return',
-          ),
-          isTrue,
-        );
+        expectOnly(diagnostics, 'ndarray_unescaped_scope_return', 3);
       },
     );
 
     test(
-      '2. ndarray_view_lifecycle_misuse catches view return in NDArray.returning and view detach/dispose',
+      'ndarray_view_lifecycle_misuse catches detaching views and returning '
+      'views from NDArray.returning; allows dispose and maybe-view ops',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -210,7 +232,7 @@ import 'package:ndarray/ndarray.dart';
 NDArray<Float64> badReturningSlice() {
   return NDArray.returning(() {
     final a = NDArray.zeros([4, 4], DType.float64);
-    return a.slice([Slice(start: 0, stop: 2)]); // VIOLATION 1: returning view from NDArray.returning
+    return a.slice([Slice(start: 0, stop: 2)]); // VIOLATION 1
   });
 }
 
@@ -218,40 +240,31 @@ NDArray<Float64> badDetachTranspose() {
   return NDArray.scope(() {
     final a = NDArray.ones([3, 3], DType.float64);
     final t = a.transpose();
-    return t.detachToParentScope(); // VIOLATION 2: detaching a transposed view
+    return t.detachToParentScope(); // VIOLATION 2
   });
 }
 
-void badDisposeReshape() {
-  final a = NDArray.ones([6], DType.float64);
-  a.reshape([2, 3]).dispose(); // VIOLATION 3: disposing a view is a no-op
-  a.dispose();
+void goodDisposeReshape(NDArray<Float64> a) {
+  // OK: reshape copies for non-contiguous input, so dispose may be needed.
+  a.reshape([2, 3]).dispose();
 }
 
 NDArray<Float64> goodCopyBeforeReturn() {
   return NDArray.returning(() {
     final a = NDArray.zeros([4, 4], DType.float64);
-    return a.slice([Slice(start: 0, stop: 2)]).copy(); // OK: .copy() materializes an owning array
+    return a.slice([Slice(start: 0, stop: 2)]).copy(); // OK
   });
 }
 ''',
           rules: [ViewLifecycleMisuseRule()],
         );
 
-        expect(diagnostics, hasLength(3));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'ndarray_view_lifecycle_misuse',
-          ),
-          isTrue,
-        );
+        expectOnly(diagnostics, 'ndarray_view_lifecycle_misuse', 2);
       },
     );
 
     test(
-      '3. ndarray_loop_reassignment_leak flags unscoped loop reassignment without out: or dispose()',
+      'ndarray_loop_reassignment_leak flags loop reassignment without out: or dispose()',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -260,7 +273,7 @@ import 'package:ndarray/ndarray.dart';
 void leakLoop(NDArray<Float64> delta) {
   var x = NDArray.zeros([10], DType.float64);
   for (var i = 0; i < 10; i++) {
-    x = add(x, delta); // VIOLATION: leaks previous `x` every iteration
+    x = add(x, delta); // VIOLATION: previous `x` accumulates every iteration
   }
   x.dispose();
 }
@@ -286,16 +299,12 @@ void safeDisposedLoop(NDArray<Float64> delta) {
           rules: [LoopReassignmentLeakRule()],
         );
 
-        expect(diagnostics, hasLength(1));
-        expect(
-          diagnostics.first.diagnosticCode.lowerCaseName,
-          equals('ndarray_loop_reassignment_leak'),
-        );
+        expectOnly(diagnostics, 'ndarray_loop_reassignment_leak', 1);
       },
     );
 
     test(
-      '4. ndarray_identity_cast_dispose flags unguarded .dispose() on astype(copy: false)',
+      'ndarray_identity_cast_dispose flags unguarded .dispose() on astype(copy: false)',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -316,34 +325,23 @@ void goodGuardedCastDispose(NDArray<Float64> a) {
           rules: [IdentityCastDisposeRule()],
         );
 
-        expect(diagnostics, hasLength(1));
-        expect(
-          diagnostics.first.diagnosticCode.lowerCaseName,
-          equals('ndarray_identity_cast_dispose'),
-        );
+        expectOnly(diagnostics, 'ndarray_identity_cast_dispose', 1);
       },
     );
 
     test(
-      '5. ndarray_isolate_capture_and_borrow flags raw NDArray capture and sync toSendableBorrow',
+      'ndarray_sendable_borrow_outlives_scope flags toSendableBorrow in scopes '
+      'that do not await',
       () async {
         final diagnostics = await analyzeCode(
           '''
 import 'dart:isolate';
 import 'package:ndarray/ndarray.dart';
 
-Future<void> badIsolateCapture() async {
-  final a = NDArray.ones([10], DType.float64);
-  await Isolate.run(() {
-    return a.size; // VIOLATION 1: raw NDArray `a` captured across isolate
-  });
-  a.dispose();
-}
-
 void badSyncScopeBorrow() {
   NDArray.scope(() {
     final a = NDArray.ones([10], DType.float64);
-    final borrowed = a.toSendableBorrow(); // VIOLATION 2: synchronous scope exits immediately!
+    final borrowed = a.toSendableBorrow(); // VIOLATION: scope exits immediately
     Isolate.run(() => borrowed.materializeView().size);
   });
 }
@@ -351,30 +349,22 @@ void badSyncScopeBorrow() {
 Future<int> goodAsyncAwaitedBorrow() async {
   return await NDArray.scope(() async {
     final a = NDArray.ones([10], DType.float64);
-    final borrowed = a.toSendableBorrow(); // OK: scope is async and awaits Isolate.run
+    final borrowed = a.toSendableBorrow(); // OK: scope awaits Isolate.run
     return await Isolate.run(() => borrowed.materializeView().size);
   });
 }
 ''',
-          rules: [IsolateCaptureAndBorrowRule()],
+          rules: [SendableBorrowOutlivesScopeRule()],
         );
 
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'ndarray_isolate_capture_and_borrow',
-          ),
-          isTrue,
-        );
+        expectOnly(diagnostics, 'ndarray_sendable_borrow_outlives_scope', 1);
       },
     );
   });
 
   group('API & Performance Rules', () {
     test(
-      '6. ndarray_equality_operator flags == and != between NDArrays, allows null and .equals()',
+      'ndarray_equality_operator flags == and != between NDArrays, allows null and .equals()',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -392,19 +382,12 @@ bool checkArrays(NDArray<Float64> a, NDArray<Float64> b, NDArray<Float64>? maybe
           rules: [EqualityOperatorRule()],
         );
 
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName == 'ndarray_equality_operator',
-          ),
-          isTrue,
-        );
+        expectOnly(diagnostics, 'ndarray_equality_operator', 2);
       },
     );
 
     test(
-      '7. ndarray_uint64_signed_comparison flags <, <=, >, >= on NDArray<Uint64> elements',
+      'ndarray_uint64_signed_comparison flags <, <=, >, >= on NDArray<Uint64> elements',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -422,20 +405,12 @@ bool checkUint64(NDArray<Uint64> u64, NDArray<Int64> i64) {
           rules: [Uint64SignedComparisonRule()],
         );
 
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'ndarray_uint64_signed_comparison',
-          ),
-          isTrue,
-        );
+        expectOnly(diagnostics, 'ndarray_uint64_signed_comparison', 2);
       },
     );
 
     test(
-      '8. ndarray_broadcast_view_as_out flags broadcastTo passed as out:',
+      'ndarray_broadcast_view_as_out flags broadcastTo passed as out:',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -443,58 +418,30 @@ import 'package:ndarray/ndarray.dart';
 
 void testBroadcastOut(NDArray<Float64> a) {
   final bcast = broadcastTo(NDArray.zeros([1], DType.float64), [4]);
-  sin(a, out: bcast); // VIOLATION: stride-0 broadcast view as out
+  sin(a, out: bcast); // VIOLATION: read-only broadcast view as out
 }
 ''',
           rules: [BroadcastViewAsOutRule()],
         );
 
-        expect(diagnostics, hasLength(1));
-        expect(
-          diagnostics.first.diagnosticCode.lowerCaseName,
-          equals('ndarray_broadcast_view_as_out'),
-        );
+        expectOnly(diagnostics, 'ndarray_broadcast_view_as_out', 1);
       },
     );
 
     test(
-      '9. ndarray_raw_generic_type flags bare NDArray type annotations',
-      () async {
-        final diagnostics = await analyzeCode(
-          '''
-import 'package:ndarray/ndarray.dart';
-
-void rawParam(NDArray a, NDArray<Float64> typed) {
-  // `NDArray a` is VIOLATION 1; `is NDArray` type check is allowed.
-  if (typed is NDArray) {
-    return;
-  }
-}
-''',
-          rules: [RawGenericTypeRule()],
-        );
-
-        expect(diagnostics, hasLength(1));
-        expect(
-          diagnostics.first.diagnosticCode.lowerCaseName,
-          equals('ndarray_raw_generic_type'),
-        );
-      },
-    );
-
-    test(
-      '10. ndarray_hot_loop_element_indexing flags nested loop indexing and .toList()',
+      'ndarray_hot_loop_element_indexing flags nested-loop reads only',
       () async {
         final diagnostics = await analyzeCode(
           '''
 import 'package:ndarray/ndarray.dart';
 
 double sumSlow(NDArray<Float64> m) {
-  final dump = m.toList(); // VIOLATION 1: .toList() heap dump
+  final dump = m.toList(); // OK: not flagged any more
   var total = 0.0;
   for (var i = 0; i < 3; i++) {
     for (var j = 0; j < 3; j++) {
-      total += m[[i, j]] as double; // VIOLATION 2: nested loop element indexing
+      total += m[[i, j]] as double; // VIOLATION: nested loop element read
+      m[[i, j]] = 0.0; // OK: writes are not flagged
     }
   }
   return total + dump.length;
@@ -503,22 +450,14 @@ double sumSlow(NDArray<Float64> m) {
           rules: [HotLoopElementIndexingRule()],
         );
 
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'ndarray_hot_loop_element_indexing',
-          ),
-          isTrue,
-        );
+        expectOnly(diagnostics, 'ndarray_hot_loop_element_indexing', 1);
       },
     );
   });
 
-  group('Advanced Memory, View, & Symbolic Rules', () {
+  group('Memory, Copy/View, Iterator & Symbolic Rules', () {
     test(
-      '11. ndarray_0d_reduction_indexing_and_leak catches non-empty coordinate indexing on 0-D reductions and unscoped .scalar',
+      'ndarray_0d_reduction_indexing flags non-empty indexing of axis-less reductions',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -526,74 +465,25 @@ import 'package:ndarray/ndarray.dart';
 
 double bad0d(NDArray<Float64> a) {
   final r = sum(a);
-  final x = r[[0]] as double; // VIOLATION 1: non-empty indexing on 0-D reduction
-  final y = max(a).scalar; // VIOLATION 2: unscoped .scalar leaks 0-D buffer
+  final x = r[[0]] as double; // VIOLATION: rank-0 array
   final okEmpty = r[[]] as double; // OK
-  r.dispose();
-  return x + y + okEmpty;
-}
-
-double goodScopedScalar(NDArray<Float64> a) {
-  return NDArray.scope(() => sum(a).scalar); // OK: inside NDArray.scope
-}
-
-double goodAxisReduction(NDArray<Float64> a) {
-  final r = sum(a, axis: 0);
-  final x = r[[0]] as double; // OK: 1-D reduction when axis is specified
-  r.dispose();
-  return x;
+  final okScalar = max(a).scalar as double; // OK: no longer flagged
+  final k = sum(a, keepdims: true);
+  final okKeepdims = k[[0]] as double; // OK: keepdims preserves rank
+  final s = sum(a, axis: 0);
+  final okAxis = s[[0]] as double; // OK: axis given
+  return x + okEmpty + okScalar + okKeepdims + okAxis;
 }
 ''',
-          rules: [ZeroDimReductionIndexingAndLeakRule()],
+          rules: [ZeroDimReductionIndexingRule()],
         );
 
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'ndarray_0d_reduction_indexing_and_leak',
-          ),
-          isTrue,
-        );
+        expectOnly(diagnostics, 'ndarray_0d_reduction_indexing', 1);
       },
     );
 
     test(
-      '12. scoped_resource_chained_intermediate_leak catches nested allocations outside scope',
-      () async {
-        final diagnostics = await analyzeCode(
-          '''
-import 'package:ndarray/ndarray.dart';
-
-NDArray<Float64> badChained(NDArray<Float64> a, NDArray<Float64> b, NDArray<Float64> c) {
-  final r1 = add(multiply(a, b), c); // VIOLATION 1: multiply(a, b) leaked
-  final r2 = (a * b) + c; // VIOLATION 2: (a * b) leaked
-  r1.dispose();
-  return r2;
-}
-
-NDArray<Float64> goodScopedChained(NDArray<Float64> a, NDArray<Float64> b, NDArray<Float64> c) {
-  return NDArray.returning(() => (a * b) + c); // OK: inside NDArray.returning
-}
-''',
-          rules: [ScopedResourceChainedIntermediateLeakRule()],
-        );
-
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'scoped_resource_chained_intermediate_leak',
-          ),
-          isTrue,
-        );
-      },
-    );
-
-    test(
-      '13. nditer_coords_aliasing_or_mutation catches storing or mutating NDIter.coords directly',
+      'nditer_coords_aliasing_or_mutation catches storing or mutating NDIter.coords directly',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -612,49 +502,12 @@ void badIterCoords(NDArray<Float64> a) {
           rules: [NDIterCoordsAliasingOrMutationRule()],
         );
 
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'nditer_coords_aliasing_or_mutation',
-          ),
-          isTrue,
-        );
+        expectOnly(diagnostics, 'nditer_coords_aliasing_or_mutation', 2);
       },
     );
 
     test(
-      '14. ndarray_overlapping_view_out_or_where catches overlapping views between inputs and out:',
-      () async {
-        final diagnostics = await analyzeCode(
-          '''
-import 'package:ndarray/ndarray.dart';
-
-void badOverlap(NDArray<Float64> a) {
-  final t = a.transpose();
-  add(a, t, out: a); // VIOLATION 1: t is a transposed view of out: a
-  subtract(a.slice([Slice(start: 1)]), a, out: a); // VIOLATION 2: slice overlaps out: a
-  add(a, a, out: a); // OK: exact same stride/offset in-place
-}
-''',
-          rules: [OverlappingViewOutOrWhereRule()],
-        );
-
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'ndarray_overlapping_view_out_or_where',
-          ),
-          isTrue,
-        );
-      },
-    );
-
-    test(
-      '15. ndarray_lost_mutation_on_copy catches mutating temporary copies',
+      'ndarray_lost_mutation_on_copy catches mutating temporary copies',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -669,20 +522,12 @@ void badCopyMutation(NDArray<Float64> a) {
           rules: [LostMutationOnCopyRule()],
         );
 
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'ndarray_lost_mutation_on_copy',
-          ),
-          isTrue,
-        );
+        expectOnly(diagnostics, 'ndarray_lost_mutation_on_copy', 2);
       },
     );
 
     test(
-      '16. ndarray_from_pointer_dangling_arena catches NDArray.fromPointer escaping ScratchArena',
+      'ndarray_from_pointer_dangling_arena catches NDArray.fromPointer escaping ScratchArena',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -693,7 +538,7 @@ NDArray<Float64> badArenaReturn() {
   final marker = ScratchArena.marker;
   try {
     final ptr = ScratchArena.allocate<ffi.Double>(32);
-    return NDArray.fromPointer(ptr.cast(), [4], DType.float64); // VIOLATION: dangling pointer
+    return NDArray.fromPointer(ptr.cast(), [4], DType.float64); // VIOLATION
   } finally {
     ScratchArena.reset(marker);
   }
@@ -703,7 +548,7 @@ NDArray<Float64> goodArenaCopyReturn() {
   final marker = ScratchArena.marker;
   try {
     final ptr = ScratchArena.allocate<ffi.Double>(32);
-    return NDArray.fromPointer(ptr.cast(), [4], DType.float64).copy(); // OK: copied before arena unwinds
+    return NDArray.fromPointer(ptr.cast(), [4], DType.float64).copy(); // OK
   } finally {
     ScratchArena.reset(marker);
   }
@@ -712,16 +557,12 @@ NDArray<Float64> goodArenaCopyReturn() {
           rules: [FromPointerDanglingArenaRule()],
         );
 
-        expect(diagnostics, hasLength(1));
-        expect(
-          diagnostics.first.diagnosticCode.lowerCaseName,
-          equals('ndarray_from_pointer_dangling_arena'),
-        );
+        expectOnly(diagnostics, 'ndarray_from_pointer_dangling_arena', 1);
       },
     );
 
     test(
-      '17. scoped_resource_unawaited_in_scope catches unawaited Future statements in NDArray.scope',
+      'scoped_resource_unawaited_in_scope catches unawaited Future statements in NDArray.scope',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -733,35 +574,27 @@ Future<void> helperAsync(NDArray<Float64> a) async {}
 void badScopeAsync() {
   NDArray.scope(() {
     final a = NDArray.zeros([4], DType.float64);
-    helperAsync(a); // VIOLATION 1: unawaited Future expression statement using local ScopedResource
-    unawaited(helperAsync(a)); // VIOLATION 2: explicitly unawaited Future using local ScopedResource
+    helperAsync(a); // VIOLATION 1
+    unawaited(helperAsync(a)); // VIOLATION 2
   });
 }
 
 Future<void> goodScopeAsync() async {
   await NDArray.scope(() async {
     final a = NDArray.zeros([4], DType.float64);
-    await helperAsync(a); // OK: awaited inside async scope
+    await helperAsync(a); // OK
   });
 }
 ''',
           rules: [UnawaitedAsyncInScopeRule()],
         );
 
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'scoped_resource_unawaited_in_scope',
-          ),
-          isTrue,
-        );
+        expectOnly(diagnostics, 'scoped_resource_unawaited_in_scope', 2);
       },
     );
 
     test(
-      '18. symbolic_lambdify_or_subs_in_loop catches Expr.lambdify and Expr.subs() inside loops',
+      'symbolic_lambdify_in_loop flags loop-invariant lambdify only',
       () async {
         final diagnostics = await analyzeCode(
           '''
@@ -770,10 +603,20 @@ import 'package:symbolic_dart/symbolic_dart.dart';
 double badSymbolicLoop(Expr expr, Expr x) {
   var sum = 0.0;
   for (var i = 0; i < 10; i++) {
-    final fn = expr.lambdify([x]); // VIOLATION 1: lambdify inside loop
+    final fn = expr.lambdify([x]); // VIOLATION: recompiled every iteration
     sum += fn.callScalar([i.toDouble()]);
-    final subbed = expr.subs({x: Expr.real(i.toDouble())}); // VIOLATION 2: subs() on loop-invariant expr inside loop
+    final subbed = expr.subs({x: Expr.real(i.toDouble())}); // OK: subs varies
     subbed.dispose();
+  }
+  return sum;
+}
+
+double goodReassignedReceiver(Expr expr, Expr x) {
+  var current = expr;
+  var sum = 0.0;
+  for (var i = 0; i < 3; i++) {
+    current = current.subs({x: Expr.real(i.toDouble())});
+    sum += current.lambdify([x]).callScalar([0.0]); // OK: not loop-invariant
   }
   return sum;
 }
@@ -790,45 +633,7 @@ double goodSymbolicHoisted(Expr expr, Expr x) {
           rules: [SymbolicLambdifyInLoopRule()],
         );
 
-        expect(diagnostics, hasLength(2));
-        expect(
-          diagnostics.every(
-            (d) =>
-                d.diagnosticCode.lowerCaseName ==
-                'symbolic_lambdify_or_subs_in_loop',
-          ),
-          isTrue,
-        );
-      },
-    );
-
-    test(
-      '19. ndarray_where_both_branches_eager_alloc catches eager branch allocations in where()',
-      () async {
-        final diagnostics = await analyzeCode(
-          '''
-import 'package:ndarray/ndarray.dart';
-
-NDArray<Float64> badWhere(NDArray<Boolean> cond, NDArray<Float64> a, NDArray<Float64> b) {
-  return NDArray.returning(() {
-    return where(cond, sin(a), cos(b)) as NDArray<Float64>; // VIOLATION: both branches eagerly allocate
-  });
-}
-
-NDArray<Float64> goodWhere(NDArray<Boolean> cond, NDArray<Float64> a, NDArray<Float64> b) {
-  return NDArray.returning(() {
-    return where(cond, a, b) as NDArray<Float64>; // OK: existing arrays
-  });
-}
-''',
-          rules: [WhereEagerBranchAllocationRule()],
-        );
-
-        expect(diagnostics, hasLength(1));
-        expect(
-          diagnostics.first.diagnosticCode.lowerCaseName,
-          equals('ndarray_where_both_branches_eager_alloc'),
-        );
+        expectOnly(diagnostics, 'symbolic_lambdify_in_loop', 1);
       },
     );
   });

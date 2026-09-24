@@ -19,7 +19,7 @@ final class DartFormatterEngine {
     bool inMultilineString = false;
 
     for (int i = 0; i < lines.length; i++) {
-      String rawLine = lines[i];
+      final String rawLine = lines[i];
       final trimmed = rawLine.trim();
 
       if (trimmed.isEmpty) {
@@ -205,11 +205,11 @@ final class DartFormatterEngine {
     final commentIdx = line.indexOf('//');
     final codePart = commentIdx != -1 ? line.substring(0, commentIdx) : line;
 
-    int openBraces =
+    final int openBraces =
         _countChar(codePart, '{') +
         _countChar(codePart, '[') +
         _countChar(codePart, '(');
-    int closeBraces =
+    final int closeBraces =
         _countChar(codePart, '}') +
         _countChar(codePart, ']') +
         _countChar(codePart, ')');

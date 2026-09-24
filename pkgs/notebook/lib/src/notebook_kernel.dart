@@ -135,7 +135,7 @@ class NotebookKernel {
       ),
     );
 
-    final wsUri = vmServiceUri.replaceFirst('http://', 'ws://') + 'ws';
+    final wsUri = '${vmServiceUri.replaceFirst('http://', 'ws://')}ws';
     _service = await vmServiceConnectUri(wsUri);
 
     var vm = await _service!.getVM();
@@ -149,18 +149,18 @@ class NotebookKernel {
         );
       }
       vm = await _service!.getVM();
-      for (var isolateRef in vm.isolates ?? []) {
+      for (final isolateRef in vm.isolates ?? <IsolateRef>[]) {
         if (isolateRef.name == 'main' || vm.isolates!.length == 1) {
           mainIsolateRef = isolateRef;
           break;
         }
       }
       if (mainIsolateRef == null) {
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       }
     }
 
-    _isolateId = mainIsolateRef.id!;
+    _isolateId = mainIsolateRef.id;
 
     final isolateTimeout = DateTime.now().add(const Duration(seconds: 30));
     var isolate = await _service!.getIsolate(_isolateId!);
@@ -170,11 +170,11 @@ class NotebookKernel {
           'Timed out waiting for runnable isolate rootLib.',
         );
       }
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
       isolate = await _service!.getIsolate(_isolateId!);
     }
 
-    _rootLibId = isolate.rootLib!.id!;
+    _rootLibId = isolate.rootLib!.id;
     _updateWorkspaceLibId(isolate);
   }
 
@@ -233,13 +233,13 @@ class NotebookKernel {
 
   void _updateWorkspaceLibId(Isolate isolate) {
     LibraryRef? targetLib;
-    for (var lib in isolate.libraries ?? []) {
+    for (final lib in isolate.libraries ?? <LibraryRef>[]) {
       if (lib.uri != null && lib.uri!.endsWith('workspace.dart')) {
         targetLib = lib;
       }
     }
     if (targetLib != null) {
-      _workspaceLibId = targetLib.id!;
+      _workspaceLibId = targetLib.id;
       return;
     }
     throw StateError('Could not find workspace.dart library in isolate');
@@ -283,7 +283,7 @@ class NotebookKernel {
     ).firstMatch(rawCode);
     if (pubAddMatch != null) {
       final pkgName = pubAddMatch.group(1)!;
-      return await _handleAddDependency(pkgName);
+      return _handleAddDependency(pkgName);
     }
 
     final importRegex = RegExp(
@@ -370,7 +370,7 @@ class NotebookKernel {
 
     final prevDefs = Map<String, String>.from(_definitions);
     final transformRes = _transformCellCode(rawCode);
-    for (var def in transformRes.topLevelDefinitions) {
+    for (final def in transformRes.topLevelDefinitions) {
       final name = def.split(' ')[1].replaceAll(';', '');
       if (!_definitions.containsKey(name)) {
         _definitions[name] = def;
@@ -425,9 +425,11 @@ class NotebookKernel {
         }
         if (jsonStr != null) {
           final decoded = jsonDecode(jsonStr) as List;
-          for (var item in decoded) {
+          for (final item in decoded) {
             outputs.add(
-              CellOutputItem.fromJson(Map<String, dynamic>.from(item)),
+              CellOutputItem.fromJson(
+                Map<String, dynamic>.from(item as Map<dynamic, dynamic>),
+              ),
             );
           }
         }
@@ -751,7 +753,7 @@ class NotebookKernel {
     final prefix = wordMatch != null ? wordMatch.group(1)! : '';
 
     final items = <CompletionItem>[];
-    for (var entry in _definitions.entries) {
+    for (final entry in _definitions.entries) {
       final symbol = entry.key;
       final isVar = entry.value.startsWith('var ');
       items.add(
@@ -1047,16 +1049,16 @@ class NotebookKernel {
       "import 'package:resource_scope/resource_scope.dart';",
       "import 'package:gpuarray/gpuarray.dart';",
     };
-    for (var imp in defaultImports) {
+    for (final imp in defaultImports) {
       buffer.writeln(imp);
     }
-    for (var imp in _imports) {
+    for (final imp in _imports) {
       if (!defaultImports.contains(imp.trim())) {
         buffer.writeln(imp);
       }
     }
     buffer.writeln();
-    for (var def in _definitions.values) {
+    for (final def in _definitions.values) {
       buffer.writeln(def);
       buffer.writeln();
     }
@@ -1096,17 +1098,9 @@ class NotebookKernel {
       final decl = unit.declarations.first;
 
       if (decl is ClassDeclaration) {
-        // ignore: undefined_getter
-        return DeclaredSymbolResult(
-          (decl.namePart as dynamic).typeName.lexeme,
-          false,
-        );
+        return DeclaredSymbolResult(decl.namePart.typeName.lexeme, false);
       } else if (decl is EnumDeclaration) {
-        // ignore: undefined_getter
-        return DeclaredSymbolResult(
-          (decl.namePart as dynamic).typeName.lexeme,
-          false,
-        );
+        return DeclaredSymbolResult(decl.namePart.typeName.lexeme, false);
       } else if (decl is FunctionDeclaration) {
         return DeclaredSymbolResult(decl.name.lexeme, false);
       } else if (decl is MixinDeclaration) {
@@ -1169,7 +1163,7 @@ class NotebookKernel {
       final isLast = (i == statements.length - 1);
 
       if (stmt is VariableDeclarationStatement) {
-        for (var v in stmt.variables.variables) {
+        for (final v in stmt.variables.variables) {
           final varName = v.name.lexeme;
           topLevelDefs.add('dynamic $varName;');
           if (v.initializer != null) {
@@ -1238,7 +1232,7 @@ class NotebookKernel {
         }
       } catch (_) {}
     }
-    final fallbackStr = await _formatResult(response);
+    final fallbackStr = await _formatResult(response as Response);
     if (fallbackStr == 'null' || fallbackStr.isEmpty) return null;
     final trimmed = fallbackStr.trim();
     if (trimmed.startsWith('<') &&

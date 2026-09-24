@@ -17,13 +17,15 @@ const version = 'artifacts-v0.0.2';
 
 /// Combined SHA-256 digest of `hook/` native source files at [version].
 const nativeSourceHash =
-    'b6a80b9f017424e1f8d928a44846fddd36f4cb084aafe61dfcb13a8045d98278';
+    '743d1d574e70d6313156a80bb4a63a837511ecd48c284fbd4ef38b63b96afe8a';
 
 /// Lists the tracked native source files in `hook/` under [packageRoot].
 List<File> nativeSourceFiles(Uri packageRoot) {
   final hookDir = Directory.fromUri(packageRoot.resolve('hook/'));
   if (!hookDir.existsSync()) return const [];
-  final files = hookDir.listSync().whereType<File>().where((file) {
+  final files = hookDir.listSync(recursive: true).whereType<File>().where((
+    file,
+  ) {
     final name = file.uri.pathSegments.last;
     return name.endsWith('.dart') ||
         name.endsWith('.c') ||

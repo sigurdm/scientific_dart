@@ -334,7 +334,7 @@ NDArray<T> expand_dims<T extends DTypeTag>(NDArray<T> a, int axis) {
     throw StateError('Cannot execute expand_dims() on a disposed array.');
   }
   final rank = a.shape.length;
-  var targetAxis = axis < 0 ? rank + 1 + axis : axis;
+  final targetAxis = axis < 0 ? rank + 1 + axis : axis;
 
   if (targetAxis < 0 || targetAxis > rank) {
     throw ArgumentError(
@@ -474,7 +474,7 @@ NDArray<T> slidingWindowView<T extends DTypeTag>(
   // 1. Resolve and validate target axes
   final targetAxes = <int>[];
   if (axis != null) {
-    for (var ax in axis) {
+    for (final ax in axis) {
       final resolved = ax < 0 ? rank + ax : ax;
       if (resolved < 0 || resolved >= rank) {
         throw RangeError.range(resolved, 0, rank - 1, 'axis');

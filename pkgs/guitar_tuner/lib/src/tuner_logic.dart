@@ -31,8 +31,8 @@ final class TunerResult {
   String _generateVolumeBar() {
     const width = 10;
     // Map RMS (approx 0 to 0.5 for loud signal) to bar width
-    int level = (rms * 20).round().clamp(0, width);
-    return '[' + '#' * level + ' ' * (width - level) + ']';
+    final int level = (rms * 20).round().clamp(0, width);
+    return '[${'#' * level}${' ' * (width - level)}]';
   }
 
   String _generateVisual() {
@@ -206,13 +206,13 @@ final class TunerLogic {
       double sum = 0.0;
       int count = 0;
       for (var j = start; j < end && j < magnitudesList.length; j++) {
-        sum += magnitudesList[j];
+        sum += magnitudesList[j] as num;
         count++;
       }
 
       final avg = count > 0 ? sum / count : 0.0;
       // Heuristic scaling for better visual contrast
-      int level = (avg * 50).round().clamp(0, chars.length - 1);
+      final int level = (avg * 50).round().clamp(0, chars.length - 1);
       result.write(chars[level]);
     }
     return result.toString();

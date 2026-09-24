@@ -382,10 +382,10 @@ final class IpynbNotebook {
         } else if (outputRaw != null && outputRaw.toString().isNotEmpty) {
           final outStr = outputRaw.toString();
           // Check if output is a JSON array of CellOutputItem
-          List? parsedList;
+          List<dynamic>? parsedList;
           try {
             if (outStr.startsWith('[')) {
-              parsedList = jsonDecode(outStr) as List?;
+              parsedList = jsonDecode(outStr) as List<dynamic>?;
             }
           } catch (_) {}
 

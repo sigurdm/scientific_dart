@@ -1,4 +1,4 @@
-// ignore_for_file: constant_identifier_names, non_constant_identifier_names, camel_case_types
+// ignore_for_file: constant_identifier_names
 import 'dart:ffi' as ffi;
 import 'dart:io' show Platform;
 import 'package:ffi/ffi.dart';

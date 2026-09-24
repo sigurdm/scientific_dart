@@ -1079,8 +1079,8 @@ NDArray<T> einsum<T extends DTypeTag>(
     }
 
     if (operands.length > 2) {
-      var currentOps = List<NDArray>.from(operands);
-      var currentSubs = List<List<int>>.from(operandSubs);
+      final currentOps = List<NDArray>.from(operands);
+      final currentSubs = List<List<int>>.from(operandSubs);
       final toDispose = <NDArray>[];
 
       try {

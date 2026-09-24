@@ -5,17 +5,7 @@ import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
 import '../scratch_arena.dart';
 import '../exceptions.dart';
-import '../ndarray_extensions_bindings.dart';
-import '../ndarray_bindings.dart'
-    hide
-        s_det_double,
-        s_det_float,
-        s_det_complex_double,
-        s_det_complex_float,
-        s_slogdet_double,
-        s_slogdet_float,
-        s_slogdet_complex_double,
-        s_slogdet_complex_float;
+import '../ndarray_bindings.dart';
 
 // Standalone operational relative cross-imports
 import 'math.dart';
@@ -1681,7 +1671,7 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
             rank,
             cCopy,
             cIpiv,
-            get_dgetrf_ptr(),
+            get_dgetrf_ptr().cast(),
           );
         } finally {
           ScratchArena.reset(marker);
@@ -1700,23 +1690,23 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
           final cShape = ScratchArena.copyInts(a.shape);
 
           final n = a.shape[rank - 1];
-          final cCopy = ScratchArena.allocate<ffi.Double>(
-            2 * n * n * ffi.sizeOf<ffi.Double>(),
+          final cCopy = ScratchArena.allocate<cpx_t>(
+            n * n * ffi.sizeOf<cpx_t>(),
           );
           final cIpiv = ScratchArena.allocate<ffi.Int>(
             n * ffi.sizeOf<ffi.Int>(),
           );
 
           s_det_complex_double(
-            a.pointer.cast<ffi.Double>(),
+            a.pointer.cast<cpx_t>(),
             cStridesA,
-            result.pointer.cast<ffi.Double>(),
+            result.pointer.cast<cpx_t>(),
             cStridesRes,
             cShape,
             rank,
             cCopy,
             cIpiv,
-            get_zgetrf_ptr(),
+            get_zgetrf_ptr().cast(),
           );
         } finally {
           ScratchArena.reset(marker);
@@ -1735,23 +1725,23 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
           final cShape = ScratchArena.copyInts(a.shape);
 
           final n = a.shape[rank - 1];
-          final cCopy = ScratchArena.allocate<ffi.Float>(
-            2 * n * n * ffi.sizeOf<ffi.Float>(),
+          final cCopy = ScratchArena.allocate<cpx_f_t>(
+            n * n * ffi.sizeOf<cpx_f_t>(),
           );
           final cIpiv = ScratchArena.allocate<ffi.Int>(
             n * ffi.sizeOf<ffi.Int>(),
           );
 
           s_det_complex_float(
-            a.pointer.cast<ffi.Float>(),
+            a.pointer.cast<cpx_f_t>(),
             cStridesA,
-            result.pointer.cast<ffi.Float>(),
+            result.pointer.cast<cpx_f_t>(),
             cStridesRes,
             cShape,
             rank,
             cCopy,
             cIpiv,
-            get_cgetrf_ptr(),
+            get_cgetrf_ptr().cast(),
           );
         } finally {
           ScratchArena.reset(marker);
@@ -1786,7 +1776,7 @@ NDArray<T> det<T extends DTypeTag>(NDArray<T> a, {NDArray<T>? out}) {
             rank,
             cCopy,
             cIpiv,
-            get_sgetrf_ptr(),
+            get_sgetrf_ptr().cast(),
           );
         } finally {
           ScratchArena.reset(marker);
@@ -1986,7 +1976,7 @@ slogdet<T extends DTypeTag, R extends DTypeTag>(
             rank,
             cCopy,
             cIpiv,
-            get_dgetrf_ptr(),
+            get_dgetrf_ptr().cast(),
           );
         case DType.float32:
           final cCopy = ScratchArena.allocate<ffi.Float>(
@@ -2006,19 +1996,19 @@ slogdet<T extends DTypeTag, R extends DTypeTag>(
             rank,
             cCopy,
             cIpiv,
-            get_sgetrf_ptr(),
+            get_sgetrf_ptr().cast(),
           );
         case DType.complex128:
-          final cCopy = ScratchArena.allocate<ffi.Double>(
-            2 * n * n * ffi.sizeOf<ffi.Double>(),
+          final cCopy = ScratchArena.allocate<cpx_t>(
+            n * n * ffi.sizeOf<cpx_t>(),
           );
           final cIpiv = ScratchArena.allocate<ffi.Int>(
             n * ffi.sizeOf<ffi.Int>(),
           );
           s_slogdet_complex_double(
-            a.pointer.cast<ffi.Double>(),
+            a.pointer.cast<cpx_t>(),
             cStridesA,
-            signResult.pointer.cast<ffi.Double>(),
+            signResult.pointer.cast<cpx_t>(),
             cStridesSign,
             logdetResult.pointer.cast<ffi.Double>(),
             cStridesLogdet,
@@ -2026,19 +2016,19 @@ slogdet<T extends DTypeTag, R extends DTypeTag>(
             rank,
             cCopy,
             cIpiv,
-            get_zgetrf_ptr(),
+            get_zgetrf_ptr().cast(),
           );
         case DType.complex64:
-          final cCopy = ScratchArena.allocate<ffi.Float>(
-            2 * n * n * ffi.sizeOf<ffi.Float>(),
+          final cCopy = ScratchArena.allocate<cpx_f_t>(
+            n * n * ffi.sizeOf<cpx_f_t>(),
           );
           final cIpiv = ScratchArena.allocate<ffi.Int>(
             n * ffi.sizeOf<ffi.Int>(),
           );
           s_slogdet_complex_float(
-            a.pointer.cast<ffi.Float>(),
+            a.pointer.cast<cpx_f_t>(),
             cStridesA,
-            signResult.pointer.cast<ffi.Float>(),
+            signResult.pointer.cast<cpx_f_t>(),
             cStridesSign,
             logdetResult.pointer.cast<ffi.Float>(),
             cStridesLogdet,
@@ -2046,7 +2036,7 @@ slogdet<T extends DTypeTag, R extends DTypeTag>(
             rank,
             cCopy,
             cIpiv,
-            get_cgetrf_ptr(),
+            get_cgetrf_ptr().cast(),
           );
         default:
           throw UnsupportedError('Unsupported dtype ${a.dtype}');

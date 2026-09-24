@@ -1,5 +1,4 @@
 import "dart:ffi" as ffi;
-// ignore_for_file: non_constant_identifier_names
 import "../../ndarray.dart";
 import "../../ndarray_bindings.dart";
 import "../../scratch_arena.dart";

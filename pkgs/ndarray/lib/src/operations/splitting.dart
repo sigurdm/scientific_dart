@@ -149,7 +149,7 @@ List<NDArray<T>> array_split_at<T extends DTypeTag>(
   final L = a.shape[normAxis];
 
   final boundaries = <int>[0];
-  for (var p in indices) {
+  for (final p in indices) {
     boundaries.add(p.clamp(0, L));
   }
   boundaries.add(L);

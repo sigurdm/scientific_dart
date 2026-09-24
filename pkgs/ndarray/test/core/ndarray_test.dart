@@ -932,7 +932,7 @@ void main() {
       () => NDArray.scope(() {
         for (final dtype in DType.values) {
           final NDArray a;
-          final List expected;
+          final List<dynamic> expected;
           if (dtype == DType.complex128 || dtype == DType.complex64) {
             a = NDArray.create([2, 2], dtype as dynamic);
             a.data[0] = Complex(1.0, 1.0);

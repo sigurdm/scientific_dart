@@ -54,11 +54,11 @@ void main() {
 
     test('WgslWorkgroupSize generates correct attributes', () {
       expect(
-        const WgslWorkgroupSize(256, 1, 1).toAttribute(),
+        WgslWorkgroupSize.linear1D.toAttribute(),
         equals('@workgroup_size(256)'),
       );
       expect(
-        const WgslWorkgroupSize(16, 16, 1).toAttribute(),
+        WgslWorkgroupSize.tiled2D.toAttribute(),
         equals('@workgroup_size(16, 16)'),
       );
       expect(
@@ -73,7 +73,7 @@ void main() {
         final module1D = WgslShaderModule(
           name: 'test_1d',
           code: '@compute @workgroup_size(256) fn main() {}',
-          workgroupSize: const WgslWorkgroupSize(256, 1, 1),
+          workgroupSize: WgslWorkgroupSize.linear1D,
         );
         final d1 = module1D.calculateDispatch1D(1000);
         expect(d1.workgroupsX, equals(4)); // ceil(1000 / 256) = 4
@@ -83,7 +83,7 @@ void main() {
         final module2D = WgslShaderModule(
           name: 'test_2d',
           code: '@compute @workgroup_size(16, 16) fn main() {}',
-          workgroupSize: const WgslWorkgroupSize(16, 16, 1),
+          workgroupSize: WgslWorkgroupSize.tiled2D,
         );
         final d2 = module2D.calculateDispatch2D(100, 50);
         expect(d2.workgroupsX, equals(7)); // ceil(100 / 16) = 7

@@ -132,8 +132,8 @@ NDArray<T> sort<T extends DTypeTag>(
     }
 
     NDArray<T> finish() {
-      if (tempResult != null) {
-        tempResult.copy(out: out!);
+      if (tempResult != null && out != null) {
+        tempResult.copy(out: out);
         return out;
       }
       return result;
@@ -312,8 +312,8 @@ NDArray<R> argsortAs<T extends DTypeTag, R extends DTypeTag>(
         tempResult ?? (out ?? NDArray<R>.create(src.shape, dtype));
 
     NDArray<R> finish() {
-      if (tempResult != null) {
-        tempResult.copy(out: out!);
+      if (tempResult != null && out != null) {
+        tempResult.copy(out: out);
         return out;
       }
       if (out == null) {
@@ -680,8 +680,8 @@ NDArray<T> partition<T extends DTypeTag>(
     }
 
     NDArray<T> finish() {
-      if (tempResult != null) {
-        tempResult.copy(out: out!);
+      if (tempResult != null && out != null) {
+        tempResult.copy(out: out);
         return out;
       }
       if (out == null) {
@@ -957,8 +957,8 @@ NDArray<R> argpartitionAs<T extends DTypeTag, R extends DTypeTag>(
         tempResult ?? (out ?? NDArray<R>.create(src.shape, dtype));
 
     NDArray<R> finish() {
-      if (tempResult != null) {
-        tempResult.copy(out: out!);
+      if (tempResult != null && out != null) {
+        tempResult.copy(out: out);
         return out;
       }
       if (out == null) {

@@ -142,7 +142,7 @@ QrResult<T> qr<T extends DTypeTag>(GpuArray<T> a, {String mode = 'reduced'}) {
       }
 
       var vDotV = 0.0;
-      for (var vi in v) {
+      for (final vi in v) {
         vDotV += vi * vi;
       }
       final tau = 2.0 / vDotV;

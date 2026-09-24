@@ -1,4 +1,5 @@
 /// Immutable LSP 3.17 data models for code editor integration.
+library;
 
 class LspPosition implements Comparable<LspPosition> {
   final int line;
@@ -75,8 +76,7 @@ class LspTextDocumentIdentifier {
 
 class LspVersionedTextDocumentIdentifier extends LspTextDocumentIdentifier {
   final int version;
-  const LspVersionedTextDocumentIdentifier(String uri, this.version)
-    : super(uri);
+  const LspVersionedTextDocumentIdentifier(super.uri, this.version);
 
   @override
   Map<String, dynamic> toJson() => {'uri': uri, 'version': version};

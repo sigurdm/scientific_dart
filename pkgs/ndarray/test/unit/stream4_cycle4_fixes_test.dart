@@ -18,7 +18,7 @@ void main() {
         for (var i = 0; i < 2; i++) {
           for (var j = 0; j < 3; j++) {
             expect(
-              [10, 20, 30, 40, 50].contains(sampled.getCell([i, j]).toInt()),
+              [10, 20, 30, 40, 50].contains(sampled.getCell([i, j])),
               true,
             );
           }
@@ -35,7 +35,7 @@ void main() {
         for (var i = 0; i < 2; i++) {
           for (var j = 0; j < 3; j++) {
             for (var k = 0; k < 2; k++) {
-              final v = sampled.getCell([i, j, k]).toInt();
+              final v = sampled.getCell([i, j, k]);
               expect(seen.contains(v), false);
               seen.add(v);
             }
@@ -65,7 +65,7 @@ void main() {
         ], DType.int32);
         final sampled = choice(a, size: [], seed: 7);
         expect(sampled.rank, 0);
-        expect([5, 10, 15].contains(sampled.scalar.toInt()), true);
+        expect([5, 10, 15].contains(sampled.scalar), true);
       });
     });
 
@@ -77,10 +77,10 @@ void main() {
         final out = NDArray<Int32>.ones([3, 3], DType.int32);
         final d = diag(v, out: out);
         expect(identical(d, out), true);
-        expect(d.getCell([0, 0]).toInt(), 1);
-        expect(d.getCell([1, 1]).toInt(), 2);
-        expect(d.getCell([2, 2]).toInt(), 3);
-        expect(d.getCell([0, 1]).toInt(), 0);
+        expect(d.getCell([0, 0]), 1);
+        expect(d.getCell([1, 1]), 2);
+        expect(d.getCell([2, 2]), 3);
+        expect(d.getCell([0, 1]), 0);
       });
 
       test('tril and triu non-contiguous', () {
@@ -96,16 +96,16 @@ void main() {
         expect(view.isContiguous, false);
 
         final lower = tril(view);
-        expect(lower.getCell([0, 0]).toInt(), 0);
-        expect(lower.getCell([0, 1]).toInt(), 0);
-        expect(lower.getCell([1, 0]).toInt(), 8);
-        expect(lower.getCell([1, 1]).toInt(), 10);
+        expect(lower.getCell([0, 0]), 0);
+        expect(lower.getCell([0, 1]), 0);
+        expect(lower.getCell([1, 0]), 8);
+        expect(lower.getCell([1, 1]), 10);
 
         final upper = triu(view);
-        expect(upper.getCell([0, 0]).toInt(), 0);
-        expect(upper.getCell([0, 1]).toInt(), 2);
-        expect(upper.getCell([1, 0]).toInt(), 0);
-        expect(upper.getCell([1, 1]).toInt(), 10);
+        expect(upper.getCell([0, 0]), 0);
+        expect(upper.getCell([0, 1]), 2);
+        expect(upper.getCell([1, 0]), 0);
+        expect(upper.getCell([1, 1]), 10);
       });
 
       test('diff with boolean and uint8 dtypes', () {
@@ -124,7 +124,7 @@ void main() {
         );
         final diffU = diff(u);
         expect(diffU.shape, [3]);
-        expect(diffU.getCell([0]).toInt(), 15);
+        expect(diffU.getCell([0]), 15);
       });
     });
 
@@ -135,20 +135,20 @@ void main() {
         ], DType.int32);
 
         final NDArray<Float64> v = variance(a);
-        expect(v.scalar.toDouble(), closeTo(1.25, 1e-9));
+        expect(v.scalar, closeTo(1.25, 1e-9));
 
         final NDArray<Float64> s = std(a);
-        expect(s.scalar.toDouble(), closeTo(math.sqrt(1.25), 1e-9));
+        expect(s.scalar, closeTo(math.sqrt(1.25), 1e-9));
 
         final NDArray<Float64> nv = nanvar(a);
-        expect(nv.scalar.toDouble(), closeTo(1.25, 1e-9));
+        expect(nv.scalar, closeTo(1.25, 1e-9));
 
         final NDArray<Float64> ns = nanstd(a);
-        expect(ns.scalar.toDouble(), closeTo(math.sqrt(1.25), 1e-9));
+        expect(ns.scalar, closeTo(math.sqrt(1.25), 1e-9));
 
         final out = NDArray<Float64>.create([], DType.float64);
         variance(a, out: out);
-        expect(out.scalar.toDouble(), closeTo(1.25, 1e-9));
+        expect(out.scalar, closeTo(1.25, 1e-9));
       });
 
       test('sum, mean, quantile, median ScratchArena reset verification', () {
@@ -182,12 +182,12 @@ void main() {
         final out32 = NDArray<Int32>.create([4], DType.int32);
         final res32 = argsort(a, out: out32);
         expect(identical(res32, out32), true);
-        expect(out32.toList().map((e) => e.toInt()).toList(), [1, 3, 0, 2]);
+        expect(out32.toList().map((e) => e).toList(), [1, 3, 0, 2]);
 
         final out64 = NDArray<Int64>.create([4], DType.int64);
         final res64 = argsortAs(a, DType.int64, out: out64);
         expect(identical(res64, out64), true);
-        expect(out64.toList().map((e) => e.toInt()).toList(), [1, 3, 0, 2]);
+        expect(out64.toList().map((e) => e).toList(), [1, 3, 0, 2]);
       });
     });
 
@@ -206,8 +206,8 @@ void main() {
 
         final taken = take_along_axis(a, idx, 1);
         expect(taken.shape, [2, 2]);
-        expect(taken.getCell([0, 0]).toDouble(), 30.0);
-        expect(taken.getCell([0, 1]).toDouble(), 10.0);
+        expect(taken.getCell([0, 0]), 30.0);
+        expect(taken.getCell([0, 1]), 10.0);
 
         final out = a.copy();
         final vals = NDArray<Float64>.fromList(
@@ -216,8 +216,8 @@ void main() {
           DType.float64,
         );
         put_along_axis(out, idx, vals, 1);
-        expect(out.getCell([0, 2]).toDouble(), 99.0);
-        expect(out.getCell([0, 0]).toDouble(), 88.0);
+        expect(out.getCell([0, 2]), 99.0);
+        expect(out.getCell([0, 0]), 88.0);
       });
 
       test('choose and select', () {
@@ -236,7 +236,7 @@ void main() {
         );
 
         final chosen = choose(a, [c0, c1]);
-        expect(chosen.toList().map((e) => (e as double).toDouble()).toList(), [
+        expect(chosen.toList().map((e) => (e as double)).toList(), [
           10.0,
           200.0,
           30.0,

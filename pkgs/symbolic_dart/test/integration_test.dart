@@ -34,10 +34,10 @@ void main() {
       // Inverse A^-1
       final aInv = matA.inv();
       final matI = (matA * aInv).toNDArray();
-      expect(matI.getCell([0, 0]).toDouble(), closeTo(1.0, 1e-12));
-      expect(matI.getCell([0, 1]).toDouble(), closeTo(0.0, 1e-12));
-      expect(matI.getCell([1, 0]).toDouble(), closeTo(0.0, 1e-12));
-      expect(matI.getCell([1, 1]).toDouble(), closeTo(1.0, 1e-12));
+      expect(matI.getCell([0, 0]), closeTo(1.0, 1e-12));
+      expect(matI.getCell([0, 1]), closeTo(0.0, 1e-12));
+      expect(matI.getCell([1, 0]), closeTo(0.0, 1e-12));
+      expect(matI.getCell([1, 1]), closeTo(1.0, 1e-12));
 
       // Solve A * x = b where b = [[5], [5]]
       final b = SymbolicMatrix.fromVector([5, 5]);
@@ -78,9 +78,9 @@ void main() {
       final arr = NDArray.fromList([0.0, 1.0, 2.0], [3], DType.float64);
       // f(x) = x^2 + 3
       final res = arr.mapSymbolic((x ^ 2) + Integer(3), x);
-      expect(res.getCell([0]).toDouble(), closeTo(3.0, 1e-12));
-      expect(res.getCell([1]).toDouble(), closeTo(4.0, 1e-12));
-      expect(res.getCell([2]).toDouble(), closeTo(7.0, 1e-12));
+      expect(res.getCell([0]), closeTo(3.0, 1e-12));
+      expect(res.getCell([1]), closeTo(4.0, 1e-12));
+      expect(res.getCell([2]), closeTo(7.0, 1e-12));
     });
 
     test('evaluateSymbolic with named inputs map', () {
@@ -93,8 +93,8 @@ void main() {
         (x * Integer(2)) + y,
         inputs: {x: arrX, y: arrY},
       );
-      expect(res.getCell([0]).toDouble(), closeTo(12.0, 1e-12));
-      expect(res.getCell([1]).toDouble(), closeTo(24.0, 1e-12));
+      expect(res.getCell([0]), closeTo(12.0, 1e-12));
+      expect(res.getCell([1]), closeTo(24.0, 1e-12));
     });
   });
 

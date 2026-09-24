@@ -86,16 +86,14 @@ class Selection {
 class TextSelection extends Selection {
   /// Creates a [TextSelection] with named [base] and [extent] positions.
   const TextSelection({
-    required TextPosition base,
-    required TextPosition extent,
-    TextAffinity affinity = TextAffinity.downstream,
-  }) : super.range(base: base, extent: extent, affinity: affinity);
+    required super.base,
+    required super.extent,
+    super.affinity,
+  }) : super.range();
 
   /// Creates a collapsed [TextSelection] at [position].
-  const TextSelection.collapsed(
-    TextPosition position, {
-    TextAffinity affinity = TextAffinity.downstream,
-  }) : super.collapsed(position, affinity: affinity);
+  const TextSelection.collapsed(super.position, {super.affinity})
+    : super.collapsed();
 
   @override
   TextSelection copyWith({

@@ -1,5 +1,5 @@
 /// Core code_editor library export.
-library code_editor;
+library;
 
 export 'core.dart';
 export 'lsp.dart';

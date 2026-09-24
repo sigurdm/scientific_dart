@@ -1,4 +1,3 @@
-// ignore_for_file: non_constant_identifier_names
 import 'dart:typed_data';
 import 'package:ndarray/ndarray.dart';
 import 'package:test/test.dart';

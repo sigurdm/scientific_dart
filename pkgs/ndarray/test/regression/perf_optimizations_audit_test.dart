@@ -260,8 +260,8 @@ void main() {
         final empty = NDArray<Float64>.zeros([0, 4], DType.float64);
         final n2 = norm(empty, ord: 2);
         final nm2 = norm(empty, ord: -2);
-        expect(n2.scalar.toDouble(), equals(0.0));
-        expect(nm2.scalar.toDouble(), equals(0.0));
+        expect(n2.scalar, equals(0.0));
+        expect(nm2.scalar, equals(0.0));
       });
     });
   });

@@ -2,7 +2,7 @@
 ///
 /// This library provides [MaskedArray] and utility functions to work with
 /// arrays that have missing or invalid data.
-library ndarray_ma;
+library;
 
 import 'package:ndarray/ndarray.dart';
 import 'src/masked_array.dart';

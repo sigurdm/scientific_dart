@@ -1,4 +1,4 @@
-library notebook;
+library;
 
 export 'src/notebook_kernel.dart';
 export 'src/notebook_server.dart';

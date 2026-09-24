@@ -2059,7 +2059,7 @@ NDArray<Float64> nanstd<T extends DTypeTag>(
 
   final v = nanvar(a, axis: axis, keepdims: keepdims, out: out);
   if (axis == null) {
-    v.setCellFlat(0, math.sqrt(v.getCellFlat(0).toDouble()));
+    v.setCellFlat(0, math.sqrt(v.getCellFlat(0)));
     return v;
   } else {
     final res = sqrt(v, out: v);

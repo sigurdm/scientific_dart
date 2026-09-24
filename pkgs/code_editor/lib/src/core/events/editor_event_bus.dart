@@ -58,8 +58,8 @@ class EditorEventBus {
   }
 
   void dispose() {
-    _documentChangeController.close();
-    _selectionChangeController.close();
-    _historyChangeController.close();
+    unawaited(_documentChangeController.close());
+    unawaited(_selectionChangeController.close());
+    unawaited(_historyChangeController.close());
   }
 }

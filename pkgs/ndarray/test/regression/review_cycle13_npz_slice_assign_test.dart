@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:ndarray/ndarray.dart';
 import 'package:ndarray/src/ndarray_extensions_bindings.dart';
-import 'package:ndarray/src/scratch_arena.dart';
 import 'package:test/test.dart';
 
 ffi.Pointer<ffi.Char> _allocCString(String s) {

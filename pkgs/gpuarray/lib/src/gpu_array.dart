@@ -967,7 +967,12 @@ final class GpuArray<T extends DTypeTag>
 
       return dst;
     } else if (other is num || other is bool) {
-      final scalarArray = GpuArray.filled([], other, dtype, device: device);
+      final scalarArray = GpuArray.filled(
+        [],
+        other as Object,
+        dtype,
+        device: device,
+      );
       final res = _dispatchBinary(op, scalarArray);
       if (!res.requiresGrad) {
         scalarArray.dispose();
@@ -1010,7 +1015,12 @@ final class GpuArray<T extends DTypeTag>
 
       return dst;
     } else if (other is num || other is bool) {
-      final scalarArray = GpuArray.filled([], other, dtype, device: device);
+      final scalarArray = GpuArray.filled(
+        [],
+        other as Object,
+        dtype,
+        device: device,
+      );
       final res = _dispatchComparison(op, scalarArray);
       scalarArray.dispose();
       return res;

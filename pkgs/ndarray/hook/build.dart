@@ -39,14 +39,26 @@ void main(List<String> args) async {
       BuildModeEnum.source => SourceMode(input, buildOptions.checkoutPath),
     };
 
+    final hasEnvInstrumentation =
+        (Platform.environment['NDARRAY_SANITIZE']?.trim().isNotEmpty ??
+            false) ||
+        (Platform.environment['NDARRAY_COVERAGE']?.trim().isNotEmpty ?? false);
+
     Uri builtLibrary;
-    if (buildOptions.buildMode == BuildModeEnum.fetch &&
-        !buildOptions.isExplicit &&
-        currentSourceHash != nativeSourceHash) {
-      print(
-        'Prebuilt ndarray binary for release $version differs from local '
-        'native sources in hook/; falling back to `buildMode: source`.',
-      );
+    if ((buildOptions.buildMode == BuildModeEnum.fetch &&
+            !buildOptions.isExplicit &&
+            currentSourceHash != nativeSourceHash) ||
+        hasEnvInstrumentation) {
+      if (hasEnvInstrumentation && buildMode is! SourceMode) {
+        print(
+          'NDARRAY_SANITIZE / NDARRAY_COVERAGE enabled; forcing `buildMode: source`.',
+        );
+      } else if (buildMode is! SourceMode) {
+        print(
+          'Prebuilt ndarray binary for release $version differs from local '
+          'native sources in hook/; falling back to `buildMode: source`.',
+        );
+      }
       buildMode = SourceMode(input, buildOptions.checkoutPath);
       builtLibrary = await buildMode.build();
     } else {
@@ -590,6 +602,16 @@ int128_t __divti3(int128_t a, int128_t b) {
             ]
           : const <String>[];
 
+      final coverageEnv = Platform.environment['NDARRAY_COVERAGE']?.trim();
+      final enableCoverage =
+          coverageEnv != null &&
+          coverageEnv.isNotEmpty &&
+          coverageEnv != '0' &&
+          coverageEnv.toLowerCase() != 'false';
+      final coverageFlags = enableCoverage
+          ? const <String>['--coverage', '-O1', '-g']
+          : const <String>[];
+
       String computeInputDigest(String src, List<String> args) {
         final bytes = BytesBuilder(copy: false);
         bytes.add(args.join(' ').codeUnits);
@@ -651,6 +673,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-O2',
           '-fno-exceptions',
           ...sanitizeFlags,
+          ...coverageFlags,
           if (arch == Architecture.x64) ...x86Flags,
           '-DVECTORIZED_TARGETS=',
           '-fno-math-errno',
@@ -670,6 +693,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-O2',
           '-fno-exceptions',
           ...sanitizeFlags,
+          ...coverageFlags,
           if (arch == Architecture.x64) ...x86Flags,
           '-fno-math-errno',
           '-I${_root.toFilePath()}',
@@ -689,6 +713,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-O2',
           '-fno-exceptions',
           ...sanitizeFlags,
+          ...coverageFlags,
           if (arch == Architecture.x64) ...x86Flags,
           '-fno-math-errno',
           '-I${_root.toFilePath()}',
@@ -705,6 +730,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-fPIC',
           '-O3',
           ...sanitizeFlags,
+          ...coverageFlags,
           '-I${_root.toFilePath()}',
           minizSrc,
           '-o',
@@ -721,10 +747,11 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-O3',
           '-fno-exceptions',
           ...sanitizeFlags,
+          ...coverageFlags,
           '-I${_root.toFilePath()}',
           npzIoSrc,
           '-o',
-          npzIoObj,
+          npzIoSrc == npzIoSrc ? npzIoObj : npzIoObj,
         ]),
       ]);
 
@@ -741,6 +768,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-shared',
           '-fPIC',
           ...sanitizeFlags,
+          ...coverageFlags,
           if (os == OS.android) '-Wl,-z,max-page-size=16384',
           ufuncsObj,
           sortingObj,

@@ -1,4 +1,4 @@
-## 0.0.1
+## 0.0.2
 
 - Initial release.
 - Exposes native AOT FFI bindings for high-performance mixed-radix Fast Fourier Transforms (KissFFT).

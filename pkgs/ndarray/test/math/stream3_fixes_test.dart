@@ -445,17 +445,19 @@ void main() {
           );
 
           // eigh return generic <T> check
-          ({NDArray<AnySpec> eigenvalues, NDArray<Float64> eigenvectors})
+          final ({NDArray<AnySpec> eigenvalues, NDArray<Float64> eigenvectors})
           resEigh = eigh<Float64, Float64>(mat);
           expect(resEigh.eigenvectors.dtype, equals(DType.float64));
 
           // hessenberg return generic <T> check
-          ({NDArray<Float64> h, NDArray<Float64> q}) resHess = hessenberg(mat);
+          final ({NDArray<Float64> h, NDArray<Float64> q}) resHess = hessenberg(
+            mat,
+          );
           expect(resHess.h.dtype, equals(DType.float64));
           expect(resHess.q.dtype, equals(DType.float64));
 
           // SchurRecordDispose<T> generic check
-          ({NDArray<Float64> t, NDArray<Float64> z}) resSchur =
+          final ({NDArray<Float64> t, NDArray<Float64> z}) resSchur =
               schur<Float64, Float64>(mat);
           resSchur.dispose();
           expect(resSchur.t.isDisposed, isTrue);

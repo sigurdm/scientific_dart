@@ -322,8 +322,8 @@ void main() {
           );
 
           add<Float16>(a, b, where: mask, out: out);
-          expect(out.getCell([0]).toDouble(), closeTo(11.0, 1e-2));
-          expect(out.getCell([1]).toDouble(), closeTo(88.0, 1e-2));
+          expect(out.getCell([0]), closeTo(11.0, 1e-2));
+          expect(out.getCell([1]), closeTo(88.0, 1e-2));
 
           a.dispose();
           b.dispose();
@@ -540,8 +540,8 @@ void main() {
           );
 
           put_along_axis(arr, indices, values, 0);
-          expect(arr.getCell([0]).toDouble(), closeTo(3.5, 1e-2));
-          expect(arr.getCell([1]).toDouble(), closeTo(7.25, 1e-2));
+          expect(arr.getCell([0]), closeTo(3.5, 1e-2));
+          expect(arr.getCell([1]), closeTo(7.25, 1e-2));
 
           arr.dispose();
           indices.dispose();

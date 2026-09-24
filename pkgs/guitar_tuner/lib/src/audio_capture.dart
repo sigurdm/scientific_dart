@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 @ffi.DefaultAsset('package:guitar_tuner/tuner_bridge')
 library;
 

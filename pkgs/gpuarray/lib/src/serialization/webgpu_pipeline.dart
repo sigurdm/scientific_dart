@@ -259,7 +259,7 @@ final class GpuComputePipelinePackage {
 
   <div id="${uid}_status" style="color:#a6adc8; font-size:13px; margin-bottom:8px;">Initializing WebGPU device on client...</div>
 
-  ${sliderHtml.toString()}
+  $sliderHtml
 
   <canvas id="${uid}_canvas" width="$canvasWidth" height="$canvasHeight" style="display:$canvasDisplay; margin-top:12px; border-radius:6px; border:1px solid #313244; max-width:100%; box-shadow:0 4px 12px rgba(0,0,0,0.3);"></canvas>
 

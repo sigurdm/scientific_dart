@@ -46,7 +46,9 @@ MaskedArray<DTypeTag> _binaryOp(
         resultShape,
       );
       final ones = _wrapScalar(1, otherData.dtype);
-      divisorData = ndops.where(broadcastedCombinedMask, ones, otherData);
+      divisorData =
+          ndops.where(broadcastedCombinedMask, ones, otherData)
+              as NDArray<DTypeTag>;
     } else {
       divisorData = otherData;
     }

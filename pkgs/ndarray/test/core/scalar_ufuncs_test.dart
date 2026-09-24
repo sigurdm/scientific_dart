@@ -2,7 +2,6 @@ import "dart:ffi" as ffi;
 import "dart:math" as math;
 import "package:ndarray/ndarray.dart";
 import "package:ndarray/src/ndarray_bindings.dart" as bindings;
-import "package:ndarray/src/scratch_arena.dart";
 import "package:test/test.dart";
 
 void main() {

@@ -2,7 +2,7 @@
 ///
 /// Includes piece tree text buffer, undo/redo manager, atomic transactions,
 /// selection models, and reactive snapshot event streams.
-library code_editor.core;
+library;
 
 export 'src/core/buffer/buffer_source.dart';
 export 'src/core/buffer/piece_node.dart';

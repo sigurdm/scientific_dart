@@ -1,8 +1,6 @@
 import 'dart:ffi' as ffi;
 import 'package:ndarray/ndarray.dart';
 import 'package:resource_scope/resource_scope.dart';
-// ignore: implementation_imports
-import 'package:ndarray/src/scratch_arena.dart';
 import 'expr.dart';
 import 'ffi/symengine_bindings.dart' as se;
 
@@ -175,7 +173,7 @@ final class SymbolicLambda implements ffi.Finalizable, ScopedResource {
             if (mappedDim < 0) return 0;
             return inShape[dimIdx] == 1 ? 0 : coords[mappedDim];
           });
-          inPtr[i] = inputs[i].getCell(inCoords).toDouble();
+          inPtr[i] = inputs[i].getCell(inCoords);
         }
         se.lambda_real_double_visitor_call(_visitor, outPtr, inPtr);
         destination.setCell(coords, (outPtr[0]));

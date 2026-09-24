@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:ndarray/ndarray.dart';
-import '../lib/src/audio_capture.dart';
-import '../lib/src/tuner_logic.dart';
+import 'package:guitar_tuner/src/audio_capture.dart';
+import 'package:guitar_tuner/src/tuner_logic.dart';
 
 void main() async {
   const sampleRate = 44100;
@@ -32,7 +32,9 @@ void main() async {
     capture.open();
     print('Listening... Press Ctrl+C to stop.');
     // Reserve space for waterfall and status
-    for (var i = 0; i < waterfallHeight + 1; i++) print('');
+    for (var i = 0; i < waterfallHeight + 1; i++) {
+      print('');
+    }
 
     // Run the loop
     while (true) {
@@ -81,7 +83,7 @@ void main() async {
       stdout.write('\n'); // Ensure we are on the status line
 
       // Small sleep for responsiveness
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   } catch (e, s) {
     print('\nError: $e\n$s');

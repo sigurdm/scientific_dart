@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:ndarray/ndarray.dart';
-import 'package:ndarray/src/scratch_arena.dart';
 import 'package:resource_scope/resource_scope.dart';
 import 'package:test/test.dart';
 
@@ -36,17 +35,17 @@ void main() {
           expect(identical(res, outView), isTrue);
 
           // Column sums: [1+4, 2+5, 3+6] = [5.0, 7.0, 9.0]
-          expect(outView.getCell([0]).toDouble(), equals(5.0));
-          expect(outView.getCell([1]).toDouble(), equals(7.0));
-          expect(outView.getCell([2]).toDouble(), equals(9.0));
+          expect(outView.getCell([0]), equals(5.0));
+          expect(outView.getCell([1]), equals(7.0));
+          expect(outView.getCell([2]), equals(9.0));
 
           // Check that untouched base elements remain 0.0
-          expect(base.getCell([0, 0]).toDouble(), equals(0.0));
-          expect(base.getCell([0, 2]).toDouble(), equals(0.0));
-          expect(base.getCell([1, 0]).toDouble(), equals(0.0));
-          expect(base.getCell([1, 2]).toDouble(), equals(0.0));
-          expect(base.getCell([2, 0]).toDouble(), equals(0.0));
-          expect(base.getCell([2, 2]).toDouble(), equals(0.0));
+          expect(base.getCell([0, 0]), equals(0.0));
+          expect(base.getCell([0, 2]), equals(0.0));
+          expect(base.getCell([1, 0]), equals(0.0));
+          expect(base.getCell([1, 2]), equals(0.0));
+          expect(base.getCell([2, 0]), equals(0.0));
+          expect(base.getCell([2, 2]), equals(0.0));
         });
       },
     );
@@ -121,8 +120,8 @@ void main() {
           partition(a, 1, axis: -1, out: outPart);
           // For row 0: elements are 9, 1, 7. kth=1 means index 1 should have 7.0, index 0 <= 7.0, index 2 >= 7.0
           expect(outPart.getCell([0, 1]), equals(7.0));
-          expect(outPart.getCell([0, 0]).toDouble(), lessThanOrEqualTo(7.0));
-          expect(outPart.getCell([0, 2]).toDouble(), greaterThanOrEqualTo(7.0));
+          expect(outPart.getCell([0, 0]), lessThanOrEqualTo(7.0));
+          expect(outPart.getCell([0, 2]), greaterThanOrEqualTo(7.0));
 
           final baseArgpart = NDArray.zeros([2, 6], DType.int32);
           final outArgpart = NDArray<Int32>.view(
@@ -157,20 +156,20 @@ void main() {
           final outBuf = NDArray<Float64>.zeros([4], DType.float64);
           mean(emptyArr, axis: 0, out: outBuf);
           for (var i = 0; i < 4; i++) {
-            expect(outBuf.getCell([i]).toDouble().isNaN, isTrue);
+            expect(outBuf.getCell([i]).isNaN, isTrue);
           }
 
           // Test std and var on empty axis
           final s0 = std(emptyArr, axis: 0);
           expect(s0.shape, equals([4]));
           for (var i = 0; i < 4; i++) {
-            expect(s0.getCell([i]).toDouble().isNaN, isTrue);
+            expect(s0.getCell([i]).isNaN, isTrue);
           }
 
           final v0 = variance(emptyArr, axis: 0);
           expect(v0.shape, equals([4]));
           for (var i = 0; i < 4; i++) {
-            expect(v0.getCell([i]).toDouble().isNaN, isTrue);
+            expect(v0.getCell([i]).isNaN, isTrue);
           }
         });
       },

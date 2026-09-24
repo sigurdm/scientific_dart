@@ -1003,7 +1003,7 @@ fn main(
     bool hasBias = false,
   }) {
     final typeName = dtype.wgslType;
-    final wgSize = const WgslWorkgroupSize(16, 16, 1);
+    final wgSize = WgslWorkgroupSize.tiled2D;
 
     final bindings = [
       WgslBinding(

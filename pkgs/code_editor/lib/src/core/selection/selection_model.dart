@@ -7,26 +7,18 @@ export 'text_position.dart';
 
 /// Model managing text selections and semantic selection boundary calculations.
 final class SelectionModel {
-  TextSelection _primarySelection;
+  /// The primary selection.
+  TextSelection primarySelection;
   List<TextSelection> _secondarySelections;
 
   /// Creates a [SelectionModel] with an initial [primarySelection].
   SelectionModel({
-    TextSelection primarySelection = const TextSelection(
+    this.primarySelection = const TextSelection(
       base: TextPosition(0, 0),
       extent: TextPosition(0, 0),
     ),
     List<TextSelection>? secondarySelections,
-  }) : _primarySelection = primarySelection,
-       _secondarySelections = secondarySelections ?? const [];
-
-  /// Gets the primary selection.
-  TextSelection get primarySelection => _primarySelection;
-
-  /// Sets the primary selection.
-  set primarySelection(TextSelection selection) {
-    _primarySelection = selection;
-  }
+  }) : _secondarySelections = secondarySelections ?? const [];
 
   /// Gets all secondary selections (for multi-caret editing).
   List<TextSelection> get secondarySelections =>
@@ -57,7 +49,7 @@ final class SelectionModel {
       }
     }
     if (converted.isEmpty) return;
-    _primarySelection = converted.first;
+    primarySelection = converted.first;
     _secondarySelections = converted.length > 1
         ? List.from(converted.sublist(1))
         : const [];
@@ -65,18 +57,18 @@ final class SelectionModel {
 
   /// Collapses selection to a single position.
   void collapseTo(TextPosition position) {
-    _primarySelection = TextSelection.collapsed(position);
+    primarySelection = TextSelection.collapsed(position);
     _secondarySelections = const [];
   }
 
   /// Gets all selections (primary selection followed by secondary selections).
   List<TextSelection> get selections => [
-    _primarySelection,
+    primarySelection,
     ..._secondarySelections,
   ];
 
   /// Alias for primarySelection.
-  TextSelection get primary => _primarySelection;
+  TextSelection get primary => primarySelection;
 
   /// Sets single collapsed cursor at [position].
   void setSingleCursor(TextPosition position) => collapseTo(position);
@@ -90,10 +82,10 @@ final class SelectionModel {
       return pos;
     }
 
-    _primarySelection = TextSelection(
-      base: updatePos(_primarySelection.base),
-      extent: updatePos(_primarySelection.extent),
-      affinity: _primarySelection.affinity,
+    primarySelection = TextSelection(
+      base: updatePos(primarySelection.base),
+      extent: updatePos(primarySelection.extent),
+      affinity: primarySelection.affinity,
     );
     _secondarySelections = _secondarySelections
         .map(
@@ -117,10 +109,10 @@ final class SelectionModel {
       return pos;
     }
 
-    _primarySelection = TextSelection(
-      base: updatePos(_primarySelection.base),
-      extent: updatePos(_primarySelection.extent),
-      affinity: _primarySelection.affinity,
+    primarySelection = TextSelection(
+      base: updatePos(primarySelection.base),
+      extent: updatePos(primarySelection.extent),
+      affinity: primarySelection.affinity,
     );
     _secondarySelections = _secondarySelections
         .map(
@@ -135,8 +127,8 @@ final class SelectionModel {
 
   /// Extends the current selection extent to [newExtent].
   void extendTo(TextPosition newExtent) {
-    _primarySelection = TextSelection(
-      base: _primarySelection.base,
+    primarySelection = TextSelection(
+      base: primarySelection.base,
       extent: newExtent,
     );
   }
@@ -149,7 +141,7 @@ final class SelectionModel {
     }
     final lastLine = lines.length - 1;
     final lastColumn = lines[lastLine].length;
-    _primarySelection = TextSelection(
+    primarySelection = TextSelection(
       base: const TextPosition(0, 0),
       extent: TextPosition(lastLine, lastColumn),
     );
@@ -158,7 +150,7 @@ final class SelectionModel {
   /// Selects the word at [position].
   void selectWordAt(List<String> lines, TextPosition position) {
     final wordRange = getWordBoundary(lines, position);
-    _primarySelection = wordRange;
+    primarySelection = wordRange;
   }
 
   /// Selects the entire line at [lineIndex].
@@ -166,7 +158,7 @@ final class SelectionModel {
     if (lines.isEmpty) return;
     final safeLine = lineIndex.clamp(0, lines.length - 1);
     final lineText = lines[safeLine];
-    _primarySelection = TextSelection(
+    primarySelection = TextSelection(
       base: TextPosition(safeLine, 0),
       extent: TextPosition(safeLine, lineText.length),
     );

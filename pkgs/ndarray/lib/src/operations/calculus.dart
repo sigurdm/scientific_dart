@@ -1,4 +1,3 @@
-// ignore_for_file: non_constant_identifier_names
 import '../ndarray.dart';
 import 'dart:ffi' as ffi;
 import '../ndarray_bindings.dart';
@@ -40,7 +39,7 @@ final class CoordinateSpacing<V extends Object> extends Spacing<V> {
 }
 
 // Helper for list equality comparison
-bool _listEquals(List a, List b) {
+bool _listEquals(List<dynamic> a, List<dynamic> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
     if (a[i] != b[i]) return false;
@@ -1033,7 +1032,7 @@ List<NDArray<T>> gradientArray<T extends DTypeTag>(
     targetAxes = List<int>.generate(f.shape.length, (i) => i);
   } else {
     targetAxes = [];
-    for (var ax in axis) {
+    for (final ax in axis) {
       var resolvedAx = ax;
       if (resolvedAx < 0) {
         resolvedAx = f.shape.length + resolvedAx;
@@ -1116,7 +1115,7 @@ List<NDArray<T>> gradientArray<T extends DTypeTag>(
   } catch (e) {
     // Clean up any successful allocations if one fails
     if (out == null) {
-      for (var res in results) {
+      for (final res in results) {
         res.dispose();
       }
     }

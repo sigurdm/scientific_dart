@@ -1,4 +1,4 @@
-library pocketfft;
+library;
 
 export 'src/pocketfft_bindings.dart'
     show

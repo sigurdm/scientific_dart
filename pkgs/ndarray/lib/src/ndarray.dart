@@ -54,7 +54,16 @@ sealed class DTypeSpec<
 }
 
 /// Wildcard [DTypeSpec] bound matching any [DTypeSpec] subtype.
-typedef AnySpec = DTypeSpec;
+typedef AnySpec =
+    DTypeSpec<
+      DTypeTag,
+      dynamic,
+      DTypeTag,
+      DTypeTag,
+      DTypeTag,
+      DTypeTag,
+      DTypeTag
+    >;
 
 /// Tag for the `float64` dtype. Elements are `double`.
 abstract final class Float64
@@ -678,14 +687,19 @@ sealed class NDArray<T extends DTypeTag>
   /// [checkNoLeaks] to report them.
   static const bool trackAllocations = ResourceScope.trackAllocations;
 
-  static List<NDArray> get trackedAllocations =>
-      ResourceScope.trackedAllocations.whereType<NDArray>().toList();
+  /// Currently live [NDArray] allocations when [trackAllocations] is enabled.
+  static List<NDArray<DTypeTag>> get trackedAllocations =>
+      ResourceScope.trackedAllocations.whereType<NDArray<DTypeTag>>().toList();
 
+  /// Verifies that no tracked [NDArray] allocations have leaked.
   static bool checkNoLeaks() => ResourceScope.checkNoLeaks();
 
+  /// Clears the list of tracked [NDArray] allocations.
   static void clearTrackedAllocations() =>
       ResourceScope.clearTrackedAllocations();
 
+  /// Executes [callback] in a lexical [ResourceScope] that disposes all
+  /// non-detached [NDArray] instances allocated during [callback] upon exit.
   static R scope<R>(R Function() callback) => ResourceScope.scope(callback);
 
   /// Executes [callback] within an automatic resource management scope and
@@ -701,6 +715,8 @@ sealed class NDArray<T extends DTypeTag>
     NDArray<T> Function() callback,
   ) => ResourceScope.returning(callback);
 
+  /// Executes [callback] outside any active [ResourceScope] so arrays created
+  /// inside [callback] are not automatically disposed when the outer scope exits.
   static R unmanaged<R>(R Function() callback) =>
       ResourceScope.unmanaged(callback);
 
@@ -1024,7 +1040,11 @@ sealed class NDArray<T extends DTypeTag>
   /// ```dart
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// ```
-  factory NDArray.fromList(List list, List<int> shape, DType<T> dtype) {
+  factory NDArray.fromList(
+    List<dynamic> list,
+    List<int> shape,
+    DType<T> dtype,
+  ) {
     final totalSize = _computeCheckedTotalSize(shape);
     if (totalSize != list.length) {
       throw ArgumentError(
@@ -1032,7 +1052,7 @@ sealed class NDArray<T extends DTypeTag>
       );
     }
     final arr = NDArray<T>.create(shape, dtype);
-    final List eagerList = switch (dtype) {
+    final List<dynamic> eagerList = switch (dtype) {
       DType.float64 => Float64List.fromList(
         list.map((e) => (e as num).toDouble()).toList(),
       ),
@@ -2213,7 +2233,7 @@ sealed class NDArray<T extends DTypeTag>
       final seen = <int>{};
       final normAxes = <int>[];
       for (var i = 0; i < axes.length; i++) {
-        var axis = axes[i];
+        final axis = axes[i];
         if (axis < -shape.length || axis >= shape.length) {
           throw RangeError.range(axis, -shape.length, shape.length - 1, 'axis');
         }
@@ -4419,7 +4439,7 @@ sealed class NDArray<T extends DTypeTag>
   ///
   /// Consistent with [equals]: if `a.equals(b)` is `true`, then `a.contentHashCode == b.contentHashCode`.
   int get contentHashCode {
-    var baseHash = Object.hash(dtype, Object.hashAll(shape));
+    final baseHash = Object.hash(dtype, Object.hashAll(shape));
 
     final int elementsHash;
     final marker = ScratchArena.marker;
@@ -5110,6 +5130,7 @@ final class Complex {
 
   Complex(this.real, this.imag);
 
+  /// Adds [other] (a [Complex] or real [num]) to this complex number.
   Complex operator +(Object? other) {
     if (other is Complex) {
       return Complex(real + other.real, imag + other.imag);
@@ -5122,6 +5143,7 @@ final class Complex {
     }
   }
 
+  /// Subtracts [other] (a [Complex] or real [num]) from this complex number.
   Complex operator -(Object? other) {
     if (other is Complex) {
       return Complex(real - other.real, imag - other.imag);
@@ -5134,8 +5156,10 @@ final class Complex {
     }
   }
 
+  /// Negates both real and imaginary parts of this complex number.
   Complex operator -() => Complex(-real, -imag);
 
+  /// Multiplies this complex number by [other] (a [Complex] or real [num]).
   Complex operator *(Object? other) {
     if (other is Complex) {
       return Complex(
@@ -5152,6 +5176,7 @@ final class Complex {
     }
   }
 
+  /// Divides this complex number by [other] (a [Complex] or real [num]).
   Complex operator /(Object? other) {
     if (other is Complex) {
       final div = other.real * other.real + other.imag * other.imag;

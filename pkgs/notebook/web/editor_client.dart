@@ -13,6 +13,7 @@ external void _runCellJS(JSString cellId);
 external void _requestCompletion(JSObject cm, JSString cellId);
 
 extension type _GlobalScope(JSObject _) implements JSObject {
+  // ignore: non_constant_identifier_names
   external set DartEditor(JSFunction fn);
 }
 
@@ -36,8 +37,8 @@ void main() {
       final String rawId;
       final String initialCode;
 
-      if (element is web.HTMLTextAreaElement) {
-        textarea = element;
+      if (element.isA<web.HTMLTextAreaElement>()) {
+        textarea = element as web.HTMLTextAreaElement;
         rawId = textarea.id;
         initialCode = textarea.value;
         parent = (textarea.parentElement as web.HTMLElement?) ?? textarea;
@@ -46,8 +47,8 @@ void main() {
         rawId = element.id;
         final existingTextarea = element.querySelector('textarea');
         if (existingTextarea != null &&
-            existingTextarea is web.HTMLTextAreaElement) {
-          textarea = existingTextarea;
+            existingTextarea.isA<web.HTMLTextAreaElement>()) {
+          textarea = existingTextarea as web.HTMLTextAreaElement;
           initialCode = textarea.value;
           textarea.style.display = 'none';
         } else {

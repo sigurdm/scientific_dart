@@ -26,7 +26,6 @@ String _formatNDArray(NDArray arr) {
   final shape = arr.shape;
   // Make a contiguous copy so elements are sequential in flat memory
   final contiguous = arr.isContiguous ? arr : arr.copy();
-  // ignore: invalid_use_of_internal_member
   final data = contiguous.data;
   final dtypeStr = arr.dtype.name;
 
