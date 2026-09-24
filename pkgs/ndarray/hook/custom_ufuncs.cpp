@@ -5392,8 +5392,8 @@ void v_binomial_int32(int32_t *res, int size, int n, double p, unsigned long lon
 typedef LONG (WINAPI *BCryptGenRandomFunc)(
     void* hAlgorithm,
     unsigned char* pbBuffer,
-    unsigned long cbBuffer,
-    unsigned long dwFlags
+    ULONG cbBuffer,
+    ULONG dwFlags
 );
 
 static void fill_secure_bytes_win(void *dest, size_t size) {
@@ -5401,7 +5401,7 @@ static void fill_secure_bytes_win(void *dest, size_t size) {
     if (hBcrypt != nullptr) {
         BCryptGenRandomFunc pBCryptGenRandom = (BCryptGenRandomFunc)GetProcAddress(hBcrypt, "BCryptGenRandom");
         if (pBCryptGenRandom != nullptr) {
-            pBCryptGenRandom(nullptr, (unsigned char*)dest, (unsigned long)size, 0x00000002);
+            pBCryptGenRandom(nullptr, (unsigned char*)dest, (ULONG)size, 0x00000002);
         }
         FreeLibrary(hBcrypt);
     }

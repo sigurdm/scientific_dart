@@ -22,6 +22,22 @@
 #include <unistd.h>
 #endif
 
+static int npz_fseek64(FILE* fp, int64_t offset, int origin) {
+#if defined(_WIN32)
+  return _fseeki64(fp, offset, origin);
+#else
+  return fseeko(fp, static_cast<off_t>(offset), origin);
+#endif
+}
+
+static int64_t npz_ftell64(FILE* fp) {
+#if defined(_WIN32)
+  return _ftelli64(fp);
+#else
+  return static_cast<int64_t>(ftello(fp));
+#endif
+}
+
 static inline void write_u16_le(uint8_t* p, uint16_t val) {
     p[0] = (uint8_t)(val & 0xFF);
     p[1] = (uint8_t)((val >> 8) & 0xFF);
@@ -56,7 +72,7 @@ static void init_crc32_tables(void) noexcept {
         for (uint32_t i = 0; i < 256; i++) {
             uint32_t c = i;
             for (int j = 0; j < 8; j++) {
-                c = (c & 1) ? (0xEDB88320L ^ (c >> 1)) : (c >> 1);
+                c = (c & 1) ? (0xEDB88320U ^ (c >> 1)) : (c >> 1);
             }
             s_crc32_table[0][i] = c;
         }
@@ -506,14 +522,14 @@ NDARRAY_EXPORT void* npz_open_reader(const char* filepath, int64_t* out_num_entr
     FILE* fp = fopen(filepath, "rb");
     if (!fp) return NULL;
 
-    fseek(fp, 0, SEEK_END);
-    long sz = ftell(fp);
+    npz_fseek64(fp, 0, SEEK_END);
+    int64_t sz = npz_ftell64(fp);
     if (sz < 22) {
         fclose(fp);
         return NULL;
     }
     size_t file_size = (size_t)sz;
-    fseek(fp, 0, SEEK_SET);
+    npz_fseek64(fp, 0, SEEK_SET);
 
     const uint8_t* mmap_data = NULL;
 #if defined(_WIN32)
@@ -742,7 +758,7 @@ NDARRAY_EXPORT int npz_reader_get_entry_info(
             }
             memcpy(header_buf, reader->mmap_data + e->data_offset, total_header_len);
         } else {
-            fseek(reader->fp, (long)e->data_offset, SEEK_SET);
+            npz_fseek64(reader->fp, (int64_t)e->data_offset, SEEK_SET);
             if (fread(header_buf, 1, total_header_len, reader->fp) != total_header_len) {
                 return -10;
             }
@@ -870,7 +886,7 @@ NDARRAY_EXPORT int npz_reader_extract_data(
             }
             memcpy(dest_ptr, reader->mmap_data + src_offset, data_len);
         } else {
-            fseek(reader->fp, (long)e->data_offset, SEEK_SET);
+            npz_fseek64(reader->fp, (int64_t)e->data_offset, SEEK_SET);
             mz_ulong computed_crc = MZ_CRC32_INIT;
             size_t skip_remaining = header_len;
             uint8_t skip_buf[512];

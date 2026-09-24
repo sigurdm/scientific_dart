@@ -11,7 +11,7 @@ export 'operations/broadcasting.dart';
 export 'operations/splitting.dart';
 export 'operations/shaping_meshes.dart';
 export 'operations/repeating_tiling.dart';
-export 'operations/io.dart';
+export 'operations/io.dart' hide parseNpyHeader;
 export 'operations/random.dart';
 export 'operations/fft.dart';
 export 'operations/calculus.dart';
