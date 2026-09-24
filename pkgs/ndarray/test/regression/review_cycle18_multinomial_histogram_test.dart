@@ -56,7 +56,7 @@ void main() {
           'supports float16, bfloat16, int8, uint16, uint32, uint64 for x and weights',
           () {
             NDArray.scope(() {
-              final dtypes = <DType<num>>[
+              final dtypes = <DType<AnySpec>>[
                 DType.float16,
                 DType.bfloat16,
                 DType.int8,
@@ -66,7 +66,7 @@ void main() {
               ];
 
               for (final dt in dtypes) {
-                final x = castNDArray<num>(
+                final x = castNDArray<AnySpec>(
                   NDArray<Float64>.fromList(
                     [1.0, 2.0, 3.0, 4.0],
                     [4],
@@ -74,7 +74,7 @@ void main() {
                   ),
                   dt,
                 );
-                final weights = castNDArray<num>(
+                final weights = castNDArray<AnySpec>(
                   NDArray<Float64>.fromList(
                     [1.0, 2.0, 3.0, 4.0],
                     [4],
@@ -136,11 +136,8 @@ void main() {
             final x = NDArray<Uint64>.fromList([0, msbVal], [2], DType.uint64);
             final (:hist, :binEdges) = histogram(x, bins: 2);
             expect(hist.toList(), equals([1, 1]));
-            expect(binEdges.getCell([0]).value, equals(0.0));
-            expect(
-              binEdges.getCell([2]).value,
-              closeTo(9223372036854775808.0, 1e3),
-            );
+            expect(binEdges.getCell([0]), equals(0.0));
+            expect(binEdges.getCell([2]), closeTo(9223372036854775808.0, 1e3));
           });
         });
       },
@@ -160,23 +157,23 @@ void main() {
               src,
               PadWidth.all(1),
               mode: PadMode.constant,
-              constantValues: PadValues.all(Uint64(msbVal)),
+              constantValues: PadValues.all(msbVal),
             );
             expect(paddedConst.shape, equals([3]));
-            expect(paddedConst.getCell([0]).value, equals(msbVal));
-            expect(paddedConst.getCell([1]).value, equals(msbVal));
-            expect(paddedConst.getCell([2]).value, equals(msbVal));
+            expect(paddedConst.getCell([0]), equals(msbVal));
+            expect(paddedConst.getCell([1]), equals(msbVal));
+            expect(paddedConst.getCell([2]), equals(msbVal));
 
             final paddedRamp = pad(
               src,
               PadWidth.all(1),
               mode: PadMode.linearRamp,
-              endValues: PadValues.all(Uint64(msbVal)),
+              endValues: PadValues.all(msbVal),
             );
             expect(paddedRamp.shape, equals([3]));
-            expect(paddedRamp.getCell([0]).value, equals(msbVal));
-            expect(paddedRamp.getCell([1]).value, equals(msbVal));
-            expect(paddedRamp.getCell([2]).value, equals(msbVal));
+            expect(paddedRamp.getCell([0]), equals(msbVal));
+            expect(paddedRamp.getCell([1]), equals(msbVal));
+            expect(paddedRamp.getCell([2]), equals(msbVal));
           });
         },
       );
@@ -185,37 +182,25 @@ void main() {
     group('4. fv() and pv() PaymentDue enum parameter', () {
       test('defaults to PaymentDue.end and supports PaymentDue.begin', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(
-            Float64(0.05),
-            dtype: DType.float64,
-          );
-          final nper = NDArray<Float64>.scalar(
-            Float64(10.0),
-            dtype: DType.float64,
-          );
-          final pmt = NDArray<Float64>.scalar(
-            Float64(-100.0),
-            dtype: DType.float64,
-          );
-          final pvVal = NDArray<Float64>.scalar(
-            Float64(-1000.0),
-            dtype: DType.float64,
-          );
+          final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
+          final nper = NDArray<Float64>.scalar(10.0, dtype: DType.float64);
+          final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+          final pvVal = NDArray<Float64>.scalar(-1000.0, dtype: DType.float64);
 
           final fvDefault = fv(rate, nper, pmt, pvVal);
           final fvEnd = fv(rate, nper, pmt, pvVal, when: PaymentDue.end);
           final fvBegin = fv(rate, nper, pmt, pvVal, when: PaymentDue.begin);
 
-          expect(fvDefault.scalar.value, closeTo(fvEnd.scalar.value, 1e-12));
-          expect(fvBegin.scalar.value, greaterThan(fvEnd.scalar.value));
+          expect(fvDefault.scalar, closeTo(fvEnd.scalar, 1e-12));
+          expect(fvBegin.scalar, greaterThan(fvEnd.scalar));
 
           final pvDefault = pv(rate, nper, pmt, fvEnd);
           final pvEnd = pv(rate, nper, pmt, fvEnd, when: PaymentDue.end);
           final pvBegin = pv(rate, nper, pmt, fvEnd, when: PaymentDue.begin);
 
-          expect(pvDefault.scalar.value, closeTo(pvEnd.scalar.value, 1e-12));
-          expect(pvDefault.scalar.value, closeTo(-1000.0, 1e-6));
-          expect(pvBegin.scalar.value, greaterThan(pvEnd.scalar.value));
+          expect(pvDefault.scalar, closeTo(pvEnd.scalar, 1e-12));
+          expect(pvDefault.scalar, closeTo(-1000.0, 1e-6));
+          expect(pvBegin.scalar, greaterThan(pvEnd.scalar));
         });
       });
     });

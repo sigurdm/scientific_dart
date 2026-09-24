@@ -39,7 +39,7 @@ void main() {
             expect(sList[0], greaterThanOrEqualTo(sList[1]));
             expect(sList[1], greaterThanOrEqualTo(sList[2]));
 
-            final sMat = NDArray<double>.zeros([3, 3], DType.float64);
+            final sMat = NDArray.zeros([3, 3], DType.float64);
             for (var i = 0; i < 3; i++) {
               sMat.setCell([i, i], sList[i]);
             }
@@ -111,7 +111,7 @@ void main() {
             expect(res128.s.dtype, DType.float64);
             expect(res128.vh.dtype, DType.complex128);
 
-            final sMat = NDArray<Complex>.zeros([2, 2], DType.complex128);
+            final sMat = NDArray.zeros([2, 2], DType.complex128);
             final sVals = res128.s.toList();
             sMat.setCell([0, 0], Complex(sVals[0], 0.0));
             sMat.setCell([1, 1], Complex(sVals[1], 0.0));
@@ -244,7 +244,7 @@ void main() {
             ], DType.float64);
             expect(() => svd(vec1D), throwsArgumentError);
 
-            final badU = NDArray<double>.zeros([3, 3], DType.float64);
+            final badU = NDArray.zeros([3, 3], DType.float64);
             expect(
               () => svd(a, out: (u: badU, s: outS, vh: outVh)),
               throwsArgumentError,
@@ -424,7 +424,7 @@ void main() {
               ),
               throwsArgumentError,
             );
-            final badQ = NDArray<double>.zeros([3, 3], DType.float64);
+            final badQ = NDArray.zeros([3, 3], DType.float64);
             expect(() => qr(a, out: (q: badQ, r: outR)), throwsArgumentError);
           }),
         );
@@ -751,7 +751,7 @@ void main() {
               [4, 4],
               DType.float64,
             );
-            final res = hessenberg<Float64, Float64>(a);
+            final res = hessenberg(a);
             expect(res.h.shape, [4, 4]);
             expect(res.q.shape, [4, 4]);
 
@@ -1588,8 +1588,8 @@ void main() {
               [2, 2],
               DType.float64,
             );
-            final outSign = NDArray<double>.zeros([], DType.float64);
-            final outLog = NDArray<double>.zeros([], DType.float64);
+            final outSign = NDArray.zeros([], DType.float64);
+            final outLog = NDArray.zeros([], DType.float64);
             final sRec = slogdet(a64, outSign: outSign, outLogdet: outLog);
             expect(identical(sRec.sign, outSign), true);
             expect(identical(sRec.logabsdet, outLog), true);
@@ -1606,7 +1606,7 @@ void main() {
               [2, 2, 2],
               DType.float32,
             );
-            final outDet = NDArray<double>.zeros([2], DType.float32);
+            final outDet = NDArray.zeros([2], DType.float32);
             final resDet = det(b32, out: outDet);
             expect(identical(resDet, outDet), true);
             expect(resDet.toList()[0], closeTo(6.0, 1e-4));
@@ -1655,7 +1655,7 @@ void main() {
               [2, 2],
               DType.float32,
             );
-            final outX = NDArray<double>.zeros([2, 2], DType.float32);
+            final outX = NDArray.zeros([2, 2], DType.float32);
             final x = solve(a32, b32, out: outX);
             expect(identical(x, outX), true);
             expect(x.toList()[0], closeTo(2.0, 1e-4));
@@ -1678,7 +1678,7 @@ void main() {
               [3],
               DType.float32,
             );
-            final outX = NDArray<double>.zeros([2], DType.float32);
+            final outX = NDArray.zeros([2], DType.float32);
             final res = lstsq(a32, b32, rcond: 1e-4, out: outX);
             expect(identical(res.x, outX), true);
             expect(res.x.toList()[0], closeTo(1.0, 1e-4));
@@ -1695,8 +1695,8 @@ void main() {
               [2, 2],
               DType.float32,
             );
-            final outEvals = NDArray<double>.zeros([2], DType.float32);
-            final outEvecs = NDArray<double>.zeros([2, 2], DType.float32);
+            final outEvals = NDArray.zeros([2], DType.float32);
+            final outEvecs = NDArray.zeros([2, 2], DType.float32);
             final res = eigh(
               sym32,
               outEigenvalues: outEvals,
@@ -1708,7 +1708,7 @@ void main() {
             expect(res.eigenvalues.toList()[1], closeTo(4.0, 1e-4));
             res.dispose();
 
-            final outValsOnly = NDArray<double>.zeros([2], DType.float32);
+            final outValsOnly = NDArray.zeros([2], DType.float32);
             final vals = eigvalsh(sym32, out: outValsOnly);
             expect(identical(vals, outValsOnly), true);
             expect(vals.toList()[0], closeTo(2.0, 1e-4));
@@ -1724,15 +1724,15 @@ void main() {
               [2, 2],
               DType.float32,
             );
-            final outT = NDArray<double>.zeros([2, 2], DType.float32);
-            final outZ = NDArray<double>.zeros([2, 2], DType.float32);
+            final outT = NDArray.zeros([2, 2], DType.float32);
+            final outZ = NDArray.zeros([2, 2], DType.float32);
             final resSchur = schur(a32, outT: outT, outZ: outZ);
             expect(identical(resSchur.t, outT), true);
             expect(identical(resSchur.z, outZ), true);
             resSchur.dispose();
 
-            final outH = NDArray<double>.zeros([2, 2], DType.float32);
-            final outQ = NDArray<double>.zeros([2, 2], DType.float32);
+            final outH = NDArray.zeros([2, 2], DType.float32);
+            final outQ = NDArray.zeros([2, 2], DType.float32);
             final resHess = hessenberg(a32, outH: outH, outQ: outQ);
             expect(identical(resHess.h, outH), true);
             expect(identical(resHess.q, outQ), true);
@@ -1746,7 +1746,7 @@ void main() {
             final v32 = NDArray.fromList(Float32List.fromList([3.0, 4.0]), [
               2,
             ], DType.float32);
-            final outNorm = NDArray<double>.zeros([], DType.float32);
+            final outNorm = NDArray.zeros([], DType.float32);
             final n = norm(v32, out: outNorm);
             expect(identical(n, outNorm), true);
             expect(n.scalar, closeTo(5.0, 1e-4));
@@ -1789,12 +1789,12 @@ void main() {
             final v = NDArray.fromList(Float32List.fromList([0.0, 1.0, 0.0]), [
               3,
             ], DType.float32);
-            final outCross = NDArray<double>.zeros([3], DType.float32);
+            final outCross = NDArray.zeros([3], DType.float32);
             final c = cross(u, v, out: outCross);
             expect(identical(c, outCross), true);
             expect(c.toList(), [0.0, 0.0, 1.0]);
 
-            final outOuter = NDArray<double>.zeros([3, 3], DType.float32);
+            final outOuter = NDArray.zeros([3, 3], DType.float32);
             final o = outer(u, v, out: outOuter);
             expect(identical(o, outOuter), true);
             expect(o.getCell([0, 1]), 1.0);

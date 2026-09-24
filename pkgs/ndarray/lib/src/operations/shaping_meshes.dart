@@ -70,16 +70,16 @@ final class GridRange {
 NDArray<Float64> _generate1DCoordinate(GridRange range, DType<Float64> dtype) {
   if (range.numPoints != null) {
     return linspace<Float64>(
-      Float64(range.start),
-      Float64(range.stop),
+      range.start,
+      range.stop,
       range.numPoints!,
       dtype: dtype,
     );
   } else {
     return NDArray<Float64>.arange(
-      Float64(range.start),
-      Float64(range.stop),
-      step: Float64(range.step),
+      range.start,
+      range.stop,
+      step: range.step,
       dtype: dtype,
     );
   }
@@ -112,7 +112,11 @@ NDArray<Float64> _generate1DCoordinate(GridRange range, DType<Float64> dtype) {
 ///
 /// Refer to the [NumPy as_strided reference](https://numpy.org/doc/stable/reference/generated/numpy.lib.stride_tricks.as_strided.html)
 /// for details.
-NDArray<T> asStrided<T>(NDArray<T> x, {List<int>? shape, List<int>? strides}) {
+NDArray<T> asStrided<T extends DTypeTag>(
+  NDArray<T> x, {
+  List<int>? shape,
+  List<int>? strides,
+}) {
   if (x.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }

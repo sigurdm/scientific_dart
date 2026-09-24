@@ -20,11 +20,11 @@ void main() {
 
         add(src1, src2, out: dst);
 
-        expect(a.getCell([0]).value, closeTo(1.0, 1e-12));
-        expect(a.getCell([1]).value, closeTo(2.0, 1e-12));
-        expect(a.getCell([2]).value, closeTo(20.0, 1e-12));
-        expect(a.getCell([3]).value, closeTo(200.0, 1e-12));
-        expect(a.getCell([4]).value, closeTo(2000.0, 1e-12));
+        expect(a.getCell([0]), closeTo(1.0, 1e-12));
+        expect(a.getCell([1]), closeTo(2.0, 1e-12));
+        expect(a.getCell([2]), closeTo(20.0, 1e-12));
+        expect(a.getCell([3]), closeTo(200.0, 1e-12));
+        expect(a.getCell([4]), closeTo(2000.0, 1e-12));
       });
     });
 
@@ -37,17 +37,17 @@ void main() {
 
         sin(src, out: dst);
 
-        expect(a.getCell([0]).value, closeTo(orig[0], 1e-12));
-        expect(a.getCell([1]).value, closeTo(math.sin(orig[0]), 1e-12));
-        expect(a.getCell([2]).value, closeTo(math.sin(orig[1]), 1e-12));
-        expect(a.getCell([3]).value, closeTo(math.sin(orig[2]), 1e-12));
-        expect(a.getCell([4]).value, closeTo(math.sin(orig[3]), 1e-12));
+        expect(a.getCell([0]), closeTo(orig[0], 1e-12));
+        expect(a.getCell([1]), closeTo(math.sin(orig[0]), 1e-12));
+        expect(a.getCell([2]), closeTo(math.sin(orig[1]), 1e-12));
+        expect(a.getCell([3]), closeTo(math.sin(orig[2]), 1e-12));
+        expect(a.getCell([4]), closeTo(math.sin(orig[3]), 1e-12));
       });
     });
 
     test('where(cond, flip(a), b, out: a) handles strided overlap', () {
       NDArray.scope(() {
-        final cond = NDArray<bool>.fromList(
+        final cond = NDArray<Boolean>.fromList(
           [true, true, false, true],
           [4],
           DType.boolean,
@@ -65,16 +65,16 @@ void main() {
 
         where<Float64>(cond, flip(a), b, a);
 
-        expect(a.getCell([0]).value, closeTo(4.0, 1e-12));
-        expect(a.getCell([1]).value, closeTo(3.0, 1e-12));
-        expect(a.getCell([2]).value, closeTo(30.0, 1e-12));
-        expect(a.getCell([3]).value, closeTo(1.0, 1e-12));
+        expect(a.getCell([0]), closeTo(4.0, 1e-12));
+        expect(a.getCell([1]), closeTo(3.0, 1e-12));
+        expect(a.getCell([2]), closeTo(30.0, 1e-12));
+        expect(a.getCell([3]), closeTo(1.0, 1e-12));
       });
     });
 
     test('native s_where_double handles strided overlap directly', () {
       NDArray.scope(() {
-        final cond = NDArray<bool>.fromList(
+        final cond = NDArray<Boolean>.fromList(
           [true, true, false, true],
           [4],
           DType.boolean,
@@ -128,10 +128,10 @@ void main() {
           ScratchArena.reset(marker);
         }
 
-        expect(a.getCell([0]).value, closeTo(4.0, 1e-12));
-        expect(a.getCell([1]).value, closeTo(3.0, 1e-12));
-        expect(a.getCell([2]).value, closeTo(30.0, 1e-12));
-        expect(a.getCell([3]).value, closeTo(1.0, 1e-12));
+        expect(a.getCell([0]), closeTo(4.0, 1e-12));
+        expect(a.getCell([1]), closeTo(3.0, 1e-12));
+        expect(a.getCell([2]), closeTo(30.0, 1e-12));
+        expect(a.getCell([3]), closeTo(1.0, 1e-12));
       });
     });
 
@@ -145,10 +145,7 @@ void main() {
         unwrap<Float64>(flip(a), out: a);
 
         for (var i = 0; i < 5; i++) {
-          expect(
-            a.getCell([i]).value,
-            closeTo(expected.getCell([i]).value, 1e-12),
-          );
+          expect(a.getCell([i]), closeTo(expected.getCell([i]), 1e-12));
         }
       });
     });
@@ -189,10 +186,7 @@ void main() {
         }
 
         for (var i = 0; i < 5; i++) {
-          expect(
-            a.getCell([i]).value,
-            closeTo(expected.getCell([i]).value, 1e-12),
-          );
+          expect(a.getCell([i]), closeTo(expected.getCell([i]), 1e-12));
         }
       });
     });

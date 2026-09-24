@@ -79,7 +79,7 @@ void main() {
         expect(svdRes.s.shape, [2]);
         expect(svdRes.vh.shape, [2, 2]);
 
-        final cMat = NDArray<Complex>.fromList(
+        final cMat = NDArray.fromList(
           [
             Complex(1.0, 2.0),
             Complex(3.0, 4.0),
@@ -608,22 +608,10 @@ void main() {
     test(
       'fv future value with PaymentDue begin and end',
       () => NDArray.scope(() {
-        final rate = NDArray<Float64>.scalar(
-          Float64(0.05),
-          dtype: DType.float64,
-        );
-        final nper = NDArray<Float64>.scalar(
-          Float64(10.0),
-          dtype: DType.float64,
-        );
-        final pmt = NDArray<Float64>.scalar(
-          Float64(-100.0),
-          dtype: DType.float64,
-        );
-        final pv = NDArray<Float64>.scalar(
-          Float64(-1000.0),
-          dtype: DType.float64,
-        );
+        final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
+        final nper = NDArray<Float64>.scalar(10.0, dtype: DType.float64);
+        final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
+        final pv = NDArray<Float64>.scalar(-1000.0, dtype: DType.float64);
 
         final fvEnd = fv(rate, nper, pmt, pv, when: PaymentDue.end);
         expect(fvEnd.scalar, closeTo(2886.68, 0.01));
@@ -631,10 +619,7 @@ void main() {
         final fvBegin = fv(rate, nper, pmt, pv, when: PaymentDue.begin);
         expect(fvBegin.scalar, closeTo(2949.57, 0.01));
 
-        final zeroRate = NDArray<Float64>.scalar(
-          Float64(0.0),
-          dtype: DType.float64,
-        );
+        final zeroRate = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
         final fvZeroRate = fv(zeroRate, nper, pmt, pv);
         expect(fvZeroRate.scalar, 2000.0);
       }),
@@ -643,30 +628,18 @@ void main() {
     test(
       'pv present value with PaymentDue begin and end',
       () => NDArray.scope(() {
-        final rate = NDArray<Float64>.scalar(
-          Float64(0.05),
-          dtype: DType.float64,
-        );
-        final nper = NDArray<Float64>.scalar(
-          Float64(10.0),
-          dtype: DType.float64,
-        );
-        final pmt = NDArray<Float64>.scalar(
-          Float64(-100.0),
-          dtype: DType.float64,
-        );
+        final rate = NDArray<Float64>.scalar(0.05, dtype: DType.float64);
+        final nper = NDArray<Float64>.scalar(10.0, dtype: DType.float64);
+        final pmt = NDArray<Float64>.scalar(-100.0, dtype: DType.float64);
         final futureVal = NDArray<Float64>.scalar(
-          Float64(2886.68),
+          2886.68,
           dtype: DType.float64,
         );
 
         final pvEnd = pv(rate, nper, pmt, futureVal, when: PaymentDue.end);
         expect(pvEnd.scalar, closeTo(-1000.0, 0.01));
 
-        final zeroRate = NDArray<Float64>.scalar(
-          Float64(0.0),
-          dtype: DType.float64,
-        );
+        final zeroRate = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
         final pvZeroRate = pv(zeroRate, nper, pmt, futureVal);
         expect(pvZeroRate.scalar, closeTo(-(2886.68 - 1000.0), 0.01));
       }),
@@ -675,10 +648,7 @@ void main() {
     test(
       'npv net present value 1D and 2D batched',
       () => NDArray.scope(() {
-        final rate = NDArray<Float64>.scalar(
-          Float64(0.08),
-          dtype: DType.float64,
-        );
+        final rate = NDArray<Float64>.scalar(0.08, dtype: DType.float64);
         final values = NDArray<Float64>.fromList(
           [-40000.0, 5000.0, 8000.0, 12000.0, 30000.0],
           [5],

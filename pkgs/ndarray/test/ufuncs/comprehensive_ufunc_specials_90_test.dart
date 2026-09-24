@@ -98,7 +98,7 @@ void main() {
             expect(bitU8.reduce(op: BinaryOp.bitwiseXor).scalar, equals(0xFF));
 
             // Logical Reductions
-            final boolsT = NDArray<bool>.fromList(
+            final boolsT = NDArray<Boolean>.fromList(
               [true, true, true],
               [3],
               DType.boolean,
@@ -107,7 +107,7 @@ void main() {
             expect(boolsT.reduce(op: BinaryOp.logicalOr).scalar, isTrue);
             expect(boolsT.reduce(op: BinaryOp.logicalXor).scalar, isTrue);
 
-            final boolsM = NDArray<bool>.fromList(
+            final boolsM = NDArray<Boolean>.fromList(
               [true, false, false],
               [3],
               DType.boolean,
@@ -134,7 +134,7 @@ void main() {
             // Reduce with initial value and keepdims
             final redInit = f64.reduce(
               op: BinaryOp.minimum,
-              initial: Float64(0.5),
+              initial: 0.5,
               keepdims: true,
             );
             expect(redInit.shape, equals([1]));
@@ -143,7 +143,7 @@ void main() {
             // Reduce on empty array with initial
             final emptyArr = NDArray<Float64>.zeros([0], DType.float64);
             expect(
-              emptyArr.reduce(op: BinaryOp.add, initial: Float64(42.0)).scalar,
+              emptyArr.reduce(op: BinaryOp.add, initial: 42.0).scalar,
               equals(42.0),
             );
             expect(
@@ -285,7 +285,7 @@ void main() {
             );
 
             // Boolean 2D axis reductions
-            final matBool = NDArray<bool>.fromList(
+            final matBool = NDArray<Boolean>.fromList(
               [true, false, true, true],
               [2, 2],
               DType.boolean,
@@ -306,10 +306,10 @@ void main() {
             // Complex 2D axis reductions
             final matC128 = NDArray<Complex128>.fromList(
               [
-                Complex128(1.0, 1.0),
-                Complex128(2.0, 0.0),
-                Complex128(0.0, 1.0),
-                Complex128(3.0, 2.0),
+                Complex(1.0, 1.0),
+                Complex(2.0, 0.0),
+                Complex(0.0, 1.0),
+                Complex(3.0, 2.0),
               ],
               [2, 2],
               DType.complex128,
@@ -323,10 +323,10 @@ void main() {
 
             final matC64 = NDArray<Complex64>.fromList(
               [
-                Complex64(1.0, 1.0),
-                Complex64(2.0, 0.0),
-                Complex64(0.0, 1.0),
-                Complex64(3.0, 2.0),
+                Complex(1.0, 1.0),
+                Complex(2.0, 0.0),
+                Complex(0.0, 1.0),
+                Complex(3.0, 2.0),
               ],
               [2, 2],
               DType.complex64,
@@ -473,7 +473,7 @@ void main() {
               equals([0xFF, 0xF0, 0xC0]),
             );
 
-            final aBool = NDArray<bool>.fromList(
+            final aBool = NDArray<Boolean>.fromList(
               [true, true, false, true],
               [4],
               DType.boolean,
@@ -504,7 +504,7 @@ void main() {
 
             // Complex accumulates
             final c128 = NDArray<Complex128>.fromList(
-              [Complex128(1.0, 2.0), Complex128(2.0, 0.0)],
+              [Complex(1.0, 2.0), Complex(2.0, 0.0)],
               [2],
               DType.complex128,
             );
@@ -513,7 +513,7 @@ void main() {
             expect(cProd.getCell([1]), equals(Complex(2.0, 4.0)));
 
             final c64 = NDArray<Complex64>.fromList(
-              [Complex64(1.0, 2.0), Complex64(2.0, 0.0)],
+              [Complex(1.0, 2.0), Complex(2.0, 0.0)],
               [2],
               DType.complex64,
             );
@@ -652,7 +652,7 @@ void main() {
             );
 
             // Outer with where mask
-            final whereMask = NDArray<bool>.fromList(
+            final whereMask = NDArray<Boolean>.fromList(
               [true, false, false, true],
               [2, 2],
               DType.boolean,
@@ -679,7 +679,7 @@ void main() {
               [8],
               DType.float64,
             );
-            final indices1D = NDArray<int>.fromList(
+            final indices1D = NDArray.fromList(
               [0, 4, 1, 5, 2],
               [5],
               DType.int64,
@@ -694,7 +694,7 @@ void main() {
               [4],
               DType.float32,
             );
-            final idx = NDArray<int>.fromList([0, 2], [2], DType.int64);
+            final idx = NDArray.fromList([0, 2], [2], DType.int64);
             expect(
               aF32.reduceat(idx, op: BinaryOp.add).toList(),
               equals([3.0, 7.0]),
@@ -736,7 +736,7 @@ void main() {
               equals([3, 7]),
             );
 
-            final aBool = NDArray<bool>.fromList(
+            final aBool = NDArray<Boolean>.fromList(
               [true, true, false, true],
               [4],
               DType.boolean,
@@ -748,10 +748,10 @@ void main() {
 
             final aC128 = NDArray<Complex128>.fromList(
               [
-                Complex128(1.0, 0.0),
-                Complex128(2.0, 0.0),
-                Complex128(3.0, 0.0),
-                Complex128(4.0, 0.0),
+                Complex(1.0, 0.0),
+                Complex(2.0, 0.0),
+                Complex(3.0, 0.0),
+                Complex(4.0, 0.0),
               ],
               [4],
               DType.complex128,
@@ -762,10 +762,10 @@ void main() {
 
             final aC64 = NDArray<Complex64>.fromList(
               [
-                Complex64(1.0, 0.0),
-                Complex64(2.0, 0.0),
-                Complex64(3.0, 0.0),
-                Complex64(4.0, 0.0),
+                Complex(1.0, 0.0),
+                Complex(2.0, 0.0),
+                Complex(3.0, 0.0),
+                Complex(4.0, 0.0),
               ],
               [4],
               DType.complex64,
@@ -844,11 +844,7 @@ void main() {
           NDArray.scope(() {
             // Float64
             final targetF64 = NDArray<Float64>.zeros([5], DType.float64);
-            final indices = NDArray<int>.fromList(
-              [0, 1, 0, 2, 1],
-              [5],
-              DType.int64,
-            );
+            final indices = NDArray.fromList([0, 1, 0, 2, 1], [5], DType.int64);
             final valsF64 = NDArray<Float64>.fromList(
               [1.0, 10.0, 2.0, 100.0, 20.0],
               [5],
@@ -859,7 +855,7 @@ void main() {
 
             // Float32
             final targetF32 = NDArray<Float32>.zeros([3], DType.float32);
-            final idx3 = NDArray<int>.fromList([0, 0, 1], [3], DType.int64);
+            final idx3 = NDArray.fromList([0, 0, 1], [3], DType.int64);
             final valsF32 = NDArray<Float32>.fromList(
               [2.0, 3.0, 5.0],
               [3],
@@ -875,7 +871,7 @@ void main() {
               DType.int64,
             );
             final valsI64 = NDArray<Int64>.fromList([2, 5], [2], DType.int64);
-            final idx2 = NDArray<int>.fromList([0, 1], [2], DType.int64);
+            final idx2 = NDArray.fromList([0, 1], [2], DType.int64);
             targetI64.at(idx2, valsI64, op: BinaryOp.subtract);
             expect(targetI64.toList(), equals([8, 15, 30]));
 
@@ -910,7 +906,7 @@ void main() {
             // Complex128 and Complex64
             final targetC128 = NDArray<Complex128>.zeros([3], DType.complex128);
             final valsC128 = NDArray<Complex128>.fromList(
-              [Complex128(1.0, 1.0), Complex128(2.0, 3.0)],
+              [Complex(1.0, 1.0), Complex(2.0, 3.0)],
               [2],
               DType.complex128,
             );
@@ -920,7 +916,7 @@ void main() {
 
             final targetC64 = NDArray<Complex64>.zeros([3], DType.complex64);
             final valsC64 = NDArray<Complex64>.fromList(
-              [Complex64(1.0, 1.0), Complex64(2.0, 3.0)],
+              [Complex(1.0, 1.0), Complex(2.0, 3.0)],
               [2],
               DType.complex64,
             );
@@ -928,12 +924,12 @@ void main() {
             expect(targetC64.getCell([0]), equals(Complex(1.0, 1.0)));
 
             // Boolean at
-            final targetBool = NDArray<bool>.fromList(
+            final targetBool = NDArray<Boolean>.fromList(
               [false, false, false],
               [3],
               DType.boolean,
             );
-            final valsBool = NDArray<bool>.fromList(
+            final valsBool = NDArray<Boolean>.fromList(
               [true, true],
               [2],
               DType.boolean,
@@ -1007,7 +1003,7 @@ void main() {
             final accumulated = accumulate(a, op: BinaryOp.add);
             expect(accumulated.toList(), equals([10.0, 30.0, 60.0]));
 
-            final idx = NDArray<int>.fromList([0, 1], [2], DType.int64);
+            final idx = NDArray.fromList([0, 1], [2], DType.int64);
             final redAt = reduceat(a, idx, op: BinaryOp.add);
             expect(redAt.toList(), equals([10.0, 50.0]));
 
@@ -1107,7 +1103,7 @@ void main() {
 
             // With where mask and out buffer
             final outBuf = NDArray<Int32>.zeros([2, 2], DType.int32);
-            final mask = NDArray<bool>.fromList(
+            final mask = NDArray<Boolean>.fromList(
               [true, false, true, false],
               [2, 2],
               DType.boolean,
@@ -1166,20 +1162,12 @@ void main() {
 
             // Complex truthy/falsy
             final cA = NDArray<Complex128>.fromList(
-              [
-                Complex128(0.0, 0.0),
-                Complex128(1.0, 0.0),
-                Complex128(0.0, 1.0),
-              ],
+              [Complex(0.0, 0.0), Complex(1.0, 0.0), Complex(0.0, 1.0)],
               [3],
               DType.complex128,
             );
             final cB = NDArray<Complex128>.fromList(
-              [
-                Complex128(0.0, 0.0),
-                Complex128(0.0, 0.0),
-                Complex128(2.0, 2.0),
-              ],
+              [Complex(0.0, 0.0), Complex(0.0, 0.0), Complex(2.0, 2.0)],
               [3],
               DType.complex128,
             );
@@ -1200,8 +1188,8 @@ void main() {
               [2, 2],
               DType.int32,
             );
-            final outLog = NDArray<bool>.zeros([2, 2], DType.boolean);
-            final whereMask = NDArray<bool>.fromList(
+            final outLog = NDArray<Boolean>.zeros([2, 2], DType.boolean);
+            final whereMask = NDArray<Boolean>.fromList(
               [true, true, false, true],
               [2, 2],
               DType.boolean,
@@ -1246,12 +1234,12 @@ void main() {
 
             // Complex comparisons
             final c1 = NDArray<Complex128>.fromList(
-              [Complex128(1.0, 2.0)],
+              [Complex(1.0, 2.0)],
               [1],
               DType.complex128,
             );
             final c2 = NDArray<Complex128>.fromList(
-              [Complex128(1.0, 2.0)],
+              [Complex(1.0, 2.0)],
               [1],
               DType.complex128,
             );
@@ -1321,10 +1309,10 @@ void main() {
             // Complex128 and Complex64
             final aC128 = NDArray<Complex128>.fromList(
               [
-                Complex128(0.0, 0.0),
-                Complex128(double.nan, 1.0),
-                Complex128(1.0, double.infinity),
-                Complex128(3.0, 4.0),
+                Complex(0.0, 0.0),
+                Complex(double.nan, 1.0),
+                Complex(1.0, double.infinity),
+                Complex(3.0, 4.0),
               ],
               [4],
               DType.complex128,
@@ -1338,10 +1326,10 @@ void main() {
 
             final aC64 = NDArray<Complex64>.fromList(
               [
-                Complex64(0.0, 0.0),
-                Complex64(double.nan, 1.0),
-                Complex64(1.0, double.infinity),
-                Complex64(3.0, 4.0),
+                Complex(0.0, 0.0),
+                Complex(double.nan, 1.0),
+                Complex(1.0, double.infinity),
+                Complex(3.0, 4.0),
               ],
               [4],
               DType.complex64,
@@ -1423,7 +1411,7 @@ void main() {
 
             // sinc on complex
             final sincC128 = NDArray<Complex128>.fromList(
-              [Complex128(0.0, 0.0)],
+              [Complex(0.0, 0.0)],
               [1],
               DType.complex128,
             );
@@ -1447,12 +1435,12 @@ void main() {
             // i0 on complex (|z| <= 15 and |z| > 15 across quadrants)
             final i0Complex = NDArray<Complex128>.fromList(
               [
-                Complex128(0.0, 0.0),
-                Complex128(1.0, 1.0),
-                Complex128(20.0, 10.0), // |z| > 15 Q1
-                Complex128(-20.0, 10.0), // |z| > 15 Q2
-                Complex128(-20.0, -10.0), // |z| > 15 Q3
-                Complex128(20.0, -10.0), // |z| > 15 Q4
+                Complex(0.0, 0.0),
+                Complex(1.0, 1.0),
+                Complex(20.0, 10.0), // |z| > 15 Q1
+                Complex(-20.0, 10.0), // |z| > 15 Q2
+                Complex(-20.0, -10.0), // |z| > 15 Q3
+                Complex(20.0, -10.0), // |z| > 15 Q4
               ],
               [6],
               DType.complex128,
@@ -1558,11 +1546,7 @@ void main() {
           NDArray.scope(() {
             // Complex arrays
             final cArr = NDArray<Complex128>.fromList(
-              [
-                Complex128(3.0, 4.0),
-                Complex128(-5.0, 12.0),
-                Complex128(0.0, -1.0),
-              ],
+              [Complex(3.0, 4.0), Complex(-5.0, 12.0), Complex(0.0, -1.0)],
               [3],
               DType.complex128,
             );

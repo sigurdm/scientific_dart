@@ -11,12 +11,12 @@ void main() async {
     'MaskedArray (ndarray_ma) Performance Benchmarks',
     (c) {
       final rand = math.Random(42);
-      final rawData1 = nd.NDArray<double>.fromList(
+      final rawData1 = nd.NDArray<nd.Float64>.fromList(
         List.generate(size, (_) => rand.nextDouble() * 100.0),
         [size],
         nd.DType.float64,
       );
-      final rawData2 = nd.NDArray<double>.fromList(
+      final rawData2 = nd.NDArray<nd.Float64>.fromList(
         List.generate(size, (_) => rand.nextDouble() * 100.0),
         [size],
         nd.DType.float64,
@@ -76,7 +76,7 @@ void main() async {
 
       c.group('3. Masking & Compression Utilities', () {
         // Data with NaNs and infinities
-        final dataWithInvalid = nd.NDArray<double>.fromList(
+        final dataWithInvalid = nd.NDArray<nd.Float64>.fromList(
           List.generate(size, (i) {
             if (i % 10 == 0) return double.nan;
             if (i % 15 == 0) return double.infinity;

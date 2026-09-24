@@ -14,7 +14,7 @@ part 'ops/views.dart';
 /// mask of the same shape. Elements where the mask is `true` are considered
 /// invalid or missing, and are automatically bypassed in arithmetic operations
 /// and reductions.
-final class MaskedArray<T extends Object> {
+final class MaskedArray<T extends DTypeTag> {
   /// The underlying data array containing all values (both valid and masked).
   final NDArray<T> data;
 
@@ -22,10 +22,10 @@ final class MaskedArray<T extends Object> {
   ///
   /// A value of `true` indicates that the corresponding element in [data] is
   /// invalid or missing (masked).
-  final NDArray<bool> mask;
+  final NDArray<Boolean> mask;
 
   /// The value used to fill masked elements when converting to a standard [NDArray].
-  final T fillValue;
+  final Object fillValue;
 
   /// Creates a [MaskedArray] view wrapping [data] and [mask].
   ///
@@ -34,8 +34,8 @@ final class MaskedArray<T extends Object> {
   ///
   /// Throws:
   /// - [ArgumentError] if [data] and [mask] shapes do not match.
-  MaskedArray(this.data, this.mask, {T? fillValue})
-    : fillValue = fillValue ?? _defaultFillValue(data.dtype) as T {
+  MaskedArray(this.data, this.mask, {Object? fillValue})
+    : fillValue = fillValue ?? _defaultFillValue(data.dtype) {
     if (!data.hasSameShape(mask)) {
       throw ArgumentError('Shapes of data and mask must be identical');
     }
@@ -54,16 +54,24 @@ final class MaskedArray<T extends Object> {
   DType<T> get dtype => data.dtype;
 
   /// Creates a [MaskedArray] with all elements unmasked and initialized to zero.
-  factory MaskedArray.zeros(List<int> shape, DType<T> dtype, {T? fillValue}) {
+  factory MaskedArray.zeros(
+    List<int> shape,
+    DType<T> dtype, {
+    Object? fillValue,
+  }) {
     final data = NDArray<T>.zeros(shape, dtype);
-    final mask = NDArray<bool>.zeros(shape, DType.boolean);
+    final mask = NDArray<Boolean>.zeros(shape, DType.boolean);
     return MaskedArray(data, mask, fillValue: fillValue);
   }
 
   /// Creates a [MaskedArray] with all elements unmasked and initialized to one.
-  factory MaskedArray.ones(List<int> shape, DType<T> dtype, {T? fillValue}) {
+  factory MaskedArray.ones(
+    List<int> shape,
+    DType<T> dtype, {
+    Object? fillValue,
+  }) {
     final data = NDArray<T>.ones(shape, dtype);
-    final mask = NDArray<bool>.zeros(shape, DType.boolean);
+    final mask = NDArray<Boolean>.zeros(shape, DType.boolean);
     return MaskedArray(data, mask, fillValue: fillValue);
   }
 
@@ -71,7 +79,7 @@ final class MaskedArray<T extends Object> {
   ///
   /// Elements in [data] that are `NaN` or `Infinity` will be masked (`mask` set to `true`).
   /// This is only relevant for numeric float/complex types.
-  factory MaskedArray.maskedInvalid(NDArray<T> data, {T? fillValue}) {
+  factory MaskedArray.maskedInvalid(NDArray<T> data, {Object? fillValue}) {
     return NDArray.scope(() {
       final nanMask = ndops.isnan(data);
       final infMask = ndops.isinf(data);
@@ -85,7 +93,11 @@ final class MaskedArray<T extends Object> {
   }
 
   /// Creates a [MaskedArray] automatically masking elements in [data] equal to [value].
-  factory MaskedArray.maskedEqual(NDArray<T> data, T value, {T? fillValue}) {
+  factory MaskedArray.maskedEqual(
+    NDArray<T> data,
+    Object value, {
+    Object? fillValue,
+  }) {
     return NDArray.scope(() {
       final valArray = _wrapScalar<T>(value, data.dtype);
       final mask = ndops.equal(data, valArray);
@@ -98,7 +110,11 @@ final class MaskedArray<T extends Object> {
   }
 
   /// Creates a [MaskedArray] automatically masking elements in [data] greater than [value].
-  factory MaskedArray.maskedGreater(NDArray<T> data, T value, {T? fillValue}) {
+  factory MaskedArray.maskedGreater(
+    NDArray<T> data,
+    Object value, {
+    Object? fillValue,
+  }) {
     return NDArray.scope(() {
       final mask = data > value;
       return MaskedArray(
@@ -112,8 +128,8 @@ final class MaskedArray<T extends Object> {
   /// Creates a [MaskedArray] automatically masking elements in [data] greater than or equal to [value].
   factory MaskedArray.maskedGreaterEqual(
     NDArray<T> data,
-    T value, {
-    T? fillValue,
+    Object value, {
+    Object? fillValue,
   }) {
     return NDArray.scope(() {
       final mask = data >= value;
@@ -126,7 +142,11 @@ final class MaskedArray<T extends Object> {
   }
 
   /// Creates a [MaskedArray] automatically masking elements in [data] less than [value].
-  factory MaskedArray.maskedLess(NDArray<T> data, T value, {T? fillValue}) {
+  factory MaskedArray.maskedLess(
+    NDArray<T> data,
+    Object value, {
+    Object? fillValue,
+  }) {
     return NDArray.scope(() {
       final mask = data < value;
       return MaskedArray(
@@ -140,8 +160,8 @@ final class MaskedArray<T extends Object> {
   /// Creates a [MaskedArray] automatically masking elements in [data] less than or equal to [value].
   factory MaskedArray.maskedLessEqual(
     NDArray<T> data,
-    T value, {
-    T? fillValue,
+    Object value, {
+    Object? fillValue,
   }) {
     return NDArray.scope(() {
       final mask = data <= value;
@@ -254,7 +274,7 @@ final class MaskedArray<T extends Object> {
       if (value == null) {
         mask.setCell(coords, true);
       } else {
-        data.setCell(coords, value as T);
+        data.setCell(coords, value as Object);
         mask.setCell(coords, false);
       }
     } else {
@@ -296,8 +316,8 @@ final class MaskedArray<T extends Object> {
           broadcastedData.copy(out: dataView);
           maskView.fill(false);
         });
-      } else if (value is T) {
-        dataView.fill(value);
+      } else if (value is num || value is Complex || value is bool) {
+        dataView.fill(value as Object);
         maskView.fill(false);
       } else {
         throw ArgumentError('Unsupported value type: ${value.runtimeType}');
@@ -324,16 +344,16 @@ final class MaskedArray<T extends Object> {
   // ==========================================
 
   /// Performs element-wise addition, propagating masks.
-  MaskedArray<dynamic> add(dynamic other) => _maAdd(this, other);
+  MaskedArray<DTypeTag> add(dynamic other) => _maAdd(this, other);
 
   /// Performs element-wise subtraction, propagating masks.
-  MaskedArray<dynamic> subtract(dynamic other) => _maSubtract(this, other);
+  MaskedArray<DTypeTag> subtract(dynamic other) => _maSubtract(this, other);
 
   /// Performs element-wise multiplication, propagating masks.
-  MaskedArray<dynamic> multiply(dynamic other) => _maMultiply(this, other);
+  MaskedArray<DTypeTag> multiply(dynamic other) => _maMultiply(this, other);
 
   /// Performs element-wise division, propagating masks and masking zero-divisors.
-  MaskedArray<dynamic> divide(dynamic other) => _maDivide(this, other);
+  MaskedArray<DTypeTag> divide(dynamic other) => _maDivide(this, other);
 
   /// Returns the sum of elements along the given [axis], ignoring masked elements.
   MaskedArray<T> sum({int? axis}) => _maSum<T>(this, axis: axis);
@@ -351,13 +371,13 @@ final class MaskedArray<T extends Object> {
   NDArray<Int32> count({int? axis}) => _maCount(this, axis: axis);
 
   /// Returns the mean of elements along the given [axis], ignoring masked elements.
-  MaskedArray<dynamic> mean({int? axis}) => _maMean(this, axis: axis);
+  MaskedArray<DTypeTag> mean({int? axis}) => _maMean(this, axis: axis);
 
   /// Returns the variance of elements along the given [axis], ignoring masked elements.
-  MaskedArray<dynamic> variance({int? axis}) => _maVariance(this, axis: axis);
+  MaskedArray<DTypeTag> variance({int? axis}) => _maVariance(this, axis: axis);
 
   /// Returns the standard deviation of elements along the given [axis], ignoring masked elements.
-  MaskedArray<dynamic> std({int? axis}) => _maStd(this, axis: axis);
+  MaskedArray<DTypeTag> std({int? axis}) => _maStd(this, axis: axis);
 
   /// Returns a new [MaskedArray] view with reshaped data and mask.
   MaskedArray<T> reshape(List<int> newShape) => _maReshape<T>(this, newShape);
@@ -374,10 +394,11 @@ final class MaskedArray<T extends Object> {
   NDArray<T> compressed() => _maCompressed<T>(this);
 
   /// Returns a standard copy of [NDArray] with masked elements replaced by [fillValue] (or [this.fillValue]).
-  NDArray<T> filled({T? fillValue}) => _maFilled<T>(this, fillValue: fillValue);
+  NDArray<T> filled({Object? fillValue}) =>
+      _maFilled<T>(this, fillValue: fillValue);
 
   /// Maps a unary ufunc over the data, preserving the mask.
-  MaskedArray<R> mapUnary<R extends Object>(
+  MaskedArray<R> mapUnary<R extends DTypeTag>(
     NDArray<R> Function(NDArray<T>) ufunc,
   ) => _maMapUnary<T, R>(this, ufunc);
 }

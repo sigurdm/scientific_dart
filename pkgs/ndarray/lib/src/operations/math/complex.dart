@@ -5,9 +5,9 @@ import "../../ndarray_bindings.dart";
 import "../../scratch_arena.dart";
 import "../helpers.dart";
 
-NDArray<dynamic> _complexPartView(
-  NDArray<dynamic> a,
-  DType<dynamic> floatDType, {
+NDArray<DTypeTag> _complexPartView(
+  NDArray<DTypeTag> a,
+  DType<DTypeTag> floatDType, {
   required bool isImag,
 }) {
   final floatStrides = a.strides.map((s) => s * 2).toList();
@@ -24,7 +24,7 @@ NDArray<dynamic> _complexPartView(
   final ffi.Pointer<ffi.Void> basePtr = floatDType == DType.float64
       ? (a.pointer.cast<ffi.Double>() + elementOffset).cast<ffi.Void>()
       : (a.pointer.cast<ffi.Float>() + elementOffset).cast<ffi.Void>();
-  return NDArray<dynamic>.fromPointer(
+  return NDArray<DTypeTag>.fromPointer(
     basePtr,
     a.shape,
     floatDType,
@@ -46,14 +46,17 @@ NDArray<dynamic> _complexPartView(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<Complex>.create([2], DType.complex128);
+/// final a = NDArray<DTypeTag>.create([2], DType.complex128);
 /// a.setCell([0], Complex(3.0, 4.0));
 /// a.setCell([1], Complex(-1.0, 0.0));
 /// final r = real(a); // [3.0, -1.0] (DType.float64)
 /// ```
-NDArray<R> real<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> real<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<R, Object?, DTypeTag, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -62,7 +65,7 @@ NDArray<R> real<T, R>(
     throw StateError("Cannot execute real() on a disposed array.");
   }
 
-  final DType<dynamic> targetDType;
+  final DType<DTypeTag> targetDType;
   switch (a.dtype) {
     case DType.complex64:
       targetDType = DType.float32;
@@ -86,20 +89,21 @@ NDArray<R> real<T, R>(
                       ? NDArray<Float32>.create(a.shape, DType.float32)
                       : NDArray<Float64>.create(a.shape, DType.float64))
                   as NDArray<R>);
-        real<T, R>(a, where: where, out: temp);
+        real<R>(a, where: where, out: temp);
         temp.copy(out: out);
         return out;
       });
     }
   } else if (where == null &&
-      a.dtype != DType.complex128 &&
-      a.dtype != DType.complex64) {
+      (a.dtype as DType<DTypeTag>) != DType.complex128 &&
+      (a.dtype as DType<DTypeTag>) != DType.complex64) {
     return NDArray.view(a, shape: a.shape, strides: a.strides)
         as NDArray<R>; // Zero-copy view for already real arrays!
   }
 
   if (where == null &&
-      (a.dtype == DType.complex128 || a.dtype == DType.complex64)) {
+      ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)) {
     final NDArray<R> result =
         out ??
         ((targetDType == DType.float32
@@ -131,7 +135,7 @@ NDArray<R> real<T, R>(
         for (var i = 0; i < size; i++) {
           if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
             final c = a.getCell(coord) as Complex;
-            result.setCell(coord, c.real as R);
+            result.setCell(coord, c.real);
           }
           for (var d = a.shape.length - 1; d >= 0; d--) {
             coord[d]++;
@@ -151,7 +155,7 @@ NDArray<R> real<T, R>(
 
           for (var i = 0; i < size; i++) {
             if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
-              result.setCell(coord, a.getCell(coord) as R);
+              result.setCell(coord, a.getCell(coord));
             }
             for (var d = a.shape.length - 1; d >= 0; d--) {
               coord[d]++;
@@ -181,14 +185,17 @@ NDArray<R> real<T, R>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<Complex>.create([2], DType.complex128);
+/// final a = NDArray<DTypeTag>.create([2], DType.complex128);
 /// a.setCell([0], Complex(3.0, 4.0));
 /// a.setCell([1], Complex(-1.0, 0.0));
 /// final im = imag(a); // [4.0, 0.0] (DType.float64)
 /// ```
-NDArray<R> imag<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> imag<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -197,8 +204,8 @@ NDArray<R> imag<T, R>(
     throw StateError("Cannot execute imag() on a disposed array.");
   }
 
-  final DType<dynamic> targetDType = switch (a.dtype) {
-    DType.complex64 => DType.float32,
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
+    DType.complex64 || DType.float32 => DType.float32,
     _ => DType.float64,
   };
 
@@ -216,7 +223,7 @@ NDArray<R> imag<T, R>(
                       ? NDArray<Float32>.create(a.shape, DType.float32)
                       : NDArray<Float64>.create(a.shape, DType.float64))
                   as NDArray<R>);
-        imag<T, R>(a, where: where, out: temp);
+        imag<R>(a, where: where, out: temp);
         temp.copy(out: out);
         return out;
       });
@@ -224,7 +231,8 @@ NDArray<R> imag<T, R>(
   }
 
   if (where == null &&
-      (a.dtype == DType.complex128 || a.dtype == DType.complex64)) {
+      ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+          (a.dtype as DType<DTypeTag>) == DType.complex64)) {
     final NDArray<R> result =
         out ??
         ((targetDType == DType.float32
@@ -246,14 +254,15 @@ NDArray<R> imag<T, R>(
         out ??
         (NDArray.create(a.shape, targetDType, zeroInit: where != null)
             as NDArray<R>);
-    if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
+    if ((a.dtype as DType<DTypeTag>) != DType.complex128 &&
+        (a.dtype as DType<DTypeTag>) != DType.complex64) {
       if (where == null) {
-        result.fill(0.0 as R);
+        result.fill(0.0);
       } else {
         final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
         final coord = List<int>.filled(a.shape.length, 0);
         final maskPtr = maskHolder.pointer;
-        final zeroVal = 0.0 as R;
+        final zeroVal = 0.0;
 
         for (var i = 0; i < size; i++) {
           if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
@@ -276,7 +285,7 @@ NDArray<R> imag<T, R>(
     for (var i = 0; i < size; i++) {
       if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
         final c = a.getCell(coord) as Complex;
-        result.setCell(coord, c.imag as R);
+        result.setCell(coord, c.imag);
       }
       for (var d = a.shape.length - 1; d >= 0; d--) {
         coord[d]++;
@@ -304,7 +313,11 @@ NDArray<R> imag<T, R>(
 /// final a = NDArray.fromList([Complex(1.0, 2.0)], [1], DType.complex128);
 /// final c = conj(a); // [Complex(1.0, -2.0)]
 /// ```
-NDArray<T> conj<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
+NDArray<T> conj<T extends DTypeTag>(
+  NDArray<T> a, {
+  NDArray<DTypeTag>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -426,8 +439,8 @@ NDArray<T> conj<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
 }
 
 /// Alias for [conj].
-NDArray<T> conjugate<T>(
+NDArray<T> conjugate<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<dynamic>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) => conj(a, where: where, out: out);

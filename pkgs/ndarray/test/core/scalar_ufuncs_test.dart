@@ -9,8 +9,8 @@ void main() {
   group("0D Scalar Elementwise Ufuncs Tests", () {
     test("0D scalar arithmetic (+, -, *, /) with out and on strided views", () {
       NDArray.scope(() {
-        final a = NDArray<Float64>.scalar(Float64(6.0), dtype: DType.float64);
-        final b = NDArray<Float64>.scalar(Float64(2.0), dtype: DType.float64);
+        final a = NDArray<Float64>.scalar(6.0, dtype: DType.float64);
+        final b = NDArray<Float64>.scalar(2.0, dtype: DType.float64);
 
         // Standard operator syntax
         final sumOp = a + b;
@@ -28,9 +28,9 @@ void main() {
         final outMul = NDArray<Float64>.zeros(<int>[], DType.float64);
         final outDiv = NDArray<Float64>.zeros(<int>[], DType.float64);
 
-        add<Float64, Float64, Float64>(a, b, out: outAdd);
-        subtract<Float64, Float64, Float64>(a, b, out: outSub);
-        multiply<Float64, Float64, Float64>(a, b, out: outMul);
+        add<Float64>(a, b, out: outAdd);
+        subtract<Float64>(a, b, out: outSub);
+        multiply<Float64>(a, b, out: outMul);
         divide<Float64, Float64, Float64>(a, b, out: outDiv);
 
         expect((outAdd.scalar as num).toDouble(), closeTo(8.0, 1e-12));
@@ -73,13 +73,13 @@ void main() {
         expect(viewA.isContiguous, isTrue);
         expect(viewOut.isContiguous, isTrue);
 
-        add<Float64, Float64, Float64>(viewA, viewB, out: viewOut);
+        add<Float64>(viewA, viewB, out: viewOut);
         expect((viewOut.scalar as num).toDouble(), closeTo(8.0, 1e-12));
 
-        subtract<Float64, Float64, Float64>(viewA, viewB, out: viewOut);
+        subtract<Float64>(viewA, viewB, out: viewOut);
         expect((viewOut.scalar as num).toDouble(), closeTo(4.0, 1e-12));
 
-        multiply<Float64, Float64, Float64>(viewA, viewB, out: viewOut);
+        multiply<Float64>(viewA, viewB, out: viewOut);
         expect((viewOut.scalar as num).toDouble(), closeTo(12.0, 1e-12));
 
         divide<Float64, Float64, Float64>(viewA, viewB, out: viewOut);
@@ -108,10 +108,10 @@ void main() {
           offsetElements: 1,
         );
 
-        sin<Float64, Float64>(view0D, out: outView);
+        sin(view0D, out: outView);
         expect((outView.scalar as num).toDouble(), closeTo(0.5, 1e-12));
 
-        cos<Float64, Float64>(view0D, out: outView);
+        cos(view0D, out: outView);
         expect(
           (outView.scalar as num).toDouble(),
           closeTo(math.sqrt(3.0) / 2.0, 1e-12),
@@ -141,7 +141,7 @@ void main() {
             offsetElements: 1,
           );
 
-          abs<Float64, Float64>(viewF, out: outF);
+          abs(viewF, out: outF);
           expect((outF.scalar as num).toDouble(), closeTo(7.5, 1e-12));
 
           final backingC = NDArray<Complex128>.fromList(
@@ -162,7 +162,7 @@ void main() {
             offsetElements: 1,
           );
 
-          abs<Complex128, Float64>(viewC, out: outAbsC);
+          abs(viewC, out: outAbsC);
           expect((outAbsC.scalar as num).toDouble(), closeTo(5.0, 1e-12));
 
           final outConjC = NDArray<Complex128>.view(
@@ -281,7 +281,7 @@ void main() {
 
     test("0D scalar castNDArray and low-level strided C ufuncs on rank 0", () {
       NDArray.scope(() {
-        final sU8 = NDArray<Uint8>.scalar(Uint8(200), dtype: DType.uint8);
+        final sU8 = NDArray<Uint8>.scalar(200, dtype: DType.uint8);
         final castedF64 = castNDArray<Float64>(sU8, DType.float64);
         expect(castedF64.rank, 0);
         expect((castedF64.scalar as num).toDouble(), closeTo(200.0, 1e-12));
@@ -299,18 +299,9 @@ void main() {
         // Direct verification of low-level rank == 0 strided C functions
         final marker = ScratchArena.marker;
         try {
-          final aD = NDArray<Float64>.scalar(
-            Float64(9.0),
-            dtype: DType.float64,
-          );
-          final bD = NDArray<Float64>.scalar(
-            Float64(3.0),
-            dtype: DType.float64,
-          );
-          final resD = NDArray<Float64>.scalar(
-            Float64(0.0),
-            dtype: DType.float64,
-          );
+          final aD = NDArray<Float64>.scalar(9.0, dtype: DType.float64);
+          final bD = NDArray<Float64>.scalar(3.0, dtype: DType.float64);
+          final resD = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
 
           bindings.s_add_double(
             aD.pointer.cast(),
@@ -360,7 +351,7 @@ void main() {
           );
           expect((resD.scalar as num).toDouble(), closeTo(3.0, 1e-12));
 
-          final u8Src = NDArray<Uint8>.scalar(Uint8(42), dtype: DType.uint8);
+          final u8Src = NDArray<Uint8>.scalar(42, dtype: DType.uint8);
           bindings.s_cast_uint8_to_double(
             u8Src.pointer.cast(),
             ffi.nullptr,
@@ -371,7 +362,7 @@ void main() {
           );
           expect((resD.scalar as num).toDouble(), closeTo(42.0, 1e-12));
 
-          final i16Dst = NDArray<Int16>.scalar(Int16(0), dtype: DType.int16);
+          final i16Dst = NDArray<Int16>.scalar(0, dtype: DType.int16);
           bindings.s_cast_double_to_int16(
             resD.pointer.cast(),
             ffi.nullptr,

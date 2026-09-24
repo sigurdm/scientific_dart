@@ -25,7 +25,7 @@ void main() {
           ]);
           expect(stridedOut.isContiguous, isFalse);
 
-          i0<Float64, Float64>(a, where: mask, out: stridedOut);
+          i0(a, where: mask, out: stridedOut);
           expect(stridedOut.getCell([0]), closeTo(1.0, 1e-6));
           expect(stridedOut.getCell([1]), equals(300.0)); // Unmasked preserved!
           expect(stridedOut.getCell([2]), closeTo(2.279585, 1e-5));
@@ -45,7 +45,7 @@ void main() {
             [4],
             DType.float64,
           );
-          gamma<Float64, Float64>(aGamma, where: mask, out: stridedOutGamma);
+          gamma(aGamma, where: mask, out: stridedOutGamma);
           expect(stridedOutGamma.getCell([0]), closeTo(1.0, 1e-6));
           expect(stridedOutGamma.getCell([1]), equals(30.0));
           expect(stridedOutGamma.getCell([2]), closeTo(2.0, 1e-6));
@@ -60,7 +60,7 @@ void main() {
           final stridedOutErf = fullOutErf.slice([
             const Slice(start: 0, stop: 8, step: 2),
           ]);
-          erf<Float64, Float64>(a, where: mask, out: stridedOutErf);
+          erf(a, where: mask, out: stridedOutErf);
           expect(stridedOutErf.getCell([0]), closeTo(0.0, 1e-6));
           expect(stridedOutErf.getCell([1]), equals(-3.0));
           expect(stridedOutErf.getCell([2]), closeTo(0.995322, 1e-5));
@@ -106,8 +106,8 @@ void main() {
             DType.complex128,
           );
           final stridedC128 = flip(c128);
-          final r128 = real<Complex, Float64>(stridedC128);
-          final i128 = imag<Complex, Float64>(stridedC128);
+          final r128 = real(stridedC128);
+          final i128 = imag(stridedC128);
           expect(r128.toList(), equals([4.0, 3.0, 2.0, 1.0]));
           expect(i128.toList(), equals([40.0, 30.0, 20.0, 10.0]));
 
@@ -117,8 +117,8 @@ void main() {
             DType.complex64,
           );
           final stridedC64 = flip(c64);
-          final r64 = real<Complex, Float32>(stridedC64);
-          final i64 = imag<Complex, Float32>(stridedC64);
+          final r64 = real(stridedC64);
+          final i64 = imag(stridedC64);
           expect(r64.toList(), equals([3.5, 2.5, 1.5]));
           expect(i64.toList(), equals([-3.5, -2.5, -1.5]));
 
@@ -128,7 +128,7 @@ void main() {
             [3],
             DType.float64,
           );
-          real<Float64, Float64>(realArr, out: flip(realArr));
+          real(realArr, out: flip(realArr));
           expect(realArr.toList(), equals([30.0, 20.0, 10.0]));
         });
       },

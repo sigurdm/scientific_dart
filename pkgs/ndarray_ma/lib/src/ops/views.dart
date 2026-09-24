@@ -1,6 +1,6 @@
 part of '../masked_array.dart';
 
-MaskedArray<T> _maReshape<T extends Object>(
+MaskedArray<T> _maReshape<T extends DTypeTag>(
   MaskedArray<T> self,
   List<int> newShape,
 ) {
@@ -11,7 +11,7 @@ MaskedArray<T> _maReshape<T extends Object>(
   );
 }
 
-MaskedArray<T> _maTranspose<T extends Object>(
+MaskedArray<T> _maTranspose<T extends DTypeTag>(
   MaskedArray<T> self, [
   List<int>? axes,
 ]) {
@@ -22,7 +22,10 @@ MaskedArray<T> _maTranspose<T extends Object>(
   );
 }
 
-MaskedArray<T> _maExpandDims<T extends Object>(MaskedArray<T> self, int axis) {
+MaskedArray<T> _maExpandDims<T extends DTypeTag>(
+  MaskedArray<T> self,
+  int axis,
+) {
   return MaskedArray<T>(
     self.data.expandDims(axis),
     self.mask.expandDims(axis),
@@ -30,7 +33,7 @@ MaskedArray<T> _maExpandDims<T extends Object>(MaskedArray<T> self, int axis) {
   );
 }
 
-NDArray<T> _maCompressed<T extends Object>(MaskedArray<T> self) {
+NDArray<T> _maCompressed<T extends DTypeTag>(MaskedArray<T> self) {
   return NDArray.scope(() {
     final flatData = self.data.reshape([self.size]);
     final flatMask = self.mask.reshape([self.size]);
@@ -40,7 +43,10 @@ NDArray<T> _maCompressed<T extends Object>(MaskedArray<T> self) {
   });
 }
 
-NDArray<T> _maFilled<T extends Object>(MaskedArray<T> self, {T? fillValue}) {
+NDArray<T> _maFilled<T extends DTypeTag>(
+  MaskedArray<T> self, {
+  Object? fillValue,
+}) {
   return NDArray.scope(() {
     final val = fillValue ?? self.fillValue;
     final fillArray = _wrapScalar<T>(val, self.dtype);
@@ -49,7 +55,7 @@ NDArray<T> _maFilled<T extends Object>(MaskedArray<T> self, {T? fillValue}) {
   });
 }
 
-MaskedArray<R> _maMapUnary<T extends Object, R extends Object>(
+MaskedArray<R> _maMapUnary<T extends DTypeTag, R extends DTypeTag>(
   MaskedArray<T> self,
   NDArray<R> Function(NDArray<T>) ufunc,
 ) {

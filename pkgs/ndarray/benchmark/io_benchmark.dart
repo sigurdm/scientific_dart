@@ -16,7 +16,7 @@ void main() async {
     await criterion(
       'NDArray IO Serialization & Deserialization Benchmark Suite',
       (c) {
-        final rawArray = linspace<double>(
+        final rawArray = linspace<DTypeTag>(
           0.0,
           100.0,
           elementCount,
@@ -39,7 +39,7 @@ void main() async {
         });
 
         c.group('2. NumPy Zip Archive (.npz) IO', () {
-          final halfArray = linspace<double>(
+          final halfArray = linspace<DTypeTag>(
             0.0,
             50.0,
             elementCount ~/ 2,

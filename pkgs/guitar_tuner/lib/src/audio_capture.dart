@@ -38,7 +38,7 @@ final class AudioCapture {
   /// Reads the current audio samples into the provided [buffer].
   ///
   /// The [buffer] must have [DType.float32] and its first dimension must be at least [bufferSize].
-  void read(NDArray<double> buffer) {
+  void read(NDArray<Float32> buffer) {
     if (_context == ffi.nullptr) return;
 
     if (buffer.dtype != DType.float32) {

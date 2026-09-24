@@ -111,12 +111,12 @@ void main() {
       ResourceScope.scope(() {
         // 1D dot product with Complex64
         final v1 = GpuArray.fromList(
-          [Complex64(1.0, 2.0), Complex64(3.0, -1.0)],
+          [Complex(1.0, 2.0), Complex(3.0, -1.0)],
           [2],
           DType.complex64,
         );
         final v2 = GpuArray.fromList(
-          [Complex64(2.0, 1.0), Complex64(0.0, 4.0)],
+          [Complex(2.0, 1.0), Complex(0.0, 4.0)],
           [2],
           DType.complex64,
         );
@@ -132,8 +132,8 @@ void main() {
         // 2D matmul with Complex128
         final a = GpuArray.fromList(
           [
-            [Complex128(1.0, 2.0), Complex128(3.0, 4.0)],
-            [Complex128(0.0, 1.0), Complex128(-2.0, 0.0)],
+            [Complex(1.0, 2.0), Complex(3.0, 4.0)],
+            [Complex(0.0, 1.0), Complex(-2.0, 0.0)],
           ],
           [2, 2],
           DType.complex128,
@@ -141,8 +141,8 @@ void main() {
 
         final b = GpuArray.fromList(
           [
-            [Complex128(2.0, -1.0), Complex128(0.0, 3.0)],
-            [Complex128(1.0, 1.0), Complex128(4.0, 2.0)],
+            [Complex(2.0, -1.0), Complex(0.0, 3.0)],
+            [Complex(1.0, 1.0), Complex(4.0, 2.0)],
           ],
           [2, 2],
           DType.complex128,

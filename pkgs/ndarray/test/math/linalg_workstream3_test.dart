@@ -135,22 +135,22 @@ void main() {
           expect(q.shape, [2, 2]);
           expect(r.shape, [2, 2]);
 
-          final r10 = r.getCell([1, 0]) as Complex;
+          final r10 = r.getCell([1, 0]);
           expect(r10.real.abs(), lessThan(1e-12));
           expect(r10.imag.abs(), lessThan(1e-12));
 
-          final qConj = NDArray<Complex>.zeros([2, 2], DType.complex128);
+          final qConj = NDArray.zeros([2, 2], DType.complex128);
           for (var i = 0; i < 2; i++) {
             for (var j = 0; j < 2; j++) {
-              final val = q.getCell([j, i]) as Complex;
+              final val = q.getCell([j, i]);
               qConj.setCell([i, j], Complex(val.real, -val.imag));
             }
           }
           final qHq = matmul(qConj, q);
-          final id00 = qHq.getCell([0, 0]) as Complex;
-          final id11 = qHq.getCell([1, 1]) as Complex;
-          final id01 = qHq.getCell([0, 1]) as Complex;
-          final id10 = qHq.getCell([1, 0]) as Complex;
+          final id00 = qHq.getCell([0, 0]);
+          final id11 = qHq.getCell([1, 1]);
+          final id01 = qHq.getCell([0, 1]);
+          final id10 = qHq.getCell([1, 0]);
 
           expect(id00.real, closeTo(1.0, 1e-12));
           expect(id00.imag.abs(), lessThan(1e-12));
@@ -164,8 +164,8 @@ void main() {
           final qrProd = matmul(q, r);
           for (var i = 0; i < 2; i++) {
             for (var j = 0; j < 2; j++) {
-              final prodVal = qrProd.getCell([i, j]) as Complex;
-              final aVal = a.getCell([i, j]) as Complex;
+              final prodVal = qrProd.getCell([i, j]);
+              final aVal = a.getCell([i, j]);
               expect(prodVal.real, closeTo(aVal.real, 1e-12));
               expect(prodVal.imag, closeTo(aVal.imag, 1e-12));
             }
@@ -193,8 +193,8 @@ void main() {
           final qrProd = matmul(res.q, res.r);
           for (var i = 0; i < 2; i++) {
             for (var j = 0; j < 2; j++) {
-              final prodVal = qrProd.getCell([i, j]) as Complex;
-              final aVal = a.getCell([i, j]) as Complex;
+              final prodVal = qrProd.getCell([i, j]);
+              final aVal = a.getCell([i, j]);
               expect(prodVal.real, closeTo(aVal.real, 1e-5));
               expect(prodVal.imag, closeTo(aVal.imag, 1e-5));
             }
@@ -224,8 +224,8 @@ void main() {
           final qrProd = matmul(res.q, res.r);
           for (var i = 0; i < 3; i++) {
             for (var j = 0; j < 2; j++) {
-              final prodVal = qrProd.getCell([i, j]) as Complex;
-              final aVal = a.getCell([i, j]) as Complex;
+              final prodVal = qrProd.getCell([i, j]);
+              final aVal = a.getCell([i, j]);
               expect(prodVal.real, closeTo(aVal.real, 1e-12));
               expect(prodVal.imag, closeTo(aVal.imag, 1e-12));
             }
@@ -258,8 +258,8 @@ void main() {
           for (var b = 0; b < 2; b++) {
             for (var i = 0; i < 2; i++) {
               for (var j = 0; j < 2; j++) {
-                final prodVal = qrProd.getCell([b, i, j]) as Complex;
-                final aVal = a.getCell([b, i, j]) as Complex;
+                final prodVal = qrProd.getCell([b, i, j]);
+                final aVal = a.getCell([b, i, j]);
                 expect(prodVal.real, closeTo(aVal.real, 1e-12));
                 expect(prodVal.imag, closeTo(aVal.imag, 1e-12));
               }
@@ -450,8 +450,8 @@ void main() {
           );
 
           final res = sqrt(a, where: mask, out: out);
-          final r0 = res.getCell([0]) as Complex;
-          final r1 = res.getCell([1]) as Complex;
+          final r0 = res.getCell([0]);
+          final r1 = res.getCell([1]);
           expect(r0.real, closeTo(2.0, 1e-9));
           expect(r0.imag, closeTo(0.0, 1e-9));
           expect(r1.real, 99.0);
@@ -507,13 +507,13 @@ void main() {
             [5],
             DType.float64,
           );
-          final outBuffer = NDArray<double>.zeros([5], DType.float64);
+          final outBuffer = NDArray.zeros([5], DType.float64);
 
           final shifted = fftshift(x, out: outBuffer);
           expect(identical(shifted, outBuffer), true);
           expect(shifted.toList(), [3.0, 4.0, 0.0, 1.0, 2.0]);
 
-          final unshiftedBuffer = NDArray<double>.zeros([5], DType.float64);
+          final unshiftedBuffer = NDArray.zeros([5], DType.float64);
           final unshifted = ifftshift(shifted, out: unshiftedBuffer);
           expect(identical(unshifted, unshiftedBuffer), true);
           expect(unshifted.toList(), [0.0, 1.0, 2.0, 3.0, 4.0]);
@@ -546,14 +546,14 @@ void main() {
         '8. Zero-Sized Matrix (n == 0) Fast Paths & Consistent Scope Protection',
         () {
           test('solve on n == 0 matrix returns bCopy without LAPACK call', () {
-            final a = NDArray<double>.zeros([0, 0], DType.float64);
-            final b1 = NDArray<double>.zeros([0], DType.float64);
+            final a = NDArray.zeros([0, 0], DType.float64);
+            final b1 = NDArray.zeros([0], DType.float64);
             final x1 = solve(a, b1);
             expect(x1.shape, [0]);
             expect(x1.isDisposed, false);
             x1.dispose();
 
-            final b2 = NDArray<double>.zeros([0, 3], DType.float64);
+            final b2 = NDArray.zeros([0, 3], DType.float64);
             final x2 = solve(a, b2);
             expect(x2.shape, [0, 3]);
             expect(x2.isDisposed, false);
@@ -567,7 +567,7 @@ void main() {
           test(
             'eig, eigvals, eigvalsh, eigh on n == 0 matrix return empty arrays',
             () {
-              final a = NDArray<double>.zeros([0, 0], DType.float64);
+              final a = NDArray.zeros([0, 0], DType.float64);
 
               final resEig = eig(a);
               expect(resEig.eigenvalues.shape, [0]);
@@ -598,7 +598,7 @@ void main() {
           );
 
           test('hessenberg, qr, svd on n == 0 matrix and scope safety', () {
-            final a = NDArray<double>.zeros([0, 0], DType.float64);
+            final a = NDArray.zeros([0, 0], DType.float64);
 
             final resHess = hessenberg(a);
             expect(resHess.h.shape, [0, 0]);

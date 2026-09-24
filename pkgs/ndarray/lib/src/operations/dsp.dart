@@ -34,8 +34,11 @@ typedef Float = double;
 /// ```
 ///
 /// Reference: [NumPy angle](https://numpy.org/doc/stable/reference/generated/numpy.angle.html)
-NDArray<R> angle<T extends Object, R extends Float>(
-  NDArray<T> a, {
+NDArray<R> angle<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  a, {
   NDArray<R>? out,
 }) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
@@ -45,9 +48,9 @@ NDArray<R> angle<T extends Object, R extends Float>(
   final DType<R> targetDType = switch (a.dtype) {
     DType.complex128 => DType.float64 as DType<R>,
     DType.complex64 => DType.float32 as DType<R>,
-    DType.float32 ||
+    DType.float32 => DType.float32 as DType<R>,
     DType.float16 ||
-    DType.bfloat16 => DType.float32 as DType<R>,
+    DType.bfloat16 ||
     DType.float64 ||
     DType.int64 ||
     DType.int32 ||
@@ -70,7 +73,7 @@ NDArray<R> angle<T extends Object, R extends Float>(
     }
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
-        final temp = angle<T, R>(a);
+        final temp = angle<R>(a);
         temp.copy(out: out);
         return out;
       });
@@ -175,8 +178,11 @@ NDArray<R> angle<T extends Object, R extends Float>(
             0,
             0,
             0,
-            (val) =>
-                Float64((val < 0.0 || identical(val, -0.0)) ? math.pi : 0.0),
+            (val) {
+              // `doubleA` was just cast to float64, so the element is a double.
+              final v = val as double;
+              return (v < 0.0 || identical(v, -0.0)) ? math.pi : 0.0;
+            },
           );
           final casted = castNDArray<R>(doubleRes, result.dtype);
           casted.copy(out: result);
@@ -217,8 +223,18 @@ NDArray<R> angle<T extends Object, R extends Float>(
 /// ```
 ///
 /// Reference: [NumPy unwrap](https://numpy.org/doc/stable/reference/generated/numpy.unwrap.html)
-NDArray<T> unwrap<T extends num>(
-  NDArray<Object> a, {
+NDArray<T> unwrap<
+  T extends DTypeSpec<
+    DTypeTag,
+    num,
+    DTypeTag,
+    DTypeTag,
+    DTypeTag,
+    DTypeTag,
+    DTypeTag
+  >
+>(
+  NDArray<DTypeTag> a, {
   double discont = math.pi,
   int axis = -1,
   NDArray<T>? out,
@@ -254,43 +270,7 @@ NDArray<T> unwrap<T extends num>(
     }
     if (sharesMemory(a, out)) {
       return NDArray.scope(() {
-        final temp =
-            switch (out.dtype) {
-                  DType.float64 => NDArray<Float64>.create(
-                    out.shape,
-                    DType.float64,
-                  ),
-                  DType.float32 => NDArray<Float32>.create(
-                    out.shape,
-                    DType.float32,
-                  ),
-                  DType.float16 => NDArray<Float16>.create(
-                    out.shape,
-                    DType.float16,
-                  ),
-                  DType.bfloat16 => NDArray<BFloat16>.create(
-                    out.shape,
-                    DType.bfloat16,
-                  ),
-                  DType.int64 => NDArray<Int64>.create(out.shape, DType.int64),
-                  DType.int32 => NDArray<Int32>.create(out.shape, DType.int32),
-                  DType.int16 => NDArray<Int16>.create(out.shape, DType.int16),
-                  DType.int8 => NDArray<Int8>.create(out.shape, DType.int8),
-                  DType.uint64 => NDArray<Uint64>.create(
-                    out.shape,
-                    DType.uint64,
-                  ),
-                  DType.uint32 => NDArray<Uint32>.create(
-                    out.shape,
-                    DType.uint32,
-                  ),
-                  DType.uint16 => NDArray<Uint16>.create(
-                    out.shape,
-                    DType.uint16,
-                  ),
-                  DType.uint8 => NDArray<Uint8>.create(out.shape, DType.uint8),
-                }
-                as NDArray<T>;
+        final temp = NDArray<T>.create(out.shape, out.dtype);
         unwrap<T>(a, discont: discont, axis: axis, out: temp);
         temp.copy(out: out);
         return out;
@@ -413,9 +393,9 @@ NDArray<T> unwrap<T extends num>(
 
 /// Internal helper executing direct stencil N-D valid cross-correlation.
 NDArray<R> _correlateValid<
-  T extends Object,
-  K extends Object,
-  R extends Object
+  T extends DTypeTag,
+  K extends DTypeTag,
+  R extends DTypeTag
 >(NDArray<T> in1, NDArray<K> in2, {NDArray<R>? out}) {
   final rank = in1.rank;
   final outShape = List<int>.generate(
@@ -621,11 +601,11 @@ enum ConvMode {
 /// - [NumPy correlate Documentation](https://numpy.org/doc/stable/reference/generated/numpy.correlate.html)
 /// - [SciPy signal.correlate Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate.html)
 /// - [Wikipedia: Cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation)
-NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
+NDArray<T> correlate<T extends DTypeTag>(
   NDArray<T> in1,
-  NDArray<K> in2, {
+  NDArray<T> in2, {
   ConvMode mode = ConvMode.valid,
-  NDArray<R>? out,
+  NDArray<T>? out,
 }) {
   if (in1.isDisposed || in2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute correlate() on a disposed array.');
@@ -662,12 +642,12 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
       }
       if (out != null && (sharesMemory(in1, out) || sharesMemory(in2, out))) {
         return NDArray.scope(() {
-          final temp = _correlateValid<T, K, R>(in1, in2);
+          final temp = _correlateValid<T, T, T>(in1, in2);
           temp.copy(out: out);
           return out;
         });
       }
-      return _correlateValid<T, K, R>(in1, in2, out: out);
+      return _correlateValid<T, T, T>(in1, in2, out: out);
     case ConvMode.full:
       final expectedShape = List<int>.generate(
         rank,
@@ -678,7 +658,7 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
       }
       if (out != null && (sharesMemory(in1, out) || sharesMemory(in2, out))) {
         return NDArray.scope(() {
-          final temp = correlate<T, K, R>(in1, in2, mode: ConvMode.full);
+          final temp = correlate<T>(in1, in2, mode: ConvMode.full);
           temp.copy(out: out);
           return out;
         });
@@ -694,7 +674,7 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
           PadWidth.axes(padWidths),
           mode: PaddingMode.constant,
         );
-        final res = _correlateValid<T, K, R>(padded1, in2, out: out);
+        final res = _correlateValid<T, T, T>(padded1, in2, out: out);
         if (out != null) return out;
         return res.detachToParentScope();
       });
@@ -703,7 +683,7 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
         throw ArgumentError('Provided out buffer has incompatible shape.');
       }
       return NDArray.scope(() {
-        final fullCorr = correlate<T, K, R>(in1, in2, mode: ConvMode.full);
+        final fullCorr = correlate<T>(in1, in2, mode: ConvMode.full);
         final selectors = List<Selector>.generate(rank, (i) {
           final start = (in2.shape[i] - 1) ~/ 2;
           return Slice(start: start, stop: start + in1.shape[i]);
@@ -743,11 +723,11 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
 /// - [NumPy convolve Documentation](https://numpy.org/doc/stable/reference/generated/numpy.convolve.html)
 /// - [SciPy signal.convolve Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.convolve.html)
 /// - [Wikipedia: Convolution](https://en.wikipedia.org/wiki/Convolution)
-NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
+NDArray<T> convolve<T extends DTypeTag>(
   NDArray<T> in1,
-  NDArray<K> in2, {
+  NDArray<T> in2, {
   ConvMode mode = ConvMode.full,
-  NDArray<R>? out,
+  NDArray<T>? out,
 }) {
   if (in1.isDisposed || in2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute convolve() on a disposed array.');
@@ -757,7 +737,7 @@ NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
   }
   if (out != null && (sharesMemory(in1, out) || sharesMemory(in2, out))) {
     return NDArray.scope(() {
-      final temp = convolve<T, K, R>(in1, in2, mode: mode);
+      final temp = convolve<T>(in1, in2, mode: mode);
       if (out.dtype != temp.dtype || !listEquals(out.shape, temp.shape)) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
@@ -777,7 +757,7 @@ NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
     final contiguousKernel = flippedKernel.isContiguous
         ? flippedKernel
         : flippedKernel.copy();
-    final res = correlate<T, K, R>(in1, contiguousKernel, mode: mode, out: out);
+    final res = correlate<T>(in1, contiguousKernel, mode: mode, out: out);
     if (out != null) return out;
     return res.detachToParentScope();
   });
@@ -800,14 +780,14 @@ NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
 ///
 /// ### References & Further Reading
 /// - [SciPy signal.convolve2d Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.convolve2d.html)
-NDArray<R> convolve2d<T extends Object, K extends Object, R extends Object>(
+NDArray<T> convolve2d<T extends DTypeTag>(
   NDArray<T> in1,
-  NDArray<K> in2, {
+  NDArray<T> in2, {
   ConvMode mode = ConvMode.full,
-  NDArray<R>? out,
+  NDArray<T>? out,
 }) {
   if (in1.rank != 2 || in2.rank != 2) {
     throw ArgumentError('convolve2d requires 2-dimensional arrays.');
   }
-  return convolve<T, K, R>(in1, in2, mode: mode, out: out);
+  return convolve<T>(in1, in2, mode: mode, out: out);
 }

@@ -50,7 +50,7 @@ Future<void> runBorrowModeExample() async {
         final view = borrowed.materializeView();
         // Mutate in-place
         for (var i = 0; i < view.shape[0]; i++) {
-          view[i] = ((i + 1) * 10.0) as Float64;
+          view[i] = ((i + 1) * 10.0);
         }
       });
     });

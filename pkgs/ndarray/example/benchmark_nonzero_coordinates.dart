@@ -15,7 +15,7 @@ void main() async {
           final a = NDArray.zeros([size, size], DType.float64);
           for (var i = 0; i < size; i += 5) {
             for (var j = 0; j < size; j += 3) {
-              a.setCell([i, j], Float64(9.9));
+              a.setCell([i, j], 9.9);
             }
           }
 
@@ -40,7 +40,7 @@ void main() async {
                   }
                 }
                 final res = coordinateLists.map((list) {
-                  return NDArray<int>.fromList(list, [
+                  return NDArray<DTypeTag>.fromList(list, [
                     list.length,
                   ], DType.int32);
                 }).toList();

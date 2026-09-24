@@ -42,48 +42,38 @@ void main() async {
 
       final innerA = NDArray<Float64>.ones([200, 100], DType.float64);
       final innerB = NDArray<Float64>.ones([200, 100], DType.float64);
-      final vdotA = linspace<Float64>(
-        Float64(0.0),
-        Float64(10.0),
-        size,
-        dtype: DType.float64,
-      );
-      final vdotB = linspace<Float64>(
-        Float64(1.0),
-        Float64(11.0),
-        size,
-        dtype: DType.float64,
-      );
+      final vdotA = linspace<Float64>(0.0, 10.0, size, dtype: DType.float64);
+      final vdotB = linspace<Float64>(1.0, 11.0, size, dtype: DType.float64);
 
       c.group('1. Eigenvalues, Condition Numbers & Matrix Chains', () {
         c.bench('eigh(A) [100x100 symmetric]', () {
-          final res = eigh<Float64, Float64>(symMat);
+          final res = eigh(symMat);
           blackhole(res);
           res.eigenvalues.dispose();
           res.eigenvectors.dispose();
         });
 
         c.bench('eigvalsh(A) [100x100 symmetric]', () {
-          final res = eigvalsh<Float64>(symMat);
+          final res = eigvalsh(symMat);
           blackhole(res);
           res.dispose();
         });
 
         c.bench('eig(A) [60x60 general]', () {
-          final res = eig<Float64>(genMat);
+          final res = eig(genMat);
           blackhole(res);
           res.eigenvalues.dispose();
           res.eigenvectors.dispose();
         });
 
         c.bench('eigvals(A) [60x60 general]', () {
-          final res = eigvals<Float64>(genMat);
+          final res = eigvals(genMat);
           blackhole(res);
           res.dispose();
         });
 
         c.bench('cond(A) [100x100]', () {
-          final res = cond<Float64, Float64>(symMat);
+          final res = cond(symMat);
           blackhole(res);
           res.dispose();
         });
@@ -95,13 +85,13 @@ void main() async {
         });
 
         c.bench('inner(A, B) [200x100, 200x100 -> 200x200]', () {
-          final res = inner<Float64, Float64, Float64>(innerA, innerB);
+          final res = inner<Float64>(innerA, innerB);
           blackhole(res);
           res.dispose();
         });
 
         c.bench('vdot(a, b) [100k Float64]', () {
-          final res = vdot<Float64, Float64, Float64>(vdotA, vdotB);
+          final res = vdot<Float64>(vdotA, vdotB);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
@@ -127,8 +117,8 @@ void main() async {
         }, throughput: Throughput.elements(size));
 
         final sortedTarget = linspace<Float64>(
-          Float64(0.0),
-          Float64(1000.0),
+          0.0,
+          1000.0,
           size,
           dtype: DType.float64,
         );

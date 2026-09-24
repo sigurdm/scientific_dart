@@ -30,7 +30,7 @@ void runExternallyManagedExample() {
     NDArray.scope(() {
       // 2. Wrap raw C memory in NDArray.fromPointer
       // Since we don't pass a nativeFinalizer, this is externally managed.
-      final arr = NDArray<double>.fromPointer(pointer.cast(), [
+      final arr = NDArray<DTypeTag>.fromPointer(pointer.cast(), [
         2,
         2,
       ], DType.float64);
@@ -66,7 +66,7 @@ void runCustomFinalizerExample() {
 
     // Wrap with custom nativeFinalizer.
     // The array now owns the deallocation lifecycle via the custom finalizer.
-    final arr = NDArray<double>.fromPointer(
+    final arr = NDArray<DTypeTag>.fromPointer(
       pointer.cast(),
       [4],
       DType.float64,

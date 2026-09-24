@@ -87,7 +87,7 @@ void main() {
         final slicedIndices = rawIndices.slice([const Slice(step: 2)]);
 
         // Test setIndicesScalar with sliced indices view
-        target.setIndicesScalar(slicedIndices, Float64(99.0));
+        target.setIndicesScalar(slicedIndices, 99.0);
         expect(target.toList(), equals([0.0, 0.0, 0.0, 99.0, 99.0]));
 
         // Test setIndices with sliced indices AND sliced values

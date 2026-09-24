@@ -210,7 +210,7 @@ void main() {
 
         final res = vdot(a, b);
         expect(res.shape, equals([]));
-        final cVal = res.scalar as Complex;
+        final cVal = res.scalar;
         expect(cVal.real, closeTo(-10.0, 1e-12));
         expect(cVal.imag, closeTo(-28.0, 1e-12));
       });

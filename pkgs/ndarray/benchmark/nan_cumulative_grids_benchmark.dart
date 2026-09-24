@@ -20,20 +20,20 @@ void main() async {
       );
 
       final cleanVec = linspace<Float64>(
-        Float64(1.00001),
-        Float64(1.00002),
+        1.00001,
+        1.00002,
         size,
         dtype: DType.float64,
       );
       final cleanVecJitter = linspace<Float64>(
-        Float64(1.000010001),
-        Float64(1.000020001),
+        1.000010001,
+        1.000020001,
         size,
         dtype: DType.float64,
       );
       final mat2d = linspace<Float64>(
-        Float64(0.0),
-        Float64(100.0),
+        0.0,
+        100.0,
         dim * dim,
         dtype: DType.float64,
       ).reshape([dim, dim]);
@@ -78,25 +78,25 @@ void main() async {
 
       c.group('2. Cumulative Scans (cumsum & cumprod)', () {
         c.bench('cumsum(arr) [100k Float64]', () {
-          final res = cumsum<Float64, Float64>(cleanVec);
+          final res = cumsum<Float64>(cleanVec);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
 
         c.bench('cumsum(mat, axis=0) [500x500 Float64]', () {
-          final res = cumsum<Float64, Float64>(mat2d, axis: 0);
+          final res = cumsum<Float64>(mat2d, axis: 0);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(dim * dim));
 
         c.bench('cumsum(mat, axis=1) [500x500 Float64]', () {
-          final res = cumsum<Float64, Float64>(mat2d, axis: 1);
+          final res = cumsum<Float64>(mat2d, axis: 1);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(dim * dim));
 
         c.bench('cumprod(arr) [100k Float64]', () {
-          final res = cumprod<Float64, Float64>(cleanVec);
+          final res = cumprod<Float64>(cleanVec);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
@@ -141,12 +141,7 @@ void main() async {
           res.dispose();
         }, throughput: Throughput.elements(2 * dim * dim));
 
-        final rowVec = linspace<Float64>(
-          Float64(0.0),
-          Float64(10.0),
-          dim,
-          dtype: DType.float64,
-        );
+        final rowVec = linspace<Float64>(0.0, 10.0, dim, dtype: DType.float64);
         c.bench('broadcastTo(vec, [500, 500]) [zero-copy view]', () {
           final view = broadcastTo<Float64>(rowVec, [dim, dim]);
           blackhole(view.shape);

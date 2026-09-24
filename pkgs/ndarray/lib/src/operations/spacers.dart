@@ -84,9 +84,9 @@ enum SearchSide {
 /// ```dart
 /// linspace(0.0, 10.0, 5, dtype: DType.float64); // [0.0, 2.5, 5.0, 7.5, 10.0]
 /// ```
-NDArray<T> linspace<T>(
-  T start,
-  T stop,
+NDArray<T> linspace<T extends DTypeTag>(
+  Object? start,
+  Object? stop,
   int numSamples, {
   bool endpoint = true,
   required DType<T> dtype,
@@ -114,9 +114,9 @@ NDArray<T> linspace<T>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-({NDArray<T> samples, T step}) linspaceWithStep<T>(
-  T start,
-  T stop,
+({NDArray<T> samples, dynamic step}) linspaceWithStep<T extends DTypeTag>(
+  Object? start,
+  Object? stop,
   int numSamples, {
   bool endpoint = true,
   required DType<T> dtype,
@@ -157,7 +157,7 @@ NDArray<T> linspace<T>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-NDArray<T> linspaceGrid<T>(
+NDArray<T> linspaceGrid<T extends DTypeTag>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -204,7 +204,8 @@ NDArray<T> linspaceGrid<T>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates new arrays on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-({NDArray<T> samples, NDArray<T> step}) linspaceGridWithStep<T>(
+({NDArray<T> samples, NDArray<T> step})
+linspaceGridWithStep<T extends DTypeTag>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -229,7 +230,8 @@ NDArray<T> linspaceGrid<T>(
   );
 }
 
-({NDArray<T> samples, NDArray<T> step}) _linspaceGridInternal<T>(
+({NDArray<T> samples, NDArray<T> step})
+_linspaceGridInternal<T extends DTypeTag>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -274,8 +276,8 @@ NDArray<T> linspaceGrid<T>(
       final res = out ?? NDArray<T>.create(resultShape, resolvedDType);
       final step = NDArray<T>.create(commonShape, resolvedDType);
       final nanVal = (resolvedDType.isInteger || resolvedDType == DType.boolean)
-          ? normalizeScalar(0, resolvedDType) as T
-          : normalizeScalar(double.nan, resolvedDType) as T;
+          ? normalizeScalar(0, resolvedDType)
+          : normalizeScalar(double.nan, resolvedDType);
       step.fill(nanVal);
       if (out == null) res.detachToParentScope();
       step.detachToParentScope();
@@ -478,9 +480,9 @@ NDArray<T> linspaceGrid<T>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-NDArray<T> logspace<T>(
-  T start,
-  T stop,
+NDArray<T> logspace<T extends DTypeTag>(
+  Object? start,
+  Object? stop,
   int numSamples, {
   double base = 10.0,
   bool endpoint = true,
@@ -602,7 +604,7 @@ NDArray<T> logspace<T>(
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
 ///   - [out.dtype] if [out] is provided, or
 ///   - the resolved dtype between [start] and [stop].
-NDArray<T> logspaceGrid<T extends Object>(
+NDArray<T> logspaceGrid<T extends DTypeTag>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -691,9 +693,9 @@ NDArray<T> logspaceGrid<T extends Object>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-NDArray<T> geomspace<T>(
-  T start,
-  T stop,
+NDArray<T> geomspace<T extends DTypeTag>(
+  Object? start,
+  Object? stop,
   int numSamples, {
   bool endpoint = true,
   required DType<T> dtype,
@@ -853,7 +855,7 @@ NDArray<T> geomspace<T>(
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
 ///   - [out.dtype] if [out] is provided, or
 ///   - the resolved dtype between [start] and [stop].
-NDArray<T> geomspaceGrid<T extends Object>(
+NDArray<T> geomspaceGrid<T extends DTypeTag>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -914,14 +916,14 @@ NDArray<T> geomspaceGrid<T extends Object>(
 
     if (resolvedDType.isFloating) {
       final signs = sign<T>(startBroad);
-      final absStart = abs<T, T>(startBroad);
-      final absStop = abs<T, T>(stopBroad);
+      final absStart = abs(startBroad as NDArray<AnySpec>) as NDArray<T>;
+      final absStop = abs(stopBroad as NDArray<AnySpec>) as NDArray<T>;
       final logStart = divide<T, T, T>(
-        log<T, T>(absStart),
+        log(absStart as NDArray<AnySpec>) as NDArray<T>,
         toNDArray<T>(math.ln10, resolvedDType),
       );
       final logStop = divide<T, T, T>(
-        log<T, T>(absStop),
+        log(absStop as NDArray<AnySpec>) as NDArray<T>,
         toNDArray<T>(math.ln10, resolvedDType),
       );
       final y = linspaceGrid<T>(
@@ -936,7 +938,7 @@ NDArray<T> geomspaceGrid<T extends Object>(
       final expandedSignShape = List<int>.from(commonShape)
         ..insert(actualAxis, 1);
       final signsExpanded = signs.reshape(expandedSignShape);
-      final res = multiply<T, T, T>(signsExpanded, powRes);
+      final res = multiply<T>(signsExpanded, powRes);
       if (out != null) {
         if (!listEquals(out.shape, res.shape) || out.dtype != resolvedDType) {
           throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -949,11 +951,11 @@ NDArray<T> geomspaceGrid<T extends Object>(
     }
 
     final logStart = divide<T, T, T>(
-      log<T, T>(startBroad),
+      log(startBroad as NDArray<AnySpec>) as NDArray<T>,
       toNDArray<T>(math.ln10, resolvedDType),
     );
     final logStop = divide<T, T, T>(
-      log<T, T>(stopBroad),
+      log(stopBroad as NDArray<AnySpec>) as NDArray<T>,
       toNDArray<T>(math.ln10, resolvedDType),
     );
 

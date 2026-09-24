@@ -36,14 +36,14 @@ void main() {
       DType.uint8,
     ];
 
-    final floatAndComplexDTypes = [
+    final floatAndComplexDTypes = <DType<AnySpec>>[
       DType.float64,
       DType.float32,
       DType.complex128,
       DType.complex64,
     ];
 
-    NDArray<num> makeNumArr(
+    NDArray<AnySpec> makeNumArr(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -55,17 +55,17 @@ void main() {
         return val;
       });
 
-      final dtObj = dt as DType<num>;
+      final dtObj = dt;
       if (strided) {
-        final flatArr = NDArray<num>.fromList(rawList, [size * 2], dtObj);
+        final flatArr = NDArray.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<num>.fromList(rawList, shape, dtObj);
+        return NDArray.fromList(rawList, shape, (dtObj as DType<AnySpec>));
       }
     }
 
-    NDArray<Object> makeArr(
+    NDArray<AnySpec> makeArr(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -81,13 +81,13 @@ void main() {
         return val;
       });
 
-      final dtObj = dt as DType<Object>;
+      final dtObj = dt;
       if (strided) {
-        final flatArr = NDArray<Object>.fromList(rawList, [size * 2], dtObj);
+        final flatArr = NDArray.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<Object>.fromList(rawList, shape, dtObj);
+        return NDArray.fromList(rawList, shape, (dtObj as DType<AnySpec>));
       }
     }
 
@@ -97,7 +97,8 @@ void main() {
         NDArray.scope(() {
           for (final dt in floatAndComplexDTypes) {
             // 2x2 square matrix
-            final a2d = (dt == DType.complex128 || dt == DType.complex64)
+            final NDArray<AnySpec> a2d =
+                (dt == DType.complex128 || dt == DType.complex64)
                 ? NDArray.fromList(
                     [
                       Complex(4.0, 0.0),
@@ -235,7 +236,7 @@ void main() {
                   ]
                 : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-            final arr = NDArray<num>.fromList(raw, [3, 4], dt);
+            final arr = NDArray.fromList(raw, [3, 4], dt);
 
             // nanmean
             final nmAll = nanmean(arr);
@@ -299,12 +300,12 @@ void main() {
           final lnot = logical_not(a);
           expect(lnot.shape, [2, 3]);
 
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false, true, false],
             [2, 3],
             DType.boolean,
           );
-          final outArr = NDArray<bool>.create([2, 3], DType.boolean);
+          final outArr = NDArray<Boolean>.create([2, 3], DType.boolean);
           logical_and(a, b, out: outArr, where: mask);
           expect(outArr.shape, [2, 3]);
         }

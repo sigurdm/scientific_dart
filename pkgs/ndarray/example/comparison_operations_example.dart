@@ -48,7 +48,7 @@ void runMaskRecyclingExample() {
     print('Threshold bounds: ${threshold.toList()}');
 
     // Pre-allocate a boolean mask result buffer once!
-    final recycledMask = NDArray<bool>.create([5], DType.boolean);
+    final recycledMask = NDArray<Boolean>.create([5], DType.boolean);
 
     print('\nIteratively comparing dataset against thresholds bounds...');
     const iterations = 5;

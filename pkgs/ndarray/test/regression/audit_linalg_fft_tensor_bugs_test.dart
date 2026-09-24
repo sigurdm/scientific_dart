@@ -370,10 +370,7 @@ void main() {
           es.dispose();
           expect(es.isDisposed, isTrue);
 
-          final einSum = einsum<Float64, Float64>(
-            EinsumSubscripts.parse('ij->i'),
-            [a],
-          );
+          final einSum = einsum<Float64>(EinsumSubscripts.parse('ij->i'), [a]);
           expect(einSum.isView, isFalse);
           einSum.dispose();
           expect(einSum.isDisposed, isTrue);
@@ -462,14 +459,12 @@ void main() {
               );
             }
 
-            final sumRev = einsum<Float64, Float64>(
-              EinsumSubscripts.parse('ij->i'),
-              [rev],
-            );
-            final sumContig = einsum<Float64, Float64>(
-              EinsumSubscripts.parse('ij->i'),
-              [rev.copy()],
-            );
+            final sumRev = einsum<Float64>(EinsumSubscripts.parse('ij->i'), [
+              rev,
+            ]);
+            final sumContig = einsum<Float64>(EinsumSubscripts.parse('ij->i'), [
+              rev.copy(),
+            ]);
             for (var i = 0; i < 3; i++) {
               expect(sumRev[[i]], closeTo(sumContig[[i]], 1e-12));
             }
@@ -634,7 +629,7 @@ void main() {
           );
           final expected = fft2(refFloat);
 
-          final dtypesToTest = <DType<Object>>[
+          final dtypesToTest = <DType<AnySpec>>[
             DType.int8,
             DType.uint16,
             DType.uint32,
@@ -784,7 +779,7 @@ void main() {
           final res = matmul(a, b);
           // Expected dot product: (2+i)*(1 + i + 2-i -1+2i) = (2+i)*(2+2i) = 4 + 4i + 2i - 2 = 2 + 6i
           expect(res.shape, isEmpty);
-          final val = res.getCell([]) as Complex;
+          final val = res.getCell([]);
           expect(val.real, closeTo(2.0, 1e-12));
           expect(val.imag, closeTo(6.0, 1e-12));
         });

@@ -159,7 +159,7 @@ final class RandomState {
   }
 
   /// Generates random integers from [low] (inclusive) to [high] (exclusive).
-  GpuArray<T> randint<T>(
+  GpuArray<T> randint<T extends DTypeTag>(
     int low, [
     int? high,
     List<int> shape = const [],
@@ -246,7 +246,7 @@ final class RandomState {
   }
 
   /// Randomly samples elements from [a].
-  GpuArray<T> choice<T>(
+  GpuArray<T> choice<T extends DTypeTag>(
     GpuArray<T> a, {
     int? size,
     bool replace = true,
@@ -294,7 +294,7 @@ final class RandomState {
       }
     }
 
-    final out = <T>[];
+    final out = <dynamic>[];
 
     if (count > 0) {
       if (replace) {
@@ -435,7 +435,7 @@ GpuArray<Float64> randn([List<int> shape = const [], GpuDevice? device]) =>
     defaultRandomState.randn(shape, device);
 
 /// Random integers from [low] to [high].
-GpuArray<T> randint<T>(
+GpuArray<T> randint<T extends DTypeTag>(
   int low, [
   int? high,
   List<int> shape = const [],
@@ -484,7 +484,7 @@ GpuArray<Float64> exponential({
     defaultRandomState.exponential(scale: scale, shape: shape, device: device);
 
 /// Random choice from [a].
-GpuArray<T> choice<T>(
+GpuArray<T> choice<T extends DTypeTag>(
   GpuArray<T> a, {
   int? size,
   bool replace = true,

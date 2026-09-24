@@ -47,7 +47,7 @@ void main() {
       DType.uint8,
     ];
 
-    NDArray<Object> createArray(
+    NDArray<AnySpec> createArray(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -62,13 +62,13 @@ void main() {
         return val;
       });
 
-      final dtObj = dt as DType<Object>;
+      final dtObj = dt;
       if (strided) {
-        final flatArr = NDArray<Object>.fromList(rawList, [size * 2], dtObj);
+        final flatArr = NDArray.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<Object>.fromList(rawList, shape, dtObj);
+        return NDArray.fromList(rawList, shape, (dtObj as DType<AnySpec>));
       }
     }
 
@@ -80,7 +80,7 @@ void main() {
             for (final isStrided in [false, true]) {
               final a = createArray(dt, [2, 3], strided: isStrided);
               final b = createArray(dt, [2, 3], strided: isStrided);
-              final mask = NDArray<bool>.fromList(
+              final mask = NDArray<Boolean>.fromList(
                 [true, false, true, false, true, false],
                 [2, 3],
                 DType.boolean,
@@ -128,7 +128,7 @@ void main() {
           for (final dt in allDTypes) {
             for (final isStrided in [false, true]) {
               final a = createArray(dt, [2, 3], strided: isStrided);
-              final mask = NDArray<bool>.fromList(
+              final mask = NDArray<Boolean>.fromList(
                 [true, false, true, false, true, false],
                 [2, 3],
                 DType.boolean,
@@ -225,7 +225,7 @@ void main() {
             for (final isStrided in [false, true]) {
               final a = createArray(dt, [2, 2], strided: isStrided);
               final b = createArray(dt, [2, 2], strided: isStrided);
-              final mask = NDArray<bool>.fromList(
+              final mask = NDArray<Boolean>.fromList(
                 [true, false, true, false],
                 [2, 2],
                 DType.boolean,

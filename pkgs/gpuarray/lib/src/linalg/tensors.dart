@@ -7,7 +7,10 @@ import '../backend/compute_engine.dart';
 import '../operations/manipulation.dart' as manip;
 
 /// Evaluates the Einstein summation convention on the operands.
-GpuArray<T> einsum<T>(String subscripts, List<GpuArray> operands) {
+GpuArray<T> einsum<T extends DTypeTag>(
+  String subscripts,
+  List<GpuArray> operands,
+) {
   if (operands.isEmpty) {
     throw ArgumentError('einsum requires at least one operand.');
   }
@@ -149,7 +152,11 @@ GpuArray<T> einsum<T>(String subscripts, List<GpuArray> operands) {
 }
 
 /// Compute tensor dot product along specified axes.
-GpuArray<T> tensordot<T>(GpuArray a, GpuArray b, {dynamic axes = 2}) {
+GpuArray<T> tensordot<T extends DTypeTag>(
+  GpuArray a,
+  GpuArray b, {
+  dynamic axes = 2,
+}) {
   List<int> aAxes;
   List<int> bAxes;
 
@@ -202,7 +209,7 @@ GpuArray<T> tensordot<T>(GpuArray a, GpuArray b, {dynamic axes = 2}) {
 }
 
 /// Computes the Kronecker product of two arrays.
-GpuArray<T> kron<T>(GpuArray a, GpuArray b) {
+GpuArray<T> kron<T extends DTypeTag>(GpuArray a, GpuArray b) {
   final rank = math.max(a.rank, b.rank);
   final padRankA = rank - a.rank;
   final padRankB = rank - b.rank;
@@ -269,7 +276,7 @@ GpuArray<T> kron<T>(GpuArray a, GpuArray b) {
 }
 
 /// Computes inner product of two arrays.
-GpuArray<T> inner<T>(GpuArray a, GpuArray b) {
+GpuArray<T> inner<T extends DTypeTag>(GpuArray a, GpuArray b) {
   if (a.rank == 1 && b.rank == 1) {
     return a.matmul(b) as GpuArray<T>;
   }
@@ -284,7 +291,7 @@ GpuArray<T> inner<T>(GpuArray a, GpuArray b) {
 }
 
 /// Computes the outer product of two 1D vectors.
-GpuArray<T> outer<T>(GpuArray a, GpuArray b) {
+GpuArray<T> outer<T extends DTypeTag>(GpuArray a, GpuArray b) {
   final aFlat = a.flatten();
   final bFlat = b.flatten();
   final aCol = aFlat.reshape([aFlat.shape[0], 1]);
@@ -293,7 +300,7 @@ GpuArray<T> outer<T>(GpuArray a, GpuArray b) {
 }
 
 /// Computes vector cross product of two 3D vectors or batched 3D vectors.
-GpuArray<T> cross<T>(
+GpuArray<T> cross<T extends DTypeTag>(
   GpuArray a,
   GpuArray b, {
   int? axisa,
@@ -385,7 +392,7 @@ GpuArray<T> cross<T>(
 }
 
 /// Efficiently chains matrix multiplications with optimized parenthesization.
-GpuArray<T> multi_dot<T>(List<GpuArray> arrays) {
+GpuArray<T> multi_dot<T extends DTypeTag>(List<GpuArray> arrays) {
   if (arrays.isEmpty) {
     throw ArgumentError('multi_dot requires at least one array.');
   }

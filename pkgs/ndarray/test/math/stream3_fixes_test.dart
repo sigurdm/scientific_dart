@@ -12,10 +12,10 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        final res = einsum<Object, Float64>(
-          EinsumSubscripts.parse('ij,jk->ik'),
-          [aInt, bFloat],
-        );
+        final res = einsum<DTypeTag>(EinsumSubscripts.parse('ij,jk->ik'), [
+          aInt,
+          bFloat,
+        ]);
         expect(res.dtype, equals(DType.float64));
         expect(res.shape, equals([2, 2]));
         // [1*0.5 + 2*2.5, 1*1.5 + 2*3.5] = [5.5, 8.5]
@@ -27,11 +27,10 @@ void main() {
 
         // User-supplied out buffer in einsum
         final outBuf = NDArray<Float64>.zeros([2, 2], DType.float64);
-        final outRes = einsum<Object, Float64>(
-          EinsumSubscripts.parse('ij,jk->ik'),
-          [aInt, bFloat],
-          out: outBuf,
-        );
+        final outRes = einsum<DTypeTag>(EinsumSubscripts.parse('ij,jk->ik'), [
+          aInt,
+          bFloat,
+        ], out: outBuf);
         expect(identical(outRes, outBuf), isTrue);
         expect(outRes[[0, 0]], closeTo(5.5, 1e-9));
       });
@@ -100,12 +99,7 @@ void main() {
         );
         final outConv = NDArray<Float64>.zeros([4], DType.float64);
         NDArray.scope(() {
-          convolve<Float64, Float64, Float64>(
-            sig,
-            kernel,
-            mode: ConvMode.full,
-            out: outConv,
-          );
+          convolve<Float64>(sig, kernel, mode: ConvMode.full, out: outConv);
         });
         expect(outConv.isDisposed, isFalse);
         expect(outConv.shape, equals([4]));
@@ -113,12 +107,7 @@ void main() {
         // correlate same with out in nested scope
         final outSame = NDArray<Float64>.zeros([3], DType.float64);
         NDArray.scope(() {
-          correlate<Float64, Float64, Float64>(
-            sig,
-            kernel,
-            mode: ConvMode.same,
-            out: outSame,
-          );
+          correlate<Float64>(sig, kernel, mode: ConvMode.same, out: outSame);
         });
         expect(outSame.isDisposed, isFalse);
         expect(outSame.shape, equals([3]));
@@ -166,11 +155,7 @@ void main() {
           [3],
           DType.float64,
         );
-        final corrSame = correlate<Float64, Float64, Float64>(
-          sig,
-          kernel,
-          mode: ConvMode.same,
-        );
+        final corrSame = correlate<Float64>(sig, kernel, mode: ConvMode.same);
         expect(corrSame.shape, equals([5]));
         expect(corrSame.isContiguous, isTrue);
 
@@ -300,7 +285,7 @@ void main() {
           [5],
           DType.float64,
         );
-        final outRfft = NDArray<Complex>.zeros([3], DType.complex128);
+        final outRfft = NDArray.zeros([3], DType.complex128);
         final resRfft = rfft(input, n: 5, out: outRfft);
         expect(identical(resRfft, outRfft), isTrue);
         expect(resRfft.isDisposed, isFalse);
@@ -347,7 +332,7 @@ void main() {
           expect(qrRes.q.isDisposed, isTrue);
           expect(qrRes.r.isDisposed, isTrue);
 
-          final svdRes = svd<Float64>(a);
+          final svdRes = svd(a);
           expect(svdRes.u.shape, equals([2, 2]));
           expect(svdRes.s.shape, equals([2]));
           expect(svdRes.vh.shape, equals([2, 2]));
@@ -356,7 +341,7 @@ void main() {
           expect(svdRes.s.isDisposed, isTrue);
           expect(svdRes.vh.isDisposed, isTrue);
 
-          final hessRes = hessenberg<Float64, Float64>(a);
+          final hessRes = hessenberg(a);
           expect(hessRes.h.shape, equals([2, 2]));
           expect(hessRes.q.shape, equals([2, 2]));
           hessRes.dispose();
@@ -442,7 +427,7 @@ void main() {
           expect(eigh00.eigenvectors.shape, equals([0, 0]));
 
           // hessenberg
-          final hess00 = hessenberg<Float64, Float64>(mat00);
+          final hess00 = hessenberg(mat00);
           expect(hess00.h.shape, equals([0, 0]));
           expect(hess00.q.shape, equals([0, 0]));
         });
@@ -460,13 +445,12 @@ void main() {
           );
 
           // eigh return generic <T> check
-          ({NDArray<num> eigenvalues, NDArray<Float64> eigenvectors}) resEigh =
-              eigh<Float64, Float64>(mat);
+          ({NDArray<AnySpec> eigenvalues, NDArray<Float64> eigenvectors})
+          resEigh = eigh<Float64, Float64>(mat);
           expect(resEigh.eigenvectors.dtype, equals(DType.float64));
 
           // hessenberg return generic <T> check
-          ({NDArray<Float64> h, NDArray<Float64> q}) resHess =
-              hessenberg<Float64, Float64>(mat);
+          ({NDArray<Float64> h, NDArray<Float64> q}) resHess = hessenberg(mat);
           expect(resHess.h.dtype, equals(DType.float64));
           expect(resHess.q.dtype, equals(DType.float64));
 

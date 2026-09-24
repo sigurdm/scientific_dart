@@ -8,11 +8,7 @@ void main() {
       'unique with negative stride (flip) and positive stride (step=2) out',
       () {
         NDArray.scope(() {
-          final ar = NDArray.fromList(
-            [Float64(3.0), Float64(1.0), Float64(2.0), Float64(1.0)],
-            [4],
-            DType.float64,
-          );
+          final ar = NDArray.fromList([3.0, 1.0, 2.0, 1.0], [4], DType.float64);
 
           // Negative stride: flip(buf)
           final buf1 = NDArray<Float64>.zeros([3], DType.float64);
@@ -27,11 +23,9 @@ void main() {
           expect(buf1[2].scalar, closeTo(1.0, 1e-12));
 
           // Positive stride > 1: step=2
-          final buf2 = NDArray<Float64>.fromList(
-            List.filled(6, Float64(-99.0)),
-            [6],
-            DType.float64,
-          );
+          final buf2 = NDArray<Float64>.fromList(List.filled(6, -99.0), [
+            6,
+          ], DType.float64);
           final stridedOut = buf2.slice([Slice(step: 2)]);
           unique<Float64>(ar, out: stridedOut);
           expect(buf2[0].scalar, closeTo(1.0, 1e-12));
@@ -52,47 +46,55 @@ void main() {
           final b = NDArray.fromList([2, 3, 4], [3], DType.int64);
 
           // intersect1d -> [2, 3]
-          final bufInter = NDArray<int>.zeros([2], DType.int64);
-          intersect1d<int>(a, b, out: flip(bufInter));
+          final bufInter = NDArray.zeros([2], DType.int64);
+          intersect1d<DTypeTag>(a, b, out: flip(bufInter));
           expect(bufInter[0].scalar, equals(3));
           expect(bufInter[1].scalar, equals(2));
 
-          final bufInterStep = NDArray<int>.zeros([4], DType.int64);
-          intersect1d<int>(a, b, out: bufInterStep.slice([Slice(step: 2)]));
+          final bufInterStep = NDArray.zeros([4], DType.int64);
+          intersect1d<DTypeTag>(
+            a,
+            b,
+            out: bufInterStep.slice([Slice(step: 2)]),
+          );
           expect(bufInterStep[0].scalar, equals(2));
           expect(bufInterStep[1].scalar, equals(0));
           expect(bufInterStep[2].scalar, equals(3));
           expect(bufInterStep[3].scalar, equals(0));
 
           // setdiff1d -> [1]
-          final bufDiff = NDArray<int>.zeros([2], DType.int64);
-          setdiff1d<int>(a, b, out: bufDiff.slice([Slice(start: 1, stop: 2)]));
+          final bufDiff = NDArray.zeros([2], DType.int64);
+          setdiff1d<DTypeTag>(
+            a,
+            b,
+            out: bufDiff.slice([Slice(start: 1, stop: 2)]),
+          );
           expect(bufDiff[0].scalar, equals(0));
           expect(bufDiff[1].scalar, equals(1));
 
           // setxor1d -> [1, 4]
-          final bufXor = NDArray<int>.zeros([2], DType.int64);
-          setxor1d<int>(a, b, out: flip(bufXor));
+          final bufXor = NDArray.zeros([2], DType.int64);
+          setxor1d<DTypeTag>(a, b, out: flip(bufXor));
           expect(bufXor[0].scalar, equals(4));
           expect(bufXor[1].scalar, equals(1));
 
-          final bufXorStep = NDArray<int>.zeros([4], DType.int64);
-          setxor1d<int>(a, b, out: bufXorStep.slice([Slice(step: 2)]));
+          final bufXorStep = NDArray.zeros([4], DType.int64);
+          setxor1d<DTypeTag>(a, b, out: bufXorStep.slice([Slice(step: 2)]));
           expect(bufXorStep[0].scalar, equals(1));
           expect(bufXorStep[1].scalar, equals(0));
           expect(bufXorStep[2].scalar, equals(4));
           expect(bufXorStep[3].scalar, equals(0));
 
           // union1d -> [1, 2, 3, 4]
-          final bufUnion = NDArray<int>.zeros([4], DType.int64);
-          union1d<int>(a, b, out: flip(bufUnion));
+          final bufUnion = NDArray.zeros([4], DType.int64);
+          union1d<DTypeTag>(a, b, out: flip(bufUnion));
           expect(bufUnion[0].scalar, equals(4));
           expect(bufUnion[1].scalar, equals(3));
           expect(bufUnion[2].scalar, equals(2));
           expect(bufUnion[3].scalar, equals(1));
 
-          final bufUnionStep = NDArray<int>.zeros([8], DType.int64);
-          union1d<int>(a, b, out: bufUnionStep.slice([Slice(step: 2)]));
+          final bufUnionStep = NDArray.zeros([8], DType.int64);
+          union1d<DTypeTag>(a, b, out: bufUnionStep.slice([Slice(step: 2)]));
           expect(bufUnionStep[0].scalar, equals(1));
           expect(bufUnionStep[2].scalar, equals(2));
           expect(bufUnionStep[4].scalar, equals(3));
@@ -106,9 +108,9 @@ void main() {
         final elem = NDArray.fromList([10, 20, 30, 40], [4], DType.int64);
         final testElem = NDArray.fromList([20, 40], [2], DType.int64);
 
-        final bufFlip = NDArray<bool>.create([4], DType.boolean);
+        final bufFlip = NDArray<Boolean>.create([4], DType.boolean);
         final flipped = flip(bufFlip);
-        isin<int>(elem, testElem, out: flipped);
+        isin<DTypeTag>(elem, testElem, out: flipped);
         // Logical flipped result should be [false, true, false, true]
         expect(flipped[0].scalar, isFalse);
         expect(flipped[1].scalar, isTrue);
@@ -120,23 +122,23 @@ void main() {
         expect(bufFlip[2].scalar, isTrue);
         expect(bufFlip[3].scalar, isFalse);
 
-        final bufStep = NDArray<bool>.fromList(List.filled(8, false), [
+        final bufStep = NDArray<Boolean>.fromList(List.filled(8, false), [
           8,
         ], DType.boolean);
-        isin<int>(elem, testElem, out: bufStep.slice([Slice(step: 2)]));
+        isin<DTypeTag>(elem, testElem, out: bufStep.slice([Slice(step: 2)]));
         expect(bufStep[0].scalar, isFalse);
         expect(bufStep[2].scalar, isTrue);
         expect(bufStep[4].scalar, isFalse);
         expect(bufStep[6].scalar, isTrue);
 
         // Aliased boolean element / testElements with out
-        final boolBuf = NDArray<bool>.fromList(
+        final boolBuf = NDArray<Boolean>.fromList(
           [true, false, true, false],
           [4],
           DType.boolean,
         );
-        final boolTest = NDArray<bool>.fromList([true], [1], DType.boolean);
-        isin<bool>(boolBuf, boolTest, out: boolBuf);
+        final boolTest = NDArray<Boolean>.fromList([true], [1], DType.boolean);
+        isin<Boolean>(boolBuf, boolTest, out: boolBuf);
         expect(boolBuf[0].scalar, isTrue);
         expect(boolBuf[1].scalar, isFalse);
         expect(boolBuf[2].scalar, isTrue);
@@ -150,13 +152,7 @@ void main() {
       NDArray.scope(() {
         // linspace
         final bufLin = NDArray<Float64>.zeros([4], DType.float64);
-        linspace<Float64>(
-          Float64(0.0),
-          Float64(3.0),
-          4,
-          dtype: DType.float64,
-          out: flip(bufLin),
-        );
+        linspace<Float64>(0.0, 3.0, 4, dtype: DType.float64, out: flip(bufLin));
         expect(bufLin[0].scalar, closeTo(3.0, 1e-12));
         expect(bufLin[1].scalar, closeTo(2.0, 1e-12));
         expect(bufLin[2].scalar, closeTo(1.0, 1e-12));
@@ -164,8 +160,8 @@ void main() {
 
         final bufLinStep = NDArray<Float64>.zeros([8], DType.float64);
         linspace<Float64>(
-          Float64(0.0),
-          Float64(3.0),
+          0.0,
+          3.0,
           4,
           dtype: DType.float64,
           out: bufLinStep.slice([Slice(step: 2)]),
@@ -177,21 +173,15 @@ void main() {
 
         // logspace
         final bufLog = NDArray<Float64>.zeros([3], DType.float64);
-        logspace<Float64>(
-          Float64(0.0),
-          Float64(2.0),
-          3,
-          dtype: DType.float64,
-          out: flip(bufLog),
-        );
+        logspace<Float64>(0.0, 2.0, 3, dtype: DType.float64, out: flip(bufLog));
         expect(bufLog[0].scalar, closeTo(100.0, 1e-9));
         expect(bufLog[1].scalar, closeTo(10.0, 1e-9));
         expect(bufLog[2].scalar, closeTo(1.0, 1e-9));
 
         final bufLogStep = NDArray<Float64>.zeros([6], DType.float64);
         logspace<Float64>(
-          Float64(0.0),
-          Float64(2.0),
+          0.0,
+          2.0,
           3,
           dtype: DType.float64,
           out: bufLogStep.slice([Slice(step: 2)]),
@@ -203,8 +193,8 @@ void main() {
         // geomspace
         final bufGeom = NDArray<Float64>.zeros([3], DType.float64);
         geomspace<Float64>(
-          Float64(1.0),
-          Float64(100.0),
+          1.0,
+          100.0,
           3,
           dtype: DType.float64,
           out: flip(bufGeom),
@@ -215,8 +205,8 @@ void main() {
 
         final bufGeomStep = NDArray<Float64>.zeros([6], DType.float64);
         geomspace<Float64>(
-          Float64(1.0),
-          Float64(100.0),
+          1.0,
+          100.0,
           3,
           dtype: DType.float64,
           out: bufGeomStep.slice([Slice(step: 2)]),
@@ -230,23 +220,12 @@ void main() {
     test('linspaceGrid with out sharing memory with start or stop', () {
       NDArray.scope(() {
         final shared = NDArray<Float64>.fromList(
-          [
-            Float64(0.0),
-            Float64(10.0),
-            Float64(0.0),
-            Float64(0.0),
-            Float64(0.0),
-            Float64(0.0),
-          ],
+          [0.0, 10.0, 0.0, 0.0, 0.0, 0.0],
           [3, 2],
           DType.float64,
         );
         final startView = shared.slice([Slice(start: 0, stop: 1)]).reshape([2]);
-        final stop = NDArray<Float64>.fromList(
-          [Float64(2.0), Float64(30.0)],
-          [2],
-          DType.float64,
-        );
+        final stop = NDArray<Float64>.fromList([2.0, 30.0], [2], DType.float64);
         linspaceGrid<Float64>(startView, stop, 3, out: shared);
         expect(shared[[0, 0]], closeTo(0.0, 1e-12));
         expect(shared[[0, 1]], closeTo(10.0, 1e-12));
@@ -264,14 +243,7 @@ void main() {
       () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            [
-              Float64(1.0),
-              Float64(0.0),
-              Float64(0.0),
-              Float64(1.0),
-              Float64(1.0),
-              Float64(1.0),
-            ],
+            [1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             [3, 2],
             DType.float64,
           );
@@ -295,12 +267,12 @@ void main() {
 
           // cdist with flip(buf) and aliased out
           final xa = NDArray<Float64>.fromList(
-            [Float64(1.0), Float64(0.0), Float64(0.0), Float64(2.0)],
+            [1.0, 0.0, 0.0, 2.0],
             [2, 2],
             DType.float64,
           );
           final xb = NDArray<Float64>.fromList(
-            [Float64(0.0), Float64(0.0), Float64(1.0), Float64(2.0)],
+            [0.0, 0.0, 1.0, 2.0],
             [2, 2],
             DType.float64,
           );
@@ -330,7 +302,7 @@ void main() {
           final markerBefore = ScratchArena.marker;
 
           final y = NDArray<Float64>.fromList(
-            [Float64(1.0), Float64(2.0), Float64(4.0), Float64(7.0)],
+            [1.0, 2.0, 4.0, 7.0],
             [2, 2],
             DType.float64,
           );
@@ -349,7 +321,7 @@ void main() {
           );
 
           final f = NDArray<Float64>.fromList(
-            [Float64(1.0), Float64(2.0), Float64(4.0), Float64(7.0)],
+            [1.0, 2.0, 4.0, 7.0],
             [4],
             DType.float64,
           );

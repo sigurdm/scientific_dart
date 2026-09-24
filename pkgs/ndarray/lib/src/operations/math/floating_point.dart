@@ -21,10 +21,10 @@ import '../../nditer.dart';
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// final mask = isnan(a); // [false, true, false]
 /// ```
-NDArray<bool> isnan<T>(
+NDArray<Boolean> isnan<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<dynamic>? where,
-  NDArray<bool>? out,
+  NDArray<DTypeTag>? where,
+  NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
@@ -41,9 +41,13 @@ NDArray<bool> isnan<T>(
   final maskHolder = prepareMask(where, a.shape);
 
   try {
-    final NDArray<bool> result =
+    final NDArray<Boolean> result =
         out ??
-        NDArray<bool>.create(a.shape, DType.boolean, zeroInit: where != null);
+        NDArray<Boolean>.create(
+          a.shape,
+          DType.boolean,
+          zeroInit: where != null,
+        );
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -207,10 +211,10 @@ NDArray<bool> isnan<T>(
 /// final a = NDArray.fromList([1.0, double.infinity, 3.0], [3], DType.float64);
 /// final mask = isinf(a); // [false, true, false]
 /// ```
-NDArray<bool> isinf<T>(
+NDArray<Boolean> isinf<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<dynamic>? where,
-  NDArray<bool>? out,
+  NDArray<DTypeTag>? where,
+  NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
@@ -227,9 +231,13 @@ NDArray<bool> isinf<T>(
   final maskHolder = prepareMask(where, a.shape);
 
   try {
-    final NDArray<bool> result =
+    final NDArray<Boolean> result =
         out ??
-        NDArray<bool>.create(a.shape, DType.boolean, zeroInit: where != null);
+        NDArray<Boolean>.create(
+          a.shape,
+          DType.boolean,
+          zeroInit: where != null,
+        );
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -393,10 +401,10 @@ NDArray<bool> isinf<T>(
 /// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], DType.float64);
 /// final mask = isfinite(a); // [true, false, false]
 /// ```
-NDArray<bool> isfinite<T extends Object>(
+NDArray<Boolean> isfinite<T extends DTypeTag>(
   NDArray<T> a, {
-  NDArray<dynamic>? where,
-  NDArray<bool>? out,
+  NDArray<DTypeTag>? where,
+  NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
@@ -413,9 +421,13 @@ NDArray<bool> isfinite<T extends Object>(
   final maskHolder = prepareMask(where, a.shape);
 
   try {
-    final NDArray<bool> result =
+    final NDArray<Boolean> result =
         out ??
-        NDArray<bool>.create(a.shape, DType.boolean, zeroInit: where != null);
+        NDArray<Boolean>.create(
+          a.shape,
+          DType.boolean,
+          zeroInit: where != null,
+        );
     if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -575,10 +587,10 @@ NDArray<bool> isfinite<T extends Object>(
 /// ```dart
 /// final res = copysign(x1, x2);
 /// ```
-NDArray<T> copysign<T extends Object>(
+NDArray<T> copysign<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2, {
-  NDArray<dynamic>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (x1.isDisposed ||
@@ -691,7 +703,7 @@ NDArray<T> copysign<T extends Object>(
     }
 
     if (targetDType.isFloating) {
-      elementWiseOp<dynamic, dynamic, dynamic>(
+      elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
         result,
         x1,
         x2,
@@ -710,7 +722,7 @@ NDArray<T> copysign<T extends Object>(
         maskHolder.pointer,
       );
     } else {
-      elementWiseOp<dynamic, dynamic, dynamic>(
+      elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
         result,
         x1,
         x2,
@@ -749,14 +761,14 @@ NDArray<T> copysign<T extends Object>(
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.isclose.html)
-NDArray<bool> isClose<Ta, Tb>(
+NDArray<Boolean> isClose<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double rtol = 1e-05,
   double atol = 1e-08,
   bool equalNan = false,
-  NDArray<dynamic>? where,
-  NDArray<bool>? out,
+  NDArray<DTypeTag>? where,
+  NDArray<Boolean>? out,
 }) {
   if (a.isDisposed ||
       b.isDisposed ||
@@ -810,8 +822,8 @@ NDArray<bool> isClose<Ta, Tb>(
     final result = useTempOut
         ? (where != null
               ? out.copy()
-              : NDArray<bool>.zeros(commonShape, DType.boolean))
-        : (out ?? NDArray<bool>.zeros(commonShape, DType.boolean));
+              : NDArray<Boolean>.zeros(commonShape, DType.boolean))
+        : (out ?? NDArray<Boolean>.zeros(commonShape, DType.boolean));
 
     if (listEquals(a.shape, b.shape) &&
         a.isContiguous &&
@@ -1094,7 +1106,7 @@ bool _isCloseInt(int aVal, int bVal, double rtol, double atol) {
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.allclose.html)
-bool allClose<Ta, Tb>(
+bool allClose<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double rtol = 1e-05,
@@ -1218,7 +1230,7 @@ bool allClose<Ta, Tb>(
 }
 
 /// Extension providing positional accessors and disposal for [modf] results.
-extension ModfRecordExtension<R>
+extension ModfRecordExtension<R extends DTypeTag>
     on ({NDArray<R> fractional, NDArray<R> integral}) {
   /// The fractional part of the input array.
   NDArray<R> get $1 => fractional;
@@ -1234,7 +1246,7 @@ extension ModfRecordExtension<R>
 }
 
 /// Extension providing positional accessors and disposal for [frexp] results.
-extension FrexpRecordExtension<R>
+extension FrexpRecordExtension<R extends DTypeTag>
     on ({NDArray<R> mantissa, NDArray<Int32> exponent}) {
   /// The mantissa array in the interval $[0.5, 1)$ (or $(-1, -0.5]$).
   NDArray<R> get $1 => mantissa;
@@ -1262,9 +1274,12 @@ extension FrexpRecordExtension<R>
 /// shapes/dtypes or alias each other (throws [ArgumentError]).
 ///
 /// Reference: [NumPy modf](https://numpy.org/doc/stable/reference/generated/numpy.modf.html)
-({NDArray<R> fractional, NDArray<R> integral}) modf<T, R>(
-  NDArray<T> x, {
-  NDArray<dynamic>? where,
+({NDArray<R> fractional, NDArray<R> integral}) modf<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  x, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out1,
   NDArray<R>? out2,
 }) {
@@ -1280,7 +1295,9 @@ extension FrexpRecordExtension<R>
   final DType<R> targetDType =
       (out1?.dtype ??
               out2?.dtype ??
-              (x.dtype == DType.float32 ? DType.float32 : DType.float64))
+              ((x.dtype as DType<DTypeTag>) == DType.float32
+                  ? DType.float32
+                  : DType.float64))
           as DType<R>;
   if (!targetDType.isFloating) {
     throw ArgumentError('modf output dtype must be floating-point.');
@@ -1325,14 +1342,14 @@ extension FrexpRecordExtension<R>
 
     try {
       double toDoubleVal(Object? val) {
-        if (x.dtype == DType.uint64 && val is int) {
+        if ((x.dtype as DType<DTypeTag>) == DType.uint64 && val is int) {
           return BigInt.from(val).toUnsigned(64).toDouble();
         }
         if (val is bool) return val ? 1.0 : 0.0;
         return (val as num).toDouble();
       }
 
-      unaryOp<T, R>(
+      unaryOp<DTypeTag, R>(
         res1,
         x,
         x.shape,
@@ -1343,20 +1360,20 @@ extension FrexpRecordExtension<R>
         res1.offsetElements,
         (v) {
           final dv = toDoubleVal(v);
-          if (dv.isNaN) return castValue(double.nan, targetDType) as R;
+          if (dv.isNaN) return castValue(double.nan, targetDType);
           if (dv.isInfinite) {
-            return castValue(dv.isNegative ? -0.0 : 0.0, targetDType) as R;
+            return castValue(dv.isNegative ? -0.0 : 0.0, targetDType);
           }
           final iPart = dv.truncateToDouble();
           final fPart = dv - iPart == 0.0
               ? (dv.isNegative ? -0.0 : 0.0)
               : dv - iPart;
-          return castValue(fPart, targetDType) as R;
+          return castValue(fPart, targetDType);
         },
         maskHolder.pointer,
       );
 
-      unaryOp<T, R>(
+      unaryOp<DTypeTag, R>(
         res2,
         x,
         x.shape,
@@ -1368,10 +1385,10 @@ extension FrexpRecordExtension<R>
         (v) {
           final dv = toDoubleVal(v);
           if (dv.isNaN || dv.isInfinite) {
-            return castValue(dv, targetDType) as R;
+            return castValue(dv, targetDType);
           }
           final iPart = dv.truncateToDouble();
-          return castValue(iPart, targetDType) as R;
+          return castValue(iPart, targetDType);
         },
         maskHolder.pointer,
       );
@@ -1399,9 +1416,12 @@ extension FrexpRecordExtension<R>
 /// with the mantissa in the open interval $(-1, -0.5]$ or $[0.5, 1)$ (or $0$ when $x = 0$).
 ///
 /// Reference: [NumPy frexp](https://numpy.org/doc/stable/reference/generated/numpy.frexp.html)
-({NDArray<R> mantissa, NDArray<Int32> exponent}) frexp<T, R>(
-  NDArray<T> x, {
-  NDArray<dynamic>? where,
+({NDArray<R> mantissa, NDArray<Int32> exponent}) frexp<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, R, DTypeTag, DTypeTag, DTypeTag, DTypeTag>
+  >
+  x, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out1,
   NDArray<Int32>? out2,
 }) {
@@ -1416,7 +1436,9 @@ extension FrexpRecordExtension<R>
   }
   final DType<R> targetDType =
       (out1?.dtype ??
-              (x.dtype == DType.float32 ? DType.float32 : DType.float64))
+              ((x.dtype as DType<DTypeTag>) == DType.float32
+                  ? DType.float32
+                  : DType.float64))
           as DType<R>;
   if (!targetDType.isFloating) {
     throw ArgumentError('frexp mantissa output dtype must be floating-point.');
@@ -1488,7 +1510,7 @@ extension FrexpRecordExtension<R>
     }
 
     double toDoubleVal(Object? val) {
-      if (x.dtype == DType.uint64 && val is int) {
+      if ((x.dtype as DType<DTypeTag>) == DType.uint64 && val is int) {
         return BigInt.from(val).toUnsigned(64).toDouble();
       }
       if (val is bool) return val ? 1.0 : 0.0;
@@ -1496,7 +1518,7 @@ extension FrexpRecordExtension<R>
     }
 
     try {
-      unaryOp<T, R>(
+      unaryOp<DTypeTag, R>(
         res1,
         x,
         x.shape,
@@ -1507,12 +1529,12 @@ extension FrexpRecordExtension<R>
         res1.offsetElements,
         (v) {
           final (m, _) = decomposeFrexp(toDoubleVal(v));
-          return castValue(m, targetDType) as R;
+          return castValue(m, targetDType);
         },
         maskHolder.pointer,
       );
 
-      unaryOp<T, Int32>(
+      unaryOp<DTypeTag, Int32>(
         res2,
         x,
         x.shape,
@@ -1523,7 +1545,7 @@ extension FrexpRecordExtension<R>
         res2.offsetElements,
         (v) {
           final (_, e) = decomposeFrexp(toDoubleVal(v));
-          return Int32(e);
+          return e;
         },
         maskHolder.pointer,
       );

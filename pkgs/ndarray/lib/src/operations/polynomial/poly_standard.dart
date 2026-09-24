@@ -32,14 +32,17 @@ bool _isZeroScalar(Object a) {
   return (a as num) == 0;
 }
 
-NDArray<R> _ensureDType<T, R>(NDArray<T> a, DType<R> targetDType) {
+NDArray<R> _ensureDType<T extends DTypeTag, R extends DTypeTag>(
+  NDArray<T> a,
+  DType<R> targetDType,
+) {
   if (a.dtype == targetDType) {
     return a as NDArray<R>;
   }
   return castNDArray(a, targetDType);
 }
 
-void _copyInto<R>(NDArray src, NDArray<R> out) {
+void _copyInto<R extends DTypeTag>(NDArray src, NDArray<R> out) {
   src.copy(out: out);
 }
 
@@ -57,7 +60,11 @@ void _copyInto<R>(NDArray src, NDArray<R> out) {
 /// - It is an error if [out] shape or dtype is incompatible with [x].
 ///
 /// Reference: [NumPy polyval](https://numpy.org/doc/stable/reference/generated/numpy.polyval.html)
-NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
+NDArray<R> polyval<
+  Tc extends DTypeTag,
+  Tx extends DTypeTag,
+  R extends DTypeTag
+>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
   if (c.isDisposed || x.isDisposed || (out != null && out.isDisposed)) {
     throw StateError("Cannot execute polyval() on a disposed array.");
   }
@@ -72,14 +79,14 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
   if (!resolved.isFloating && !resolved.isComplex) {
     resolved = DType.float64;
   }
-  final targetDType = resolved as DType<R>;
   if (out != null) {
-    if (!listEquals(out.shape, x.shape) || out.dtype != targetDType) {
+    if (!listEquals(out.shape, x.shape) || out.dtype != resolved) {
       throw ArgumentError(
         "Incompatible out buffer shape or dtype for polyval.",
       );
     }
   }
+  final targetDType = resolved as DType<R>;
 
   return NDArray.scope(() {
     final cCast = _ensureDType(c, targetDType);
@@ -240,7 +247,12 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
 /// - It is an error if [out] shape or dtype is incompatible.
 ///
 /// Reference: [NumPy polyfit](https://numpy.org/doc/stable/reference/generated/numpy.polyfit.html)
-NDArray<R> polyfit<Tx, Ty, Tw, R>(
+NDArray<R> polyfit<
+  Tx extends DTypeTag,
+  Ty extends DTypeTag,
+  Tw extends DTypeTag,
+  R extends DTypeTag
+>(
   NDArray<Tx> x,
   NDArray<Ty> y,
   int deg, {
@@ -651,7 +663,7 @@ NDArray<R> polyfit<Tx, Ty, Tw, R>(
 /// Computes the roots of a polynomial with coefficients [p].
 ///
 /// The coefficient array [p] is ordered from highest degree to constant term.
-/// Returns an `NDArray<Complex>` containing the roots.
+/// Returns an `NDArray<DTypeTag>` containing the roots.
 ///
 /// **Preconditions:**
 /// - [p] and optional [out] must not be disposed.
@@ -660,7 +672,10 @@ NDArray<R> polyfit<Tx, Ty, Tw, R>(
 /// - It is an error if [p] is not 1-dimensional.
 ///
 /// Reference: [NumPy roots](https://numpy.org/doc/stable/reference/generated/numpy.roots.html)
-NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
+NDArray<DTypeTag> roots<T extends DTypeTag>(
+  NDArray<T> p, {
+  NDArray<DTypeTag>? out,
+}) {
   if (p.isDisposed || (out != null && out.isDisposed)) {
     throw StateError("Cannot execute roots() on a disposed array.");
   }
@@ -668,7 +683,7 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
     throw ArgumentError("Coefficient array p must be 1-dimensional.");
   }
 
-  final DType<Complex> targetComplexDType = p.dtype == DType.complex64
+  final DType<DTypeTag> targetComplexDType = p.dtype == DType.complex64
       ? DType.complex64
       : DType.complex128;
 
@@ -700,7 +715,7 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
     }
 
     if (deg == 0) {
-      final res = NDArray<Complex>.zeros([0], targetComplexDType);
+      final res = NDArray<DTypeTag>.zeros([0], targetComplexDType);
       if (out != null) {
         _copyInto(res, out);
         return out;
@@ -715,7 +730,7 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
       final complexRoot = rootVal is Complex
           ? rootVal
           : Complex((rootVal as num).toDouble(), 0.0);
-      final res = NDArray<Complex>.fromList(
+      final res = NDArray<DTypeTag>.fromList(
         [complexRoot],
         [1],
         targetComplexDType,
@@ -733,7 +748,7 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
     switch (p.dtype) {
       case DType.complex64:
       case DType.complex128:
-        aMat = NDArray<Complex>.zeros([deg, deg], p.dtype as DType<Complex>);
+        aMat = NDArray<DTypeTag>.zeros([deg, deg], p.dtype as DType<DTypeTag>);
         break;
       default:
         aMat = NDArray<Float64>.zeros([deg, deg], DType.float64);
@@ -753,7 +768,7 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
       aMat.setCellFlat(i * deg + i - 1, castValue(one, targetMatDType));
     }
 
-    final res = eigvals(aMat, out: out);
+    final res = eigvals(aMat as NDArray<AnySpec>, out: out);
     if (out != null) return out;
     return res.detachToParentScope();
   });

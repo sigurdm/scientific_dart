@@ -680,7 +680,7 @@ void main() {
               );
               final medCpx = median(aCpx128);
               expect(medCpx.dtype, DType.complex128);
-              expect((medCpx.scalar as Complex).real, closeTo(3.0, 1e-9));
+              expect((medCpx.scalar).real, closeTo(3.0, 1e-9));
 
               final aCpx64 = NDArray.fromList(
                 [Complex(1.0, 2.0), Complex(5.0, 10.0), Complex(3.0, 6.0)],
@@ -826,8 +826,8 @@ void main() {
                 expect((meanRes.scalar as Complex).imag, closeTo(3.0, 1e-9));
 
                 final sumRes = nansum(cpx);
-                expect((sumRes.scalar as Complex).real, closeTo(4.0, 1e-9));
-                expect((sumRes.scalar as Complex).imag, closeTo(6.0, 1e-9));
+                expect((sumRes.scalar).real, closeTo(4.0, 1e-9));
+                expect((sumRes.scalar).imag, closeTo(6.0, 1e-9));
 
                 // Complex not supported for nanmin/nanmax
                 expect(() => nanmin(cpx), throwsUnsupportedError);
@@ -907,8 +907,10 @@ void main() {
                 expect(prod(emptyCpx).scalar, equals(Complex(1.0, 0.0)));
 
                 final emptyBool = NDArray.create([0], DType.boolean);
-                expect(sum(emptyBool).scalar, equals(0));
-                expect(prod(emptyBool).scalar, equals(1));
+                expect(sum(emptyBool).scalar, isFalse);
+                expect(prod(emptyBool).scalar, isTrue);
+                expect(sumAs(emptyBool, DType.int64).scalar, equals(0));
+                expect(prodAs(emptyBool, DType.int64).scalar, equals(1));
 
                 final aI32 = NDArray.fromList([2, 3, 4], [3], DType.int32);
                 expect(sum(aI32).scalar, 9);
@@ -1011,13 +1013,13 @@ void main() {
                   equals([1.0, 2.0, 3.0, 12.0]),
                 );
 
-                // Boolean cumsum -> returns int32
+                // Boolean cumsumAs -> returns int32
                 final b = NDArray.fromList(
                   [true, false, true],
                   [3],
                   DType.boolean,
                 );
-                final cB = cumsum(b);
+                final cB = cumsumAs(b, DType.int32);
                 expect(cB.dtype, DType.int32);
                 expect(cB.toList(), equals([1, 1, 2]));
               });
@@ -1885,7 +1887,7 @@ void main() {
                 );
 
                 // Simple unique
-                final u = unique(a) as NDArray<int>;
+                final u = unique(a) as NDArray<AnySpec>;
                 expect(u.toList(), equals([1, 2, 3, 4]));
 
                 // With all 3 flags
@@ -1941,7 +1943,7 @@ void main() {
                   DType.int64,
                 );
                 expect(
-                  (unique(aI64) as NDArray<int>).toList(),
+                  (unique(aI64) as NDArray<AnySpec>).toList(),
                   equals([10, 20, 30]),
                 );
 
@@ -1951,7 +1953,7 @@ void main() {
                   DType.float32,
                 );
                 expect(
-                  (unique(aF32) as NDArray<double>).toList(),
+                  (unique(aF32) as NDArray<AnySpec>).toList(),
                   equals([1.0, 2.0, 3.0]),
                 );
 
@@ -1961,7 +1963,7 @@ void main() {
                   DType.uint8,
                 );
                 expect(
-                  (unique(aU8) as NDArray<int>).toList(),
+                  (unique(aU8) as NDArray<AnySpec>).toList(),
                   equals([0, 128, 255]),
                 );
 
@@ -1971,7 +1973,7 @@ void main() {
                   DType.boolean,
                 );
                 expect(
-                  (unique(aBool) as NDArray<bool>).toList(),
+                  (unique(aBool) as NDArray<Boolean>).toList(),
                   equals([false, true]),
                 );
               });
@@ -2114,7 +2116,7 @@ void main() {
               expect(identical(union1d(a, b, out: outUnion), outUnion), isTrue);
               expect(outUnion.toList(), equals([1, 2, 3, 4]));
 
-              final outIsin = NDArray<bool>.create([3], DType.boolean);
+              final outIsin = NDArray<Boolean>.create([3], DType.boolean);
               expect(identical(isin(a, b, out: outIsin), outIsin), isTrue);
               expect(outIsin.toList(), equals([false, true, true]));
 

@@ -113,7 +113,7 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([5, 12], [2], DType.int32);
         final b = NDArray.fromList([3, 4], [2], DType.int32);
-        final out = NDArray<int>.create([2], DType.int32);
+        final out = NDArray.create([2], DType.int32);
 
         final res = bitwise_and(a, b, out: out);
         expect(identical(res, out), true);
@@ -135,7 +135,7 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([5, 12], [2], DType.int32);
         final b = NDArray.fromList([3, 4], [2], DType.int32);
-        final wrongOut = NDArray<int>.create([3], DType.int32);
+        final wrongOut = NDArray.create([3], DType.int32);
 
         expect(() => bitwise_and(a, b, out: wrongOut), throwsArgumentError);
       });
@@ -168,7 +168,7 @@ void main() {
       () => NDArray.scope(() {
         final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
         final b = NDArray.fromList([10.0, 99.0], [2], DType.float64);
-        final out = NDArray<bool>.create([2], DType.boolean);
+        final out = NDArray<Boolean>.create([2], DType.boolean);
 
         final res = equal(a, b, out: out);
         expect(identical(res, out), true);
@@ -203,8 +203,8 @@ void main() {
     test(
       'complex numbers inequality throws UnsupportedError',
       () => NDArray.scope(() {
-        final a = NDArray<Complex>.create([2], DType.complex128);
-        final b = NDArray<Complex>.create([2], DType.complex128);
+        final a = NDArray.create([2], DType.complex128);
+        final b = NDArray.create([2], DType.complex128);
 
         expect(() => greater(a, b), throwsUnsupportedError);
         expect(() => greaterEqual(a, b), throwsUnsupportedError);
@@ -218,7 +218,7 @@ void main() {
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
         final b = NDArray.fromList([3.0, 4.0], [2], DType.float64);
-        final wrongShape = NDArray<bool>.create([3], DType.boolean);
+        final wrongShape = NDArray<Boolean>.create([3], DType.boolean);
 
         expect(() => equal(a, b, out: wrongShape), throwsArgumentError);
       }),
@@ -244,7 +244,7 @@ void main() {
       });
 
       test('complex types', () {
-        final a = NDArray<Complex>.create([2], DType.complex128);
+        final a = NDArray.create([2], DType.complex128);
         a[[0]] = Complex(3.0, 4.0); // (3+4i)^2 = 9 - 16 + 24i = -7 + 24i
         a[[1]] = Complex(0.0, -2.0); // (0-2i)^2 = -4
 
@@ -289,7 +289,7 @@ void main() {
         final a = NDArray.fromList(Float64List.fromList([2.0, 3.0]), [
           2,
         ], DType.float64);
-        final outRecycler = NDArray<double>.zeros([2], DType.float64);
+        final outRecycler = NDArray.zeros([2], DType.float64);
         final res = square(a, out: outRecycler);
         expect(identical(res, outRecycler), true);
         expect(outRecycler.toList(), [4.0, 9.0]);
@@ -416,7 +416,7 @@ void main() {
       });
 
       test('complex types', () {
-        final a = NDArray<Complex>.create([3], DType.complex128);
+        final a = NDArray.create([3], DType.complex128);
         a[[0]] = Complex(double.nan, 1.0);
         a[[1]] = Complex(1.0, double.infinity);
         a[[2]] = Complex(1.0, 2.0);
@@ -478,7 +478,7 @@ void main() {
       test(
         'Add Complex and Float64 arrays',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2], DType.complex128);
+          final a = NDArray.create([2], DType.complex128);
           a[[0]] = Complex(1.0, 2.0);
           a[[1]] = Complex(3.0, 4.0);
 
@@ -501,7 +501,7 @@ void main() {
             2,
           ], DType.float64);
 
-          final b = NDArray<Complex>.create([2], DType.complex128);
+          final b = NDArray.create([2], DType.complex128);
           b[[0]] = Complex(1.0, 2.0);
           b[[1]] = Complex(3.0, 4.0);
 
@@ -518,7 +518,7 @@ void main() {
             2,
           ], DType.int32);
 
-          final b = NDArray<Complex>.create([2], DType.complex128);
+          final b = NDArray.create([2], DType.complex128);
           b[[0]] = Complex(4.0, 5.0);
           b[[1]] = Complex(1.0, -2.0);
 
@@ -559,7 +559,7 @@ void main() {
           expect(bList[0], closeTo(0.0, 1e-10));
           expect(bList[1], closeTo(1.0, 1e-10));
 
-          final c = NDArray<Complex>.create([1], DType.complex128);
+          final c = NDArray.create([1], DType.complex128);
           c[[0]] = Complex(0.0, 0.0);
           final resC = tan(c);
           expect(resC.dtype, DType.complex128);
@@ -610,7 +610,7 @@ void main() {
       test(
         'abs (Complex magnitude)',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2], DType.complex128);
+          final a = NDArray.create([2], DType.complex128);
           a[[0]] = Complex(3.0, 4.0); // mag = 5.0
           a[[1]] = Complex(-5.0, 12.0); // mag = 13.0
 
@@ -652,7 +652,7 @@ void main() {
           expect(b.toList(), [-1.0, 1.5, 5.0]);
 
           // Verify Complex clip throws UnsupportedError
-          final c = NDArray<Complex>.create([2], DType.complex128);
+          final c = NDArray.create([2], DType.complex128);
           expect(() => clip(c, min: -1.0, max: 5.0), throwsUnsupportedError);
         }),
       );
@@ -853,10 +853,10 @@ void main() {
       test(
         'Complex equality and inequality exceptions',
         () => NDArray.scope(() {
-          final c1 = NDArray<Complex>.create([1], DType.complex128);
+          final c1 = NDArray.create([1], DType.complex128);
           c1[[0]] = Complex(1, 2);
 
-          final c2 = NDArray<Complex>.create([1], DType.complex128);
+          final c2 = NDArray.create([1], DType.complex128);
           c2[[0]] = Complex(1, 2);
 
           // Equality is supported for complex!
@@ -1043,7 +1043,7 @@ void main() {
         expect(resF2.toList(), [false, true, false]);
 
         // Complex128 / boolean
-        final c128 = NDArray<Complex>.create([3], DType.complex128);
+        final c128 = NDArray.create([3], DType.complex128);
         c128[[0]] = Complex(0.0, 0.0); // false
         c128[[1]] = Complex(1.0, -1.0); // true
         c128[[2]] = Complex(0.0, 0.0);
@@ -1100,10 +1100,10 @@ void main() {
     test(
       'ufuncs in-place out buffer shape and dtype validation checks',
       () => NDArray.scope(() {
-        final a = NDArray<double>.ones([3], DType.float64);
-        final b = NDArray<double>.ones([3], DType.float64);
-        final incompatibleOut = NDArray<double>.ones([4], DType.float64);
-        final incompatibleDTypeOut = NDArray<int>.ones([3], DType.int32);
+        final a = NDArray.ones([3], DType.float64);
+        final b = NDArray.ones([3], DType.float64);
+        final incompatibleOut = NDArray.ones([4], DType.float64);
+        final incompatibleDTypeOut = NDArray.ones([3], DType.int32);
 
         // 1. add() contiguous shape mismatch
         expect(() => add(a, b, out: incompatibleOut), throwsArgumentError);
@@ -1127,10 +1127,10 @@ void main() {
     test(
       '_resolveDType cross-promotion additions coverage',
       () => NDArray.scope(() {
-        final f64 = NDArray<double>.fromList([1.0], [1], DType.float64);
-        final f32 = NDArray<double>.fromList([2.0], [1], DType.float32);
-        final i64 = NDArray<int>.fromList([3], [1], DType.int64);
-        final i32 = NDArray<int>.fromList([4], [1], DType.int32);
+        final f64 = NDArray.fromList([1.0], [1], DType.float64);
+        final f32 = NDArray.fromList([2.0], [1], DType.float32);
+        final i64 = NDArray.fromList([3], [1], DType.int64);
+        final i32 = NDArray.fromList([4], [1], DType.int32);
 
         // 1. float64 + float32 -> float64
         final r1 = add(f64, f32);
@@ -1158,16 +1158,8 @@ void main() {
     test(
       'prod() contiguous FFI leaf paths coverage',
       () => NDArray.scope(() {
-        final f64 = NDArray<double>.fromList(
-          [2.0, 3.0, 4.0],
-          [3],
-          DType.float64,
-        );
-        final f32 = NDArray<double>.fromList(
-          [5.0, 2.0, 3.0],
-          [3],
-          DType.float32,
-        );
+        final f64 = NDArray.fromList([2.0, 3.0, 4.0], [3], DType.float64);
+        final f32 = NDArray.fromList([5.0, 2.0, 3.0], [3], DType.float32);
 
         // 1. float64 contiguous FFI prod()
         final r1 = prod(f64);
@@ -1219,7 +1211,7 @@ void main() {
         );
 
         final view = parent.slice([Slice(start: 0, stop: 2), Slice.all()]);
-        final out = NDArray<double>.zeros([2, 2], DType.float64);
+        final out = NDArray.zeros([2, 2], DType.float64);
 
         final res = clip(view, min: 2.0, max: 3.0, out: out);
         expect(identical(res, out), true);
@@ -1243,8 +1235,8 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        final out = NDArray<double>.zeros([2, 2], DType.float64);
-        final incompatibleOut = NDArray<double>.zeros([3], DType.float64);
+        final out = NDArray.zeros([2, 2], DType.float64);
+        final incompatibleOut = NDArray.zeros([3], DType.float64);
 
         // 1. Incompatible shape throws ArgumentError
         expect(() => where(cond, x, y, incompatibleOut), throwsArgumentError);
@@ -1260,12 +1252,12 @@ void main() {
       'NDArray.fill() ufunc correctness and performance speedups verification',
       () {
         // 1. Contiguous Double Precision fill
-        final a = NDArray<double>.zeros([5], DType.float64);
+        final a = NDArray.zeros([5], DType.float64);
         a.fill(42.5);
         expect(a.toList(), [42.5, 42.5, 42.5, 42.5, 42.5]);
 
         // 2. Contiguous Int32 Precision fill
-        final b = NDArray<int>.zeros([5], DType.int32);
+        final b = NDArray.zeros([5], DType.int32);
         b.fill(99);
         expect(b.toList(), [99, 99, 99, 99, 99]);
 
@@ -1282,7 +1274,7 @@ void main() {
         expect(view.shape, [2]);
         expect(view.isContiguous, false);
 
-        view.fill(Float64(77.0));
+        view.fill(77.0);
         expect(parent.toList(), [77.0, 2.0, 77.0, 4.0]);
       },
     );
@@ -1618,7 +1610,7 @@ void main() {
     test(
       'NDArray cross-type comparison operators coverage',
       () => NDArray.scope(() {
-        final comp = NDArray<Complex>.create([2], DType.complex128);
+        final comp = NDArray.create([2], DType.complex128);
         comp.setCell([0], Complex(1.0, 0.0));
         comp.setCell([1], Complex(3.0, 0.0));
 
@@ -1654,7 +1646,7 @@ void main() {
     test(
       'Complex array reductions (sum, prod, mean) and stacking coverage',
       () {
-        final a = NDArray<Complex>.fromList(
+        final a = NDArray.fromList(
           [
             Complex(1.0, 1.0),
             Complex(2.0, 0.0),
@@ -1678,7 +1670,7 @@ void main() {
         expect(totalProd.scalar, Complex(24.0, 24.0)); // (1+i)*2*3*4 = 24 + 24i
 
         // Test concatenate() and hstack()
-        final b = NDArray<Complex>.fromList(
+        final b = NDArray.fromList(
           [Complex(10.0, 0.0), Complex(10.0, 0.0)],
           [1, 2],
           DType.complex128,
@@ -1726,12 +1718,12 @@ void main() {
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 3.0, 2.0], [3], DType.float64);
 
-        final outFlat = NDArray<double>.zeros([], DType.float64);
+        final outFlat = NDArray.zeros([], DType.float64);
         final resFlat = min(a, out: outFlat);
         expect(identical(resFlat, outFlat), true);
         expect(outFlat.scalar, 1.0);
 
-        final outAxis = NDArray<double>.zeros([2], DType.float64);
+        final outAxis = NDArray.zeros([2], DType.float64);
         final mat = NDArray.fromList(
           [1.0, 3.0, 2.0, 4.0],
           [2, 2],
@@ -1747,7 +1739,7 @@ void main() {
       'disposed out array throws StateError',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-        final out = NDArray<double>.zeros([], DType.float64);
+        final out = NDArray.zeros([], DType.float64);
         out.dispose();
 
         expect(() => min(a, out: out), throwsStateError);
@@ -1762,13 +1754,13 @@ void main() {
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
 
-        final outShape = NDArray<double>.zeros([2], DType.float64);
+        final outShape = NDArray.zeros([2], DType.float64);
         expect(() => min(a, out: outShape), throwsArgumentError);
         expect(() => max(a, out: outShape), throwsArgumentError);
         expect(() => nanmin(a, out: outShape), throwsArgumentError);
         expect(() => nanmax(a, out: outShape), throwsArgumentError);
 
-        final outDType = NDArray<int>.zeros([], DType.int32);
+        final outDType = NDArray.zeros([], DType.int32);
         expect(
           () => min(a, out: outDType as dynamic),
           throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
@@ -1792,7 +1784,7 @@ void main() {
       'non-contiguous out array support in min/max/nanmin/nanmax',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-        final parent = NDArray<double>.zeros([2, 2], DType.float64);
+        final parent = NDArray.zeros([2, 2], DType.float64);
         final nonContiguousOut = parent.slice([Slice.all(), Index(0)]);
         expect(nonContiguousOut.isContiguous, false);
 
@@ -1875,7 +1867,7 @@ void main() {
           strides: <int>[],
           offsetElements: 1,
         );
-        final rViewSqrt = sqrt(view0D);
+        final rViewSqrt = sqrt((view0D as NDArray<AnySpec>));
         expect(rViewSqrt.rank, 0);
         expect(rViewSqrt.scalar, closeTo(4.0, 1e-7));
       });
@@ -1894,7 +1886,7 @@ void main() {
         );
 
         // Pre-fill result buffer with false so masked-out elements remain false
-        final outEq = NDArray<bool>.zeros([4], DType.boolean);
+        final outEq = NDArray<Boolean>.zeros([4], DType.boolean);
         equal(a, b, where: whereMask, out: outEq);
         expect(outEq.toList(), [true, false, false, false]);
 

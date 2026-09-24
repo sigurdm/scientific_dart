@@ -139,7 +139,7 @@ void main() {
             final py = x.getCell([1]).toDouble();
             final fVal = (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
             final g = NDArray<Float64>.fromList(
-              [Float64(2.0 * (px - 3.0)), Float64(2.0 * (py + 2.0))],
+              [2.0 * (px - 3.0), 2.0 * (py + 2.0)],
               [2],
               DType.float64,
             );
@@ -168,7 +168,7 @@ void main() {
             final px = x.getCell([0]).toDouble();
             final py = x.getCell([1]).toDouble();
             return NDArray<Float64>.fromList(
-              [Float64(2.0 * (px - 3.0)), Float64(2.0 * (py + 2.0))],
+              [2.0 * (px - 3.0), 2.0 * (py + 2.0)],
               [2],
               DType.float64,
             );
@@ -236,7 +236,7 @@ void main() {
             final px = x.getCell([0]).toDouble();
             final py = x.getCell([1]).toDouble();
             return NDArray<Float64>.fromList(
-              [Float64(2.0 * (px - 2.0)), Float64(2.0 * (py - 4.0))],
+              [2.0 * (px - 2.0), 2.0 * (py - 4.0)],
               [2],
               DType.float64,
             );
@@ -267,8 +267,8 @@ void main() {
             jacInto: (NDArray<Float64> x, NDArray<Float64> gOut) {
               final px = x.getCell([0]).toDouble();
               final py = x.getCell([1]).toDouble();
-              gOut.setCell([0], Float64(2.0 * (px - 3.0)));
-              gOut.setCell([1], Float64(2.0 * (py + 1.0)));
+              gOut.setCell([0], 2.0 * (px - 3.0));
+              gOut.setCell([1], 2.0 * (py + 1.0));
             },
             out: outX,
             outJac: outJ,

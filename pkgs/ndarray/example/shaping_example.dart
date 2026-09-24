@@ -20,7 +20,7 @@ void runAsStridedExamples() {
     print('2x2 strided view: ${view.toList()}');
 
     // Mutating the view affects the original array
-    view.setCell([0, 0], Int32(99));
+    view.setCell([0, 0], 99);
     print('After modifying view[0, 0] to 99:');
     print('View: ${view.toList()}');
     print('Original: ${a.toList()}\n');

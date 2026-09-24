@@ -42,7 +42,7 @@ Dataset generateConcentricCircles(
     uniform([numPoints, 2], dtype: DType.float64, seed: seed, out: x);
 
     final two = NDArray.scalar(2.0, dtype: DType.float64);
-    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
+    final one = NDArray<Float64>.scalar(1.0, dtype: DType.float64);
 
     // Scale to [-1, 1)
     multiply(x, two, out: x);
@@ -56,11 +56,11 @@ Dataset generateConcentricCircles(
     sum(xSquared, axis: 1, out: d2);
 
     final r2 = NDArray.scalar(radius * radius, dtype: DType.float64);
-    final mask = NDArray<bool>.create([numPoints], DType.boolean);
+    final mask = NDArray<Boolean>.create([numPoints], DType.boolean);
     less(d2, r2, out: mask);
 
     final y = NDArray<Float64>.create([numPoints, 1], DType.float64);
-    final zero = NDArray<Float64>.scalar(Float64(0.0), dtype: DType.float64);
+    final zero = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
 
     final mask2D = mask.reshape([numPoints, 1]);
     where(mask2D, one, zero, y);
@@ -214,8 +214,8 @@ final class MLP {
     db2_1D = db2.reshape([outputDim]);
     db1_1D = db1.reshape([hiddenDim]);
 
-    one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
-    zero = NDArray<Float64>.scalar(Float64(0.0), dtype: DType.float64);
+    one = NDArray<Float64>.scalar(1.0, dtype: DType.float64);
+    zero = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
   }
 
   /// Disposes all allocated arrays and views.
@@ -322,7 +322,7 @@ double calculateLoss(NDArray<Float64> A2, NDArray<Float64> Y) {
     log(logA2, out: logA2);
 
     final oneMinusA2 = NDArray<Float64>.create(A2.shape, DType.float64);
-    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
+    final one = NDArray<Float64>.scalar(1.0, dtype: DType.float64);
     subtract(one, A2, out: oneMinusA2);
     clip(oneMinusA2, min: 1e-15, max: 1.0 - 1e-15, out: oneMinusA2);
     log(oneMinusA2, out: oneMinusA2);
@@ -351,18 +351,18 @@ double calculateLoss(NDArray<Float64> A2, NDArray<Float64> Y) {
 double calculateAccuracy(NDArray<Float64> A2, NDArray<Float64> Y) {
   return NDArray.scope(() {
     final threshold = NDArray.scalar(0.5, dtype: DType.float64);
-    final predictions = NDArray<bool>.create(A2.shape, DType.boolean);
+    final predictions = NDArray<Boolean>.create(A2.shape, DType.boolean);
     greater(A2, threshold, out: predictions);
 
-    final yBool = NDArray<bool>.create(Y.shape, DType.boolean);
+    final yBool = NDArray<Boolean>.create(Y.shape, DType.boolean);
     greater(Y, threshold, out: yBool);
 
-    final correct = NDArray<bool>.create(A2.shape, DType.boolean);
+    final correct = NDArray<Boolean>.create(A2.shape, DType.boolean);
     equal(predictions, yBool, out: correct);
 
     final correctDouble = NDArray<Float64>.create(A2.shape, DType.float64);
-    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
-    final zero = NDArray<Float64>.scalar(Float64(0.0), dtype: DType.float64);
+    final one = NDArray<Float64>.scalar(1.0, dtype: DType.float64);
+    final zero = NDArray<Float64>.scalar(0.0, dtype: DType.float64);
     where(correct, one, zero, correctDouble);
 
     final correctSum = sum(correctDouble);

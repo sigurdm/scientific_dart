@@ -15,7 +15,7 @@ void main() async {
       final rawList1 = List.generate(size, (_) => rand.nextDouble() * 100.0);
       final rawList2 = List.generate(size, (_) => rand.nextDouble() * 100.0);
 
-      final ndArr1 = nd.NDArray<double>.fromList(rawList1, [
+      final ndArr1 = nd.NDArray<Float64>.fromList(rawList1, [
         size,
       ], nd.DType.float64);
 

@@ -22,7 +22,7 @@ void main() {
     final angle = time * (2.0 * math.pi * 10.0);
     final NDArray<Float64> pureSignal = multiply(
       sin(angle),
-      NDArray.scalar(Float64(5.0), dtype: DType.float64),
+      NDArray.scalar(5.0, dtype: DType.float64),
     );
     print(
       '1. Generated pure 10 Hz sine wave signal (size: $numPoints points).',
@@ -42,7 +42,7 @@ void main() {
     );
 
     // 3. Execute FFI-Accelerated Real FFT (rfft) to map signal to frequency space
-    final fftCoeffs = rfft<Float64, Complex128>(noisySignal);
+    final fftCoeffs = rfft(noisySignal);
     final freqs = rfftfreq(numPoints, d: 1.0 / samplingRate);
     print(
       '3. Executed mixed-radix FFI Real FFT (rfft) to transform signal to frequency space.',
@@ -50,13 +50,13 @@ void main() {
 
     // 4. Vectorized Low-pass Filter: Zero out high frequencies (noise) above 15 Hz!
     final highFreqMask = freqs > 15.0;
-    fftCoeffs.setByMaskScalar(highFreqMask, Complex128(0.0, 0.0));
+    fftCoeffs.setByMaskScalar(highFreqMask, Complex(0.0, 0.0));
     print(
       '4. Low-pass filter applied: zeroed out high-frequency noise bins (> 15 Hz) via boolean mask.',
     );
 
     // 5. Restoration: Inverse Real Fourier Transform (irfft) back to time domain!
-    final reconstructed = irfft<Complex128, Float64>(fftCoeffs, n: numPoints);
+    final reconstructed = irfft(fftCoeffs, n: numPoints);
     print(
       '5. Executed FFI Inverse Real FFT (irfft) to restore time-domain signal.',
     );

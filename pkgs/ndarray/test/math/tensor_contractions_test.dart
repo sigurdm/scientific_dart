@@ -434,7 +434,7 @@ void main() {
           2,
           2,
         ], DType.float64);
-        final res = tensordot<double, double, double>(
+        final res = tensordot<DTypeTag>(
           a,
           b,
           axes: const TensordotAxes.count(1),
@@ -1087,15 +1087,15 @@ void main() {
 
         // Non-fastpath 2-operand einsum fallback
         final resFallback = einsum(EinsumSubscripts.parse("ij,jk->k"), [
-          a[0] as NDArray<Object>,
-          b[0] as NDArray<Object>,
+          a[0] as NDArray<AnySpec>,
+          b[0] as NDArray<AnySpec>,
         ]);
         expect(resFallback.shape, equals([2]));
 
         final outFallback = NDArray.zeros([2], DType.float64);
         einsum(EinsumSubscripts.parse("ij,jk->k"), [
-          a[0] as NDArray<Object>,
-          b[0] as NDArray<Object>,
+          a[0] as NDArray<AnySpec>,
+          b[0] as NDArray<AnySpec>,
         ], out: outFallback);
         expect(outFallback.shape, equals([2]));
 
@@ -1215,11 +1215,10 @@ void main() {
             2,
           ], DType.float64);
           expect(
-            () => einsum<Float32, Float64>(
-              EinsumSubscripts.parse("ij,jk->ik"),
-              [a, b],
-              out: invalidDTypeOut,
-            ),
+            () => einsum<DTypeTag>(EinsumSubscripts.parse("ij,jk->ik"), [
+              a,
+              b,
+            ], out: invalidDTypeOut),
             throwsArgumentError,
           );
         });
@@ -1252,14 +1251,14 @@ void main() {
             2,
           ], DType.int64);
 
-          final resIntBatch = einsum<Int64, Int64>(
+          final resIntBatch = einsum<Int64>(
             EinsumSubscripts.parse("bij,bjk->bik"),
             [aInt, bInt],
           );
           expect(resIntBatch.shape, equals([2, 2, 2]));
 
           final outIntBatch = NDArray<Int64>.create([2, 2, 2], DType.int64);
-          einsum<Int64, Int64>(EinsumSubscripts.parse("bij,bjk->bik"), [
+          einsum<Int64>(EinsumSubscripts.parse("bij,bjk->bik"), [
             aInt,
             bInt,
           ], out: outIntBatch);
@@ -1359,11 +1358,10 @@ void main() {
             2,
           ], DType.float32);
           expect(
-            () => einsum<Float64, Float32>(
-              EinsumSubscripts.parse("bij,bjk->ikb"),
-              [a3d, b3d],
-              out: invalidDTypeBatchPerm,
-            ),
+            () => einsum<DTypeTag>(EinsumSubscripts.parse("bij,bjk->ikb"), [
+              a3d,
+              b3d,
+            ], out: invalidDTypeBatchPerm),
             throwsArgumentError,
           );
         });
@@ -1388,7 +1386,7 @@ void main() {
 
         final invalidDTypeOut = NDArray<Float32>.create([4], DType.float32);
         expect(
-          () => kron<Float64, Float64, Float32>(a, b, out: invalidDTypeOut),
+          () => kron<DTypeTag>(a, b, out: invalidDTypeOut),
           throwsArgumentError,
         );
 
@@ -1436,14 +1434,14 @@ void main() {
             2,
           ], DType.int64);
 
-          final resBatchPerm = einsum<Int64, Int64>(
+          final resBatchPerm = einsum<Int64>(
             EinsumSubscripts.parse("bij,bjk->ikb"),
             [aInt, bInt],
           );
           expect(resBatchPerm.shape, equals([2, 2, 2]));
 
           final outBatchPerm = NDArray<Int64>.create([2, 2, 2], DType.int64);
-          einsum<Int64, Int64>(EinsumSubscripts.parse("bij,bjk->ikb"), [
+          einsum<Int64>(EinsumSubscripts.parse("bij,bjk->ikb"), [
             aInt,
             bInt,
           ], out: outBatchPerm);
@@ -1455,7 +1453,7 @@ void main() {
             3,
           ], DType.int64);
           expect(
-            () => einsum<Int64, Int64>(EinsumSubscripts.parse("bij,bjk->ikb"), [
+            () => einsum<Int64>(EinsumSubscripts.parse("bij,bjk->ikb"), [
               aInt,
               bInt,
             ], out: invalidOutBatchPerm),
@@ -1467,17 +1465,17 @@ void main() {
 
     test("Targeted 100% line coverage edge case dispatches", () {
       NDArray.scope(() {
-        // Untyped NDArray<Object> to Float64 _asTyped cast (lines 13-17)
+        // Untyped NDArray<AnySpec> to Float64 _asTyped cast (lines 13-17)
         final untypedA =
             NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64)
-                as NDArray<Object>;
+                as NDArray<AnySpec>;
         final untypedB =
             NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64)
-                as NDArray<Object>;
-        final castRes = einsum<Object, Float64>(
-          EinsumSubscripts.parse("ij,jk->ik"),
-          [untypedA, untypedB],
-        );
+                as NDArray<AnySpec>;
+        final castRes = einsum<DTypeTag>(EinsumSubscripts.parse("ij,jk->ik"), [
+          untypedA,
+          untypedB,
+        ]);
         expect(castRes.shape, equals([2, 2]));
 
         // Non-contiguous strided Int64 batch tensordot permutation 'bij,bjk->ikb' (lines 1103-1116)
@@ -1493,7 +1491,7 @@ void main() {
         ], DType.int64);
         final aStridedInt = aInt.transpose([0, 2, 1]);
         final bStridedInt = bInt.transpose([0, 2, 1]);
-        final resStridedBatchPerm = einsum<Int64, Int64>(
+        final resStridedBatchPerm = einsum<Int64>(
           EinsumSubscripts.parse("bij,bjk->ikb"),
           [aStridedInt, bStridedInt],
         );
@@ -1504,7 +1502,7 @@ void main() {
           2,
           2,
         ], DType.int64);
-        einsum<Int64, Int64>(EinsumSubscripts.parse("bij,bjk->ikb"), [
+        einsum<Int64>(EinsumSubscripts.parse("bij,bjk->ikb"), [
           aStridedInt,
           bStridedInt,
         ], out: outStridedBatchPerm);
@@ -1516,7 +1514,7 @@ void main() {
           3,
         ], DType.int64);
         expect(
-          () => einsum<Int64, Int64>(EinsumSubscripts.parse("bij,bjk->ikb"), [
+          () => einsum<Int64>(EinsumSubscripts.parse("bij,bjk->ikb"), [
             aStridedInt,
             bStridedInt,
           ], out: invalidOutStridedBatchPerm),
@@ -1539,7 +1537,7 @@ void main() {
           [4],
           DType.int64,
         ).slice([Slice(start: 0, stop: 4, step: 2)]);
-        final resStridedBroadcaster = einsum<Int64, Int64>(
+        final resStridedBroadcaster = einsum<Int64>(
           EinsumSubscripts.parse("i,j,k->kji"),
           [v1Strided, v2Strided, v3Strided],
         );

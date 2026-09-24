@@ -6,7 +6,7 @@ import 'device.dart';
 ///
 /// This extension lives purely in the `gpuarray` package, keeping `package:ndarray`
 /// completely decoupled and oblivious of GPU concepts.
-extension NDArrayGpuExtension<T> on nd.NDArray<T> {
+extension NDArrayGpuExtension<T extends DTypeTag> on nd.NDArray<T> {
   /// Transfers this host [nd.NDArray] to a [GpuArray] on the given [device].
   ///
   /// The transfer is performed directly between host C memory and GPU buffer

@@ -154,15 +154,15 @@ void main() {
       ResourceScope.scope(() {
         // Float16
         final f16 = GpuArray.filled([1], 3.5, DType.float16);
-        expect(f16.scalar, equals(Float16(3.5)));
+        expect(f16.scalar, equals(3.5));
 
         // BFloat16
         final bf16 = GpuArray.filled([1], 4.25, DType.bfloat16);
-        expect(bf16.scalar, equals(BFloat16(4.25)));
+        expect(bf16.scalar, equals(4.25));
 
         // Complex64
         final c64 = GpuArray.filled([1], nd.Complex(1.5, 2.5), DType.complex64);
-        expect(c64.scalar, equals(Complex64(1.5, 2.5)));
+        expect(c64.scalar, equals(Complex(1.5, 2.5)));
 
         // Complex128
         final c128 = GpuArray.filled(
@@ -170,23 +170,23 @@ void main() {
           nd.Complex(3.0, -4.0),
           DType.complex128,
         );
-        expect(c128.scalar, equals(Complex128(3.0, -4.0)));
+        expect(c128.scalar, equals(Complex(3.0, -4.0)));
 
         // Uint64
         final u64 = GpuArray.filled([1], 123456789, DType.uint64);
-        expect(u64.scalar, equals(Uint64(123456789)));
+        expect(u64.scalar, equals(123456789));
 
         // Uint32
         final u32 = GpuArray.filled([1], 42000, DType.uint32);
-        expect(u32.scalar, equals(Uint32(42000)));
+        expect(u32.scalar, equals(42000));
 
         // Uint16
         final u16 = GpuArray.filled([1], 1234, DType.uint16);
-        expect(u16.scalar, equals(Uint16(1234)));
+        expect(u16.scalar, equals(1234));
 
         // Int8
         final i8 = GpuArray.filled([1], -50, DType.int8);
-        expect(i8.scalar, equals(Int8(-50)));
+        expect(i8.scalar, equals(-50));
 
         // Boolean
         final bTrue = GpuArray.filled([1], true, DType.boolean);

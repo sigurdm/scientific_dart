@@ -8,9 +8,9 @@ void main() {
       'equal, notEqual, greater, greaterEqual, less, lessEqual with where mask do not leak tempRes',
       () {
         NDArray.clearTrackedAllocations();
-        final a = NDArray<int>.fromList([1, 5, 3, 4], [4], DType.int32);
-        final b = NDArray<int>.fromList([1, 2, 6, 4], [4], DType.int32);
-        final mask = NDArray<bool>.fromList(
+        final a = NDArray.fromList([1, 5, 3, 4], [4], DType.int32);
+        final b = NDArray.fromList([1, 2, 6, 4], [4], DType.int32);
+        final mask = NDArray<Boolean>.fromList(
           [true, false, true, false],
           [4],
           DType.boolean,
@@ -57,7 +57,7 @@ void main() {
         expect(ScratchArena.marker.offset, equals(baselineMarker.offset));
 
         NDArray.scope(() {
-          final out = NDArray<bool>.fromList(
+          final out = NDArray<Boolean>.fromList(
             [false, true, false, true],
             [4],
             DType.boolean,
@@ -80,12 +80,12 @@ void main() {
         // equal([true, false, false, false], [true, true, true, true], out: flip(a))
         // Expected comparison result: [true, false, false, false]
         // Written into flip(a): flip(a) is [true, false, false, false], so a becomes [false, false, false, true]
-        final aEq = NDArray<bool>.fromList(
+        final aEq = NDArray<Boolean>.fromList(
           [true, false, false, false],
           [4],
           DType.boolean,
         );
-        final bEq = NDArray<bool>.fromList(
+        final bEq = NDArray<Boolean>.fromList(
           [true, true, true, true],
           [4],
           DType.boolean,
@@ -101,12 +101,12 @@ void main() {
         // notEqual([true, false, false, false], [true, true, true, true], out: flip(a))
         // Expected comparison result: [false, true, true, true]
         // Written into flip(a): a becomes [true, true, true, false]
-        final aNe = NDArray<bool>.fromList(
+        final aNe = NDArray<Boolean>.fromList(
           [true, false, false, false],
           [4],
           DType.boolean,
         );
-        final bNe = NDArray<bool>.fromList(
+        final bNe = NDArray<Boolean>.fromList(
           [true, true, true, true],
           [4],
           DType.boolean,
@@ -122,12 +122,12 @@ void main() {
         // greater([true, false, false, false], [false, false, false, false], out: flip(a))
         // Expected comparison result: [true, false, false, false]
         // Written into flip(a): a becomes [false, false, false, true]
-        final aGt = NDArray<bool>.fromList(
+        final aGt = NDArray<Boolean>.fromList(
           [true, false, false, false],
           [4],
           DType.boolean,
         );
-        final bGt = NDArray<bool>.fromList(
+        final bGt = NDArray<Boolean>.fromList(
           [false, false, false, false],
           [4],
           DType.boolean,
@@ -143,12 +143,12 @@ void main() {
         // less([false, true, true, true], [true, true, true, true], out: flip(a))
         // Expected comparison result: [true, false, false, false]
         // Written into flip(a): a becomes [false, false, false, true]
-        final aLt = NDArray<bool>.fromList(
+        final aLt = NDArray<Boolean>.fromList(
           [false, true, true, true],
           [4],
           DType.boolean,
         );
-        final bLt = NDArray<bool>.fromList(
+        final bLt = NDArray<Boolean>.fromList(
           [true, true, true, true],
           [4],
           DType.boolean,
@@ -177,8 +177,8 @@ void main() {
           [3],
           DType.float64,
         );
-        final aInt = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final badShapeMask = NDArray<bool>.fromList(
+        final aInt = NDArray.fromList([1, 2, 3], [3], DType.int32);
+        final badShapeMask = NDArray<Boolean>.fromList(
           [true, false],
           [2],
           DType.boolean,
@@ -201,7 +201,7 @@ void main() {
           expect(ScratchArena.marker.offset, equals(baselineMarker.offset));
         }
 
-        for (final badMask in <NDArray<dynamic>>[badShapeMask, badDTypeMask]) {
+        for (final badMask in <NDArray<AnySpec>>[badShapeMask, badDTypeMask]) {
           expect(() => equal(aF64, bF64, where: badMask), throwsArgumentError);
           verifyNoLeak();
 

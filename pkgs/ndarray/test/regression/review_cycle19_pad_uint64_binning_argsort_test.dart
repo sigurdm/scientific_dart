@@ -23,10 +23,7 @@ void main() {
                 src,
                 PadWidth.all(1),
                 mode: PadMode.constant,
-                constantValues: PadValues.all(
-                  Int64(vEndBefore),
-                  Int64(vEndAfter),
-                ),
+                constantValues: PadValues.all(vEndBefore, vEndAfter),
               );
               expect([
                 for (var i = 0; i < pConst.size; i++) pConst.getCell([i]),
@@ -41,7 +38,7 @@ void main() {
                 emptySrc,
                 PadWidth.all(1),
                 mode: PadMode.constant,
-                constantValues: PadValues.all(Int64(v1)),
+                constantValues: PadValues.all(v1),
               );
               expect(pEmptyConst.shape, equals([2, 4]));
               for (var r = 0; r < 2; r++) {
@@ -55,7 +52,7 @@ void main() {
                 src,
                 PadWidth.all(2),
                 mode: PadMode.linearRamp,
-                endValues: PadValues.all(Int64(vEndBefore), Int64(vEndAfter)),
+                endValues: PadValues.all(vEndBefore, vEndAfter),
               );
               expect(
                 [
@@ -110,7 +107,7 @@ void main() {
                 src,
                 PadWidth.all(1),
                 mode: PadMode.constant,
-                constantValues: PadValues.all(Uint64(uBefore), Uint64(u2)),
+                constantValues: PadValues.all(uBefore, u2),
               );
               expect([
                 for (var i = 0; i < pConst.size; i++) pConst.getCell([i]),
@@ -125,7 +122,7 @@ void main() {
                 emptySrc,
                 PadWidth.all(1),
                 mode: PadMode.constant,
-                constantValues: PadValues.all(Uint64(u2)),
+                constantValues: PadValues.all(u2),
               );
               expect(pEmptyConst.shape, equals([2, 4]));
               for (var r = 0; r < 2; r++) {
@@ -139,7 +136,7 @@ void main() {
                 src,
                 PadWidth.all(2),
                 mode: PadMode.linearRamp,
-                endValues: PadValues.all(Uint64(uBefore), Uint64(uAfter)),
+                endValues: PadValues.all(uBefore, uAfter),
               );
               expect([
                 for (var i = 0; i < pRamp.size; i++) pRamp.getCell([i]),
@@ -289,7 +286,7 @@ void main() {
           () {
             NDArray.scope(() {
               final c128 = NDArray<Complex128>.fromList(
-                [Complex128(double.nan, 2.0), Complex128(double.nan, 1.0)],
+                [Complex(double.nan, 2.0), Complex(double.nan, 1.0)],
                 [2],
                 DType.complex128,
               );
@@ -303,7 +300,7 @@ void main() {
               expect(sorted128.getCell([1]).imag, equals(2.0));
 
               final c64 = NDArray<Complex64>.fromList(
-                [Complex64(double.nan, 2.0), Complex64(double.nan, 1.0)],
+                [Complex(double.nan, 2.0), Complex(double.nan, 1.0)],
                 [2],
                 DType.complex64,
               );

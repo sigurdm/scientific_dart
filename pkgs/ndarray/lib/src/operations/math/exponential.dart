@@ -9,7 +9,7 @@ import '../helpers.dart';
 /// Computes the element-wise exponential of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// It is an error if the provided [out] buffer has an incompatible shape (throws [ArgumentError]).
@@ -22,18 +22,29 @@ import '../helpers.dart';
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Exponential Function](https://en.wikipedia.org/wiki/Exponential_function)
-NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
+NDArray<R> exp<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute exp() on a disposed array.');
   }
   final DType<R> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype as DType<R>;
   } else {
     targetDType =
-        (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
+        ((a.dtype as DType<DTypeTag>) == DType.float32
+                ? DType.float32
+                : DType.float64)
+            as DType<R>;
   }
 
   if (out != null) {
@@ -152,7 +163,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    unaryOp<dynamic, dynamic>(
+    unaryOp<DTypeTag, DTypeTag>(
       result,
       a,
       a.shape,
@@ -180,7 +191,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
 /// Computes the element-wise natural logarithm of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and the resolved floating-point dtype (Float32 if [a] is Float32, Float64 otherwise).
 ///
 /// It is an error if the provided [out] buffer has an incompatible shape (throws [ArgumentError]).
@@ -193,17 +204,27 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Natural Logarithm](https://en.wikipedia.org/wiki/Natural_logarithm)
-NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
+NDArray<R> log<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute log() on a disposed array.');
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  final DType<DTypeTag> targetDType;
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype;
   } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+    targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+        ? DType.float32
+        : DType.float64;
   }
 
   if (out != null) {
@@ -326,7 +347,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    unaryOp<dynamic, dynamic>(
+    unaryOp<DTypeTag, DTypeTag>(
       result,
       a,
       a.shape,
@@ -358,9 +379,12 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<R> log2<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> log2<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -368,11 +392,14 @@ NDArray<R> log2<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute log2() on a disposed array.');
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  final DType<DTypeTag> targetDType;
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype;
   } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+    targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+        ? DType.float32
+        : DType.float64;
   }
 
   if (out != null) {
@@ -496,7 +523,7 @@ NDArray<R> log2<T, R>(
       }
     }
 
-    unaryOp<dynamic, dynamic>(
+    unaryOp<DTypeTag, DTypeTag>(
       result,
       a,
       a.shape,
@@ -528,9 +555,12 @@ NDArray<R> log2<T, R>(
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<R> log10<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> log10<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -538,11 +568,14 @@ NDArray<R> log10<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute log10() on a disposed array.');
   }
-  final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  final DType<DTypeTag> targetDType;
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     targetDType = a.dtype;
   } else {
-    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+    targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+        ? DType.float32
+        : DType.float64;
   }
 
   if (out != null) {
@@ -666,7 +699,7 @@ NDArray<R> log10<T, R>(
       }
     }
 
-    unaryOp<dynamic, dynamic>(
+    unaryOp<DTypeTag, DTypeTag>(
       result,
       a,
       a.shape,

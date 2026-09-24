@@ -52,14 +52,14 @@ void _fastCopyAndCast(NDArray src, NDArray dest) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<int>.fromList([0, 1, 1, 3, 2, 1, 7], [7], DType.int32);
+/// final a = NDArray<DTypeTag>.fromList([0, 1, 1, 3, 2, 1, 7], [7], DType.int32);
 /// final counts = bincount(a);
 /// ```
 ///
 /// Refer to the [NumPy bincount reference](https://numpy.org/doc/stable/reference/generated/numpy.bincount.html)
 /// for details.
-NDArray<T> bincount<T extends num>(
-  NDArray<int> x, {
+NDArray<T> bincount<T extends DTypeTag>(
+  NDArray<DTypeTag> x, {
   NDArray<T>? weights,
   int? minlength,
   NDArray<T>? out,
@@ -86,7 +86,7 @@ NDArray<T> bincount<T extends num>(
             'Output array must be 1D and have size at least $outSize.',
           );
         }
-        out.fill(normalizeScalar(0, out.dtype) as T);
+        out.fill(normalizeScalar(0, out.dtype) as num);
         return out;
       }
       final result = NDArray<T>.zeros([
@@ -131,7 +131,11 @@ NDArray<T> bincount<T extends num>(
             sharesMemory(x, out) ||
             (weights != null && sharesMemory(weights, out)));
     if (aliasesInput) {
-      final temp = bincount<num>(x, weights: weights, minlength: out.shape[0]);
+      final temp = bincount<DTypeTag>(
+        x,
+        weights: weights,
+        minlength: out.shape[0],
+      );
       _fastCopyAndCast(temp, out);
       return out;
     }
@@ -142,7 +146,7 @@ NDArray<T> bincount<T extends num>(
     final resSize = outSize;
 
     // Cast x to int32 or int64 if it is int16 or uint8
-    NDArray<int> xCast;
+    NDArray<DTypeTag> xCast;
     switch (x.dtype) {
       case DType.int32:
       case DType.int64:
@@ -160,7 +164,7 @@ NDArray<T> bincount<T extends num>(
                 NDArray<Int64>.zeros([outSize], DType.int64));
 
       if (out != null && !useTempResult) {
-        res64.fill(Int64(0));
+        res64.fill(0);
       }
 
       switch (xCast.dtype) {
@@ -211,17 +215,17 @@ NDArray<T> bincount<T extends num>(
       }
     } else {
       // Weighted bincount. Target DType must be float32 or float64.
-      final DType<num> wDType = targetDType.isFloating
+      final DType<DTypeTag> wDType = targetDType.isFloating
           ? targetDType
           : DType.float64;
-      NDArray<num> wCast = weights;
+      NDArray<DTypeTag> wCast = weights;
       if (weights.dtype != wDType) {
         wCast = castNDArray(weights, wDType);
       }
 
       final bool useTempResult = out == null || out.dtype != wDType;
-      final NDArray<num> resFloat = useTempResult
-          ? NDArray<num>.zeros([outSize], wDType)
+      final NDArray<DTypeTag> resFloat = useTempResult
+          ? NDArray<DTypeTag>.zeros([outSize], wDType)
           : out;
 
       if (out != null && !useTempResult) {
@@ -358,11 +362,24 @@ NDArray<T> bincount<T extends num>(
 ///
 /// Refer to the [NumPy digitize reference](https://numpy.org/doc/stable/reference/generated/numpy.digitize.html)
 /// for details.
-NDArray<Int32> digitize(
-  NDArray<num> x,
-  NDArray<num> bins, {
+NDArray<Int32> digitize<Tx extends DTypeTag, Tb extends DTypeTag>(
+  NDArray<Tx> x,
+  NDArray<Tb> bins, {
   bool right = false,
-  NDArray<int>? out,
+  NDArray<Int32>? out,
+}) => digitizeAs<Tx, Tb, Int32>(x, bins, DType.int32, right: right, out: out);
+
+/// Returns the indices of the bins to which each value in [x] belongs, stored
+/// in the specified integer [dtype].
+///
+/// Refer to [digitize] for full details.
+NDArray<R>
+digitizeAs<Tx extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
+  NDArray<Tx> x,
+  NDArray<Tb> bins,
+  DType<R> dtype, {
+  bool right = false,
+  NDArray<R>? out,
 }) {
   if (x.isDisposed || bins.isDisposed) {
     throw StateError('Cannot execute digitize() on disposed array(s).');
@@ -377,6 +394,9 @@ NDArray<Int32> digitize(
     throw StateError(
       'Cannot write digitize result to a disposed output array.',
     );
+  }
+  if (!dtype.isInteger) {
+    throw ArgumentError('dtype must be an integer DType, got $dtype.');
   }
   if (x.dtype.isComplex || bins.dtype.isComplex) {
     throw ArgumentError('Complex arrays are not supported in digitize.');
@@ -397,9 +417,9 @@ NDArray<Int32> digitize(
         prev = curr;
       }
     } else if (bins.dtype.isInteger) {
-      var prev = bins.getCell([0]).toInt();
+      var prev = (bins.getCell([0]) as num).toInt();
       for (var i = 1; i < len; i++) {
-        final curr = bins.getCell([i]).toInt();
+        final curr = (bins.getCell([i]) as num).toInt();
         if (curr < prev) increasing = false;
         if (curr > prev) decreasing = false;
         prev = curr;
@@ -427,13 +447,13 @@ NDArray<Int32> digitize(
       throw ArgumentError('bins must be monotonic.');
     }
 
-    final commonDType = resolveDType(bins.dtype, x.dtype) as DType<Object>;
-    final commonBins = bins.dtype == commonDType
-        ? bins as NDArray<Object>
-        : castNDArray<Object>(bins, commonDType);
-    final commonX = x.dtype == commonDType
-        ? x as NDArray<Object>
-        : castNDArray<Object>(x, commonDType);
+    final commonDType = resolveDType(bins.dtype, x.dtype);
+    final NDArray<DTypeTag> commonBins = bins.dtype == commonDType
+        ? bins
+        : castNDArray<DTypeTag>(bins, commonDType);
+    final NDArray<DTypeTag> commonX = x.dtype == commonDType
+        ? x
+        : castNDArray<DTypeTag>(x, commonDType);
 
     final side = right ? SearchSide.left : SearchSide.right;
     NDArray<Int32> res;
@@ -443,19 +463,22 @@ NDArray<Int32> digitize(
     } else {
       final flippedBins = flip(commonBins);
       final j = searchsorted(flippedBins, commonX, side: side);
-      final nArr = NDArray<Int32>.scalar(Int32(bins.size), dtype: DType.int32);
-      res = subtract<Int32, Int32, Int32>(nArr, j);
+      final nArr = NDArray<Int32>.scalar(bins.size, dtype: DType.int32);
+      res = subtract<Int32>(nArr, j);
     }
 
     if (out != null) {
-      if (!listEquals(out.shape, res.shape) || !out.dtype.isInteger) {
+      if (!listEquals(out.shape, res.shape) || out.dtype != dtype) {
         throw ArgumentError('Incompatible out buffer shape or dtype.');
       }
       _fastCopyAndCast(res, out);
-      return out as NDArray<Int32>;
+      return out;
     }
 
-    return res.detachToParentScope();
+    if (dtype == DType.int32) {
+      return (res as NDArray<R>).detachToParentScope();
+    }
+    return castNDArray<R>(res, dtype).detachToParentScope();
   });
 }
 
@@ -487,12 +510,12 @@ NDArray<Int32> digitize(
 ///
 /// Refer to the [NumPy histogram reference](https://numpy.org/doc/stable/reference/generated/numpy.histogram.html)
 /// for details.
-({NDArray<num> hist, NDArray<Float64> binEdges}) histogram(
-  NDArray<num> x, {
+({NDArray<DTypeTag> hist, NDArray<Float64> binEdges}) histogram(
+  NDArray<DTypeTag> x, {
   dynamic bins = 10,
   (double, double)? range,
   bool density = false,
-  NDArray<num>? weights,
+  NDArray<DTypeTag>? weights,
 }) {
   if (x.isDisposed) {
     throw StateError('Cannot compute histogram of a disposed array.');
@@ -517,11 +540,11 @@ NDArray<Int32> digitize(
               ? weights
               : (weights.rank == 1 ? weights : weights.ravel()));
 
-    final NDArray<num> flatX =
+    final NDArray<DTypeTag> flatX =
         (rawFlatX.dtype == DType.float16 || rawFlatX.dtype == DType.bfloat16)
         ? castNDArray<Float64>(rawFlatX, DType.float64)
         : rawFlatX;
-    final NDArray<num>? flatWeights = rawFlatWeights == null
+    final NDArray<DTypeTag>? flatWeights = rawFlatWeights == null
         ? null
         : ((rawFlatWeights.dtype == DType.float16 ||
                   rawFlatWeights.dtype == DType.bfloat16)
@@ -555,8 +578,8 @@ NDArray<Int32> digitize(
           minX = 0.0;
           maxX = 1.0;
         } else {
-          final minRes = min<num>(flatX).scalar;
-          final maxRes = max<num>(flatX).scalar;
+          final minRes = min<DTypeTag>(flatX).scalar;
+          final maxRes = max<DTypeTag>(flatX).scalar;
           if (flatX.dtype == DType.uint64) {
             minX = BigInt.from(minRes as int).toUnsigned(64).toDouble();
             maxX = BigInt.from(maxRes as int).toUnsigned(64).toDouble();
@@ -574,8 +597,8 @@ NDArray<Int32> digitize(
         }
       }
       resolvedBinEdges = linspace<Float64>(
-        Float64(minX),
-        Float64(maxX),
+        minX,
+        maxX,
         nbins + 1,
         dtype: DType.float64,
       );
@@ -610,21 +633,23 @@ NDArray<Int32> digitize(
       throw ArgumentError('bins must be an int or an NDArray.');
     }
 
-    final DType<num> targetHistDType = switch (rawFlatWeights?.dtype) {
-      null => DType.int64 as DType<num>,
+    final DType<DTypeTag> targetHistDType = switch (rawFlatWeights?.dtype) {
+      null => DType.int64,
       DType.float64 ||
       DType.float32 ||
       DType.float16 ||
       DType.bfloat16 => rawFlatWeights!.dtype,
-      _ => DType.float64 as DType<num>,
+      _ => DType.float64,
     };
-    final DType<num> computeHistDType = switch (rawFlatWeights?.dtype) {
-      null => DType.int64 as DType<num>,
-      DType.float32 => DType.float32 as DType<num>,
-      _ => DType.float64 as DType<num>,
+    final DType<DTypeTag> computeHistDType = switch (rawFlatWeights?.dtype) {
+      null => DType.int64,
+      DType.float32 => DType.float32,
+      _ => DType.float64,
     };
 
-    final NDArray<num> hist = NDArray<num>.zeros([nbins], computeHistDType);
+    final NDArray<DTypeTag> hist = NDArray<DTypeTag>.zeros([
+      nbins,
+    ], computeHistDType);
 
     final pSrc = flatX.pointer.cast<ffi.Void>();
     final pWeights = flatWeights != null
@@ -708,21 +733,21 @@ NDArray<Int32> digitize(
       }
     }
 
-    NDArray<num> finalHist = hist;
+    NDArray<DTypeTag> finalHist = hist;
     if (density) {
-      final totalSum = sum<num>(hist).scalar;
-      final widths = subtract<Float64, Float64, Float64>(
+      final totalSum = sum<DTypeTag>(hist).scalar;
+      final widths = subtract<Float64>(
         resolvedBinEdges.slice([Slice(start: 1)]),
         resolvedBinEdges.slice([Slice(stop: resolvedBinEdges.size - 1)]),
       );
       final totalSumArr = NDArray<Float64>.scalar(
-        Float64(totalSum.toDouble()),
+        totalSum.toDouble(),
         dtype: DType.float64,
       );
-      final divisor = multiply<Float64, Float64, Float64>(widths, totalSumArr);
-      finalHist = divide<num, Float64, Float64>(hist, divisor);
+      final divisor = multiply<Float64>(widths, totalSumArr);
+      finalHist = divide<DTypeTag, Float64, Float64>(hist, divisor);
     } else if (targetHistDType != computeHistDType) {
-      finalHist = castNDArray<num>(hist, targetHistDType);
+      finalHist = castNDArray<DTypeTag>(hist, targetHistDType);
     }
 
     return (

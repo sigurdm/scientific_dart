@@ -47,7 +47,7 @@ void main() {
       DType.uint8,
     ];
 
-    NDArray<Object> createSampleArray(
+    NDArray<AnySpec> createSampleArray(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -62,17 +62,17 @@ void main() {
         return val;
       });
 
-      final dtObj = dt as DType<Object>;
+      final dtObj = dt;
       if (strided) {
-        final flatArr = NDArray<Object>.fromList(rawList, [size * 2], dtObj);
+        final flatArr = NDArray.fromList(rawList, [size * 2], dtObj);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<Object>.fromList(rawList, shape, dtObj);
+        return NDArray.fromList(rawList, shape, (dtObj as DType<AnySpec>));
       }
     }
 
-    NDArray<num> createNumericArray(
+    NDArray<AnySpec> createNumericArray(
       DType dt,
       List<int> shape, {
       bool strided = false,
@@ -82,13 +82,13 @@ void main() {
         size * (strided ? 2 : 1),
         (i) => ((i % 5) + 1),
       );
-      final dtNum = dt as DType<num>;
+      final dtNum = dt;
       if (strided) {
-        final flatArr = NDArray<num>.fromList(rawList, [size * 2], dtNum);
+        final flatArr = NDArray.fromList(rawList, [size * 2], dtNum);
         final sliced = flatArr[Slice(step: 2)];
         return sliced.reshape(shape);
       } else {
-        return NDArray<num>.fromList(rawList, shape, dtNum);
+        return NDArray.fromList(rawList, shape, (dtNum as DType<AnySpec>));
       }
     }
 
@@ -283,13 +283,13 @@ void main() {
           final a1d = createSampleArray(dt, [8]);
           final f1 = fft(a1d);
           expect(f1.shape, [8]);
-          final if1 = ifft(f1);
+          final if1 = ifft((f1 as NDArray<AnySpec>));
           expect(if1.shape, [8]);
 
           final a2d = createSampleArray(dt, [4, 4]);
           final f2 = fft2(a2d);
           expect(f2.shape, [4, 4]);
-          final if2 = ifft2(f2);
+          final if2 = ifft2((f2 as NDArray<AnySpec>));
           expect(if2.shape, [4, 4]);
 
           final trans = a2d.transpose();
@@ -300,7 +300,7 @@ void main() {
           final aReal = createNumericArray(dt, [8]);
           final rf = rfft(aReal);
           expect(rf.shape, [5]);
-          final irf = irfft(rf, n: 8);
+          final irf = irfft((rf as NDArray<AnySpec>), n: 8);
           expect(irf.shape, [8]);
 
           final a2dReal = createNumericArray(dt, [4, 4]);

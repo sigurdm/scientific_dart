@@ -25,7 +25,7 @@ final _fortranRegex = RegExp(
 final _shapeRegex = RegExp(r'''['"]shape['"]:\s*\(?([^\)]*)\)?''');
 
 /// Maps a NumPy descriptor string back to an [NDArray] [DType].
-DType<dynamic> _descrToDType(String descr) {
+DType<DTypeTag> _descrToDType(String descr) {
   if (descr.contains('>')) {
     throw UnsupportedError('Big-Endian .npy files are not supported yet.');
   }
@@ -85,7 +85,7 @@ DType<dynamic> _descrToDType(String descr) {
 ///
 /// Refer to the [NumPy save reference](https://numpy.org/doc/stable/reference/generated/numpy.save.html)
 /// and [NPY format specification](https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html) for details.
-void save<T>(String filepath, NDArray<T> a) {
+void save<T extends DTypeTag>(String filepath, NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot save a disposed NDArray.');
   }
@@ -221,7 +221,7 @@ Uint8List _readExactSync(RandomAccessFile raf, int count) {
 ///
 /// Refer to the [NumPy NPY Format Specification](https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html)
 /// for details on the binary format.
-NDArray<dynamic> load(String filepath) {
+NDArray<DTypeTag> load(String filepath) {
   final file = File(filepath);
   if (!file.existsSync()) {
     throw FileSystemException('File not found for load', filepath);
@@ -368,7 +368,7 @@ NDArray<dynamic> load(String filepath) {
 /// for details on NumPy archive formats.
 void savez(
   String filepath,
-  Map<String, NDArray<dynamic>> arrays, {
+  Map<String, NDArray<DTypeTag>> arrays, {
   bool compressed = false,
 }) {
   for (final entry in arrays.entries) {
@@ -383,7 +383,7 @@ void savez(
   }
 
   final numArrays = arrays.length;
-  final toDispose = <NDArray<dynamic>>[];
+  final toDispose = <NDArray<DTypeTag>>[];
 
   final marker = ScratchArena.marker;
   try {
@@ -406,7 +406,7 @@ void savez(
     var idx = 0;
     for (final entry in arrays.entries) {
       final arr = entry.value;
-      final NDArray<dynamic> effectiveArray;
+      final NDArray<DTypeTag> effectiveArray;
       if (!arr.isContiguous) {
         effectiveArray = arr.copy();
         toDispose.add(effectiveArray);
@@ -540,7 +540,7 @@ void savez(
 ///
 /// Refer to the [NumPy load reference](https://numpy.org/doc/stable/reference/generated/numpy.load.html)
 /// and [ZIP format details](https://en.wikipedia.org/wiki/ZIP_(file_format)) for additional information.
-Map<String, NDArray<dynamic>> loadz(String filepath) {
+Map<String, NDArray<DTypeTag>> loadz(String filepath) {
   final file = File(filepath);
   if (!file.existsSync()) {
     throw FileSystemException('File not found for loadz npz', filepath);
@@ -560,7 +560,7 @@ Map<String, NDArray<dynamic>> loadz(String filepath) {
 
     try {
       final numEntries = pNumEntries.value;
-      final results = <String, NDArray<dynamic>>{};
+      final results = <String, NDArray<DTypeTag>>{};
 
       const nameBufLen = 512;
       final nameBuf = ScratchArena.allocate<ffi.Char>(

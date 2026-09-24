@@ -18,10 +18,7 @@ void main() {
     test(
       'scalar getter throws StateError on disposed array (even before rank check)',
       () {
-        final a0 = NDArray<Float64>.scalar(
-          const Float64(42.0),
-          dtype: DType.float64,
-        );
+        final a0 = NDArray<Float64>.scalar(42.0, dtype: DType.float64);
         a0.dispose();
         expect(() => a0.scalar, throwsStateError);
 
@@ -42,8 +39,8 @@ void main() {
         a.dispose();
         expect(() => a.getCell([0, 0]), throwsStateError);
         expect(() => a.getCell([0]), throwsStateError);
-        expect(() => a.setCell([0, 0], const Float64(10.0)), throwsStateError);
-        expect(() => a.setCell([0], const Float64(10.0)), throwsStateError);
+        expect(() => a.setCell([0, 0], 10.0), throwsStateError);
+        expect(() => a.setCell([0], 10.0), throwsStateError);
       },
     );
 
@@ -52,7 +49,7 @@ void main() {
       () {
         NDArray.scope(() {
           final a = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false],
             [2],
             DType.boolean,
@@ -74,19 +71,17 @@ void main() {
     test('setByMaskScalar throws StateError if target or mask is disposed', () {
       NDArray.scope(() {
         final a = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
-        final mask = NDArray<bool>.fromList([true, false], [2], DType.boolean);
+        final mask = NDArray<Boolean>.fromList(
+          [true, false],
+          [2],
+          DType.boolean,
+        );
 
         final disposedA = a.copy()..dispose();
-        expect(
-          () => disposedA.setByMaskScalar(mask, const Float64(99.0)),
-          throwsStateError,
-        );
+        expect(() => disposedA.setByMaskScalar(mask, 99.0), throwsStateError);
 
         final disposedMask = mask.copy()..dispose();
-        expect(
-          () => a.setByMaskScalar(disposedMask, const Float64(99.0)),
-          throwsStateError,
-        );
+        expect(() => a.setByMaskScalar(disposedMask, 99.0), throwsStateError);
       });
     });
 
@@ -99,19 +94,13 @@ void main() {
             [3],
             DType.float64,
           );
-          final idx = NDArray<int>.fromList([0, 2], [2], DType.int32);
+          final idx = NDArray.fromList([0, 2], [2], DType.int32);
 
           final disposedA = a.copy()..dispose();
-          expect(
-            () => disposedA.setIndicesScalar(idx, const Float64(99.0)),
-            throwsStateError,
-          );
+          expect(() => disposedA.setIndicesScalar(idx, 99.0), throwsStateError);
 
           final disposedIdx = idx.copy()..dispose();
-          expect(
-            () => a.setIndicesScalar(disposedIdx, const Float64(99.0)),
-            throwsStateError,
-          );
+          expect(() => a.setIndicesScalar(disposedIdx, 99.0), throwsStateError);
         });
       },
     );
@@ -125,7 +114,7 @@ void main() {
             [3],
             DType.float64,
           );
-          final idx = NDArray<int>.fromList([0, 2], [2], DType.int32);
+          final idx = NDArray.fromList([0, 2], [2], DType.int32);
           final vals = NDArray<Float64>.fromList(
             [10.0, 20.0],
             [2],
@@ -149,7 +138,7 @@ void main() {
       () {
         NDArray.scope(() {
           final a = NDArray<Float64>.create([0], DType.float64);
-          final maskWrongShape = NDArray<bool>.fromList(
+          final maskWrongShape = NDArray<Boolean>.fromList(
             [true, false],
             [2],
             DType.boolean,
@@ -210,10 +199,10 @@ void main() {
           );
 
           src.copy(out: dst);
-          expect(dst.getCell([0, 0]), equals(const Float64(1.0)));
-          expect(dst.getCell([0, 1]), equals(const Float64(3.0)));
-          expect(dst.getCell([1, 0]), equals(const Float64(2.0)));
-          expect(dst.getCell([1, 1]), equals(const Float64(4.0)));
+          expect(dst.getCell([0, 0]), equals(1.0));
+          expect(dst.getCell([0, 1]), equals(3.0));
+          expect(dst.getCell([1, 0]), equals(2.0));
+          expect(dst.getCell([1, 1]), equals(4.0));
         } finally {
           malloc.free(ptr);
         }
@@ -300,11 +289,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final indices = NDArray<int>.fromList(
-            [1, 0, 1, 0],
-            [2, 2],
-            DType.int32,
-          );
+          final indices = NDArray.fromList([1, 0, 1, 0], [2, 2], DType.int32);
           final expected = take_along_axis(a, indices, 1);
 
           final aCopy = a.copy();
@@ -327,11 +312,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final indices = NDArray<int>.fromList(
-            [1, 0, 1, 0],
-            [2, 2],
-            DType.int32,
-          );
+          final indices = NDArray.fromList([1, 0, 1, 0], [2, 2], DType.int32);
 
           // Values is a view of out buffer
           final out = a.copy();
@@ -340,10 +321,10 @@ void main() {
 
           // row 0: idx 1 gets values[0,0]=1.0, idx 0 gets values[0,1]=2.0 => [2.0, 1.0]
           // row 1: idx 1 gets values[1,0]=3.0, idx 0 gets values[1,1]=4.0 => [4.0, 3.0]
-          expect(out.getCell([0, 0]), equals(const Float64(2.0)));
-          expect(out.getCell([0, 1]), equals(const Float64(1.0)));
-          expect(out.getCell([1, 0]), equals(const Float64(4.0)));
-          expect(out.getCell([1, 1]), equals(const Float64(3.0)));
+          expect(out.getCell([0, 0]), equals(2.0));
+          expect(out.getCell([0, 1]), equals(1.0));
+          expect(out.getCell([1, 0]), equals(4.0));
+          expect(out.getCell([1, 1]), equals(3.0));
         });
       },
     );
@@ -362,7 +343,7 @@ void main() {
             [3],
             DType.float64,
           );
-          final a = NDArray<int>.fromList([1, 0, 1], [3], DType.int32);
+          final a = NDArray.fromList([1, 0, 1], [3], DType.int32);
           final expected = choose<Float64>(a, [c0, c1]);
 
           final c0Copy = c0.copy();
@@ -374,7 +355,7 @@ void main() {
           for (var i = 0; i < 3; i++) {
             expect(c0Copy.getCell([i]), equals(expectedRev.getCell([i])));
           }
-          expect(expected.getCell([0]), equals(const Float64(10.0)));
+          expect(expected.getCell([0]), equals(10.0));
         });
       },
     );
@@ -383,7 +364,7 @@ void main() {
       'select protects against aliasing when out shares memory with choicelist or default',
       () {
         NDArray.scope(() {
-          final cond = NDArray<bool>.fromList(
+          final cond = NDArray<Boolean>.fromList(
             [true, false, true],
             [3],
             DType.boolean,
@@ -424,20 +405,20 @@ void main() {
               [4],
               DType.float64,
             );
-            final idx = NDArray<int>.fromList([3, 1], [2], DType.int32);
+            final idx = NDArray.fromList([3, 1], [2], DType.int32);
 
             final res = a[idx] as NDArray<Float64>;
             expect(res.shape, equals([2]));
-            expect(res.getCell([0]), equals(const Float64(40.0)));
-            expect(res.getCell([1]), equals(const Float64(20.0)));
+            expect(res.getCell([0]), equals(40.0));
+            expect(res.getCell([1]), equals(20.0));
 
             a[idx] = NDArray<Float64>.fromList(
               [99.0, 88.0],
               [2],
               DType.float64,
             );
-            expect(a.getCell([3]), equals(const Float64(99.0)));
-            expect(a.getCell([1]), equals(const Float64(88.0)));
+            expect(a.getCell([3]), equals(99.0));
+            expect(a.getCell([1]), equals(88.0));
 
             final disposedIdx = idx.copy()..dispose();
             expect(() => a[disposedIdx], throwsStateError);
@@ -457,7 +438,7 @@ void main() {
               [2],
               DType.float64,
             );
-            final mask = NDArray<bool>.fromList(
+            final mask = NDArray<Boolean>.fromList(
               [true, false],
               [2],
               DType.boolean,

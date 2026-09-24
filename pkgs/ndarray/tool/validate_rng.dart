@@ -42,7 +42,7 @@ void runUniformTests() {
   _evaluateUniform('/dev/urandom (Secure FFI)', uSec);
 }
 
-void _evaluateUniform(String label, NDArray<double> arr) {
+void _evaluateUniform(String label, NDArray<Float64> arr) {
   final len = arr.data.length;
   final data = arr.data;
 
@@ -142,7 +142,7 @@ void runNormalTests() {
   _evaluateNormal('/dev/urandom (Secure FFI)', nSec);
 }
 
-void _evaluateNormal(String label, NDArray<double> arr) {
+void _evaluateNormal(String label, NDArray<Float64> arr) {
   final len = arr.data.length;
   final data = arr.data;
 
@@ -214,7 +214,7 @@ void runRandintTests() {
   _evaluateRandint('/dev/urandom (Secure FFI)', rSec);
 }
 
-void _evaluateRandint(String label, NDArray<int> arr) {
+void _evaluateRandint(String label, NDArray<Int64> arr) {
   final len = arr.data.length;
   final data = arr.data;
 

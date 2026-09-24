@@ -7,7 +7,7 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
         final outSlice = a.slice([Index(0)]);
-        final res = sum<double>(a, axis: 0, out: outSlice);
+        final res = sum<DTypeTag>(a, axis: 0, out: outSlice);
         expect(res, same(outSlice));
         expect(res.toList(), equals([4.0, 6.0]));
         expect(a.toList(), equals([4.0, 6.0, 3.0, 4.0]));
@@ -18,7 +18,7 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([2.0, 3.0, 4.0, 5.0], [2, 2], DType.float64);
         final outSlice = a.slice([Index(0)]);
-        final res = prod<double>(a, axis: 0, out: outSlice);
+        final res = prod<DTypeTag>(a, axis: 0, out: outSlice);
         expect(res, same(outSlice));
         expect(res.toList(), equals([8.0, 15.0]));
       });

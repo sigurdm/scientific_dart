@@ -46,7 +46,7 @@ void runNativeSortExample() {
 void runComplexSortExample() {
   NDArray.scope(() {
     print('\n--- NumPy-Compliant Complex Number Lexicographical Sort ---');
-    final a = NDArray<Complex>.create([4], DType.complex128);
+    final a = NDArray<DTypeTag>.create([4], DType.complex128);
     // Lexicographical rule: sorted by real part, then by imaginary part if reals match!
     a[0] = Complex(2.0, 5.0);
     a[1] = Complex(1.0, 10.0);

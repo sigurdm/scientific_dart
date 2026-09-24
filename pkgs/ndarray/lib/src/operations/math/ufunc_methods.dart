@@ -17,7 +17,7 @@ import 'trigonometric.dart';
 import 'utility.dart';
 
 /// Extension methods for generalized ufunc operations on [NDArray].
-extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
+extension UfuncNDArrayExtension<T extends DTypeTag> on NDArray<T> {
   /// Reduces this array along [axis] using [op].
   ///
   /// **Preconditions:**
@@ -31,7 +31,7 @@ extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
     int? axis,
     bool keepdims = false,
     NDArray<T>? out,
-    T? initial,
+    Object? initial,
   }) => reduceUfunc(
     this,
     op: op,
@@ -62,7 +62,7 @@ extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
   /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
   /// - It is an error if [out] (if provided) has incompatible shape or dtype.
   NDArray<T> reduceat(
-    NDArray<int> indices, {
+    NDArray<DTypeTag> indices, {
     required BinaryOp op,
     int axis = 0,
     NDArray<T>? out,
@@ -76,7 +76,7 @@ extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
   NDArray<T> outer(
     NDArray<T> b, {
     BinaryOp op = BinaryOp.multiply,
-    NDArray<dynamic>? where,
+    NDArray<DTypeTag>? where,
     NDArray<T>? out,
   }) => outerUfunc(this, b, op: op, where: where, out: out);
 
@@ -84,11 +84,14 @@ extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
   ///
   /// **Preconditions:**
   /// - It is an error if this array, [indices], or [b] is disposed.
-  void at(NDArray<int> indices, NDArray<Object> b, {required BinaryOp op}) =>
-      atUfunc(this, indices, b, op: op);
+  void at(
+    NDArray<DTypeTag> indices,
+    NDArray<DTypeTag> b, {
+    required BinaryOp op,
+  }) => atUfunc(this, indices, b, op: op);
 }
 
-NDArray<U> _asView<U>(NDArray a) {
+NDArray<U> _asView<U extends DTypeTag>(NDArray a) {
   if (a is NDArray<U>) return a;
   return NDArray<U>.view(
     a,
@@ -98,12 +101,12 @@ NDArray<U> _asView<U>(NDArray a) {
   );
 }
 
-NDArray<U>? _asViewNullable<U>(NDArray? a) {
+NDArray<U>? _asViewNullable<U extends DTypeTag>(NDArray? a) {
   if (a == null) return null;
   return _asView<U>(a);
 }
 
-NDArray<R> _createTyped<R>(
+NDArray<R> _createTyped<R extends DTypeTag>(
   List<int> shape,
   DType dtype, {
   bool zeroInit = false,
@@ -165,7 +168,7 @@ NDArray<R> _createTyped<R>(
       DType.uint8,
       zeroInit: zeroInit,
     ),
-    DType.boolean => NDArray<bool>.create(
+    DType.boolean => NDArray<Boolean>.create(
       shape,
       DType.boolean,
       zeroInit: zeroInit,
@@ -185,11 +188,11 @@ NDArray<R> _createTyped<R>(
 }
 
 /// Evaluates binary operation [op] element-wise between [a] and [b].
-NDArray<R> binaryUfunc<T extends Object, R extends Object>(
+NDArray<R> binaryUfunc<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   required BinaryOp op,
-  NDArray<dynamic>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   switch (op) {
@@ -203,7 +206,12 @@ NDArray<R> binaryUfunc<T extends Object, R extends Object>(
       final res = multiply(a, b, where: where, out: _asViewNullable<T>(out));
       return out ?? _asView<R>(res);
     case BinaryOp.divide:
-      final res = divide(a, b, where: where, out: _asViewNullable<double>(out));
+      final res = divide(
+        a,
+        b,
+        where: where,
+        out: _asViewNullable<Float64>(out),
+      );
       return out ?? _asView<R>(res);
     case BinaryOp.floorDivide:
       final res = floor_divide(
@@ -264,31 +272,31 @@ NDArray<R> binaryUfunc<T extends Object, R extends Object>(
         }
       }
     case BinaryOp.logaddexp:
-      final res = logaddexp<num, num>(
-        _asView<num>(a),
-        _asView<num>(b),
+      final res = logaddexp<DTypeTag, DTypeTag>(
+        _asView<DTypeTag>(a),
+        _asView<DTypeTag>(b),
         where: where,
         out: _asViewNullable<Float64>(out),
       );
       return out ?? _asView<R>(res);
     case BinaryOp.logaddexp2:
-      final res = logaddexp2<num, num>(
-        _asView<num>(a),
-        _asView<num>(b),
+      final res = logaddexp2<DTypeTag, DTypeTag>(
+        _asView<DTypeTag>(a),
+        _asView<DTypeTag>(b),
         where: where,
         out: _asViewNullable<Float64>(out),
       );
       return out ?? _asView<R>(res);
     case BinaryOp.arctan2:
-      final res = atan2<num, num>(
-        _asView<num>(a),
-        _asView<num>(b),
+      final res = atan2<DTypeTag, DTypeTag>(
+        _asView<DTypeTag>(a),
+        _asView<DTypeTag>(b),
         where: where,
         out: _asViewNullable<Float64>(out),
       );
       return out ?? _asView<R>(res);
     case BinaryOp.hypot:
-      return hypot<dynamic, dynamic, R>(a, b, where: where, out: out);
+      return hypot<DTypeTag, DTypeTag, R>(a, b, where: where, out: out);
     case BinaryOp.copysign:
       final res = copysign<R>(
         _asView<R>(a),
@@ -298,21 +306,26 @@ NDArray<R> binaryUfunc<T extends Object, R extends Object>(
       );
       return out ?? _asView<R>(res);
     case BinaryOp.bitwiseAnd:
-      return bitwise_and<dynamic, dynamic, R>(a, b, where: where, out: out);
+      final res = bitwise_and<DTypeTag>(a, b, where: where, out: out);
+      return out ?? _asView<R>(res);
     case BinaryOp.bitwiseOr:
-      return bitwise_or<dynamic, dynamic, R>(a, b, where: where, out: out);
+      final res = bitwise_or<DTypeTag>(a, b, where: where, out: out);
+      return out ?? _asView<R>(res);
     case BinaryOp.bitwiseXor:
-      return bitwise_xor<dynamic, dynamic, R>(a, b, where: where, out: out);
+      final res = bitwise_xor<DTypeTag>(a, b, where: where, out: out);
+      return out ?? _asView<R>(res);
     case BinaryOp.leftShift:
-      return left_shift<dynamic, dynamic, R>(a, b, where: where, out: out);
+      final res = left_shift<DTypeTag>(a, b, where: where, out: out);
+      return out ?? _asView<R>(res);
     case BinaryOp.rightShift:
-      return right_shift<dynamic, dynamic, R>(a, b, where: where, out: out);
+      final res = right_shift<DTypeTag>(a, b, where: where, out: out);
+      return out ?? _asView<R>(res);
     case BinaryOp.logicalAnd:
       final res = logical_and(
         a,
         b,
         where: where,
-        out: _asViewNullable<bool>(out),
+        out: _asViewNullable<Boolean>(out),
       );
       return out ?? _asView<R>(res);
     case BinaryOp.logicalOr:
@@ -320,7 +333,7 @@ NDArray<R> binaryUfunc<T extends Object, R extends Object>(
         a,
         b,
         where: where,
-        out: _asViewNullable<bool>(out),
+        out: _asViewNullable<Boolean>(out),
       );
       return out ?? _asView<R>(res);
     case BinaryOp.logicalXor:
@@ -328,7 +341,7 @@ NDArray<R> binaryUfunc<T extends Object, R extends Object>(
         a,
         b,
         where: where,
-        out: _asViewNullable<bool>(out),
+        out: _asViewNullable<Boolean>(out),
       );
       return out ?? _asView<R>(res);
     case BinaryOp.minimum:
@@ -400,12 +413,12 @@ int _compareValues(dynamic a, dynamic b, DType dtype) {
   return (a as num).compareTo(b as num);
 }
 
-NDArray<R> _elementwiseMinMax<T extends Object, R extends Object>(
+NDArray<R> _elementwiseMinMax<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   required bool isMax,
   required bool ignoreNaN,
-  NDArray<dynamic>? whereMask,
+  NDArray<DTypeTag>? whereMask,
   NDArray<R>? out,
 }) {
   final targetShape = broadcastShapes(a.shape, b.shape);
@@ -441,13 +454,13 @@ NDArray<R> _elementwiseMinMax<T extends Object, R extends Object>(
   final bCasted = b.dtype != targetDType
       ? castNDArray<R>(b, targetDType as DType<R>)
       : _asView<R>(b);
-  NDArray<bool>? wBool;
-  NDArray<bool>? wBroadcast;
+  NDArray<Boolean>? wBool;
+  NDArray<Boolean>? wBroadcast;
   try {
     if (whereMask != null) {
       wBool = whereMask.dtype == DType.boolean
-          ? _asView<bool>(whereMask)
-          : castNDArray<bool>(whereMask, DType.boolean);
+          ? _asView<Boolean>(whereMask)
+          : castNDArray<Boolean>(whereMask, DType.boolean);
       wBroadcast = broadcastTo(wBool, targetShape);
     }
     final result =
@@ -467,7 +480,7 @@ NDArray<R> _elementwiseMinMax<T extends Object, R extends Object>(
       final valB = bCasted.getCellRaw(idxB);
       final nanA = _isValueNaN(valA);
       final nanB = _isValueNaN(valB);
-      final R chosen;
+      final Object? chosen;
       if (nanA || nanB) {
         if (ignoreNaN) {
           if (nanA && nanB) {
@@ -513,13 +526,13 @@ NDArray<R> _elementwiseMinMax<T extends Object, R extends Object>(
 /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
 /// - It is an error if [a] is empty without [initial].
 /// - It is an error if [out] (if provided) has incompatible shape or dtype.
-NDArray<T> reduce<T extends Object>(
+NDArray<T> reduce<T extends DTypeTag>(
   NDArray<T> a, {
   required BinaryOp op,
   int? axis,
   bool keepdims = false,
   NDArray<T>? out,
-  T? initial,
+  Object? initial,
 }) => reduceUfunc(
   a,
   op: op,
@@ -536,7 +549,7 @@ NDArray<T> reduce<T extends Object>(
 /// - It is an error if [a] or [out] (if provided) is disposed.
 /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
 /// - It is an error if [out] (if provided) has incompatible shape or dtype.
-NDArray<T> accumulate<T extends Object>(
+NDArray<T> accumulate<T extends DTypeTag>(
   NDArray<T> a, {
   required BinaryOp op,
   int axis = 0,
@@ -550,9 +563,9 @@ NDArray<T> accumulate<T extends Object>(
 /// - It is an error if [a], [indices], or [out] is disposed.
 /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
 /// - It is an error if [out] (if provided) has incompatible shape or dtype.
-NDArray<T> reduceat<T extends Object>(
+NDArray<T> reduceat<T extends DTypeTag>(
   NDArray<T> a,
-  NDArray<int> indices, {
+  NDArray<DTypeTag> indices, {
   required BinaryOp op,
   int axis = 0,
   NDArray<T>? out,
@@ -562,21 +575,21 @@ NDArray<T> reduceat<T extends Object>(
 ///
 /// **Preconditions:**
 /// - It is an error if [a], [indices], or [b] is disposed.
-void at<T extends Object>(
+void at<T extends DTypeTag>(
   NDArray<T> a,
-  NDArray<int> indices,
-  NDArray<Object> b, {
+  NDArray<DTypeTag> indices,
+  NDArray<DTypeTag> b, {
   required BinaryOp op,
 }) => atUfunc(a, indices, b, op: op);
 
 /// Generalized ufunc reduction function.
-NDArray<T> reduceUfunc<T extends Object>(
+NDArray<T> reduceUfunc<T extends DTypeTag>(
   NDArray<T> a, {
   required BinaryOp op,
   int? axis,
   bool keepdims = false,
   NDArray<T>? out,
-  T? initial,
+  Object? initial,
 }) {
   if (!op.isReducible) {
     throw ArgumentError('Operation ${op.name} is not reducible.');
@@ -629,22 +642,22 @@ NDArray<T> reduceUfunc<T extends Object>(
         case BinaryOp.add:
           switch (a.dtype) {
             case DType.float64:
-              result.fill(r_sum_double(a.pointer.cast(), a.size) as T);
+              result.fill(r_sum_double(a.pointer.cast(), a.size));
               handled = true;
             case DType.float32:
-              result.fill(r_sum_float(a.pointer.cast(), a.size) as T);
+              result.fill(r_sum_float(a.pointer.cast(), a.size));
               handled = true;
             case DType.int64:
-              result.fill(r_sum_int64(a.pointer.cast(), a.size) as T);
+              result.fill(r_sum_int64(a.pointer.cast(), a.size));
               handled = true;
             case DType.int32:
-              result.fill(r_sum_int32(a.pointer.cast(), a.size) as T);
+              result.fill(r_sum_int32(a.pointer.cast(), a.size));
               handled = true;
             case DType.uint8:
-              result.fill(r_sum_uint8(a.pointer.cast(), a.size) as T);
+              result.fill(r_sum_uint8(a.pointer.cast(), a.size));
               handled = true;
             case DType.int16:
-              result.fill(r_sum_int16(a.pointer.cast(), a.size) as T);
+              result.fill(r_sum_int16(a.pointer.cast(), a.size));
               handled = true;
             default:
               break;
@@ -652,22 +665,22 @@ NDArray<T> reduceUfunc<T extends Object>(
         case BinaryOp.multiply:
           switch (a.dtype) {
             case DType.float64:
-              result.fill(r_prod_double(a.pointer.cast(), a.size) as T);
+              result.fill(r_prod_double(a.pointer.cast(), a.size));
               handled = true;
             case DType.float32:
-              result.fill(r_prod_float(a.pointer.cast(), a.size) as T);
+              result.fill(r_prod_float(a.pointer.cast(), a.size));
               handled = true;
             case DType.int64:
-              result.fill(r_prod_int64(a.pointer.cast(), a.size) as T);
+              result.fill(r_prod_int64(a.pointer.cast(), a.size));
               handled = true;
             case DType.int32:
-              result.fill(r_prod_int32(a.pointer.cast(), a.size) as T);
+              result.fill(r_prod_int32(a.pointer.cast(), a.size));
               handled = true;
             case DType.uint8:
-              result.fill(r_prod_uint8(a.pointer.cast(), a.size) as T);
+              result.fill(r_prod_uint8(a.pointer.cast(), a.size));
               handled = true;
             case DType.int16:
-              result.fill(r_prod_int16(a.pointer.cast(), a.size) as T);
+              result.fill(r_prod_int16(a.pointer.cast(), a.size));
               handled = true;
             default:
               break;
@@ -675,22 +688,22 @@ NDArray<T> reduceUfunc<T extends Object>(
         case BinaryOp.minimum:
           switch (a.dtype) {
             case DType.float64:
-              result.fill(r_min_double(a.pointer.cast(), a.size) as T);
+              result.fill(r_min_double(a.pointer.cast(), a.size));
               handled = true;
             case DType.float32:
-              result.fill(r_min_float(a.pointer.cast(), a.size) as T);
+              result.fill(r_min_float(a.pointer.cast(), a.size));
               handled = true;
             case DType.int64:
-              result.fill(r_min_int64_t(a.pointer.cast(), a.size) as T);
+              result.fill(r_min_int64_t(a.pointer.cast(), a.size));
               handled = true;
             case DType.int32:
-              result.fill(r_min_int32_t(a.pointer.cast(), a.size) as T);
+              result.fill(r_min_int32_t(a.pointer.cast(), a.size));
               handled = true;
             case DType.uint8:
-              result.fill(r_min_uint8_t(a.pointer.cast(), a.size) as T);
+              result.fill(r_min_uint8_t(a.pointer.cast(), a.size));
               handled = true;
             case DType.int16:
-              result.fill(r_min_int16_t(a.pointer.cast(), a.size) as T);
+              result.fill(r_min_int16_t(a.pointer.cast(), a.size));
               handled = true;
             default:
               break;
@@ -698,22 +711,22 @@ NDArray<T> reduceUfunc<T extends Object>(
         case BinaryOp.maximum:
           switch (a.dtype) {
             case DType.float64:
-              result.fill(r_max_double(a.pointer.cast(), a.size) as T);
+              result.fill(r_max_double(a.pointer.cast(), a.size));
               handled = true;
             case DType.float32:
-              result.fill(r_max_float(a.pointer.cast(), a.size) as T);
+              result.fill(r_max_float(a.pointer.cast(), a.size));
               handled = true;
             case DType.int64:
-              result.fill(r_max_int64_t(a.pointer.cast(), a.size) as T);
+              result.fill(r_max_int64_t(a.pointer.cast(), a.size));
               handled = true;
             case DType.int32:
-              result.fill(r_max_int32_t(a.pointer.cast(), a.size) as T);
+              result.fill(r_max_int32_t(a.pointer.cast(), a.size));
               handled = true;
             case DType.uint8:
-              result.fill(r_max_uint8_t(a.pointer.cast(), a.size) as T);
+              result.fill(r_max_uint8_t(a.pointer.cast(), a.size));
               handled = true;
             case DType.int16:
-              result.fill(r_max_int16_t(a.pointer.cast(), a.size) as T);
+              result.fill(r_max_int16_t(a.pointer.cast(), a.size));
               handled = true;
             default:
               break;
@@ -722,19 +735,19 @@ NDArray<T> reduceUfunc<T extends Object>(
           switch (a.dtype) {
             case DType.int64:
             case DType.uint64:
-              result.fill(r_bitwise_and_int64(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_and_int64(a.pointer.cast(), a.size));
               handled = true;
             case DType.int32:
             case DType.uint32:
-              result.fill(r_bitwise_and_int32(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_and_int32(a.pointer.cast(), a.size));
               handled = true;
             case DType.uint8:
             case DType.int8:
-              result.fill(r_bitwise_and_uint8(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_and_uint8(a.pointer.cast(), a.size));
               handled = true;
             case DType.int16:
             case DType.uint16:
-              result.fill(r_bitwise_and_int16(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_and_int16(a.pointer.cast(), a.size));
               handled = true;
             default:
               break;
@@ -743,19 +756,19 @@ NDArray<T> reduceUfunc<T extends Object>(
           switch (a.dtype) {
             case DType.int64:
             case DType.uint64:
-              result.fill(r_bitwise_or_int64(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_or_int64(a.pointer.cast(), a.size));
               handled = true;
             case DType.int32:
             case DType.uint32:
-              result.fill(r_bitwise_or_int32(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_or_int32(a.pointer.cast(), a.size));
               handled = true;
             case DType.uint8:
             case DType.int8:
-              result.fill(r_bitwise_or_uint8(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_or_uint8(a.pointer.cast(), a.size));
               handled = true;
             case DType.int16:
             case DType.uint16:
-              result.fill(r_bitwise_or_int16(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_or_int16(a.pointer.cast(), a.size));
               handled = true;
             default:
               break;
@@ -764,36 +777,36 @@ NDArray<T> reduceUfunc<T extends Object>(
           switch (a.dtype) {
             case DType.int64:
             case DType.uint64:
-              result.fill(r_bitwise_xor_int64(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_xor_int64(a.pointer.cast(), a.size));
               handled = true;
             case DType.int32:
             case DType.uint32:
-              result.fill(r_bitwise_xor_int32(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_xor_int32(a.pointer.cast(), a.size));
               handled = true;
             case DType.uint8:
             case DType.int8:
-              result.fill(r_bitwise_xor_uint8(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_xor_uint8(a.pointer.cast(), a.size));
               handled = true;
             case DType.int16:
             case DType.uint16:
-              result.fill(r_bitwise_xor_int16(a.pointer.cast(), a.size) as T);
+              result.fill(r_bitwise_xor_int16(a.pointer.cast(), a.size));
               handled = true;
             default:
               break;
           }
         case BinaryOp.logicalAnd:
           if (a.dtype == DType.boolean) {
-            result.fill((r_logical_and(a.pointer.cast(), a.size) != 0) as T);
+            result.fill((r_logical_and(a.pointer.cast(), a.size) != 0));
             handled = true;
           }
         case BinaryOp.logicalOr:
           if (a.dtype == DType.boolean) {
-            result.fill((r_logical_or(a.pointer.cast(), a.size) != 0) as T);
+            result.fill((r_logical_or(a.pointer.cast(), a.size) != 0));
             handled = true;
           }
         case BinaryOp.logicalXor:
           if (a.dtype == DType.boolean) {
-            result.fill((r_logical_xor(a.pointer.cast(), a.size) != 0) as T);
+            result.fill((r_logical_xor(a.pointer.cast(), a.size) != 0));
             handled = true;
           }
         default:
@@ -1453,7 +1466,7 @@ NDArray<T> reduceUfunc<T extends Object>(
 }
 
 /// Generalized ufunc accumulation function.
-NDArray<T> accumulateUfunc<T extends Object>(
+NDArray<T> accumulateUfunc<T extends DTypeTag>(
   NDArray<T> a, {
   required BinaryOp op,
   int axis = 0,
@@ -2270,9 +2283,9 @@ NDArray<T> accumulateUfunc<T extends Object>(
 }
 
 /// Generalized ufunc reduceat function.
-NDArray<T> reduceatUfunc<T extends Object>(
+NDArray<T> reduceatUfunc<T extends DTypeTag>(
   NDArray<T> a,
-  NDArray<int> indices, {
+  NDArray<DTypeTag> indices, {
   required BinaryOp op,
   int axis = 0,
   NDArray<T>? out,
@@ -2645,11 +2658,11 @@ NDArray<T> reduceatUfunc<T extends Object>(
 }
 
 /// Generalized ufunc outer operation.
-NDArray<T> outerUfunc<T extends Object>(
+NDArray<T> outerUfunc<T extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   BinaryOp op = BinaryOp.multiply,
-  NDArray<dynamic>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -2801,10 +2814,10 @@ NDArray<T> outerUfunc<T extends Object>(
 }
 
 /// Generalized ufunc at operation.
-void atUfunc<T extends Object>(
+void atUfunc<T extends DTypeTag>(
   NDArray<T> a,
-  NDArray<int> indices,
-  NDArray<Object> b, {
+  NDArray<DTypeTag> indices,
+  NDArray<DTypeTag> b, {
   required BinaryOp op,
 }) {
   if (a.isDisposed || indices.isDisposed || b.isDisposed) {
@@ -3092,12 +3105,26 @@ void atUfunc<T extends Object>(
 }
 
 /// Evaluates unary operation [op] element-wise on [x].
-NDArray<R> unaryUfunc<T extends Object, R extends Object>(
+NDArray<R> unaryUfunc<T extends DTypeTag, R extends DTypeTag>(
   NDArray<T> x, {
   required UnaryOp op,
-  NDArray<dynamic>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
+  final xSpec = _asView<AnySpec>(x);
+  final outSpec = _asViewNullable<DTypeTag>(out);
+  final xRealSpec =
+      _asView<
+        DTypeSpec<
+          DTypeTag,
+          num,
+          DTypeTag,
+          DTypeTag,
+          DTypeTag,
+          DTypeTag,
+          DTypeTag
+        >
+      >(x);
   switch (op) {
     case UnaryOp.invert:
     case UnaryOp.bitwiseNot:
@@ -3112,10 +3139,10 @@ NDArray<R> unaryUfunc<T extends Object, R extends Object>(
     case UnaryOp.absolute:
     case UnaryOp.abs:
     case UnaryOp.fabs:
-      final res = abs(x, where: where, out: _asViewNullable<Object>(out));
+      final res = abs(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.rint:
-      final res = rint(x, where: where, out: _asViewNullable<T>(out));
+      final res = rint(xRealSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.sign:
       final res = sign(x, where: where, out: _asViewNullable<T>(out));
@@ -3125,7 +3152,7 @@ NDArray<R> unaryUfunc<T extends Object, R extends Object>(
       final res = conj(x, where: where, out: _asViewNullable<T>(out));
       return out ?? _asView<R>(res);
     case UnaryOp.exp:
-      final res = exp(x, where: where, out: _asViewNullable<T>(out));
+      final res = exp(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.exp2:
       final res = power(
@@ -3136,22 +3163,22 @@ NDArray<R> unaryUfunc<T extends Object, R extends Object>(
       );
       return out ?? _asView<R>(res);
     case UnaryOp.log:
-      final res = log(x, where: where, out: _asViewNullable<T>(out));
+      final res = log(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.log2:
-      final res = log2(x, where: where, out: _asViewNullable<T>(out));
+      final res = log2(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.log10:
-      final res = log10(x, where: where, out: _asViewNullable<T>(out));
+      final res = log10(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.expm1:
-      final res = expm1(x, where: where, out: _asViewNullable<T>(out));
+      final res = expm1(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.log1p:
-      final res = log1p(x, where: where, out: _asViewNullable<T>(out));
+      final res = log1p(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.sqrt:
-      final res = sqrt(x, where: where, out: _asViewNullable<T>(out));
+      final res = sqrt(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.square:
       final res = square(x, where: where, out: _asViewNullable<T>(out));
@@ -3165,70 +3192,74 @@ NDArray<R> unaryUfunc<T extends Object, R extends Object>(
       );
       return out ?? _asView<R>(res);
     case UnaryOp.reciprocal:
-      final res = reciprocal(x, where: where, out: _asViewNullable<T>(out));
+      final res = reciprocal(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.sin:
-      final res = sin(x, where: where, out: _asViewNullable<T>(out));
+      final res = sin(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.cos:
-      final res = cos(x, where: where, out: _asViewNullable<T>(out));
+      final res = cos(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.tan:
-      final res = tan(x, where: where, out: _asViewNullable<T>(out));
+      final res = tan(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arcsin:
-      final res = asin(x, where: where, out: _asViewNullable<T>(out));
+      final res = asin(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arccos:
-      final res = acos(x, where: where, out: _asViewNullable<T>(out));
+      final res = acos(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arctan:
-      final res = atan(x, where: where, out: _asViewNullable<T>(out));
+      final res = atan(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.sinh:
-      final res = sinh(x, where: where, out: _asViewNullable<T>(out));
+      final res = sinh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.cosh:
-      final res = cosh(x, where: where, out: _asViewNullable<T>(out));
+      final res = cosh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.tanh:
-      final res = tanh(x, where: where, out: _asViewNullable<T>(out));
+      final res = tanh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arcsinh:
-      final res = asinh(x, where: where, out: _asViewNullable<T>(out));
+      final res = asinh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arccosh:
-      final res = acosh(x, where: where, out: _asViewNullable<T>(out));
+      final res = acosh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.arctanh:
-      final res = atanh(x, where: where, out: _asViewNullable<T>(out));
+      final res = atanh(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.degrees:
     case UnaryOp.rad2deg:
-      final res = rad2deg(x, where: where, out: _asViewNullable<double>(out));
+      final res = rad2deg(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.radians:
     case UnaryOp.deg2rad:
-      final res = deg2rad(x, where: where, out: _asViewNullable<double>(out));
+      final res = deg2rad(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.logicalNot:
-      final res = logical_not(x, where: where, out: _asViewNullable<bool>(out));
+      final res = logical_not(
+        x,
+        where: where,
+        out: _asViewNullable<Boolean>(out),
+      );
       return out ?? _asView<R>(res);
     case UnaryOp.isnan:
-      final res = isnan(x, where: where, out: _asViewNullable<bool>(out));
+      final res = isnan(x, where: where, out: _asViewNullable<Boolean>(out));
       return out ?? _asView<R>(res);
     case UnaryOp.isinf:
-      final res = isinf(x, where: where, out: _asViewNullable<bool>(out));
+      final res = isinf(x, where: where, out: _asViewNullable<Boolean>(out));
       return out ?? _asView<R>(res);
     case UnaryOp.isfinite:
-      final res = isfinite(x, where: where, out: _asViewNullable<bool>(out));
+      final res = isfinite(x, where: where, out: _asViewNullable<Boolean>(out));
       return out ?? _asView<R>(res);
     case UnaryOp.signbit:
       final res = less(
         x,
         NDArray.scalar(0, dtype: x.dtype),
         where: where,
-        out: _asViewNullable<bool>(out),
+        out: _asViewNullable<Boolean>(out),
       );
       return out ?? _asView<R>(res);
     case UnaryOp.floor:
@@ -3238,11 +3269,11 @@ NDArray<R> unaryUfunc<T extends Object, R extends Object>(
       final res = ceil(x, where: where, out: _asViewNullable<T>(out));
       return out ?? _asView<R>(res);
     case UnaryOp.trunc:
-      final res = trunc(x, where: where, out: _asViewNullable<T>(out));
+      final res = trunc(xRealSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.spacing:
       return NDArray.scope(() {
-        final parts = frexp<T, double>(x, where: where);
+        final parts = frexp<DTypeTag>(xSpec, where: where);
         final res = power(
           NDArray.scalar(2.0, dtype: DType.float64),
           subtract(
@@ -3253,7 +3284,7 @@ NDArray<R> unaryUfunc<T extends Object, R extends Object>(
             ),
           ).astype(DType.float64),
           where: where,
-          out: _asViewNullable<double>(out),
+          out: _asViewNullable<Float64>(out),
         );
         return out ?? _asView<R>(res);
       });

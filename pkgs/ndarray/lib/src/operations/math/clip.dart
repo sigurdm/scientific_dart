@@ -31,11 +31,11 @@ import 'utility.dart';
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy clip](https://numpy.org/doc/stable/reference/generated/numpy.clip.html)
-NDArray<T> clip<T>(
+NDArray<T> clip<T extends DTypeTag>(
   NDArray<T> a, {
   num? min,
   num? max,
-  NDArray<dynamic>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -109,7 +109,7 @@ NDArray<T> clip<T>(
       case DType.uint64:
         final mn = _toUint64Bound(min, isMax: false);
         final mx = _toUint64Bound(max, isMax: true);
-        unaryOp<dynamic, dynamic>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -130,7 +130,7 @@ NDArray<T> clip<T>(
       case DType.uint8:
         final mn = resolvedMin.toInt();
         final mx = resolvedMax.toInt();
-        unaryOp<dynamic, dynamic>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -145,7 +145,7 @@ NDArray<T> clip<T>(
       default:
         final mn = resolvedMin.toDouble();
         final mx = resolvedMax.toDouble();
-        unaryOp<dynamic, dynamic>(
+        unaryOp<DTypeTag, DTypeTag>(
           result,
           a,
           a.shape,
@@ -195,11 +195,11 @@ NDArray<T> clip<T>(
 /// ```
 ///
 /// Reference: [NumPy clip](https://numpy.org/doc/stable/reference/generated/numpy.clip.html)
-NDArray<T> clipArray<T>(
+NDArray<T> clipArray<T extends DTypeTag>(
   NDArray<T> a, {
   NDArray<T>? min,
   NDArray<T>? max,
-  NDArray<dynamic>? where,
+  NDArray<DTypeTag>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -266,11 +266,11 @@ NDArray<T> clipArray<T>(
     try {
       minArr = min == null
           ? (NDArray<T>.create([], a.dtype)
-              ..setCellRaw(0, _getMinLimit(a.dtype) as T))
+              ..setCellRaw(0, _getMinLimit(a.dtype)))
           : (min.dtype == a.dtype ? min : castNDArray(min, a.dtype));
       maxArr = max == null
           ? (NDArray<T>.create([], a.dtype)
-              ..setCellRaw(0, _getMaxLimit(a.dtype) as T))
+              ..setCellRaw(0, _getMaxLimit(a.dtype)))
           : (max.dtype == a.dtype ? max : castNDArray(max, a.dtype));
 
       final result =
@@ -398,7 +398,7 @@ NDArray<T> clipArray<T>(
 
       switch (a.dtype) {
         case DType.uint64:
-          ternaryOp<dynamic, dynamic, dynamic, dynamic>(
+          ternaryOp<DTypeTag, DTypeTag, DTypeTag, DTypeTag>(
             result,
             broadcastA,
             broadcastMin,
@@ -421,7 +421,7 @@ NDArray<T> clipArray<T>(
             maskHolder.pointer,
           );
         default:
-          ternaryOp<dynamic, dynamic, dynamic, dynamic>(
+          ternaryOp<DTypeTag, DTypeTag, DTypeTag, DTypeTag>(
             result,
             broadcastA,
             broadcastMin,

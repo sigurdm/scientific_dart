@@ -26,7 +26,7 @@ DType _resolveDType(DType a, DType b) {
 }
 
 /// Default fill value mapping based on DType.
-dynamic _defaultFillValue(DType dtype) {
+Object _defaultFillValue(DType dtype) {
   switch (dtype) {
     case DType.float64:
     case DType.float32:
@@ -38,12 +38,12 @@ dynamic _defaultFillValue(DType dtype) {
       return Complex(1e20, 0.0);
     case DType.int64:
     case DType.int32:
-    case DType.uint8:
     case DType.int16:
     case DType.int8:
     case DType.uint64:
     case DType.uint32:
     case DType.uint16:
+    case DType.uint8:
       return 999999;
     case DType.boolean:
       return true;
@@ -51,17 +51,17 @@ dynamic _defaultFillValue(DType dtype) {
 }
 
 /// Coerces a scalar value to the correct Dart type for a given DType.
-S _coerceScalar<S>(dynamic value, DType<S> dtype) {
+Object _coerceScalar(dynamic value, DType dtype) {
   if (dtype.isFloating) {
-    return (value as num).toDouble() as S;
+    return (value as num).toDouble();
   } else if (dtype.isComplex) {
-    if (value is Complex) return value as S;
-    return Complex((value as num).toDouble(), 0.0) as S;
+    if (value is Complex) return value;
+    return Complex((value as num).toDouble(), 0.0);
   } else if (dtype.isInteger) {
-    return (value as num).toInt() as S;
+    return (value as num).toInt();
   } else if (dtype == DType.boolean) {
-    if (value is bool) return value as S;
-    return ((value as num) != 0) as S;
+    if (value is bool) return value;
+    return (value as num) != 0;
   }
   throw ArgumentError("Unsupported dtype: $dtype");
 }
@@ -77,9 +77,9 @@ Object? _coerceOrGetDefault(Object? value, DType dtype) {
 }
 
 /// Wraps a scalar value into a 0-dimensional NDArray of the given DType.
-NDArray<S> _wrapScalar<S extends Object>(dynamic value, DType<S> dtype) {
+NDArray<S> _wrapScalar<S extends DTypeTag>(dynamic value, DType<S> dtype) {
   if (value is NDArray<S>) return value;
-  final coerced = _coerceScalar<S>(value, dtype);
+  final coerced = _coerceScalar(value, dtype);
   return NDArray<S>.fromList([coerced], [], dtype);
 }
 
@@ -139,164 +139,123 @@ dynamic _minValue(DType dtype) {
 }
 
 /// Dispatches binary operations to the correct generic implementation.
-NDArray<Object> _dispatchBinary(
-  NDArray a,
-  NDArray b,
+NDArray<DTypeTag> _dispatchBinary(
+  NDArray<DTypeTag> a,
+  NDArray<DTypeTag> b,
   String opName,
-  DType targetDType,
+  DType<DTypeTag> targetDType,
 ) {
   switch (opName) {
     case 'add':
-      return _callGeneric2(a, b, ndops.add, targetDType);
+      return ndops.addAs(a, b, targetDType);
     case 'sub':
-      return _callGeneric2(a, b, ndops.subtract, targetDType);
+      return ndops.subtractAs(a, b, targetDType);
     case 'mul':
-      return _callGeneric2(a, b, ndops.multiply, targetDType);
+      return ndops.multiplyAs(a, b, targetDType);
     case 'div':
       final divDType = targetDType.isComplex ? DType.complex128 : DType.float64;
-      return _callGeneric2(a, b, ndops.divide, divDType);
+      return ndops.divideAs(a, b, divDType);
     default:
       throw ArgumentError("Unknown op: $opName");
   }
 }
 
-/// Helper to call generic ufunc with resolved type arguments.
-NDArray<Object> _callGeneric2(
-  NDArray a,
-  NDArray b,
-  Function ufunc,
-  DType targetDType,
-) {
-  switch (targetDType) {
-    case DType.float64:
-      return ufunc<dynamic, dynamic, Float64>(a, b) as NDArray<Object>;
-    case DType.float32:
-      return ufunc<dynamic, dynamic, Float32>(a, b) as NDArray<Object>;
-    case DType.float16:
-      return ufunc<dynamic, dynamic, Float16>(a, b) as NDArray<Object>;
-    case DType.bfloat16:
-      return ufunc<dynamic, dynamic, BFloat16>(a, b) as NDArray<Object>;
-    case DType.complex128:
-      return ufunc<dynamic, dynamic, Complex128>(a, b) as NDArray<Object>;
-    case DType.complex64:
-      return ufunc<dynamic, dynamic, Complex64>(a, b) as NDArray<Object>;
-    case DType.int64:
-      return ufunc<dynamic, dynamic, Int64>(a, b) as NDArray<Object>;
-    case DType.int32:
-      return ufunc<dynamic, dynamic, Int32>(a, b) as NDArray<Object>;
-    case DType.int16:
-      return ufunc<dynamic, dynamic, Int16>(a, b) as NDArray<Object>;
-    case DType.int8:
-      return ufunc<dynamic, dynamic, Int8>(a, b) as NDArray<Object>;
-    case DType.uint64:
-      return ufunc<dynamic, dynamic, Uint64>(a, b) as NDArray<Object>;
-    case DType.uint32:
-      return ufunc<dynamic, dynamic, Uint32>(a, b) as NDArray<Object>;
-    case DType.uint16:
-      return ufunc<dynamic, dynamic, Uint16>(a, b) as NDArray<Object>;
-    case DType.uint8:
-      return ufunc<dynamic, dynamic, Uint8>(a, b) as NDArray<Object>;
-    case DType.boolean:
-      return ufunc<dynamic, dynamic, bool>(a, b) as NDArray<Object>;
-  }
-}
-
 /// Dispatches MaskedArray creation to preserve runtime type parameter.
-MaskedArray<Object> dispatchCreateMaskedArray(
-  NDArray<Object> data,
-  NDArray<bool> mask, {
+MaskedArray<DTypeTag> dispatchCreateMaskedArray(
+  NDArray<DTypeTag> data,
+  NDArray<Boolean> mask, {
   Object? fillValue,
 }) {
   switch (data.dtype) {
     case DType.float64:
-      return MaskedArray<double>(
-        data as NDArray<double>,
+      return MaskedArray<Float64>(
+        data as NDArray<Float64>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.float64) as double?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.float64),
       );
     case DType.float32:
-      return MaskedArray<double>(
-        data as NDArray<double>,
+      return MaskedArray<Float32>(
+        data as NDArray<Float32>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.float32) as double?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.float32),
       );
     case DType.float16:
-      return MaskedArray<double>(
-        data as NDArray<double>,
+      return MaskedArray<Float16>(
+        data as NDArray<Float16>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.float16) as double?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.float16),
       );
     case DType.bfloat16:
-      return MaskedArray<double>(
-        data as NDArray<double>,
+      return MaskedArray<BFloat16>(
+        data as NDArray<BFloat16>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.bfloat16) as double?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.bfloat16),
       );
     case DType.complex128:
-      return MaskedArray<Complex>(
-        data as NDArray<Complex>,
+      return MaskedArray<Complex128>(
+        data as NDArray<Complex128>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.complex128) as Complex?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.complex128),
       );
     case DType.complex64:
-      return MaskedArray<Complex>(
-        data as NDArray<Complex>,
+      return MaskedArray<Complex64>(
+        data as NDArray<Complex64>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.complex64) as Complex?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.complex64),
       );
     case DType.int64:
-      return MaskedArray<int>(
-        data as NDArray<int>,
+      return MaskedArray<Int64>(
+        data as NDArray<Int64>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.int64) as int?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.int64),
       );
     case DType.int32:
-      return MaskedArray<int>(
-        data as NDArray<int>,
+      return MaskedArray<Int32>(
+        data as NDArray<Int32>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.int32) as int?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.int32),
       );
     case DType.int16:
-      return MaskedArray<int>(
-        data as NDArray<int>,
+      return MaskedArray<Int16>(
+        data as NDArray<Int16>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.int16) as int?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.int16),
       );
     case DType.int8:
-      return MaskedArray<int>(
-        data as NDArray<int>,
+      return MaskedArray<Int8>(
+        data as NDArray<Int8>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.int8) as int?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.int8),
       );
     case DType.uint64:
-      return MaskedArray<int>(
-        data as NDArray<int>,
+      return MaskedArray<Uint64>(
+        data as NDArray<Uint64>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.uint64) as int?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.uint64),
       );
     case DType.uint32:
-      return MaskedArray<int>(
-        data as NDArray<int>,
+      return MaskedArray<Uint32>(
+        data as NDArray<Uint32>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.uint32) as int?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.uint32),
       );
     case DType.uint16:
-      return MaskedArray<int>(
-        data as NDArray<int>,
+      return MaskedArray<Uint16>(
+        data as NDArray<Uint16>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.uint16) as int?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.uint16),
       );
     case DType.uint8:
-      return MaskedArray<int>(
-        data as NDArray<int>,
+      return MaskedArray<Uint8>(
+        data as NDArray<Uint8>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.uint8) as int?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.uint8),
       );
     case DType.boolean:
-      return MaskedArray<bool>(
-        data as NDArray<bool>,
+      return MaskedArray<Boolean>(
+        data as NDArray<Boolean>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.boolean) as bool?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.boolean),
       );
   }
 }

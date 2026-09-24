@@ -1,8 +1,50 @@
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'ffi/flint_bindings.dart' as fl;
+import 'ffi/symengine_bindings.dart' as se;
 import 'package:resource_scope/resource_scope.dart';
 import 'expr.dart';
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>(
+  symbol: 'flint_free',
+  assetId: 'package:symbolic_dart/flint',
+)
+external void _flintFree(ffi.Pointer<ffi.Void> ptr);
+
+BigInt _fmpzToBigInt(ffi.Pointer<fl.fmpz> zPtr) {
+  final cStr = fl.fmpz_get_str(ffi.nullptr, 10, zPtr);
+  if (cStr == ffi.nullptr) {
+    throw StateError('Failed to convert fmpz to string.');
+  }
+  try {
+    return BigInt.parse(cStr.cast<Utf8>().toDartString());
+  } finally {
+    _flintFree(cStr.cast());
+  }
+}
+
+void _bigIntToFmpz(ffi.Pointer<fl.fmpz> zPtr, BigInt val) {
+  using((arena) {
+    final cStr = val.toString().toNativeUtf8(allocator: arena);
+    fl.fmpz_set_str(zPtr, cStr.cast(), 10);
+  });
+}
+
+void _clearFmpz(ffi.Pointer<fl.fmpz> zPtr) {
+  fl.fmpz_set_si(zPtr, 0);
+  calloc.free(zPtr);
+}
+
+void _clearFmpq(ffi.Pointer<fl.fmpq> qPtr) {
+  fl.fmpq_set_si(qPtr, 0, 1);
+  calloc.free(qPtr);
+}
+
+BigInt _toBigInt(Object val, String name) {
+  if (val is BigInt) return val;
+  if (val is int) return BigInt.from(val);
+  throw ArgumentError('$name must be int or BigInt, got ${val.runtimeType}');
+}
 
 final _fmpqPolyFinalizer = ffi.NativeFinalizer(
   ffi.Native.addressOf<
@@ -82,26 +124,161 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
     return FlintRationalPoly._(ptr);
   }
 
+  /// Creates a polynomial from arbitrary-precision integer coefficients in ascending
+  /// order of degree: `coeffs[0] + coeffs[1]*x + ... + coeffs[d]*x^d`.
+  factory FlintRationalPoly.fromBigIntCoefficients(List<BigInt> coeffs) {
+    final ptr = _alloc();
+    final z = calloc<fl.fmpz>();
+    try {
+      for (var i = 0; i < coeffs.length; i++) {
+        _bigIntToFmpz(z, coeffs[i]);
+        fl.fmpq_poly_set_coeff_fmpz(ptr, i, z);
+      }
+    } finally {
+      _clearFmpz(z);
+    }
+    return FlintRationalPoly._(ptr);
+  }
+
   /// Creates a polynomial from rational coefficients `({numerator, denominator})`
   /// in ascending order of degree.
+  ///
+  /// The [numerator] and [denominator] can be either an [int] or a [BigInt].
   factory FlintRationalPoly.fromRationalCoefficients(
-    List<({int numerator, int denominator})> coeffs,
+    List<({Object numerator, Object denominator})> coeffs,
   ) {
     final ptr = _alloc();
     final q = calloc<fl.fmpq>();
+    final numPtr = calloc<fl.fmpz>();
+    final denPtr = calloc<fl.fmpz>();
     try {
       for (var i = 0; i < coeffs.length; i++) {
         final c = coeffs[i];
-        if (c.denominator == 0) {
+        final n = _toBigInt(c.numerator, 'Numerator');
+        final d = _toBigInt(c.denominator, 'Denominator');
+        if (d == BigInt.zero) {
           throw ArgumentError('Polynomial coefficient denominator cannot be 0');
         }
-        fl.fmpq_set_si(q, c.numerator, c.denominator);
+        _bigIntToFmpz(numPtr, n);
+        _bigIntToFmpz(denPtr, d);
+        fl.fmpq_set_fmpz_frac(q, numPtr, denPtr);
         fl.fmpq_poly_set_coeff_fmpq(ptr, i, q);
       }
     } finally {
-      calloc.free(q);
+      _clearFmpz(numPtr);
+      _clearFmpz(denPtr);
+      _clearFmpq(q);
     }
     return FlintRationalPoly._(ptr);
+  }
+
+  /// Converts a univariate polynomial [expr] in [variable] into a
+  /// [FlintRationalPoly] over Q[x].
+  ///
+  /// Throws [ArgumentError] if [expr] is not a univariate rational polynomial in [variable].
+  factory FlintRationalPoly.fromExpr(Expr expr, Object variable) {
+    final v = Expr.fromObject(variable);
+    if (se.is_a_Symbol(v.pointer) == 0) {
+      throw ArgumentError('Variable must be a Symbol, got $v');
+    }
+    return _exprNodeToPoly(expr, v);
+  }
+
+  static FlintRationalPoly _exprNodeToPoly(Expr e, Expr v) {
+    final typeId = se.basic_get_type(e.pointer);
+    switch (typeId) {
+      case se.TypeID.SYMENGINE_INTEGER:
+        final val = BigInt.parse(e.toString());
+        return FlintRationalPoly.fromBigIntCoefficients([val]);
+      case se.TypeID.SYMENGINE_RATIONAL:
+        final nd = e.asNumerDenom();
+        try {
+          final numBig = BigInt.parse(nd.numerator.toString());
+          final denBig = BigInt.parse(nd.denominator.toString());
+          return FlintRationalPoly.fromRationalCoefficients([
+            (numerator: numBig, denominator: denBig),
+          ]);
+        } finally {
+          nd.numerator.dispose();
+          nd.denominator.dispose();
+        }
+      case se.TypeID.SYMENGINE_SYMBOL:
+        if (e == v) {
+          return FlintRationalPoly.monomial(1);
+        }
+        throw ArgumentError(
+          'Expression contains symbol $e other than target variable $v',
+        );
+      case se.TypeID.SYMENGINE_ADD:
+        final children = e.args;
+        var acc = FlintRationalPoly.zero();
+        try {
+          for (final child in children) {
+            final termPoly = _exprNodeToPoly(child, v);
+            final nextAcc = acc + termPoly;
+            acc.dispose();
+            termPoly.dispose();
+            acc = nextAcc;
+          }
+          return acc;
+        } finally {
+          for (final child in children) {
+            child.dispose();
+          }
+        }
+      case se.TypeID.SYMENGINE_MUL:
+        final children = e.args;
+        var acc = FlintRationalPoly.one();
+        try {
+          for (final child in children) {
+            final factorPoly = _exprNodeToPoly(child, v);
+            final nextAcc = acc * factorPoly;
+            acc.dispose();
+            factorPoly.dispose();
+            acc = nextAcc;
+          }
+          return acc;
+        } finally {
+          for (final child in children) {
+            child.dispose();
+          }
+        }
+      case se.TypeID.SYMENGINE_POW:
+        final children = e.args;
+        try {
+          if (children.length != 2) {
+            throw ArgumentError('Invalid Pow expression: $e');
+          }
+          final baseExpr = children[0];
+          final expExpr = children[1];
+          if (se.basic_get_type(expExpr.pointer) !=
+              se.TypeID.SYMENGINE_INTEGER) {
+            throw ArgumentError(
+              'Polynomial exponent must be a non-negative integer, got $expExpr in $e',
+            );
+          }
+          final expVal = int.tryParse(expExpr.toString());
+          if (expVal == null || expVal < 0) {
+            throw ArgumentError(
+              'Polynomial exponent must be a non-negative integer, got $expExpr in $e',
+            );
+          }
+          final basePoly = _exprNodeToPoly(baseExpr, v);
+          try {
+            return basePoly.pow(expVal);
+          } finally {
+            basePoly.dispose();
+          }
+        } finally {
+          for (final child in children) {
+            child.dispose();
+          }
+        }
+      default:
+        throw ArgumentError(
+          'Expression is not a univariate rational polynomial in $v: $e',
+        );
+    }
   }
 
   /// The zero polynomial `0`.
@@ -131,19 +308,11 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
   double getCoefficientAsDouble(int degreeIndex) {
     if (degreeIndex < 0 || degreeIndex >= length) return 0.0;
     final q = calloc<fl.fmpq>();
-    final numPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
-    final denPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
     try {
       fl.fmpq_poly_get_coeff_fmpq(q, pointer, degreeIndex);
-      fl.fmpq_numerator(numPtr, q);
-      fl.fmpq_denominator(denPtr, q);
-      final n = fl.fmpz_get_si(numPtr);
-      final d = fl.fmpz_get_si(denPtr);
-      return d == 0 ? 0.0 : n / d;
+      return fl.fmpq_get_d(q);
     } finally {
-      calloc.free(q);
-      calloc.free(numPtr);
-      calloc.free(denPtr);
+      _clearFmpq(q);
     }
   }
 
@@ -266,28 +435,32 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
 
   /// Evaluates this polynomial exactly at a rational number `num / den`,
   /// returning the exact rational result `(numerator, denominator)`.
+  ///
+  /// [num] and [den] can be either an [int] or a [BigInt].
   ({BigInt numerator, BigInt denominator}) evaluateRational(
-    int num, [
-    int den = 1,
+    Object num, [
+    Object den = 1,
   ]) {
-    if (den == 0) throw ArgumentError('Denominator cannot be zero.');
+    final nVal = _toBigInt(num, 'Numerator');
+    final dVal = _toBigInt(den, 'Denominator');
+    if (dVal == BigInt.zero) throw ArgumentError('Denominator cannot be zero.');
     final qVal = calloc<fl.fmpq>();
     final qRes = calloc<fl.fmpq>();
-    final nPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
-    final dPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
+    final nPtr = calloc<fl.fmpz>();
+    final dPtr = calloc<fl.fmpz>();
     try {
-      fl.fmpq_set_si(qVal, num, den);
+      _bigIntToFmpz(nPtr, nVal);
+      _bigIntToFmpz(dPtr, dVal);
+      fl.fmpq_set_fmpz_frac(qVal, nPtr, dPtr);
       fl.fmpq_poly_evaluate_fmpq(qRes, pointer, qVal);
       fl.fmpq_numerator(nPtr, qRes);
       fl.fmpq_denominator(dPtr, qRes);
-      final nSi = fl.fmpz_get_si(nPtr);
-      final dSi = fl.fmpz_get_si(dPtr);
-      return (numerator: BigInt.from(nSi), denominator: BigInt.from(dSi));
+      return (numerator: _fmpzToBigInt(nPtr), denominator: _fmpzToBigInt(dPtr));
     } finally {
-      calloc.free(qVal);
-      calloc.free(qRes);
-      calloc.free(nPtr);
-      calloc.free(dPtr);
+      _clearFmpz(nPtr);
+      _clearFmpz(dPtr);
+      _clearFmpq(qVal);
+      _clearFmpq(qRes);
     }
   }
 
@@ -323,19 +496,17 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
   /// Computes the exact resultant `Res(P, Q)` of this polynomial and [other].
   ({BigInt numerator, BigInt denominator}) resultant(FlintRationalPoly other) {
     final qRes = calloc<fl.fmpq>();
-    final nPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
-    final dPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
+    final nPtr = calloc<fl.fmpz>();
+    final dPtr = calloc<fl.fmpz>();
     try {
       fl.fmpq_poly_resultant(qRes, pointer, other.pointer);
       fl.fmpq_numerator(nPtr, qRes);
       fl.fmpq_denominator(dPtr, qRes);
-      final nSi = fl.fmpz_get_si(nPtr);
-      final dSi = fl.fmpz_get_si(dPtr);
-      return (numerator: BigInt.from(nSi), denominator: BigInt.from(dSi));
+      return (numerator: _fmpzToBigInt(nPtr), denominator: _fmpzToBigInt(dPtr));
     } finally {
-      calloc.free(qRes);
-      calloc.free(nPtr);
-      calloc.free(dPtr);
+      _clearFmpz(nPtr);
+      _clearFmpz(dPtr);
+      _clearFmpq(qRes);
     }
   }
 
@@ -372,18 +543,20 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
   Expr toExpr(Expr x) {
     var sum = Expr.zero;
     final q = calloc<fl.fmpq>();
-    final numPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
-    final denPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
+    final numPtr = calloc<fl.fmpz>();
+    final denPtr = calloc<fl.fmpz>();
     try {
       final len = length;
       for (var i = 0; i < len; i++) {
         fl.fmpq_poly_get_coeff_fmpq(q, pointer, i);
         fl.fmpq_numerator(numPtr, q);
         fl.fmpq_denominator(denPtr, q);
-        final n = fl.fmpz_get_si(numPtr);
-        final d = fl.fmpz_get_si(denPtr);
-        if (n != 0) {
-          final termCoeff = Expr.rational(n, d);
+        final n = _fmpzToBigInt(numPtr);
+        final d = _fmpzToBigInt(denPtr);
+        if (n != BigInt.zero) {
+          final termCoeff = d == BigInt.one
+              ? Expr.bigInt(n)
+              : Expr.bigInt(n) / Expr.bigInt(d);
           if (i == 0) {
             sum = sum + termCoeff;
           } else if (i == 1) {
@@ -395,9 +568,9 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
       }
       return sum;
     } finally {
-      calloc.free(numPtr);
-      calloc.free(denPtr);
-      calloc.free(q);
+      _clearFmpz(numPtr);
+      _clearFmpz(denPtr);
+      _clearFmpq(q);
     }
   }
 
@@ -405,20 +578,20 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
   /// irreducible factors and rational content:
   /// `P(x) = content * \prod_i factor_i^{exponent_i}`.
   ({
-    ({int numerator, int denominator}) content,
+    ({BigInt numerator, BigInt denominator}) content,
     List<({FlintRationalPoly factor, int exponent})> factors,
   })
   factor() {
     var D = BigInt.one;
     final q = calloc<fl.fmpq>();
-    final numPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
-    final denPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
+    final numPtr = calloc<fl.fmpz>();
+    final denPtr = calloc<fl.fmpz>();
     try {
       final len = length;
       for (var i = 0; i < len; i++) {
         fl.fmpq_poly_get_coeff_fmpq(q, pointer, i);
         fl.fmpq_denominator(denPtr, q);
-        final dVal = BigInt.from(fl.fmpz_get_si(denPtr));
+        final dVal = _fmpzToBigInt(denPtr);
         if (dVal != BigInt.zero) {
           D = (D * dVal) ~/ D.gcd(dVal);
         }
@@ -431,10 +604,11 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
           fl.fmpq_poly_get_coeff_fmpq(q, pointer, i);
           fl.fmpq_numerator(numPtr, q);
           fl.fmpq_denominator(denPtr, q);
-          final nVal = BigInt.from(fl.fmpz_get_si(numPtr));
-          final dVal = BigInt.from(fl.fmpz_get_si(denPtr));
+          final nVal = _fmpzToBigInt(numPtr);
+          final dVal = _fmpzToBigInt(denPtr);
           final scaledCoeff = (nVal * D) ~/ dVal;
-          fl.fmpz_poly_set_coeff_si(zPoly, i, scaledCoeff.toInt());
+          _bigIntToFmpz(numPtr, scaledCoeff);
+          fl.fmpz_poly_set_coeff_fmpz(zPoly, i, numPtr);
         }
 
         final fac = calloc<fl.fmpz_poly_factor_struct>();
@@ -443,11 +617,11 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
           fl.fmpz_poly_factor(fac, zPoly);
 
           fl.fmpz_poly_factor_get_fmpz(numPtr, fac);
-          final intContent = fl.fmpz_get_si(numPtr);
+          final intContent = _fmpzToBigInt(numPtr);
 
-          final cGcd = BigInt.from(intContent).abs().gcd(D);
-          final contentNumerator = (intContent ~/ cGcd.toInt());
-          final contentDenominator = (D ~/ cGcd).toInt();
+          final cGcd = intContent.abs().gcd(D);
+          final contentNumerator = intContent ~/ cGcd;
+          final contentDenominator = D ~/ cGcd;
 
           final numFactors = fac.ref.num;
           final factorList = <({FlintRationalPoly factor, int exponent})>[];
@@ -464,9 +638,8 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
               );
               final facLen = factorZPoly.ref.length;
               for (var j = 0; j < facLen; j++) {
-                final coeffInt = fl.fmpz_poly_get_coeff_si(factorZPoly, j);
-                fl.fmpq_set_si(q, coeffInt, 1);
-                fl.fmpq_poly_set_coeff_fmpq(factorQPoly.pointer, j, q);
+                fl.fmpz_poly_get_coeff_fmpz(numPtr, factorZPoly, j);
+                fl.fmpq_poly_set_coeff_fmpz(factorQPoly.pointer, j, numPtr);
               }
               factorList.add((factor: factorQPoly, exponent: exp));
             }
@@ -491,31 +664,33 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
         calloc.free(zPoly);
       }
     } finally {
-      calloc.free(numPtr);
-      calloc.free(denPtr);
-      calloc.free(q);
+      _clearFmpz(numPtr);
+      _clearFmpz(denPtr);
+      _clearFmpq(q);
     }
   }
 
   /// Returns the exact rational coefficient at [degreeIndex] as `(numerator, denominator)`.
-  ({int numerator, int denominator}) getCoefficientRational(int degreeIndex) {
+  ({BigInt numerator, BigInt denominator}) getCoefficientRational(
+    int degreeIndex,
+  ) {
     if (degreeIndex < 0 || degreeIndex >= length) {
-      return (numerator: 0, denominator: 1);
+      return (numerator: BigInt.zero, denominator: BigInt.one);
     }
     final q = calloc<fl.fmpq>();
-    final numPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
-    final denPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
+    final numPtr = calloc<fl.fmpz>();
+    final denPtr = calloc<fl.fmpz>();
     try {
       fl.fmpq_poly_get_coeff_fmpq(q, pointer, degreeIndex);
       fl.fmpq_numerator(numPtr, q);
       fl.fmpq_denominator(denPtr, q);
-      final n = fl.fmpz_get_si(numPtr);
-      final d = fl.fmpz_get_si(denPtr);
-      return (numerator: n, denominator: d == 0 ? 1 : d);
+      final n = _fmpzToBigInt(numPtr);
+      final d = _fmpzToBigInt(denPtr);
+      return (numerator: n, denominator: d == BigInt.zero ? BigInt.one : d);
     } finally {
-      calloc.free(q);
-      calloc.free(numPtr);
-      calloc.free(denPtr);
+      _clearFmpz(numPtr);
+      _clearFmpz(denPtr);
+      _clearFmpq(q);
     }
   }
 
@@ -527,14 +702,14 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
     final terms = <String>[];
     for (var k = d; k >= 0; k--) {
       final c = getCoefficientRational(k);
-      if (c.numerator == 0) continue;
-      final isNeg = c.numerator < 0;
+      if (c.numerator == BigInt.zero) continue;
+      final isNeg = c.numerator < BigInt.zero;
       final absNum = c.numerator.abs();
       final den = c.denominator;
 
       String coeffStr;
-      if (den == 1) {
-        if (absNum == 1 && k > 0) {
+      if (den == BigInt.one) {
+        if (absNum == BigInt.one && k > 0) {
           coeffStr = '';
         } else {
           coeffStr = '$absNum';
@@ -564,11 +739,36 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
   }
 
   @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! FlintRationalPoly) return false;
+    if (_disposed || other._disposed) return false;
+    return fl.fmpq_poly_equal(pointer, other.pointer) != 0;
+  }
+
+  @override
+  int get hashCode {
+    if (_disposed) return identityHashCode(this);
+    final d = degree;
+    if (d < 0) return 0;
+    var hash = d.hashCode;
+    for (var i = 0; i <= d; i++) {
+      final coeff = getCoefficientRational(i);
+      hash = Object.hash(hash, coeff.numerator, coeff.denominator);
+    }
+    return hash;
+  }
+
+  @override
   String toString() {
     _checkDisposed();
     final cStr = fl.fmpq_poly_get_str(pointer);
     if (cStr == ffi.nullptr) return '0';
-    return cStr.cast<Utf8>().toDartString();
+    try {
+      return cStr.cast<Utf8>().toDartString();
+    } finally {
+      _flintFree(cStr.cast());
+    }
   }
 }
 
@@ -576,16 +776,18 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
 extension PolyFactorizationLatex
     on
         ({
-          ({int numerator, int denominator}) content,
+          ({BigInt numerator, BigInt denominator}) content,
           List<({FlintRationalPoly factor, int exponent})> factors,
         }) {
   /// Formats this factorization record as a LaTeX product: `c * (f1)^e1 * (f2)^e2`.
   String toLatex([String variable = 'x']) {
     final sb = StringBuffer();
     final c = content;
-    if (c.numerator != 1 || c.denominator != 1 || factors.isEmpty) {
-      if (c.denominator == 1) {
-        if (c.numerator == -1 && factors.isNotEmpty) {
+    if (c.numerator != BigInt.one ||
+        c.denominator != BigInt.one ||
+        factors.isEmpty) {
+      if (c.denominator == BigInt.one) {
+        if (c.numerator == -BigInt.one && factors.isNotEmpty) {
           sb.write('-');
         } else {
           sb.write('${c.numerator}');

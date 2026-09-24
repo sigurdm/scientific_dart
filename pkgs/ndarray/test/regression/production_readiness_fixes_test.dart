@@ -70,16 +70,16 @@ void main() {
         sort(a, axis: -1, out: outSort);
         // Row 0 sorted: [2.0, 4.0, 5.0]
         // Row 1 sorted: [1.0, 3.0, 6.0]
-        expect(outSort.getCell([0, 0]), equals(Float64(2.0)));
-        expect(outSort.getCell([0, 1]), equals(Float64(4.0)));
-        expect(outSort.getCell([0, 2]), equals(Float64(5.0)));
-        expect(outSort.getCell([1, 0]), equals(Float64(1.0)));
-        expect(outSort.getCell([1, 1]), equals(Float64(3.0)));
-        expect(outSort.getCell([1, 2]), equals(Float64(6.0)));
+        expect(outSort.getCell([0, 0]), equals(2.0));
+        expect(outSort.getCell([0, 1]), equals(4.0));
+        expect(outSort.getCell([0, 2]), equals(5.0));
+        expect(outSort.getCell([1, 0]), equals(1.0));
+        expect(outSort.getCell([1, 1]), equals(3.0));
+        expect(outSort.getCell([1, 2]), equals(6.0));
 
         // argsort with non-contiguous out
-        final baseArgsort = NDArray<int>.zeros([2, 5], DType.int32);
-        final outArgsort = NDArray<int>.view(
+        final baseArgsort = NDArray.zeros([2, 5], DType.int32);
+        final outArgsort = NDArray<Int32>.view(
           baseArgsort,
           shape: [2, 3],
           strides: [5, 1],
@@ -118,12 +118,12 @@ void main() {
 
           partition(a, 1, axis: -1, out: outPart);
           // For row 0: elements are 9, 1, 7. kth=1 means index 1 should have 7.0, index 0 <= 7.0, index 2 >= 7.0
-          expect(outPart.getCell([0, 1]), equals(Float64(7.0)));
+          expect(outPart.getCell([0, 1]), equals(7.0));
           expect(outPart.getCell([0, 0]).toDouble(), lessThanOrEqualTo(7.0));
           expect(outPart.getCell([0, 2]).toDouble(), greaterThanOrEqualTo(7.0));
 
-          final baseArgpart = NDArray<int>.zeros([2, 6], DType.int32);
-          final outArgpart = NDArray<int>.view(
+          final baseArgpart = NDArray.zeros([2, 6], DType.int32);
+          final outArgpart = NDArray<Int32>.view(
             baseArgpart,
             shape: [2, 3],
             strides: [6, 1],
@@ -133,7 +133,7 @@ void main() {
 
           argpartition(a, 1, axis: -1, out: outArgpart);
           final kthIdx = outArgpart.getCell([0, 1]);
-          expect(a.getCell([0, kthIdx]), equals(Float64(7.0)));
+          expect(a.getCell([0, kthIdx]), equals(7.0));
         });
       },
     );
@@ -186,10 +186,10 @@ void main() {
         final res = matmul(x, x, out: x);
         expect(identical(res, x), isTrue);
 
-        expect(x.getCell([0, 0]), equals(Float64(7.0)));
-        expect(x.getCell([0, 1]), equals(Float64(10.0)));
-        expect(x.getCell([1, 0]), equals(Float64(15.0)));
-        expect(x.getCell([1, 1]), equals(Float64(22.0)));
+        expect(x.getCell([0, 0]), equals(7.0));
+        expect(x.getCell([0, 1]), equals(10.0));
+        expect(x.getCell([1, 0]), equals(15.0));
+        expect(x.getCell([1, 1]), equals(22.0));
       });
     });
 
@@ -210,10 +210,10 @@ void main() {
 
           // [[1, 0], [0, 2]] * [[3, 4], [5, 6]] = [[3, 4], [10, 12]]
           matmul(a, b, out: a);
-          expect(a.getCell([0, 0]), equals(Float64(3.0)));
-          expect(a.getCell([0, 1]), equals(Float64(4.0)));
-          expect(a.getCell([1, 0]), equals(Float64(10.0)));
-          expect(a.getCell([1, 1]), equals(Float64(12.0)));
+          expect(a.getCell([0, 0]), equals(3.0));
+          expect(a.getCell([0, 1]), equals(4.0));
+          expect(a.getCell([1, 0]), equals(10.0));
+          expect(a.getCell([1, 1]), equals(12.0));
         });
       },
     );
@@ -230,7 +230,7 @@ void main() {
 
         // Execute put_along_axis inside an inner scope
         NDArray.scope(() {
-          final indices = NDArray<int>.fromList([1, 0], [2, 1], DType.int32);
+          final indices = NDArray.fromList([1, 0], [2, 1], DType.int32);
           final values = NDArray<Float64>.fromList(
             [99.0, 88.0],
             [2, 1],
@@ -241,8 +241,8 @@ void main() {
 
         // After inner scope exits, callerArr must NOT be disposed!
         expect(callerArr.isDisposed, isFalse);
-        expect(callerArr.getCell([0, 1]), equals(Float64(99.0)));
-        expect(callerArr.getCell([1, 0]), equals(Float64(88.0)));
+        expect(callerArr.getCell([0, 1]), equals(99.0));
+        expect(callerArr.getCell([1, 0]), equals(88.0));
       });
 
       // Now outer scope has exited, so callerArr is disposed
@@ -263,13 +263,13 @@ void main() {
           callerOut = NDArray<Float64>.zeros([2, 1], DType.float64);
 
           NDArray.scope(() {
-            final indices = NDArray<int>.fromList([1, 0], [2, 1], DType.int32);
+            final indices = NDArray.fromList([1, 0], [2, 1], DType.int32);
             take_along_axis(a, indices, 1, out: callerOut);
           });
 
           expect(callerOut.isDisposed, isFalse);
-          expect(callerOut.getCell([0, 0]), equals(Float64(20.0)));
-          expect(callerOut.getCell([1, 0]), equals(Float64(30.0)));
+          expect(callerOut.getCell([0, 0]), equals(20.0));
+          expect(callerOut.getCell([1, 0]), equals(30.0));
         });
 
         expect(callerOut.isDisposed, isTrue);
@@ -509,13 +509,23 @@ void main() {
       a.dispose();
     });
 
-    test('H5: sum of boolean returns int64 count of trues', () {
-      final b = NDArray.fromList([true, true, false, true], [4], DType.boolean);
-      final s = sum(b);
-      expect(s.dtype, DType.int64);
-      expect(s.scalar, 3);
-      b.dispose();
-    });
+    test(
+      'H5: sum of boolean preserves Boolean and sumAs returns int64 count of trues',
+      () {
+        final b = NDArray.fromList(
+          [true, true, false, true],
+          [4],
+          DType.boolean,
+        );
+        final sSame = sum(b);
+        expect(sSame.dtype, DType.boolean);
+        expect(sSame.scalar, true);
+        final s = sumAs(b, DType.int64);
+        expect(s.dtype, DType.int64);
+        expect(s.scalar, 3);
+        b.dispose();
+      },
+    );
 
     test(
       'H10: searchsorted rejects out-of-bounds sorter indices and wrong dtype',
@@ -592,8 +602,8 @@ void main() {
 
       test('argsort with int64 out buffer on fallback dtype', () {
         final a = NDArray.fromList([10, -5, 20], [3], DType.int8);
-        final out64 = NDArray<int>.zeros([3], DType.int64);
-        final res = argsort(a, out: out64);
+        final out64 = NDArray.zeros([3], DType.int64);
+        final res = argsortAs(a, DType.int64, out: out64);
         expect(identical(res, out64), isTrue);
         expect(res.dtype, DType.int64);
         expect(res.toList(), equals([1, 0, 2]));
@@ -605,8 +615,8 @@ void main() {
         // -1 as uint64 is 2^64 - 1
         final a = NDArray.fromList([10, 20, -1], [3], DType.uint64);
         final v = NDArray.fromList([15, -1], [2], DType.uint64);
-        final out64 = NDArray<int>.zeros([2], DType.int64);
-        final res = searchsorted(a, v, out: out64);
+        final out64 = NDArray.zeros([2], DType.int64);
+        final res = searchsortedAs(a, v, DType.int64, out: out64);
         expect(res.dtype, DType.int64);
         expect(res.toList(), equals([1, 2]));
         a.dispose();

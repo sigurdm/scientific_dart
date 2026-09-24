@@ -9,7 +9,11 @@ import '../backend/kernels.dart';
 ///
 /// If [x] and [y] are omitted, returns indices where [condition] is `true`
 /// as a tuple of index arrays (identical to [nonzero]).
-dynamic where<T>(GpuArray condition, [GpuArray? x, GpuArray? y]) {
+dynamic where<T extends DTypeTag>(
+  GpuArray condition, [
+  GpuArray? x,
+  GpuArray? y,
+]) {
   if (x == null && y == null) {
     return nonzero(condition);
   }
@@ -52,7 +56,7 @@ dynamic where<T>(GpuArray condition, [GpuArray? x, GpuArray? y]) {
 }
 
 /// Returns an array drawn from elements in [choicelist], depending on conditions in [condlist].
-GpuArray<T> select<T>(
+GpuArray<T> select<T extends DTypeTag>(
   List<GpuArray> condlist,
   List<GpuArray> choicelist, [
   GpuArray? defaultArr,
@@ -87,7 +91,7 @@ GpuArray<T> select<T>(
 }
 
 /// Returns the elements of an array that satisfy the boolean [condition].
-GpuArray<T> extract<T>(GpuArray condition, GpuArray<T> arr) {
+GpuArray<T> extract<T extends DTypeTag>(GpuArray condition, GpuArray<T> arr) {
   final flatIndices = flatnonzero(condition);
   final count = flatIndices.shape[0];
   if (count == 0) {
@@ -113,7 +117,11 @@ GpuArray<T> extract<T>(GpuArray condition, GpuArray<T> arr) {
 }
 
 /// Takes values from [arr] along [axis] at specified 1D or multi-dimensional [indices].
-GpuArray<T> take_along_axis<T>(GpuArray<T> arr, GpuArray indices, int axis) {
+GpuArray<T> take_along_axis<T extends DTypeTag>(
+  GpuArray<T> arr,
+  GpuArray indices,
+  int axis,
+) {
   final rank = arr.shape.length;
   final normAxis = axis < 0 ? axis + rank : axis;
   if (normAxis < 0 || normAxis >= rank) {
@@ -146,7 +154,7 @@ GpuArray<T> take_along_axis<T>(GpuArray<T> arr, GpuArray indices, int axis) {
 }
 
 /// Puts [values] into [arr] along [axis] at positions specified by [indices].
-void put_along_axis<T>(
+void put_along_axis<T extends DTypeTag>(
   GpuArray<T> arr,
   GpuArray indices,
   GpuArray values,
@@ -187,36 +195,6 @@ bool _isNonZero(dynamic val) {
   }
   if (val is num) {
     return val != 0;
-  }
-  if (val is Float16) {
-    return val.value != 0.0;
-  }
-  if (val is BFloat16) {
-    return val.value != 0.0;
-  }
-  if (val is Int64) {
-    return val.value != 0;
-  }
-  if (val is Int32) {
-    return val.value != 0;
-  }
-  if (val is Int16) {
-    return val.value != 0;
-  }
-  if (val is Int8) {
-    return val.value != 0;
-  }
-  if (val is Uint64) {
-    return val.value != 0;
-  }
-  if (val is Uint32) {
-    return val.value != 0;
-  }
-  if (val is Uint16) {
-    return val.value != 0;
-  }
-  if (val is Uint8) {
-    return val.value != 0;
   }
   return false;
 }

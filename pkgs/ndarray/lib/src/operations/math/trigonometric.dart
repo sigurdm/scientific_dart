@@ -11,7 +11,7 @@ import 'arithmetic.dart';
 /// Computes the element-wise sine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -25,25 +25,34 @@ import 'arithmetic.dart';
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Sine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
+NDArray<R> sin<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute sin() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = sin<Float64, R>(promoted, where: where, out: out);
+      final res =
+          sin<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -167,16 +176,16 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<DTypeTag, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => Float64(math.sin(x)),
+      (x) => math.sin(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -188,7 +197,7 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
 /// Computes the element-wise sinc of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`) or [Complex].
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`) or [Complex].
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -197,9 +206,12 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
 /// - For C-contiguous array layouts, uses native C vector math kernels (`v_sinc_double`/`v_sinc_float` etc).
-NDArray<R> sinc<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> sinc<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -209,19 +221,21 @@ NDArray<R> sinc<T, R>(
   }
 
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = sinc<Float64, R>(promoted, where: where, out: out);
+      final res =
+          sinc<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
 
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -358,7 +372,7 @@ NDArray<R> sinc<T, R>(
 /// Computes the element-wise cosine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -372,25 +386,34 @@ NDArray<R> sinc<T, R>(
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Cosine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
+NDArray<R> cos<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute cos() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = cos<Float64, R>(promoted, where: where, out: out);
+      final res =
+          cos<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -514,16 +537,16 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<DTypeTag, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => Float64(math.cos(x)),
+      (x) => math.cos(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -536,25 +559,34 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
+NDArray<R> tan<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute tan() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = tan<Float64, R>(promoted, where: where, out: out);
+      final res =
+          tan<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -678,16 +710,16 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<DTypeTag, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => Float64(math.tan(x)),
+      (x) => math.tan(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -709,9 +741,12 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
 /// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
 /// final b = asin(a); // [0.0, 1.570796...]
 /// ```
-NDArray<R> asin<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> asin<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -720,18 +755,20 @@ NDArray<R> asin<T, R>(
     throw StateError('Cannot execute asin() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = asin<Float64, R>(promoted, where: where, out: out);
+      final res =
+          asin<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -855,16 +892,16 @@ NDArray<R> asin<T, R>(
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<DTypeTag, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => Float64(math.asin(x)),
+      (x) => math.asin(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -886,9 +923,12 @@ NDArray<R> asin<T, R>(
 /// final a = NDArray.fromList([1.0, 0.0], [2], DType.float64);
 /// final b = acos(a); // [0.0, 1.570796...]
 /// ```
-NDArray<R> acos<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> acos<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -897,18 +937,20 @@ NDArray<R> acos<T, R>(
     throw StateError('Cannot execute acos() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = acos<Float64, R>(promoted, where: where, out: out);
+      final res =
+          acos<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1032,16 +1074,16 @@ NDArray<R> acos<T, R>(
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<DTypeTag, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => Float64(math.acos(x)),
+      (x) => math.acos(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -1063,9 +1105,12 @@ NDArray<R> acos<T, R>(
 /// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
 /// final b = atan(a); // [0.0, 0.785398...]
 /// ```
-NDArray<R> atan<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> atan<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1074,18 +1119,20 @@ NDArray<R> atan<T, R>(
     throw StateError('Cannot execute atan() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = atan<Float64, R>(promoted, where: where, out: out);
+      final res =
+          atan<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1209,16 +1256,16 @@ NDArray<R> atan<T, R>(
       }
     }
 
-    unaryOp<Float64, Float64>(
-      result as NDArray<Float64>,
-      a as NDArray<Float64>,
+    unaryOp<DTypeTag, R>(
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => Float64(math.atan(x)),
+      (x) => math.atan(x as num),
       maskHolder.pointer,
     );
     return result;
@@ -1230,7 +1277,7 @@ NDArray<R> atan<T, R>(
 /// Computes the element-wise hyperbolic sine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -1238,9 +1285,12 @@ NDArray<R> atan<T, R>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> sinh<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> sinh<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1249,18 +1299,20 @@ NDArray<R> sinh<T, R>(
     throw StateError('Cannot execute sinh() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = sinh<Float64, R>(promoted, where: where, out: out);
+      final res =
+          sinh<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1384,7 +1436,7 @@ NDArray<R> sinh<T, R>(
       }
     }
 
-    unaryOp<T, R>(
+    unaryOp<DTypeTag, R>(
       result,
       a,
       a.shape,
@@ -1395,7 +1447,7 @@ NDArray<R> sinh<T, R>(
       result.offsetElements,
       (x) {
         final val = (x as num).toDouble();
-        return (math.exp(val) - math.exp(-val)) / 2.0 as R;
+        return (math.exp(val) - math.exp(-val)) / 2.0;
       },
       maskHolder.pointer,
     );
@@ -1408,7 +1460,7 @@ NDArray<R> sinh<T, R>(
 /// Computes the element-wise hyperbolic cosine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -1416,9 +1468,12 @@ NDArray<R> sinh<T, R>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> cosh<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> cosh<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1427,18 +1482,20 @@ NDArray<R> cosh<T, R>(
     throw StateError('Cannot execute cosh() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = cosh<Float64, R>(promoted, where: where, out: out);
+      final res =
+          cosh<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1562,7 +1619,7 @@ NDArray<R> cosh<T, R>(
       }
     }
 
-    unaryOp<T, R>(
+    unaryOp<DTypeTag, R>(
       result,
       a,
       a.shape,
@@ -1573,7 +1630,7 @@ NDArray<R> cosh<T, R>(
       result.offsetElements,
       (x) {
         final val = (x as num).toDouble();
-        return (math.exp(val) + math.exp(-val)) / 2.0 as R;
+        return (math.exp(val) + math.exp(-val)) / 2.0;
       },
       maskHolder.pointer,
     );
@@ -1586,7 +1643,7 @@ NDArray<R> cosh<T, R>(
 /// Computes the element-wise hyperbolic tangent of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -1594,9 +1651,12 @@ NDArray<R> cosh<T, R>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> tanh<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> tanh<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1605,18 +1665,20 @@ NDArray<R> tanh<T, R>(
     throw StateError('Cannot execute tanh() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = tanh<Float64, R>(promoted, where: where, out: out);
+      final res =
+          tanh<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1740,7 +1802,7 @@ NDArray<R> tanh<T, R>(
       }
     }
 
-    unaryOp<T, R>(
+    unaryOp<DTypeTag, R>(
       result,
       a,
       a.shape,
@@ -1752,7 +1814,7 @@ NDArray<R> tanh<T, R>(
       (x) {
         final val = (x as num).toDouble();
         final exp2val = math.exp(2.0 * val);
-        return (exp2val - 1.0) / (exp2val + 1.0) as R;
+        return (exp2val - 1.0) / (exp2val + 1.0);
       },
       maskHolder.pointer,
     );
@@ -1765,7 +1827,7 @@ NDArray<R> tanh<T, R>(
 /// Computes the element-wise inverse hyperbolic sine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -1773,9 +1835,12 @@ NDArray<R> tanh<T, R>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> asinh<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> asinh<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1784,18 +1849,20 @@ NDArray<R> asinh<T, R>(
     throw StateError('Cannot execute asinh() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = asinh<Float64, R>(promoted, where: where, out: out);
+      final res =
+          asinh<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -1919,7 +1986,7 @@ NDArray<R> asinh<T, R>(
       }
     }
 
-    unaryOp<T, R>(
+    unaryOp<DTypeTag, R>(
       result,
       a,
       a.shape,
@@ -1930,7 +1997,7 @@ NDArray<R> asinh<T, R>(
       result.offsetElements,
       (x) {
         final val = (x as num).toDouble();
-        return math.log(val + math.sqrt(val * val + 1.0)) as R;
+        return math.log(val + math.sqrt(val * val + 1.0));
       },
       maskHolder.pointer,
     );
@@ -1943,7 +2010,7 @@ NDArray<R> asinh<T, R>(
 /// Computes the element-wise inverse hyperbolic cosine of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -1951,9 +2018,12 @@ NDArray<R> asinh<T, R>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> acosh<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> acosh<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -1962,18 +2032,20 @@ NDArray<R> acosh<T, R>(
     throw StateError('Cannot execute acosh() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = acosh<Float64, R>(promoted, where: where, out: out);
+      final res =
+          acosh<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -2097,7 +2169,7 @@ NDArray<R> acosh<T, R>(
       }
     }
 
-    unaryOp<T, R>(
+    unaryOp<DTypeTag, R>(
       result,
       a,
       a.shape,
@@ -2108,7 +2180,7 @@ NDArray<R> acosh<T, R>(
       result.offsetElements,
       (x) {
         final val = (x as num).toDouble();
-        return math.log(val + math.sqrt(val * val - 1.0)) as R;
+        return math.log(val + math.sqrt(val * val - 1.0));
       },
       maskHolder.pointer,
     );
@@ -2121,7 +2193,7 @@ NDArray<R> acosh<T, R>(
 /// Computes the element-wise inverse hyperbolic tangent of the array.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num`).
+/// - Input array [a] elements must be numeric (`T extends DTypeTag`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
 /// **Throws:**
@@ -2129,9 +2201,12 @@ NDArray<R> acosh<T, R>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> atanh<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> atanh<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -2140,18 +2215,20 @@ NDArray<R> atanh<T, R>(
     throw StateError('Cannot execute atanh() on a disposed array.');
   }
   if (a.dtype.isInteger ||
-      a.dtype == DType.boolean ||
-      a.dtype == DType.float16 ||
-      a.dtype == DType.bfloat16) {
+      (a.dtype as DType<DTypeTag>) == DType.boolean ||
+      (a.dtype as DType<DTypeTag>) == DType.float16 ||
+      (a.dtype as DType<DTypeTag>) == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
-      final res = atanh<Float64, R>(promoted, where: where, out: out);
+      final res =
+          atanh<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+              as NDArray<R>;
       return res;
     } finally {
       promoted.dispose();
     }
   }
-  final DType<dynamic> targetDType = switch (a.dtype) {
+  final DType<DTypeTag> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype,
     DType.float32 => DType.float32,
     _ => DType.float64,
@@ -2275,7 +2352,7 @@ NDArray<R> atanh<T, R>(
       }
     }
 
-    unaryOp<T, R>(
+    unaryOp<DTypeTag, R>(
       result,
       a,
       a.shape,
@@ -2286,7 +2363,7 @@ NDArray<R> atanh<T, R>(
       result.offsetElements,
       (x) {
         final val = (x as num).toDouble();
-        return 0.5 * math.log((1.0 + val) / (1.0 - val)) as R;
+        return 0.5 * math.log((1.0 + val) / (1.0 - val));
       },
       maskHolder.pointer,
     );
@@ -2300,11 +2377,11 @@ NDArray<R> atanh<T, R>(
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<Float64> atan2<Ty, Tx>(
+NDArray<DTypeTag> atan2<Ty extends DTypeTag, Tx extends DTypeTag>(
   NDArray<Ty> y,
   NDArray<Tx> x, {
-  NDArray<dynamic>? where,
-  NDArray<Float64>? out,
+  NDArray<DTypeTag>? where,
+  NDArray<DTypeTag>? out,
 }) {
   if (y.isDisposed ||
       x.isDisposed ||
@@ -2323,7 +2400,7 @@ NDArray<Float64> atan2<Ty, Tx>(
         ? promoteToDouble(x)
         : x;
     try {
-      final res = atan2<dynamic, dynamic>(
+      final res = atan2<DTypeTag, DTypeTag>(
         yPromoted,
         xPromoted,
         where: where,
@@ -2358,13 +2435,9 @@ NDArray<Float64> atan2<Ty, Tx>(
   final maskHolder = prepareMask(where, shape);
 
   try {
-    final NDArray<Float64> result =
+    final NDArray<DTypeTag> result =
         out ??
-        NDArray<Float64>.create(
-          shape,
-          targetDType as DType<Float64>,
-          zeroInit: where != null,
-        );
+        NDArray<DTypeTag>.create(shape, targetDType, zeroInit: where != null);
     // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
     if (y.isContiguous &&
         x.isContiguous &&
@@ -2439,7 +2512,7 @@ NDArray<Float64> atan2<Ty, Tx>(
       }
     }
 
-    elementWiseOp<dynamic, dynamic, dynamic>(
+    elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
       result,
       y,
       x,
@@ -2466,10 +2539,10 @@ NDArray<Float64> atan2<Ty, Tx>(
 /// ```dart
 /// final h = hypot(a, b);
 /// ```
-NDArray<R> hypot<Ta, Tb, R>(
+NDArray<R> hypot<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<dynamic>? where,
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -2510,10 +2583,12 @@ NDArray<R> hypot<Ta, Tb, R>(
     final NDArray<R> result =
         out ?? NDArray<R>.create(shape, targetDType, zeroInit: where != null);
     if (isCpx) {
-      final cpxDType = is64BitComplex ? DType.complex128 : DType.complex64;
+      final DType<DTypeTag> cpxDType = is64BitComplex
+          ? DType.complex128
+          : DType.complex64;
       return NDArray.scope(() {
-        final aCpx = castNDArray<Complex>(a, cpxDType);
-        final bCpx = castNDArray<Complex>(b, cpxDType);
+        final aCpx = castNDArray<DTypeTag>(a, cpxDType);
+        final bCpx = castNDArray<DTypeTag>(b, cpxDType);
         final cpxBroadcast = broadcast(aCpx, bCpx);
         if (listEquals(a.shape, b.shape) &&
             a.isContiguous &&
@@ -2594,7 +2669,7 @@ NDArray<R> hypot<Ta, Tb, R>(
       return x * math.sqrt(1.0 + t * t);
     }
 
-    elementWiseOp<dynamic, dynamic, dynamic>(
+    elementWiseOp<DTypeTag, DTypeTag, DTypeTag>(
       result,
       a,
       b,
@@ -2635,9 +2710,12 @@ NDArray<R> hypot<Ta, Tb, R>(
 /// final a = NDArray.fromList([180.0, 90.0, 45.0], [3], DType.float64);
 /// final r = deg2rad(a); // [pi, pi / 2.0, pi / 4.0]
 /// ```
-NDArray<R> deg2rad<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> deg2rad<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -2645,11 +2723,14 @@ NDArray<R> deg2rad<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute deg2rad() on a disposed array.');
   }
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for deg2rad');
   }
 
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+      ? DType.float32
+      : DType.float64;
 
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
@@ -2661,7 +2742,7 @@ NDArray<R> deg2rad<T, R>(
 
   final factor = NDArray.fromList([0.017453292519943295], [], targetDType);
   try {
-    return multiply<T, dynamic, R>(a, factor, where: where, out: out);
+    return multiply<DTypeTag>(a, factor, where: where, out: out) as NDArray<R>;
   } finally {
     factor.dispose();
   }
@@ -2682,9 +2763,12 @@ NDArray<R> deg2rad<T, R>(
 /// final a = NDArray.fromList([math.pi, math.pi / 2.0], [2], DType.float64);
 /// final d = rad2deg(a); // [180.0, 90.0]
 /// ```
-NDArray<R> rad2deg<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
+NDArray<R> rad2deg<R extends DTypeTag>(
+  NDArray<
+    DTypeSpec<DTypeTag, Object?, DTypeTag, DTypeTag, R, DTypeTag, DTypeTag>
+  >
+  a, {
+  NDArray<DTypeTag>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed ||
@@ -2692,11 +2776,14 @@ NDArray<R> rad2deg<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute rad2deg() on a disposed array.');
   }
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  if ((a.dtype as DType<DTypeTag>) == DType.complex128 ||
+      (a.dtype as DType<DTypeTag>) == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for rad2deg');
   }
 
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final targetDType = (a.dtype as DType<DTypeTag>) == DType.float32
+      ? DType.float32
+      : DType.float64;
 
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
@@ -2708,7 +2795,7 @@ NDArray<R> rad2deg<T, R>(
 
   final factor = NDArray.fromList([57.29577951308232], [], targetDType);
   try {
-    return multiply<T, dynamic, R>(a, factor, where: where, out: out);
+    return multiply<DTypeTag>(a, factor, where: where, out: out) as NDArray<R>;
   } finally {
     factor.dispose();
   }

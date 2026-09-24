@@ -93,10 +93,7 @@ void main() {
 
           expect(identical(actualA, aAlias), isTrue);
           for (var i = 0; i < 6; i++) {
-            expect(
-              aAlias.getCellFlat(i).value,
-              equals(expectedA.getCellFlat(i).value),
-            );
+            expect(aAlias.getCellFlat(i), equals(expectedA.getCellFlat(i)));
           }
 
           // Also verify weighted choice where out aliases p
@@ -124,10 +121,7 @@ void main() {
 
           expect(identical(actualP, pAlias), isTrue);
           for (var i = 0; i < 6; i++) {
-            expect(
-              pAlias.getCellFlat(i).value,
-              equals(expectedP.getCellFlat(i).value),
-            );
+            expect(pAlias.getCellFlat(i), equals(expectedP.getCellFlat(i)));
           }
         });
       },
@@ -198,8 +192,8 @@ void main() {
           expect(identical(actualMean, meanAlias), isTrue);
           for (var i = 0; i < 3; i++) {
             expect(
-              meanAlias.getCellFlat(i).value,
-              closeTo(expectedMean.getCellFlat(i).value, 1e-12),
+              meanAlias.getCellFlat(i),
+              closeTo(expectedMean.getCellFlat(i), 1e-12),
             );
           }
 
@@ -228,8 +222,8 @@ void main() {
           expect(identical(actualMulti, backing), isTrue);
           for (var i = 0; i < 6; i++) {
             expect(
-              backing.getCellFlat(i).value,
-              closeTo(expectedMulti.getCellFlat(i).value, 1e-12),
+              backing.getCellFlat(i),
+              closeTo(expectedMulti.getCellFlat(i), 1e-12),
             );
           }
 
@@ -251,8 +245,8 @@ void main() {
           expect(identical(actualCov, covAlias), isTrue);
           for (var i = 0; i < 9; i++) {
             expect(
-              covAlias.getCellFlat(i).value,
-              closeTo(expectedCov.getCellFlat(i).value, 1e-12),
+              covAlias.getCellFlat(i),
+              closeTo(expectedCov.getCellFlat(i), 1e-12),
             );
           }
         });
@@ -272,7 +266,7 @@ void main() {
           for (var i = 0; i < 6; i++) {
             for (var k = 0; k < 4; k++) {
               final coords = <int>[i, ...List<int>.filled(32, 0), k];
-              base.setCell(coords, Float64((i + 1) * 100.0 + k));
+              base.setCell(coords, (i + 1) * 100.0 + k);
             }
           }
 
@@ -293,8 +287,8 @@ void main() {
           for (var i = 0; i < 6; i++) {
             final c0 = <int>[i, ...List<int>.filled(32, 0), 0];
             final c1 = <int>[i, ...List<int>.filled(32, 0), 1];
-            final v0 = view.getCell(c0).value;
-            final v1 = view.getCell(c1).value;
+            final v0 = view.getCell(c0);
+            final v1 = view.getCell(c1);
             final rowId = (v0 / 100.0).round();
             expect(v0, equals(rowId * 100.0 + 0));
             expect(v1, equals(rowId * 100.0 + 2));
@@ -303,8 +297,8 @@ void main() {
             // Odd indices in base (1 and 3) should remain untouched
             final cOdd1 = <int>[i, ...List<int>.filled(32, 0), 1];
             final cOdd3 = <int>[i, ...List<int>.filled(32, 0), 3];
-            expect(base.getCell(cOdd1).value, equals((i + 1) * 100.0 + 1));
-            expect(base.getCell(cOdd3).value, equals((i + 1) * 100.0 + 3));
+            expect(base.getCell(cOdd1), equals((i + 1) * 100.0 + 1));
+            expect(base.getCell(cOdd3), equals((i + 1) * 100.0 + 3));
           }
 
           // Must be a valid permutation of [1, 2, 3, 4, 5, 6] and not identity
@@ -312,7 +306,7 @@ void main() {
           final unshuffledRows = <int>[];
           for (var i = 0; i < 6; i++) {
             final c0 = <int>[i, ...List<int>.filled(32, 0), 0];
-            unshuffledRows.add((view.getCell(c0).value / 100.0).round());
+            unshuffledRows.add((view.getCell(c0) / 100.0).round());
           }
           expect(unshuffledRows, isNot(equals([1, 2, 3, 4, 5, 6])));
         });

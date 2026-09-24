@@ -203,5 +203,56 @@ void main() {
       final g = p1.gcd(p2);
       expect(g.evaluate(2.0), equals(1.0)); // 2 - 1 = 1
     });
+
+    test(
+      'arbitrary-precision BigInt (>64-bit) coefficients, Legendre(30), fromExpr, and equality',
+      () {
+        // 10^30 exceeds 64-bit signed int (max ~9.22 * 10^18) by >11 orders of magnitude
+        final huge = BigInt.parse('1000000000000000000000000000000');
+        final pHuge = FlintRationalPoly.fromBigIntCoefficients([
+          -huge,
+          BigInt.one,
+        ]);
+        expect(pHuge.getCoefficientRational(0).numerator, equals(-huge));
+        expect(pHuge.evaluateRational(huge).numerator, equals(BigInt.zero));
+
+        // Legendre P_30(x) has huge exact rational coefficients exceeding 64-bit int
+        final p30 = FlintRationalPoly.legendre(30);
+        final leadCoeff = p30.getCoefficientRational(30);
+        // Leading coefficient of P_30 is (60!)/((30!)^2 * 2^30) = 118264581564861424 / 1073741824 = 7391536347803839 / 67108864
+        expect(leadCoeff.numerator, equals(BigInt.parse('7391536347803839')));
+        expect(leadCoeff.denominator, equals(BigInt.parse('67108864')));
+        // P_30(1) == 1 exactly
+        final atOne = p30.evaluateRational(1);
+        expect(atOne.numerator, equals(BigInt.one));
+        expect(atOne.denominator, equals(BigInt.one));
+
+        // Structural equality and hashCode
+        final a = FlintRationalPoly.fromIntCoefficients([1, 2, 3]);
+        final b = FlintRationalPoly.fromIntCoefficients([1, 2, 3]);
+        final c = FlintRationalPoly.fromIntCoefficients([1, 2, 4]);
+        expect(a, equals(b));
+        expect(a.hashCode, equals(b.hashCode));
+        expect(a == c, isFalse);
+
+        // Bidirectional conversion: Expr -> FlintRationalPoly -> Expr
+        final x = Symbol('x');
+        final symExpr =
+            3.toExpr * (x ^ 3) - Rational(1, 2) * (x ^ 2) + 5.toExpr * x - 7;
+        final fromE = FlintRationalPoly.fromExpr(symExpr, x);
+        expect(fromE.degree, equals(3));
+        expect(
+          fromE.getCoefficientRational(2),
+          equals((numerator: BigInt.from(-1), denominator: BigInt.from(2))),
+        );
+        expect(fromE.toExpr(x).expand(), equals(symExpr.expand()));
+
+        // Non-polynomial Expr should throw ArgumentError
+        expect(
+          () => FlintRationalPoly.fromExpr(sin(x), x),
+          throwsArgumentError,
+        );
+      },
+    );
   });
 }

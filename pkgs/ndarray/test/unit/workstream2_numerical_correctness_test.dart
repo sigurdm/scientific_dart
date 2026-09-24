@@ -17,7 +17,7 @@ void main() {
 
       test('int8 + 1 maintains Int8 dtype', () {
         NDArray.scope(() {
-          final a = NDArray<int>.fromList([10, 20], [2], DType.int8);
+          final a = NDArray.fromList([10, 20], [2], DType.int8);
           final res = a + 1;
           expect(res.dtype, equals(DType.int8));
           expect(res.getCellFlat(0), equals(11));
@@ -36,7 +36,7 @@ void main() {
 
       test('int16 * 3 maintains Int16 dtype', () {
         NDArray.scope(() {
-          final a = NDArray<int>.fromList([10, 20], [2], DType.int16);
+          final a = NDArray.fromList([10, 20], [2], DType.int16);
           final res = a * 3;
           expect(res.dtype, equals(DType.int16));
           expect(res.getCellFlat(0), equals(30));
@@ -52,7 +52,7 @@ void main() {
           );
           final res = a * Complex(2.0, 0.0);
           expect(res.dtype, equals(DType.complex64));
-          final c = res.getCellFlat(0) as Complex;
+          final c = res.getCellFlat(0);
           expect(c.real, closeTo(2.0, 1e-5));
           expect(c.imag, closeTo(4.0, 1e-5));
         });
@@ -140,53 +140,59 @@ void main() {
     });
 
     group('H5: sum and prod Accumulator DType & Bool Counting', () {
-      test('sum of boolean array returns int64 count of true values', () {
-        NDArray.scope(() {
-          final a = NDArray<bool>.fromList(
-            [true, false, true, true],
-            [4],
-            DType.boolean,
-          );
-          final s = sum(a);
-          expect(s.dtype, equals(DType.int64));
-          expect(s.scalar, equals(3));
-        });
-      });
+      test(
+        'sumAs of boolean array with DType.int64 returns int64 count of true values',
+        () {
+          NDArray.scope(() {
+            final a = NDArray<Boolean>.fromList(
+              [true, false, true, true],
+              [4],
+              DType.boolean,
+            );
+            final s = sumAs(a, DType.int64);
+            expect(s.dtype, equals(DType.int64));
+            expect(s.scalar, equals(3));
+          });
+        },
+      );
 
-      test('prod of boolean array returns int64 product', () {
-        NDArray.scope(() {
-          final a1 = NDArray<bool>.fromList(
-            [true, true, true],
-            [3],
-            DType.boolean,
-          );
-          final p1 = prod(a1);
-          expect(p1.dtype, equals(DType.int64));
-          expect(p1.scalar, equals(1));
+      test(
+        'prodAs of boolean array with DType.int64 returns int64 product',
+        () {
+          NDArray.scope(() {
+            final a1 = NDArray<Boolean>.fromList(
+              [true, true, true],
+              [3],
+              DType.boolean,
+            );
+            final p1 = prodAs(a1, DType.int64);
+            expect(p1.dtype, equals(DType.int64));
+            expect(p1.scalar, equals(1));
 
-          final a2 = NDArray<bool>.fromList(
-            [true, false, true],
-            [3],
-            DType.boolean,
-          );
-          final p2 = prod(a2);
-          expect(p2.dtype, equals(DType.int64));
-          expect(p2.scalar, equals(0));
-        });
-      });
+            final a2 = NDArray<Boolean>.fromList(
+              [true, false, true],
+              [3],
+              DType.boolean,
+            );
+            final p2 = prodAs(a2, DType.int64);
+            expect(p2.dtype, equals(DType.int64));
+            expect(p2.scalar, equals(0));
+          });
+        },
+      );
 
-      test('sum along axis for boolean array', () {
+      test('sumAs along axis for boolean array', () {
         NDArray.scope(() {
-          final a = NDArray<bool>.fromList(
+          final a = NDArray<Boolean>.fromList(
             [true, false, true, true],
             [2, 2],
             DType.boolean,
           );
-          final s0 = sum(a, axis: 0);
+          final s0 = sumAs(a, DType.int64, axis: 0);
           expect(s0.dtype, equals(DType.int64));
           expect(s0.toList(), equals([2, 1]));
 
-          final s1 = sum(a, axis: 1);
+          final s1 = sumAs(a, DType.int64, axis: 1);
           expect(s1.dtype, equals(DType.int64));
           expect(s1.toList(), equals([1, 2]));
         });
@@ -195,8 +201,8 @@ void main() {
       test('sum with explicit dtype widening prevents overflow', () {
         NDArray.scope(() {
           // 100 + 100 = 200 (overflows int8 if not widened)
-          final a = NDArray<int>.fromList([100, 100], [2], DType.int8);
-          final s = sum(a, dtype: DType.int64);
+          final a = NDArray.fromList([100, 100], [2], DType.int8);
+          final s = sumAs(a, DType.int64);
           expect(s.dtype, equals(DType.int64));
           expect(s.scalar, equals(200));
         });
@@ -206,12 +212,12 @@ void main() {
         'sum with explicit boolean dtype preserves boolean OR reduction',
         () {
           NDArray.scope(() {
-            final a = NDArray<bool>.fromList(
+            final a = NDArray<Boolean>.fromList(
               [true, false, true],
               [3],
               DType.boolean,
             );
-            final s = sum(a, dtype: DType.boolean);
+            final s = sumAs(a, DType.boolean);
             expect(s.dtype, equals(DType.boolean));
             expect(s.scalar, equals(true));
           });
@@ -239,11 +245,7 @@ void main() {
           const uHigh = -0x8000000000000000;
           const uLow = 100;
 
-          final a = NDArray<int>.fromList(
-            [uMax, uLow, uHigh],
-            [3],
-            DType.uint64,
-          );
+          final a = NDArray.fromList([uMax, uLow, uHigh], [3], DType.uint64);
           final mn = min(a);
           final mx = max(a);
           expect(mn.scalar, equals(uLow));
@@ -257,11 +259,7 @@ void main() {
           const uHigh = -0x8000000000000000;
           const uLow = 100;
 
-          final a = NDArray<int>.fromList(
-            [uMax, uLow, uHigh],
-            [3],
-            DType.uint64,
-          );
+          final a = NDArray.fromList([uMax, uLow, uHigh], [3], DType.uint64);
           final sorted = sort(a);
           expect(sorted.toList(), equals([uLow, uHigh, uMax]));
 
@@ -276,16 +274,12 @@ void main() {
           const uHigh = -0x8000000000000000;
           const uMax = -1;
 
-          final sortedA = NDArray<int>.fromList(
+          final sortedA = NDArray.fromList(
             [uLow, uHigh, uMax],
             [3],
             DType.uint64,
           );
-          final query = NDArray<int>.fromList(
-            [50, uHigh, -2],
-            [3],
-            DType.uint64,
-          );
+          final query = NDArray.fromList([50, uHigh, -2], [3], DType.uint64);
 
           final idxs = searchsorted(sortedA, query);
           // 50 < 100 -> index 0
@@ -301,14 +295,10 @@ void main() {
           const uHigh = -0x8000000000000000;
           const uMax = -1;
 
-          final odd = NDArray<int>.fromList(
-            [uMax, uLow, uHigh],
-            [3],
-            DType.uint64,
-          );
+          final odd = NDArray.fromList([uMax, uLow, uHigh], [3], DType.uint64);
           expect(median(odd).scalar, equals(uHigh));
 
-          final even = NDArray<int>.fromList([10, 20], [2], DType.uint64);
+          final even = NDArray.fromList([10, 20], [2], DType.uint64);
           expect(median(even).scalar, equals(15));
         });
       });
@@ -322,7 +312,7 @@ void main() {
             [3],
             DType.float64,
           );
-          final sorter = NDArray<int>.fromList([1, 2, 0], [3], DType.int32);
+          final sorter = NDArray.fromList([1, 2, 0], [3], DType.int32);
           final v = NDArray<Float64>.fromList([15.0], [1], DType.float64);
 
           final idx = searchsorted(a, v, sorter: sorter);
@@ -339,17 +329,13 @@ void main() {
           );
           final v = NDArray<Float64>.fromList([15.0], [1], DType.float64);
 
-          final oobSorter1 = NDArray<int>.fromList([1, 2, 5], [3], DType.int32);
+          final oobSorter1 = NDArray.fromList([1, 2, 5], [3], DType.int32);
           expect(
             () => searchsorted(a, v, sorter: oobSorter1),
             throwsArgumentError,
           );
 
-          final oobSorter2 = NDArray<int>.fromList(
-            [-1, 1, 2],
-            [3],
-            DType.int32,
-          );
+          final oobSorter2 = NDArray.fromList([-1, 1, 2], [3], DType.int32);
           expect(
             () => searchsorted(a, v, sorter: oobSorter2),
             throwsArgumentError,
@@ -366,11 +352,7 @@ void main() {
           );
           final v = NDArray<Float64>.fromList([15.0], [1], DType.float64);
 
-          final badShapeSorter = NDArray<int>.fromList(
-            [1, 2],
-            [2],
-            DType.int32,
-          );
+          final badShapeSorter = NDArray.fromList([1, 2], [2], DType.int32);
           expect(
             () => searchsorted(a, v, sorter: badShapeSorter),
             throwsArgumentError,

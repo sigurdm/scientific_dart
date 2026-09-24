@@ -12,13 +12,13 @@ void main() async {
       await criterion(
         'NDArray Float32 SIMD Additions Fast Path Benchmark',
         (c) {
-          final a = linspace<double>(
+          final a = linspace<DTypeTag>(
             1.0,
             100.0,
             arraySize,
             dtype: DType.float32,
           );
-          final b = linspace<double>(
+          final b = linspace<DTypeTag>(
             1.0,
             100.0,
             arraySize,

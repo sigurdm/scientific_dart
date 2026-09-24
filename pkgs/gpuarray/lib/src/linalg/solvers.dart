@@ -7,7 +7,7 @@ import '../backend/compute_engine.dart';
 import 'decompositions.dart';
 
 /// Result of sign and natural logarithm of determinant (slogdet).
-final class SlogdetResult<T> {
+final class SlogdetResult<T extends DTypeTag> {
   /// Sign of determinant (-1, 0, or 1).
   final GpuArray<T> sign;
 
@@ -21,7 +21,7 @@ final class SlogdetResult<T> {
 }
 
 /// Solves a linear matrix equation $A x = b$.
-GpuArray<T> solve<T>(GpuArray<T> a, GpuArray<T> b) {
+GpuArray<T> solve<T extends DTypeTag>(GpuArray<T> a, GpuArray<T> b) {
   if (a.rank < 2) {
     throw ArgumentError('solve() requires matrix A of at least 2 dimensions.');
   }
@@ -63,7 +63,7 @@ GpuArray<T> solve<T>(GpuArray<T> a, GpuArray<T> b) {
 }
 
 /// Computes the multiplicative inverse of a square matrix [a].
-GpuArray<T> inv<T>(GpuArray<T> a) {
+GpuArray<T> inv<T extends DTypeTag>(GpuArray<T> a) {
   if (a.rank < 2) {
     throw ArgumentError('inv() requires matrix of at least 2 dimensions.');
   }
@@ -91,7 +91,7 @@ GpuArray<T> inv<T>(GpuArray<T> a) {
 }
 
 /// Computes the Moore-Penrose pseudo-inverse of a matrix [a].
-GpuArray<T> pinv<T>(GpuArray<T> a, {double rcond = 1e-15}) {
+GpuArray<T> pinv<T extends DTypeTag>(GpuArray<T> a, {double rcond = 1e-15}) {
   if (a.rank < 2) {
     throw ArgumentError('pinv() requires matrix of at least 2 dimensions.');
   }
@@ -146,7 +146,7 @@ GpuArray<T> pinv<T>(GpuArray<T> a, {double rcond = 1e-15}) {
 }
 
 /// Computes the determinant of a square matrix [a].
-dynamic det<T>(GpuArray<T> a) {
+dynamic det<T extends DTypeTag>(GpuArray<T> a) {
   if (a.rank < 2) {
     throw ArgumentError('det() requires matrix of at least 2 dimensions.');
   }
@@ -195,7 +195,7 @@ dynamic det<T>(GpuArray<T> a) {
 }
 
 /// Computes the sign and natural logarithm of the determinant of matrix [a].
-SlogdetResult<T> slogdet<T>(GpuArray<T> a) {
+SlogdetResult<T> slogdet<T extends DTypeTag>(GpuArray<T> a) {
   if (a.rank < 2) {
     throw ArgumentError('slogdet() requires matrix of at least 2 dimensions.');
   }
@@ -260,7 +260,7 @@ SlogdetResult<T> slogdet<T>(GpuArray<T> a) {
 }
 
 /// Raises a square matrix to the integer power [n].
-GpuArray<T> matrix_power<T>(GpuArray<T> a, int n) {
+GpuArray<T> matrix_power<T extends DTypeTag>(GpuArray<T> a, int n) {
   if (a.rank < 2) {
     throw ArgumentError(
       'matrix_power() requires matrix of at least 2 dimensions.',
@@ -309,7 +309,7 @@ GpuArray<T> matrix_power<T>(GpuArray<T> a, int n) {
 }
 
 /// Computes the numerical rank of a matrix [a] using SVD.
-dynamic matrix_rank<T>(GpuArray<T> a, {double? tol}) {
+dynamic matrix_rank<T extends DTypeTag>(GpuArray<T> a, {double? tol}) {
   if (a.rank < 2) {
     throw ArgumentError(
       'matrix_rank() requires matrix of at least 2 dimensions.',
@@ -343,7 +343,7 @@ dynamic matrix_rank<T>(GpuArray<T> a, {double? tol}) {
 }
 
 /// Matrix or vector norm.
-dynamic norm<T>(
+dynamic norm<T extends DTypeTag>(
   GpuArray<T> a, {
   dynamic ord,
   dynamic axis,
@@ -372,7 +372,7 @@ dynamic norm<T>(
 }
 
 /// Computes the condition number of a matrix [a].
-dynamic cond<T>(GpuArray<T> a, {dynamic p}) {
+dynamic cond<T extends DTypeTag>(GpuArray<T> a, {dynamic p}) {
   if (a.rank < 2) {
     throw ArgumentError('cond() requires matrix of at least 2 dimensions.');
   }

@@ -77,12 +77,12 @@ void _mapCoordInPlace(
 /// **Example:**
 /// ```dart
 /// final a = NDArray<Float64>.fromList([10, 20, 30, 40, 50, 60], [2, 3], DType.float64);
-/// final indices = NDArray<int>.fromList([2, 0, 1, 1], [2, 2], DType.int32);
+/// final indices = NDArray<DTypeTag>.fromList([2, 0, 1, 1], [2, 2], DType.int32);
 /// final result = take_along_axis(a, indices, 1);
 /// ```
-NDArray<T> take_along_axis<T extends Object>(
+NDArray<T> take_along_axis<T extends DTypeTag>(
   NDArray<T> arr,
-  NDArray<int> indices,
+  NDArray<DTypeTag> indices,
   int axis, {
   NDArray<T>? out,
 }) {
@@ -246,13 +246,13 @@ NDArray<T> take_along_axis<T extends Object>(
 /// **Example:**
 /// ```dart
 /// final a = NDArray<Float64>.fromList([10, 20, 30, 40, 50, 60], [2, 3], DType.float64);
-/// final indices = NDArray<int>.fromList([2, 0, 1, 1], [2, 2], DType.int32);
+/// final indices = NDArray<DTypeTag>.fromList([2, 0, 1, 1], [2, 2], DType.int32);
 /// final values = NDArray<Float64>.fromList([99, 88, 77, 66], [2, 2], DType.float64);
 /// put_along_axis(a, indices, values, 1);
 /// ```
-NDArray<T> put_along_axis<T extends Object>(
+NDArray<T> put_along_axis<T extends DTypeTag>(
   NDArray<T> arr,
-  NDArray<int> indices,
+  NDArray<DTypeTag> indices,
   Object values,
   int axis, {
   NDArray<T>? out,
@@ -453,11 +453,11 @@ NDArray<T> put_along_axis<T extends Object>(
 ///   NDArray<Float64>.fromList([0, 1, 2, 3], [2, 2], DType.float64),
 ///   NDArray<Float64>.fromList([10, 11, 12, 13], [2, 2], DType.float64),
 /// ];
-/// final a = NDArray<int>.fromList([0, 1, 1, 0], [2, 2], DType.int32);
+/// final a = NDArray<DTypeTag>.fromList([0, 1, 1, 0], [2, 2], DType.int32);
 /// final result = choose(a, choices);
 /// ```
-NDArray<T> choose<T extends Object>(
-  NDArray<int> a,
+NDArray<T> choose<T extends DTypeTag>(
+  NDArray<DTypeTag> a,
   List<Object> choices, {
   NDArray<T>? out,
   ChooseMode mode = ChooseMode.raise,
@@ -595,6 +595,8 @@ NDArray<T> choose<T extends Object>(
           final ptr = a.pointer.cast<ffi.Uint8>();
           getIdx = aIsScalar ? ((_) => ptr[0]) : ((i) => ptr[i]);
           break;
+        default:
+          throw UnsupportedError('Unsupported index dtype: ${a.dtype}');
       }
 
       final isScalarChoice = choiceArrays.map((c) => c.size == 1).toList();
@@ -864,12 +866,13 @@ NDArray<T> choose<T extends Object>(
           .toList();
 
       final twoPow63Mod = ((1 << 62) % nChoices) * 2;
+      final isUint64 = a.dtype == DType.uint64;
       final iter = NDIter(result);
       while (iter.moveNext()) {
         final coords = iter.coords;
         _mapCoordInPlace(coords, a.shape, aCoord);
         var idxVal = a.getCell(aCoord);
-        if (a.dtype == DType.uint64 && idxVal < 0) {
+        if (isUint64 && idxVal < 0) {
           idxVal = mode == ChooseMode.wrap
               ? ((idxVal & 0x7FFFFFFFFFFFFFFF) % nChoices + twoPow63Mod) %
                     nChoices
@@ -936,8 +939,8 @@ NDArray<T> choose<T extends Object>(
 /// final choices = [x * 10, x * 100];
 /// final result = select(conds, choices, defaultValue: -1.0);
 /// ```
-NDArray<T> select<T extends Object>(
-  List<NDArray<bool>> condlist,
+NDArray<T> select<T extends DTypeTag>(
+  List<NDArray<Boolean>> condlist,
   List<Object> choicelist, {
   Object? defaultValue,
   DType<T>? dtype,
@@ -1051,6 +1054,7 @@ NDArray<T> select<T extends Object>(
           .map((c) => List<int>.filled(c.shape.length, 0))
           .toList();
       final defaultCoord = List<int>.filled(defaultArr.shape.length, 0);
+      final resDType = result.dtype;
 
       final iter = NDIter(result);
       while (iter.moveNext()) {
@@ -1071,11 +1075,11 @@ NDArray<T> select<T extends Object>(
           final choiceCoord = choiceCoords[selectedIdx];
           _mapCoordInPlace(coords, choiceArr.shape, choiceCoord);
           final val = choiceArr.getCell(choiceCoord);
-          result.setCell(coords, castValue(val, result.dtype));
+          result.setCell(coords, castValue(val, resDType));
         } else {
           _mapCoordInPlace(coords, defaultArr.shape, defaultCoord);
           final val = defaultArr.getCell(defaultCoord);
-          result.setCell(coords, castValue(val, result.dtype));
+          result.setCell(coords, castValue(val, resDType));
         }
       }
 

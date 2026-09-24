@@ -1,57 +1,51 @@
 part of '../masked_array.dart';
 
-MaskedArray<T> _maSum<T extends Object>(MaskedArray<T> self, {int? axis}) =>
+MaskedArray<T> _maSum<T extends DTypeTag>(MaskedArray<T> self, {int? axis}) =>
     _reduction<T>(
       self,
-      (arr, {axis}) => ndops.sum<T>(arr, axis: axis),
+      (arr, {axis}) => ndops.sumAs<T, T>(
+        arr,
+        (self.dtype == DType.boolean ? DType.int64 : self.dtype) as DType<T>,
+        axis: axis,
+      ),
       _zeroValue(self.dtype),
       axis,
     );
 
-MaskedArray<T> _maProd<T extends Object>(MaskedArray<T> self, {int? axis}) =>
+MaskedArray<T> _maProd<T extends DTypeTag>(MaskedArray<T> self, {int? axis}) =>
     _reduction<T>(
       self,
-      (arr, {axis}) => ndops.prod<T>(arr, axis: axis),
+      (arr, {axis}) => ndops.prodAs<T, T>(
+        arr,
+        (self.dtype == DType.boolean ? DType.int64 : self.dtype) as DType<T>,
+        axis: axis,
+      ),
       _oneValue(self.dtype),
       axis,
     );
 
-MaskedArray<T> _maMin<T extends Object>(MaskedArray<T> self, {int? axis}) {
-  final NDArray<T> Function(NDArray<T>, {int? axis}) redOp;
-  switch (self.dtype) {
-    case DType.float64:
-    case DType.float32:
-      redOp = (a, {axis}) =>
-          ndops.min(a as NDArray<num>, axis: axis) as NDArray<T>;
-    case DType.int64:
-    case DType.int32:
-    case DType.int16:
-    case DType.uint8:
-      redOp = (a, {axis}) =>
-          ndops.min(a as NDArray<num>, axis: axis) as NDArray<T>;
-    default:
-      throw UnsupportedError('Unsupported dtype for min: ${self.dtype}');
+MaskedArray<T> _maMin<T extends DTypeTag>(MaskedArray<T> self, {int? axis}) {
+  if (self.dtype.isComplex || self.dtype == DType.boolean) {
+    throw UnsupportedError('Unsupported dtype for min: ${self.dtype}');
   }
-  return _reduction<T>(self, redOp, _maxValue(self.dtype), axis);
+  return _reduction<T>(
+    self,
+    (a, {axis}) => ndops.min<T>(a, axis: axis),
+    _maxValue(self.dtype),
+    axis,
+  );
 }
 
-MaskedArray<T> _maMax<T extends Object>(MaskedArray<T> self, {int? axis}) {
-  final NDArray<T> Function(NDArray<T>, {int? axis}) redOp;
-  switch (self.dtype) {
-    case DType.float64:
-    case DType.float32:
-      redOp = (a, {axis}) =>
-          ndops.max(a as NDArray<num>, axis: axis) as NDArray<T>;
-    case DType.int64:
-    case DType.int32:
-    case DType.int16:
-    case DType.uint8:
-      redOp = (a, {axis}) =>
-          ndops.max(a as NDArray<num>, axis: axis) as NDArray<T>;
-    default:
-      throw UnsupportedError('Unsupported dtype for max: ${self.dtype}');
+MaskedArray<T> _maMax<T extends DTypeTag>(MaskedArray<T> self, {int? axis}) {
+  if (self.dtype.isComplex || self.dtype == DType.boolean) {
+    throw UnsupportedError('Unsupported dtype for max: ${self.dtype}');
   }
-  return _reduction<T>(self, redOp, _minValue(self.dtype), axis);
+  return _reduction<T>(
+    self,
+    (a, {axis}) => ndops.max<T>(a, axis: axis),
+    _minValue(self.dtype),
+    axis,
+  );
 }
 
 NDArray<Int32> _maCount(MaskedArray self, {int? axis}) {
@@ -59,19 +53,19 @@ NDArray<Int32> _maCount(MaskedArray self, {int? axis}) {
     final zeros = NDArray<Int32>.zeros(self.shape, DType.int32);
     final ones = NDArray<Int32>.ones(self.shape, DType.int32);
     final validMap = ndops.where(self.mask, zeros, ones) as NDArray<Int32>;
-    final result = ndops.sum<Int32>(validMap, axis: axis);
+    final result = ndops.sumAs(validMap, DType.int32, axis: axis);
     return result.detachToParentScope();
   });
 }
 
-MaskedArray<dynamic> _maMean(MaskedArray self, {int? axis}) {
+MaskedArray<DTypeTag> _maMean(MaskedArray self, {int? axis}) {
   return self.sum(axis: axis).divide(self.count(axis: axis));
 }
 
-MaskedArray<dynamic> _maVariance(MaskedArray self, {int? axis}) {
+MaskedArray<DTypeTag> _maVariance(MaskedArray self, {int? axis}) {
   return NDArray.scope(() {
     final m = self.mean(axis: axis);
-    final MaskedArray<dynamic> mExpanded;
+    final MaskedArray<DTypeTag> mExpanded;
     if (axis != null) {
       mExpanded = m.expandDims(axis);
     } else {
@@ -84,13 +78,13 @@ MaskedArray<dynamic> _maVariance(MaskedArray self, {int? axis}) {
   });
 }
 
-MaskedArray<dynamic> _maStd(MaskedArray self, {int? axis}) {
+MaskedArray<DTypeTag> _maStd(MaskedArray self, {int? axis}) {
   return self
       .variance(axis: axis)
-      .mapUnary((data) => ndops.sqrt<dynamic, double>(data));
+      .mapUnary((data) => ndops.sqrt(data as NDArray<AnySpec>));
 }
 
-MaskedArray<T> _reduction<T extends Object>(
+MaskedArray<T> _reduction<T extends DTypeTag>(
   MaskedArray<T> self,
   NDArray<T> Function(NDArray<T>, {int? axis}) ndOp,
   dynamic fillValueForReduction,

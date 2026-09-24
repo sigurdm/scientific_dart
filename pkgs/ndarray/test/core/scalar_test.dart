@@ -5,7 +5,7 @@ void main() {
   group("NDArray.scalar Constructor Tests", () {
     test("Float64 scalar", () {
       NDArray.scope(() {
-        final a = NDArray.scalar(Float64(3.14159), dtype: DType.float64);
+        final a = NDArray.scalar(3.14159, dtype: DType.float64);
         expect(a.shape, <int>[]);
         expect(a.rank, 0);
         expect(a.size, 1);
@@ -16,7 +16,7 @@ void main() {
 
     test("Float32 scalar", () {
       NDArray.scope(() {
-        final a = NDArray.scalar(Float32(2.718), dtype: DType.float32);
+        final a = NDArray.scalar(2.718, dtype: DType.float32);
         expect(a.shape, <int>[]);
         expect(a.rank, 0);
         expect(a.size, 1);
@@ -27,10 +27,7 @@ void main() {
 
     test("Int64 scalar", () {
       NDArray.scope(() {
-        final a = NDArray.scalar(
-          Int64(9223372036854775807),
-          dtype: DType.int64,
-        );
+        final a = NDArray.scalar(9223372036854775807, dtype: DType.int64);
         expect(a.shape, <int>[]);
         expect(a.rank, 0);
         expect(a.size, 1);
@@ -41,7 +38,7 @@ void main() {
 
     test("Int32 scalar", () {
       NDArray.scope(() {
-        final a = NDArray.scalar(Int32(42), dtype: DType.int32);
+        final a = NDArray.scalar(42, dtype: DType.int32);
         expect(a.shape, <int>[]);
         expect(a.rank, 0);
         expect(a.size, 1);
@@ -52,7 +49,7 @@ void main() {
 
     test("Int16 scalar", () {
       NDArray.scope(() {
-        final a = NDArray.scalar(Int16(32767), dtype: DType.int16);
+        final a = NDArray.scalar(32767, dtype: DType.int16);
         expect(a.shape, <int>[]);
         expect(a.rank, 0);
         expect(a.size, 1);
@@ -63,7 +60,7 @@ void main() {
 
     test("Uint8 scalar", () {
       NDArray.scope(() {
-        final a = NDArray.scalar(Uint8(255), dtype: DType.uint8);
+        final a = NDArray.scalar(255, dtype: DType.uint8);
         expect(a.shape, <int>[]);
         expect(a.rank, 0);
         expect(a.size, 1);
@@ -88,7 +85,7 @@ void main() {
 
     test("Complex128 scalar", () {
       NDArray.scope(() {
-        final val = Complex128(1.5, -2.5);
+        final val = Complex(1.5, -2.5);
         final a = NDArray.scalar(val, dtype: DType.complex128);
         expect(a.shape, <int>[]);
         expect(a.rank, 0);
@@ -101,7 +98,7 @@ void main() {
 
     test("Complex64 scalar", () {
       NDArray.scope(() {
-        final val = Complex64(0.5, 1.0);
+        final val = Complex(0.5, 1.0);
         final a = NDArray.scalar(val, dtype: DType.complex64);
         expect(a.shape, <int>[]);
         expect(a.rank, 0);
@@ -133,38 +130,32 @@ void main() {
         expect(aComplex.dtype, DType.complex128);
         expect(aComplex.scalar.real, 1.0);
 
-        final aF64 = NDArray<Float64>.scalar(
-          Float64(3.14159),
-          dtype: DType.float64,
-        );
+        final aF64 = NDArray<Float64>.scalar(3.14159, dtype: DType.float64);
         expect(aF64.dtype, DType.float64);
 
-        final aF32 = NDArray<Float32>.scalar(
-          Float32(1.5),
-          dtype: DType.float32,
-        );
+        final aF32 = NDArray<Float32>.scalar(1.5, dtype: DType.float32);
         expect(aF32.dtype, DType.float32);
 
-        final aI64 = NDArray<Int64>.scalar(Int64(999), dtype: DType.int64);
+        final aI64 = NDArray<Int64>.scalar(999, dtype: DType.int64);
         expect(aI64.dtype, DType.int64);
 
-        final aI32 = NDArray<Int32>.scalar(Int32(100), dtype: DType.int32);
+        final aI32 = NDArray<Int32>.scalar(100, dtype: DType.int32);
         expect(aI32.dtype, DType.int32);
 
-        final aI16 = NDArray<Int16>.scalar(Int16(50), dtype: DType.int16);
+        final aI16 = NDArray<Int16>.scalar(50, dtype: DType.int16);
         expect(aI16.dtype, DType.int16);
 
-        final aU8 = NDArray<Uint8>.scalar(Uint8(200), dtype: DType.uint8);
+        final aU8 = NDArray<Uint8>.scalar(200, dtype: DType.uint8);
         expect(aU8.dtype, DType.uint8);
 
         final aC128 = NDArray<Complex128>.scalar(
-          Complex128(1.0, 2.0),
+          Complex(1.0, 2.0),
           dtype: DType.complex128,
         );
         expect(aC128.dtype, DType.complex128);
 
         final aC64 = NDArray<Complex64>.scalar(
-          Complex64(0.5, 1.5),
+          Complex(0.5, 1.5),
           dtype: DType.complex64,
         );
         expect(aC64.dtype, DType.complex64);
@@ -173,16 +164,13 @@ void main() {
 
     test("DType preservation regression test (extension type erasure fix)", () {
       NDArray.scope(() {
-        final f32Scalar = NDArray<Float32>.scalar(
-          Float32(1.5),
-          dtype: DType.float32,
-        );
+        final f32Scalar = NDArray<Float32>.scalar(1.5, dtype: DType.float32);
         expect(f32Scalar.dtype, DType.float32);
         expect(f32Scalar.scalar, closeTo(1.5, 1e-5));
 
         final f32Full = NDArray<Float32>.full(
           [2, 2],
-          Float32(1.5),
+          1.5,
           dtype: DType.float32,
         );
         expect(f32Full.dtype, DType.float32);
@@ -194,20 +182,16 @@ void main() {
           closeTo(1.5, 1e-5),
         ]);
 
-        final i32Scalar = NDArray<Int32>.scalar(Int32(7), dtype: DType.int32);
+        final i32Scalar = NDArray<Int32>.scalar(7, dtype: DType.int32);
         expect(i32Scalar.dtype, DType.int32);
         expect(i32Scalar.scalar, 7);
 
         final start = NDArray<Float32>.fromList(
-          [Float32(0.0), Float32(10.0)],
+          [0.0, 10.0],
           [2],
           DType.float32,
         );
-        final stop = NDArray<Float32>.fromList(
-          [Float32(1.0), Float32(11.0)],
-          [2],
-          DType.float32,
-        );
+        final stop = NDArray<Float32>.fromList([1.0, 11.0], [2], DType.float32);
         final grid = linspaceGrid(start, stop, 3);
         expect(grid.dtype, DType.float32);
         expect(grid.shape, [3, 2]);

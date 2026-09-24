@@ -115,7 +115,7 @@ void main() {
         final initialMarker = ScratchArena.marker;
         NDArray.scope(() {
           final shape8 = [2, 1, 1, 1, 1, 1, 1, 2]; // rank 8, size 4
-          final cond8 = NDArray<bool>.fromList(
+          final cond8 = NDArray<Boolean>.fromList(
             [true, false, false, true],
             shape8,
             DType.boolean,
@@ -135,7 +135,7 @@ void main() {
           expect(res8.reshape([4]).toList(), equals([1.0, 20.0, 30.0, 4.0]));
 
           final shape9 = [2, 1, 1, 1, 1, 1, 1, 1, 2]; // rank 9, size 4
-          final cond9 = NDArray<bool>.fromList(
+          final cond9 = NDArray<Boolean>.fromList(
             [true, false, false, true],
             shape9,
             DType.boolean,
@@ -164,7 +164,7 @@ void main() {
         final badSorter = NDArray<Int32>.fromList([0, 99, 1], [3], DType.int32);
 
         // searchsorted mismatched dtype
-        expect(() => searchsorted<Object>(a, vInt), throwsArgumentError);
+        expect(() => searchsorted<DTypeTag>(a, vInt), throwsArgumentError);
         // searchsorted out-of-bounds sorter index
         expect(
           () => searchsorted(a, a, sorter: badSorter),
@@ -174,14 +174,11 @@ void main() {
         expect(() => argpartition(a, 10), throwsRangeError);
         // kron incompatible out shape
         final badOut = NDArray<Float64>.zeros([2], DType.float64);
-        expect(
-          () => kron<Float64, Float64, Float64>(a, a, out: badOut),
-          throwsArgumentError,
-        );
+        expect(() => kron<Float64>(a, a, out: badOut), throwsArgumentError);
         // fft invalid axis
-        expect(() => fft<Float64, Complex128>(a, axis: 5), throwsRangeError);
+        expect(() => fft(a, axis: 5), throwsRangeError);
         // rfft invalid n
-        expect(() => rfft<Float64, Complex128>(a, n: 0), throwsArgumentError);
+        expect(() => rfft(a, n: 0), throwsArgumentError);
       });
       expect(ScratchArena.marker.offset, equals(initialMarker.offset));
     });

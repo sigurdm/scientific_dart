@@ -40,7 +40,7 @@ NDArray _createNDArrayTyped(List<int> shape, DType dtype) {
     case DType.complex64:
       return NDArray<Complex64>.create(shape, DType.complex64);
     case DType.boolean:
-      return NDArray<bool>.create(shape, DType.boolean);
+      return NDArray<Boolean>.create(shape, DType.boolean);
   }
 }
 
@@ -60,7 +60,7 @@ NDArray _createNDArrayTyped(List<int> shape, DType dtype) {
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<T> sort<T extends Object>(
+NDArray<T> sort<T extends DTypeTag>(
   NDArray<T> a, {
   int axis = -1,
   SortKind kind = SortKind.quicksort,
@@ -150,10 +150,10 @@ NDArray<T> sort<T extends Object>(
           if (!(result.getCellFlat(rowStart + i) as bool)) falses++;
         }
         for (var i = 0; i < falses; i++) {
-          result.setCellFlat(rowStart + i, false as T);
+          result.setCellFlat(rowStart + i, false);
         }
         for (var i = falses; i < n; i++) {
-          result.setCellFlat(rowStart + i, true as T);
+          result.setCellFlat(rowStart + i, true);
         }
       }
       return finish();
@@ -225,11 +225,23 @@ NDArray<T> sort<T extends Object>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<Int32> argsort<T extends Object>(
+NDArray<Int32> argsort<T extends DTypeTag>(
   NDArray<T> a, {
   int axis = -1,
   SortKind kind = SortKind.quicksort,
-  NDArray<int>? out,
+  NDArray<Int32>? out,
+}) => argsortAs<T, Int32>(a, DType.int32, axis: axis, kind: kind, out: out);
+
+/// Returns the indices that would sort an array [a], stored in the specified
+/// integer [dtype] (`DType.int32` or `DType.int64`).
+///
+/// Refer to [argsort] for full details.
+NDArray<R> argsortAs<T extends DTypeTag, R extends DTypeTag>(
+  NDArray<T> a,
+  DType<R> dtype, {
+  int axis = -1,
+  SortKind kind = SortKind.quicksort,
+  NDArray<R>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute argsort() on a disposed array.');
@@ -237,9 +249,13 @@ NDArray<Int32> argsort<T extends Object>(
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write argsort result to a disposed output array.');
   }
+  if (dtype != DType.int32 && dtype != DType.int64) {
+    throw ArgumentError(
+      'dtype must be DType.int32 or DType.int64, got $dtype.',
+    );
+  }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) ||
-        (out.dtype != DType.int32 && out.dtype != DType.int64)) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -247,30 +263,30 @@ NDArray<Int32> argsort<T extends Object>(
   if (rank == 0) {
     if (out != null) {
       out.setCellFlat(0, 0);
-      return out as NDArray<Int32>;
+      return out;
     }
-    return NDArray<Int32>.scalar(Int32(0), dtype: DType.int32);
+    return NDArray<R>.scalar(0, dtype: dtype);
   }
   final targetAxis = axis < 0 ? rank + axis : axis;
   if (targetAxis < 0 || targetAxis >= rank) {
     throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
   }
   if (a.size == 0) {
-    return (out ?? NDArray<Int32>.create(a.shape, DType.int32))
-        as NDArray<Int32>;
+    return out ?? NDArray<R>.create(a.shape, dtype);
   }
 
   if (targetAxis != rank - 1) {
     return NDArray.scope(() {
       final swappedView = a.swapaxes(targetAxis, rank - 1);
-      final sortedIndicesView = argsort(
+      final sortedIndicesView = argsortAs<T, R>(
         swappedView,
+        dtype,
         axis: rank - 1,
         kind: kind,
       );
       final resultSwapped = sortedIndicesView.swapaxes(targetAxis, rank - 1);
       if (out != null) {
-        resultSwapped.copy(out: out as NDArray<Int32>);
+        resultSwapped.copy(out: out);
         return out;
       }
       final res = resultSwapped.copy();
@@ -284,21 +300,21 @@ NDArray<Int32> argsort<T extends Object>(
 
     final bool needsTempOut =
         out != null && (!out.isContiguous || sharesMemory(a, out));
-    final NDArray<int>? tempResult = needsTempOut
-        ? NDArray<int>.create(src.shape, out.dtype)
+    final NDArray<R>? tempResult = needsTempOut
+        ? NDArray<R>.create(src.shape, out.dtype)
         : null;
-    final NDArray<int> result =
-        tempResult ?? (out ?? NDArray<Int32>.create(src.shape, DType.int32));
+    final NDArray<R> result =
+        tempResult ?? (out ?? NDArray<R>.create(src.shape, dtype));
 
-    NDArray<Int32> finish() {
+    NDArray<R> finish() {
       if (tempResult != null) {
         tempResult.copy(out: out!);
-        return out as NDArray<Int32>;
+        return out;
       }
       if (out == null) {
         result.detachToParentScope();
       }
-      return result as NDArray<Int32>;
+      return result;
     }
 
     final n = src.shape.last;
@@ -569,7 +585,7 @@ NDArray<Int32> argsort<T extends Object>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<T> partition<T extends Object>(
+NDArray<T> partition<T extends DTypeTag>(
   NDArray<T> a,
   dynamic kth, {
   int axis = -1,
@@ -821,11 +837,23 @@ NDArray<T> partition<T extends Object>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<Int32> argpartition<T extends Object>(
+NDArray<Int32> argpartition<T extends DTypeTag>(
   NDArray<T> a,
   dynamic kth, {
   int axis = -1,
-  NDArray<int>? out,
+  NDArray<Int32>? out,
+}) => argpartitionAs<T, Int32>(a, kth, DType.int32, axis: axis, out: out);
+
+/// Returns the indices that would partition an array along [axis], stored in
+/// the specified integer [dtype] (`DType.int32` or `DType.int64`).
+///
+/// Refer to [argpartition] for full details.
+NDArray<R> argpartitionAs<T extends DTypeTag, R extends DTypeTag>(
+  NDArray<T> a,
+  dynamic kth,
+  DType<R> dtype, {
+  int axis = -1,
+  NDArray<R>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute argpartition() on a disposed array.');
@@ -835,9 +863,13 @@ NDArray<Int32> argpartition<T extends Object>(
       'Cannot write argpartition result to a disposed output array.',
     );
   }
+  if (dtype != DType.int32 && dtype != DType.int64) {
+    throw ArgumentError(
+      'dtype must be DType.int32 or DType.int64, got $dtype.',
+    );
+  }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) ||
-        (out.dtype != DType.int32 && out.dtype != DType.int64)) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -845,9 +877,9 @@ NDArray<Int32> argpartition<T extends Object>(
   if (rank == 0) {
     if (out != null) {
       out.setCellFlat(0, 0);
-      return out as NDArray<Int32>;
+      return out;
     }
-    return NDArray<Int32>.scalar(Int32(0), dtype: DType.int32);
+    return NDArray<R>.scalar(0, dtype: dtype);
   }
 
   final targetAxis = axis < 0 ? rank + axis : axis;
@@ -882,9 +914,10 @@ NDArray<Int32> argpartition<T extends Object>(
   if (targetAxis != rank - 1) {
     return NDArray.scope(() {
       final swappedView = a.swapaxes(targetAxis, rank - 1);
-      final partitionedIndicesView = argpartition(
+      final partitionedIndicesView = argpartitionAs<T, R>(
         swappedView,
         uniqueK,
+        dtype,
         axis: rank - 1,
       );
       final resultSwapped = partitionedIndicesView.swapaxes(
@@ -892,7 +925,7 @@ NDArray<Int32> argpartition<T extends Object>(
         rank - 1,
       );
       if (out != null) {
-        resultSwapped.copy(out: out as NDArray<Int32>);
+        resultSwapped.copy(out: out);
         return out;
       }
       final res = resultSwapped.copy();
@@ -908,21 +941,21 @@ NDArray<Int32> argpartition<T extends Object>(
 
     final bool needsTempOut =
         out != null && (!out.isContiguous || sharesMemory(a, out));
-    final NDArray<int>? tempResult = needsTempOut
-        ? NDArray<int>.create(src.shape, out.dtype)
+    final NDArray<R>? tempResult = needsTempOut
+        ? NDArray<R>.create(src.shape, out.dtype)
         : null;
-    final NDArray<int> result =
-        tempResult ?? (out ?? NDArray<Int32>.create(src.shape, DType.int32));
+    final NDArray<R> result =
+        tempResult ?? (out ?? NDArray<R>.create(src.shape, dtype));
 
-    NDArray<Int32> finish() {
+    NDArray<R> finish() {
       if (tempResult != null) {
         tempResult.copy(out: out!);
-        return out as NDArray<Int32>;
+        return out;
       }
       if (out == null) {
         result.detachToParentScope();
       }
-      return result as NDArray<Int32>;
+      return result;
     }
 
     if (uniqueK.isEmpty) {
@@ -1166,12 +1199,33 @@ NDArray<Int32> argpartition<T extends Object>(
 ///   print(indices.toList()); // [[1, 2], [0, 3]]
 /// }
 /// ```
-NDArray<Int32> searchsorted<T extends Object>(
+NDArray<Int32> searchsorted<T extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> v, {
   SearchSide side = SearchSide.left,
-  NDArray<int>? sorter,
-  NDArray<int>? out,
+  NDArray<DTypeTag>? sorter,
+  NDArray<Int32>? out,
+}) => searchsortedAs<T, Int32>(
+  a,
+  v,
+  DType.int32,
+  side: side,
+  sorter: sorter,
+  out: out,
+);
+
+/// Finds indices where elements of [v] should be inserted to maintain order in
+/// a sorted 1-D array [a], stored in the specified integer [dtype]
+/// (`DType.int32` or `DType.int64`).
+///
+/// Refer to [searchsorted] for full details.
+NDArray<R> searchsortedAs<T extends DTypeTag, R extends DTypeTag>(
+  NDArray<T> a,
+  NDArray<T> v,
+  DType<R> dtype, {
+  SearchSide side = SearchSide.left,
+  NDArray<DTypeTag>? sorter,
+  NDArray<R>? out,
 }) {
   if (a.isDisposed || v.isDisposed) {
     throw StateError('Cannot execute searchsorted() on a disposed array.');
@@ -1182,6 +1236,11 @@ NDArray<Int32> searchsorted<T extends Object>(
   if (out != null && out.isDisposed) {
     throw StateError(
       'Cannot write searchsorted result to a disposed output array.',
+    );
+  }
+  if (dtype != DType.int32 && dtype != DType.int64) {
+    throw ArgumentError(
+      'dtype must be DType.int32 or DType.int64, got $dtype.',
     );
   }
   if (a.shape.length != 1) {
@@ -1205,8 +1264,7 @@ NDArray<Int32> searchsorted<T extends Object>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, v.shape) ||
-        (out.dtype != DType.int32 && out.dtype != DType.int64)) {
+    if (!listEquals(out.shape, v.shape) || out.dtype != dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (!out.isContiguous ||
@@ -1214,16 +1272,23 @@ NDArray<Int32> searchsorted<T extends Object>(
         sharesMemory(v, out) ||
         (sorter != null && sharesMemory(sorter, out))) {
       return NDArray.scope(() {
-        final targetOut = NDArray<int>.create(v.shape, out.dtype);
-        searchsorted(a, v, side: side, sorter: sorter, out: targetOut);
+        final targetOut = NDArray<R>.create(v.shape, out.dtype);
+        searchsortedAs<T, R>(
+          a,
+          v,
+          dtype,
+          side: side,
+          sorter: sorter,
+          out: targetOut,
+        );
         targetOut.copy(out: out);
-        return out as NDArray<Int32>;
+        return out;
       });
     }
   }
 
   return NDArray.scope(() {
-    NDArray<int>? srcSorter;
+    NDArray<DTypeTag>? srcSorter;
     if (sorter != null) {
       if (sorter.dtype != DType.int32) {
         srcSorter = castNDArray(sorter, DType.int32);
@@ -1242,13 +1307,13 @@ NDArray<Int32> searchsorted<T extends Object>(
       }
     }
 
-    final result = out ?? NDArray<Int32>.create(v.shape, DType.int32);
+    final result = out ?? NDArray<R>.create(v.shape, dtype);
 
     if (v.size == 0) {
       if (out == null) {
         result.detachToParentScope();
       }
-      return result as NDArray<Int32>;
+      return result;
     }
 
     final NDArray srcA = a.isContiguous ? a : a.copy();
@@ -1466,7 +1531,7 @@ NDArray<Int32> searchsorted<T extends Object>(
     if (out == null) {
       result.detachToParentScope();
     }
-    return result as NDArray<Int32>;
+    return result;
   });
 }
 
@@ -1512,9 +1577,9 @@ NDArray<Int32> searchsorted<T extends Object>(
 ///
 /// **Return Value Type Behavior:**
 /// - If [x] and [y] are provided, returns a single `NDArray<T>` of the resolved common type.
-/// - If [x] and [y] are omitted, returns a `List<NDArray<int>>` containing coordinates where the condition is true.
-dynamic where<T extends Object>(
-  NDArray<bool> condition, [
+/// - If [x] and [y] are omitted, returns a `List<NDArray<DTypeTag>>` containing coordinates where the condition is true.
+dynamic where<T extends DTypeTag>(
+  NDArray<Boolean> condition, [
   NDArray<T>? x,
   NDArray<T>? y,
   NDArray<T>? out,
@@ -1553,7 +1618,7 @@ dynamic where<T extends Object>(
     throw UnsupportedError('where only supports up to 8 dimensions.');
   }
 
-  final DType<dynamic> targetDType = resolveDType(x.dtype, y.dtype);
+  final DType<DTypeTag> targetDType = resolveDType(x.dtype, y.dtype);
 
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
@@ -1741,7 +1806,7 @@ dynamic where<T extends Object>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-List<NDArray<Int32>> nonzero<T extends Object>(NDArray<T> a) {
+List<NDArray<Int32>> nonzero<T extends DTypeTag>(NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute nonzero() on a disposed array.');
   }
@@ -1758,7 +1823,7 @@ List<NDArray<Int32>> nonzero<T extends Object>(NDArray<T> a) {
 
   // Convert input to a contiguous boolean mask using type-specialized native C intrinsics!
   final cond = NDArray.scope(() {
-    final res = NDArray<bool>.create(a.shape, DType.boolean);
+    final res = NDArray<Boolean>.create(a.shape, DType.boolean);
     final marker = ScratchArena.marker;
     try {
       final cShape = ScratchArena.allocate<ffi.Int>(
@@ -1926,7 +1991,7 @@ List<NDArray<Int32>> nonzero<T extends Object>(NDArray<T> a) {
 /// elements, and `N` is the rank of [a].
 ///
 /// It is an error if [a] is disposed.
-NDArray<Int32> argwhere<T extends Object>(NDArray<T> a) {
+NDArray<Int32> argwhere<T extends DTypeTag>(NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute argwhere() on a disposed array.');
   }
@@ -1953,7 +2018,7 @@ NDArray<Int32> argwhere<T extends Object>(NDArray<T> a) {
     }
 
     // Convert input to a contiguous boolean mask using type-specialized native C intrinsics!
-    final cond = NDArray<bool>.create(a.shape, DType.boolean);
+    final cond = NDArray<Boolean>.create(a.shape, DType.boolean);
     final marker = ScratchArena.marker;
     try {
       final cShape = ScratchArena.allocate<ffi.Int>(
@@ -2231,7 +2296,11 @@ void _dispatchCountNonzeroFFI(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<Int32> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
+NDArray<Int32> count_nonzero<T extends DTypeTag>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<DTypeTag>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot count non-zero elements on a disposed array.');
   }
@@ -2480,7 +2549,7 @@ NDArray<Int32> _uint64ArgMinMax(
   int? normAxis,
   bool isMax, {
   bool keepdims = false,
-  NDArray<int>? out,
+  NDArray<DTypeTag>? out,
   required List<int> targetShape,
 }) {
   final result =
@@ -2502,7 +2571,7 @@ NDArray<Int32> _uint64ArgMinMax(
         bestIdx = i;
       }
     }
-    result.setCellFlat(0, Int32(bestIdx));
+    result.setCellFlat(0, bestIdx);
     return result;
   }
 
@@ -2529,7 +2598,7 @@ NDArray<Int32> _uint64ArgMinMax(
         bestIdx = i;
       }
     }
-    result.setCellFlat(0, Int32(bestIdx));
+    result.setCellFlat(0, bestIdx);
     return result;
   }
 
@@ -2560,7 +2629,7 @@ NDArray<Int32> _uint64ArgMinMax(
     for (var d = 0; d < outRank; d++) {
       destOffset += outCoords[d] * squeezedDestStrides[d];
     }
-    result.setCellRaw(destOffset, Int32(bestIdx));
+    result.setCellRaw(destOffset, bestIdx);
 
     for (var d = outRank - 1; d >= 0; d--) {
       outCoords[d]++;
@@ -2572,12 +2641,12 @@ NDArray<Int32> _uint64ArgMinMax(
   return result;
 }
 
-NDArray<Int32> _argminmaxFFI<T>(
+NDArray<Int32> _argminmaxFFI<T extends DTypeTag>(
   NDArray<T> a,
   int? axis,
   bool isMax, {
   bool keepdims = false,
-  NDArray<int>? out,
+  NDArray<DTypeTag>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot calculate reduction on a disposed array.');
@@ -2745,11 +2814,11 @@ NDArray<Int32> _argminmaxFFI<T>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<Int32> argmax<T>(
+NDArray<Int32> argmax<T extends DTypeTag>(
   NDArray<T> a, {
   int? axis,
   bool keepdims = false,
-  NDArray<int>? out,
+  NDArray<DTypeTag>? out,
 }) {
   return _argminmaxFFI<T>(a, axis, true, keepdims: keepdims, out: out);
 }
@@ -2761,11 +2830,11 @@ NDArray<Int32> argmax<T>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<Int32> argmin<T>(
+NDArray<Int32> argmin<T extends DTypeTag>(
   NDArray<T> a, {
   int? axis,
   bool keepdims = false,
-  NDArray<int>? out,
+  NDArray<DTypeTag>? out,
 }) {
   return _argminmaxFFI<T>(a, axis, false, keepdims: keepdims, out: out);
 }
@@ -2830,10 +2899,10 @@ enum CompareOp {
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-List<int>? findIndex<T extends Object>(
+List<int>? findIndex<T extends DTypeTag>(
   NDArray<T> a,
   CompareOp op,
-  T target, {
+  Object? target, {
   List<int>? startCoords,
   List<int>? directions,
 }) {

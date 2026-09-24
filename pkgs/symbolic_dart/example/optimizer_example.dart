@@ -61,6 +61,22 @@ void main() {
     '  x* = ${gdResult.solution.getCell([0])}\n'
     '  y* = ${gdResult.solution.getCell([1])}\n'
     '  Final Loss = ${gdResult.loss}\n'
-    '  ||\\nabla L||_inf = ${gdResult.gradientNorm}',
+    '  ||\\nabla L||_inf = ${gdResult.gradientNorm}\n',
+  );
+
+  print('=== 3. Newton Minimization with Analytical Hessians & LM Damping ===');
+  final newtonOpt = SymbolicOptimizer.minimizeNewton(
+    objective: loss,
+    variables: [x, y],
+    x0: gdStart,
+    maxIterations: 100,
+  );
+
+  print(
+    'Newton Minimizer converged in ${newtonOpt.iterations} iterations:\n'
+    '  x* = ${newtonOpt.solution.getCell([0])}\n'
+    '  y* = ${newtonOpt.solution.getCell([1])}\n'
+    '  Final Loss = ${newtonOpt.loss}\n'
+    '  ||\\nabla L||_inf = ${newtonOpt.gradientNorm}',
   );
 }

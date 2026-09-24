@@ -18,7 +18,7 @@ final class ImageConvolution {
       Slice(start: startY, stop: endY),
       Slice(start: startX, stop: endX),
     ]);
-    subView.fill(Float64(1.0));
+    subView.fill(1.0);
 
     return image;
   }
@@ -62,7 +62,7 @@ final class ImageConvolution {
             sum += imVal * kVal;
           }
         }
-        result.setCell([i, j], Float64(sum));
+        result.setCell([i, j], sum);
       }
     }
     return result;
@@ -100,7 +100,7 @@ final class ImageConvolution {
     final NDArray<Float64> result =
         out ?? NDArray<Float64>.zeros([outH, outW], DType.float64);
     if (out != null) {
-      result.fill(Float64(0.0));
+      result.fill(0.0);
     }
 
     // Pre-allocate temp buffer for scaled slice.
@@ -113,7 +113,7 @@ final class ImageConvolution {
         final kVal = kernel.getCell([i, j]);
         if (kVal == 0.0) continue;
 
-        factor.setCell([0], Float64(kVal));
+        factor.setCell([0], kVal);
 
         final imSlice = image.slice([
           Slice(start: i, stop: outH + i),
@@ -121,10 +121,10 @@ final class ImageConvolution {
         ]);
 
         // temp = imSlice * factor
-        multiply<Float64, Float64, Float64>(imSlice, factor, out: temp);
+        multiply<Float64>(imSlice, factor, out: temp);
 
         // result = result + temp
-        add<Float64, Float64, Float64>(result, temp, out: result);
+        add<Float64>(result, temp, out: result);
       }
     }
 
@@ -187,30 +187,30 @@ final class ImageConvolution {
     ]);
 
     // Gx = (topRight - topLeft) + 2 * (midRight - midLeft) + (botRight - botLeft)
-    subtract<Float64, Float64, Float64>(topRight, topLeft, out: outGx);
+    subtract<Float64>(topRight, topLeft, out: outGx);
 
-    subtract<Float64, Float64, Float64>(midRight, midLeft, out: temp1);
-    multiply<Float64, Float64, Float64>(temp1, constantTwo, out: temp2);
-    add<Float64, Float64, Float64>(outGx, temp2, out: outGx);
+    subtract<Float64>(midRight, midLeft, out: temp1);
+    multiply<Float64>(temp1, constantTwo, out: temp2);
+    add<Float64>(outGx, temp2, out: outGx);
 
-    subtract<Float64, Float64, Float64>(botRight, botLeft, out: temp1);
-    add<Float64, Float64, Float64>(outGx, temp1, out: outGx);
+    subtract<Float64>(botRight, botLeft, out: temp1);
+    add<Float64>(outGx, temp1, out: outGx);
 
     // Gy = (botLeft - topLeft) + 2 * (botMid - topMid) + (botRight - topRight)
-    subtract<Float64, Float64, Float64>(botLeft, topLeft, out: outGy);
+    subtract<Float64>(botLeft, topLeft, out: outGy);
 
-    subtract<Float64, Float64, Float64>(botMid, topMid, out: temp1);
-    multiply<Float64, Float64, Float64>(temp1, constantTwo, out: temp2);
-    add<Float64, Float64, Float64>(outGy, temp2, out: outGy);
+    subtract<Float64>(botMid, topMid, out: temp1);
+    multiply<Float64>(temp1, constantTwo, out: temp2);
+    add<Float64>(outGy, temp2, out: outGy);
 
-    subtract<Float64, Float64, Float64>(botRight, topRight, out: temp1);
-    add<Float64, Float64, Float64>(outGy, temp1, out: outGy);
+    subtract<Float64>(botRight, topRight, out: temp1);
+    add<Float64>(outGy, temp1, out: outGy);
 
     // Magnitude: outMag = sqrt(Gx*Gx + Gy*Gy)
-    multiply<Float64, Float64, Float64>(outGx, outGx, out: temp1);
-    multiply<Float64, Float64, Float64>(outGy, outGy, out: temp2);
-    add<Float64, Float64, Float64>(temp1, temp2, out: temp1);
-    sqrt<Float64, Float64>(temp1, out: outMag);
+    multiply<Float64>(outGx, outGx, out: temp1);
+    multiply<Float64>(outGy, outGy, out: temp2);
+    add<Float64>(temp1, temp2, out: temp1);
+    sqrt(temp1, out: outMag);
   }
 }
 
@@ -226,39 +226,19 @@ void main() {
 
     print('Defining Sobel kernels...');
     final sobelX = NDArray<Float64>.fromList(
-      <Float64>[
-        Float64(-1.0),
-        Float64(0.0),
-        Float64(1.0),
-        Float64(-2.0),
-        Float64(0.0),
-        Float64(2.0),
-        Float64(-1.0),
-        Float64(0.0),
-        Float64(1.0),
-      ],
+      <double>[-1.0, 0.0, 1.0, -2.0, 0.0, 2.0, -1.0, 0.0, 1.0],
       [3, 3],
       DType.float64,
     );
 
     final sobelY = NDArray<Float64>.fromList(
-      <Float64>[
-        Float64(-1.0),
-        Float64(-2.0),
-        Float64(-1.0),
-        Float64(0.0),
-        Float64(0.0),
-        Float64(0.0),
-        Float64(1.0),
-        Float64(2.0),
-        Float64(1.0),
-      ],
+      <double>[-1.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0],
       [3, 3],
       DType.float64,
     );
 
     final constantTwo = NDArray<Float64>.fromList(
-      <Float64>[Float64(2.0)],
+      <double>[2.0],
       [1],
       DType.float64,
     );
@@ -317,7 +297,7 @@ void main() {
 
     // Generic Magnitude - Hypot
     final stopwatchGenericHypot = Stopwatch()..start();
-    late NDArray<double> magnitudeGenericHypot;
+    late NDArray<AnySpec> magnitudeGenericHypot;
     for (var i = 0; i < iterations; i++) {
       magnitudeGenericHypot = hypot(gradXGeneric, gradYGeneric);
       if (i < iterations - 1) {
@@ -335,16 +315,10 @@ void main() {
     final stopwatchGenericAllocMag = Stopwatch()..start();
     late NDArray<Float64> magnitudeGenericAlloc;
     for (var i = 0; i < iterations; i++) {
-      final temp1 = multiply<Float64, Float64, Float64>(
-        gradXGeneric,
-        gradXGeneric,
-      );
-      final temp2 = multiply<Float64, Float64, Float64>(
-        gradYGeneric,
-        gradYGeneric,
-      );
-      final temp3 = add<Float64, Float64, Float64>(temp1, temp2);
-      magnitudeGenericAlloc = sqrt<Float64, Float64>(temp3);
+      final temp1 = multiply<Float64>(gradXGeneric, gradXGeneric);
+      final temp2 = multiply<Float64>(gradYGeneric, gradYGeneric);
+      final temp3 = add<Float64>(temp1, temp2);
+      magnitudeGenericAlloc = sqrt(temp3);
       temp1.dispose();
       temp2.dispose();
       temp3.dispose();
@@ -371,18 +345,10 @@ void main() {
 
     final stopwatchGenericPreMag = Stopwatch()..start();
     for (var i = 0; i < iterations; i++) {
-      multiply<Float64, Float64, Float64>(
-        gradXGeneric,
-        gradXGeneric,
-        out: mTemp1,
-      );
-      multiply<Float64, Float64, Float64>(
-        gradYGeneric,
-        gradYGeneric,
-        out: mTemp2,
-      );
-      add<Float64, Float64, Float64>(mTemp1, mTemp2, out: mTemp1);
-      sqrt<Float64, Float64>(mTemp1, out: magnitudeGenericPre);
+      multiply<Float64>(gradXGeneric, gradXGeneric, out: mTemp1);
+      multiply<Float64>(gradYGeneric, gradYGeneric, out: mTemp2);
+      add<Float64>(mTemp1, mTemp2, out: mTemp1);
+      sqrt(mTemp1, out: magnitudeGenericPre);
     }
     stopwatchGenericPreMag.stop();
     final timeGenericPreMag =

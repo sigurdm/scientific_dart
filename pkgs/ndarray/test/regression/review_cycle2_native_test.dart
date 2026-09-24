@@ -18,18 +18,18 @@ void main() {
         sqrt(a, out: out);
 
         // out[i] should be sqrt(original_a[i]): [1.0, 2.0, 3.0, 4.0, 5.0]
-        expect(out.getCell([0]).value, closeTo(1.0, 1e-12));
-        expect(out.getCell([1]).value, closeTo(2.0, 1e-12));
-        expect(out.getCell([2]).value, closeTo(3.0, 1e-12));
-        expect(out.getCell([3]).value, closeTo(4.0, 1e-12));
-        expect(out.getCell([4]).value, closeTo(5.0, 1e-12));
+        expect(out.getCell([0]), closeTo(1.0, 1e-12));
+        expect(out.getCell([1]), closeTo(2.0, 1e-12));
+        expect(out.getCell([2]), closeTo(3.0, 1e-12));
+        expect(out.getCell([3]), closeTo(4.0, 1e-12));
+        expect(out.getCell([4]), closeTo(5.0, 1e-12));
 
         // Since out is a reversed view of a, a should now hold [5.0, 4.0, 3.0, 2.0, 1.0]
-        expect(a.getCell([0]).value, closeTo(5.0, 1e-12));
-        expect(a.getCell([1]).value, closeTo(4.0, 1e-12));
-        expect(a.getCell([2]).value, closeTo(3.0, 1e-12));
-        expect(a.getCell([3]).value, closeTo(2.0, 1e-12));
-        expect(a.getCell([4]).value, closeTo(1.0, 1e-12));
+        expect(a.getCell([0]), closeTo(5.0, 1e-12));
+        expect(a.getCell([1]), closeTo(4.0, 1e-12));
+        expect(a.getCell([2]), closeTo(3.0, 1e-12));
+        expect(a.getCell([3]), closeTo(2.0, 1e-12));
+        expect(a.getCell([4]), closeTo(1.0, 1e-12));
       });
     });
 
@@ -50,18 +50,18 @@ void main() {
         add(a, b, out: out);
 
         // out[i] should be original_a[i] + b[i]: [11.0, 22.0, 33.0, 44.0, 55.0]
-        expect(out.getCell([0]).value, closeTo(11.0, 1e-12));
-        expect(out.getCell([1]).value, closeTo(22.0, 1e-12));
-        expect(out.getCell([2]).value, closeTo(33.0, 1e-12));
-        expect(out.getCell([3]).value, closeTo(44.0, 1e-12));
-        expect(out.getCell([4]).value, closeTo(55.0, 1e-12));
+        expect(out.getCell([0]), closeTo(11.0, 1e-12));
+        expect(out.getCell([1]), closeTo(22.0, 1e-12));
+        expect(out.getCell([2]), closeTo(33.0, 1e-12));
+        expect(out.getCell([3]), closeTo(44.0, 1e-12));
+        expect(out.getCell([4]), closeTo(55.0, 1e-12));
 
         // Underlying array a should hold [55.0, 44.0, 33.0, 22.0, 11.0]
-        expect(a.getCell([0]).value, closeTo(55.0, 1e-12));
-        expect(a.getCell([1]).value, closeTo(44.0, 1e-12));
-        expect(a.getCell([2]).value, closeTo(33.0, 1e-12));
-        expect(a.getCell([3]).value, closeTo(22.0, 1e-12));
-        expect(a.getCell([4]).value, closeTo(11.0, 1e-12));
+        expect(a.getCell([0]), closeTo(55.0, 1e-12));
+        expect(a.getCell([1]), closeTo(44.0, 1e-12));
+        expect(a.getCell([2]), closeTo(33.0, 1e-12));
+        expect(a.getCell([3]), closeTo(22.0, 1e-12));
+        expect(a.getCell([4]), closeTo(11.0, 1e-12));
       });
     });
 
@@ -85,10 +85,10 @@ void main() {
         // out[0, 1] = 2 + 20 = 22
         // out[1, 0] = 3 + 30 = 33
         // out[1, 1] = 4 + 40 = 44
-        expect(out.getCell([0, 0]).value, closeTo(11.0, 1e-12));
-        expect(out.getCell([0, 1]).value, closeTo(22.0, 1e-12));
-        expect(out.getCell([1, 0]).value, closeTo(33.0, 1e-12));
-        expect(out.getCell([1, 1]).value, closeTo(44.0, 1e-12));
+        expect(out.getCell([0, 0]), closeTo(11.0, 1e-12));
+        expect(out.getCell([0, 1]), closeTo(22.0, 1e-12));
+        expect(out.getCell([1, 0]), closeTo(33.0, 1e-12));
+        expect(out.getCell([1, 1]), closeTo(44.0, 1e-12));
       });
     });
 

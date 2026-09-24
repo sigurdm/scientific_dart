@@ -57,7 +57,7 @@ final class TunerResult {
 final class TunerLogic {
   final int sampleRate;
   final int bufferSize;
-  final NDArray<double> _window;
+  final NDArray<Float32> _window;
   double? _smoothedFrequency;
 
   static const Map<String, double> guitarNotes = {
@@ -72,10 +72,10 @@ final class TunerLogic {
   TunerLogic({required this.sampleRate, required this.bufferSize})
     : _window = hanning(bufferSize, dtype: DType.float32);
 
-  TunerResult process(NDArray<double> input, double rms) {
+  TunerResult process(NDArray<Float32> input, double rms) {
     return NDArray.scope(() {
       // 2. Apply Hanning window to reduce spectral leakage
-      final NDArray<double> windowedInput = multiply(input, _window);
+      final NDArray<Float32> windowedInput = multiply(input, _window);
 
       // 3. Perform FFT
       final spectrum = fft(windowedInput);

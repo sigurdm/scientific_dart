@@ -50,6 +50,9 @@ external void _fmpz_init_promote_set_ui(ffi.Pointer<fmpz> f, int v);
 @ffi.Native<ffi.Void Function(ffi.Pointer<fmpz>, mp_limb_signed_t)>()
 external void _fmpz_init_promote_set_si(ffi.Pointer<fmpz> f, int v);
 
+@ffi.Native<ffi.Void Function(ffi.Pointer<fmpz>, mp_limb_signed_t)>()
+external void fmpz_set_si(ffi.Pointer<fmpz> f, int val);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<fmpz>, ffi.Pointer<__mpz_struct>)>()
 external void _fmpz_init_readonly_mpz(
   ffi.Pointer<fmpz> f,

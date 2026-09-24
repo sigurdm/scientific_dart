@@ -147,7 +147,7 @@ void main() {
           expect(invTrans.getCell([0, 1]), equals(~4));
 
           // Where mask
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, false, true, false],
             [2, 3],
             DType.boolean,
@@ -184,12 +184,12 @@ void main() {
         'logical_not, logical_and, logical_or, logical_xor on boolean arrays',
         () {
           NDArray.scope(() {
-            final a = NDArray<bool>.fromList(
+            final a = NDArray<Boolean>.fromList(
               [true, true, false, false],
               [4],
               DType.boolean,
             );
-            final b = NDArray<bool>.fromList(
+            final b = NDArray<Boolean>.fromList(
               [true, false, true, false],
               [4],
               DType.boolean,
@@ -225,7 +225,7 @@ void main() {
           expect(logical_not(i32).toList(), equals([true, false, true, false]));
 
           final c128 = NDArray<Complex128>.fromList(
-            [Complex128(0.0, 0.0), Complex128(1.0, 0.0), Complex128(0.0, 2.0)],
+            [Complex(0.0, 0.0), Complex(1.0, 0.0), Complex(0.0, 2.0)],
             [3],
             DType.complex128,
           );
@@ -273,12 +273,12 @@ void main() {
       test('Comparisons with complex numbers', () {
         NDArray.scope(() {
           final c1 = NDArray<Complex128>.fromList(
-            [Complex128(1.0, 2.0), Complex128(3.0, 4.0)],
+            [Complex(1.0, 2.0), Complex(3.0, 4.0)],
             [2],
             DType.complex128,
           );
           final c2 = NDArray<Complex128>.fromList(
-            [Complex128(1.0, 2.0), Complex128(3.0, 5.0)],
+            [Complex(1.0, 2.0), Complex(3.0, 5.0)],
             [2],
             DType.complex128,
           );
@@ -296,19 +296,23 @@ void main() {
 
       test('Logical operations broadcasting, where mask, and out buffer', () {
         NDArray.scope(() {
-          final mat = NDArray<bool>.fromList(
+          final mat = NDArray<Boolean>.fromList(
             [true, false, true, false],
             [2, 2],
             DType.boolean,
           );
-          final row = NDArray<bool>.fromList([true, true], [2], DType.boolean);
+          final row = NDArray<Boolean>.fromList(
+            [true, true],
+            [2],
+            DType.boolean,
+          );
 
           final res = logical_and(mat, row);
           expect(res.shape, equals([2, 2]));
           expect(res.toList(), equals([true, false, true, false]));
 
-          final out = NDArray<bool>.zeros([2, 2], DType.boolean);
-          final whereMask = NDArray<bool>.fromList(
+          final out = NDArray<Boolean>.zeros([2, 2], DType.boolean);
+          final whereMask = NDArray<Boolean>.fromList(
             [true, true, false, false],
             [2, 2],
             DType.boolean,
@@ -420,7 +424,7 @@ void main() {
 
           // Complex domain
           final cArr = NDArray<Complex128>.fromList(
-            [Complex128(0.0, 0.0), Complex128(1.0, 1.0), Complex128(20.0, 0.0)],
+            [Complex(0.0, 0.0), Complex(1.0, 1.0), Complex(20.0, 0.0)],
             [3],
             DType.complex128,
           );
@@ -450,7 +454,7 @@ void main() {
 
           // Complex inputs throw UnsupportedError
           final cArr = NDArray<Complex128>.fromList(
-            [Complex128(1.0, 1.0)],
+            [Complex(1.0, 1.0)],
             [1],
             DType.complex128,
           );
@@ -473,7 +477,7 @@ void main() {
 
           // Complex inputs throw UnsupportedError
           final cArr = NDArray<Complex128>.fromList(
-            [Complex128(1.0, 0.0)],
+            [Complex(1.0, 0.0)],
             [1],
             DType.complex128,
           );
@@ -534,7 +538,7 @@ void main() {
           ); // val 2.0
 
           final out = NDArray<Float64>.zeros([2, 2], DType.float64);
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, false, true],
             [2, 2],
             DType.boolean,
@@ -588,7 +592,7 @@ void main() {
 
           // Complex type throws UnsupportedError
           final cArr = NDArray<Complex128>.fromList(
-            [Complex128(1.0, 2.0)],
+            [Complex(1.0, 2.0)],
             [1],
             DType.complex128,
           );
@@ -639,7 +643,7 @@ void main() {
           final maxArr = NDArray<Int64>.fromList([35, 35], [2], DType.int64);
 
           final out = NDArray<Int64>.zeros([2, 2], DType.int64);
-          final mask = NDArray<bool>.fromList(
+          final mask = NDArray<Boolean>.fromList(
             [true, false, true, true],
             [2, 2],
             DType.boolean,
@@ -662,13 +666,13 @@ void main() {
       test('clip and clipArray error cases', () {
         NDArray.scope(() {
           final a = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
-          final boolBounds = NDArray<bool>.fromList(
+          final boolBounds = NDArray<Boolean>.fromList(
             [true, false],
             [2],
             DType.boolean,
           );
           final cBounds = NDArray<Complex128>.fromList(
-            [Complex128(1.0, 0.0), Complex128(2.0, 0.0)],
+            [Complex(1.0, 0.0), Complex(2.0, 0.0)],
             [2],
             DType.complex128,
           );

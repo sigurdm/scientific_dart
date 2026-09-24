@@ -153,7 +153,10 @@ BroadcastResult broadcast(NDArray a, NDArray b) {
 ///
 /// Refer to the [NumPy broadcast_to reference](https://numpy.org/doc/stable/reference/generated/numpy.broadcast_to.html)
 /// for additional details.
-NDArray<T> broadcastTo<T>(NDArray<T> a, List<int> targetShape) {
+NDArray<T> broadcastTo<T extends DTypeTag>(
+  NDArray<T> a,
+  List<int> targetShape,
+) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }

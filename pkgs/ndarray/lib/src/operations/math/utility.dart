@@ -48,7 +48,9 @@ void setNumThreads(int numThreads) {
 /// // ([1, 0], 30)
 /// // ([1, 1], 40)
 /// ```
-Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
+Iterable<(List<int> coordinate, dynamic value)> ndenumerate<T extends DTypeTag>(
+  NDArray<T> a,
+) sync* {
   if (a.isDisposed) {
     throw StateError('Cannot execute ndenumerate() on a disposed array.');
   }
@@ -102,7 +104,7 @@ NDArray nan_to_num(
   double nan = 0.0,
   double? posinf,
   double? neginf,
-  NDArray<dynamic>? where,
+  NDArray<DTypeTag>? where,
   NDArray? out,
 }) {
   if (a.isDisposed ||
@@ -152,6 +154,7 @@ NDArray nan_to_num(
   try {
     final resultCopy =
         out ?? NDArray.create(a.shape, a.dtype, zeroInit: where != null);
+    final resDType = resultCopy.dtype;
     final iter = NDIter.broadcast2(resultCopy, a);
     final maskPtr = maskHolder.pointer;
     var flatIdx = 0;
@@ -185,7 +188,7 @@ NDArray nan_to_num(
             dVal = targetNegInf;
           }
 
-          resultCopy.setCellRaw(idxRes, castValue(dVal, resultCopy.dtype));
+          resultCopy.setCellRaw(idxRes, castValue(dVal, resDType));
         }
       } else if (out == null) {
         resultCopy.setCellRaw(idxRes, a.getCellRaw(idxA));
