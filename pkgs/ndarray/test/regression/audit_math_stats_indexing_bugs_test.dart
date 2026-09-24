@@ -700,7 +700,7 @@ void main() {
       );
 
       test(
-        'nan_to_num with where mask preserves unmasked elements when out == null',
+        'nan_to_num with where mask zero-initializes unmasked elements when out == null',
         () {
           final a = NDArray.fromList(
             [double.nan, double.nan, double.infinity],
@@ -714,10 +714,9 @@ void main() {
           );
           final res = nan_to_num(a, where: mask, nan: 0.0, posinf: 999.0);
           expect(res.getCell([0]), equals(0.0));
-          expect(
-            res.getCell([1]).isNaN,
-            isTrue,
-          ); // unmasked element preserved as NaN
+          // Unmasked elements follow the where: contract in
+          // test/meta/operation_contracts_test.dart: zero when out == null.
+          expect(res.getCell([1]), equals(0.0));
           expect(res.getCell([2]), equals(999.0));
           a.dispose();
           mask.dispose();

@@ -30,6 +30,14 @@ Directory _findPackageRoot() {
   }
 }
 
+/// Converts [path] to a normalized native path, as required by the analyzer
+/// (on Windows, paths built with `'${dir.path}/x'` mix separators).
+String _native(String path) => Uri.file(path).toFilePath();
+
+/// Converts [path] to use `/` separators, for platform-independent substring
+/// checks such as `contains('/src/operations/')`.
+String _posix(String path) => path.replaceAll(r'\', '/');
+
 List<File> _dartFilesIn(Directory dir) {
   if (!dir.existsSync()) return const [];
   return dir
@@ -72,7 +80,7 @@ void main() {
         for (final file in libFiles) {
           if (file.path.endsWith('scratch_arena.dart')) continue;
           final result = parseFile(
-            path: file.path,
+            path: _native(file.path),
             featureSet: featureSet,
             throwIfDiagnostics: false,
           );
@@ -104,7 +112,7 @@ void main() {
         for (final bindingsFile in bindingFiles) {
           if (!bindingsFile.existsSync()) continue;
           final bindingsUnit = parseFile(
-            path: bindingsFile.path,
+            path: _native(bindingsFile.path),
             featureSet: featureSet,
             throwIfDiagnostics: false,
           ).unit;
@@ -133,7 +141,7 @@ void main() {
             continue;
           }
           final parsed = parseFile(
-            path: file.path,
+            path: _native(file.path),
             featureSet: featureSet,
             throwIfDiagnostics: false,
           );
@@ -171,7 +179,7 @@ void main() {
 
         for (final file in allPkgLibFiles) {
           final parsed = parseFile(
-            path: file.path,
+            path: _native(file.path),
             featureSet: featureSet,
             throwIfDiagnostics: false,
           );
@@ -299,7 +307,7 @@ void main() {
           exportedFiles.add((file, showNames, hideNames));
 
           final parsed = parseFile(
-            path: file.path,
+            path: _native(file.path),
             featureSet: featureSet,
             throwIfDiagnostics: false,
           );
@@ -340,7 +348,7 @@ void main() {
 
         for (final (file, showNames, hideNames) in exportedFiles) {
           final parsed = parseFile(
-            path: file.path,
+            path: _native(file.path),
             featureSet: featureSet,
             throwIfDiagnostics: false,
           );
@@ -422,8 +430,8 @@ void main() {
 
         // 2. Check ndarray/lib/ files
         for (final file in libFiles) {
-          final isNdarrayCore = file.path.endsWith('/src/ndarray.dart');
-          final isOperations = file.path.contains('/src/operations/');
+          final isNdarrayCore = _posix(file.path).endsWith('/src/ndarray.dart');
+          final isOperations = _posix(file.path).contains('/src/operations/');
           final lines = file.readAsLinesSync();
 
           for (var i = 0; i < lines.length; i++) {
@@ -565,7 +573,7 @@ void main() {
         for (final file in bindingFiles) {
           if (!file.existsSync()) continue;
           final parsed = parseFile(
-            path: file.path,
+            path: _native(file.path),
             featureSet: featureSet,
             throwIfDiagnostics: false,
           );
@@ -715,9 +723,9 @@ void main() {
 
         // 1. All public functions in lib/src/operations/ with a parameter named `out` must declare it as a named parameter
         for (final file in libFiles) {
-          if (!file.path.contains('/src/operations/')) continue;
+          if (!_posix(file.path).contains('/src/operations/')) continue;
           final parsed = parseFile(
-            path: file.path,
+            path: _native(file.path),
             featureSet: featureSet,
             throwIfDiagnostics: false,
           );
@@ -754,7 +762,7 @@ void main() {
           }
         }
         final binParsed = parseFile(
-          path: binOpFile.path,
+          path: _native(binOpFile.path),
           featureSet: featureSet,
           throwIfDiagnostics: false,
         );
@@ -819,14 +827,14 @@ void main() {
     test(
       'Resolved Semantic AST (DartType & Element) Invariants: exportNamespace type-closure, class modifiers/member dartdocs, receiver-type-aware NDArray.toList()/NDArray.data bans, ScratchArena.allocate<T> vs sizeOf<U> DartType equality, and zero dead extension bindings',
       () async {
-        final resolvedLibPath = libDir.resolveSymbolicLinksSync();
+        final resolvedLibPath = _native(libDir.resolveSymbolicLinksSync());
         final collection = AnalysisContextCollection(
           includedPaths: [resolvedLibPath],
         );
         final session = collection.contextFor(resolvedLibPath).currentSession;
 
         final libResult = await session.getResolvedLibrary(
-          '$resolvedLibPath/ndarray.dart',
+          _native('$resolvedLibPath/ndarray.dart'),
         );
         expect(libResult, isA<ResolvedLibraryResult>());
         final exportNames = (libResult as ResolvedLibraryResult)
@@ -907,7 +915,7 @@ void main() {
 
         // 2. Collect all @ffi.Native external functions in ndarray_extensions_bindings.dart
         final extBindingsRes = await session.getResolvedUnit(
-          '$resolvedLibPath/src/ndarray_extensions_bindings.dart',
+          _native('$resolvedLibPath/src/ndarray_extensions_bindings.dart'),
         );
         final extFunctions = <ExecutableElement>{};
         if (extBindingsRes is ResolvedUnitResult) {
@@ -923,7 +931,7 @@ void main() {
         // 3. Walk resolved AST of every implementation file in lib/
         for (final file in libFiles) {
           if (file.path.endsWith('ndarray_bindings.dart')) continue;
-          final resolvedFile = file.resolveSymbolicLinksSync();
+          final resolvedFile = _native(file.resolveSymbolicLinksSync());
           final unitRes = await session.getResolvedUnit(resolvedFile);
           if (unitRes is! ResolvedUnitResult) continue;
 
@@ -1005,6 +1013,41 @@ void main() {
         );
       },
     );
+
+    test(
+      'All workspace packages have identical standalone analysis_options.yaml ready for publishing',
+      () {
+        final canonicalFile = File('${pkgRoot.path}/analysis_options.yaml');
+        expect(canonicalFile.existsSync(), isTrue);
+        final canonicalContent = canonicalFile.readAsStringSync();
+        expect(
+          canonicalContent,
+          contains('include: package:lints/recommended.yaml'),
+        );
+        expect(
+          canonicalContent,
+          isNot(contains('../../analysis_options.yaml')),
+        );
+
+        final pkgsDir = pkgRoot.parent;
+        final mismatches = <String>[];
+        for (final entity in pkgsDir.listSync().whereType<Directory>()) {
+          final pubspec = File('${entity.path}/pubspec.yaml');
+          if (!pubspec.existsSync()) continue;
+          final optsFile = File('${entity.path}/analysis_options.yaml');
+          if (!optsFile.existsSync()) {
+            mismatches.add('${entity.path} is missing analysis_options.yaml');
+            continue;
+          }
+          if (optsFile.readAsStringSync() != canonicalContent) {
+            mismatches.add(
+              '${optsFile.path} differs from canonical pkgs/ndarray/analysis_options.yaml',
+            );
+          }
+        }
+        expect(mismatches, isEmpty, reason: mismatches.join('\n'));
+      },
+    );
   });
 }
 
@@ -1030,7 +1073,7 @@ class _ResolvedSemanticVisitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    final isOperations = filePath.contains('/src/operations/');
+    final isOperations = _posix(filePath).contains('/src/operations/');
     final targetType = node.realTarget?.staticType;
 
     // Receiver-type-aware ban on NDArray.toList() in lib/src/operations/
@@ -1067,7 +1110,7 @@ class _ResolvedSemanticVisitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitPropertyAccess(PropertyAccess node) {
-    if (filePath.contains('/src/operations/') &&
+    if (_posix(filePath).contains('/src/operations/') &&
         _isNDArrayType(node.realTarget.staticType) &&
         node.propertyName.name == 'data') {
       final line = lineInfo.getLocation(node.offset).lineNumber;
@@ -1080,7 +1123,7 @@ class _ResolvedSemanticVisitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitPrefixedIdentifier(PrefixedIdentifier node) {
-    if (filePath.contains('/src/operations/') &&
+    if (_posix(filePath).contains('/src/operations/') &&
         _isNDArrayType(node.prefix.staticType) &&
         node.identifier.name == 'data') {
       final line = lineInfo.getLocation(node.offset).lineNumber;

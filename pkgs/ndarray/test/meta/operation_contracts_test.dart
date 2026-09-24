@@ -1199,6 +1199,73 @@ void main() {
       },
     );
   });
+
+  group('Mixed-dtype binary kernel contracts', () {
+    // Every specialized mixed-dtype kernel must agree with casting both
+    // operands to the result dtype first. This catches kernels that write a
+    // narrower element type than the promoted result buffer (e.g. float32
+    // results written into a float64 buffer, leaving half of it
+    // uninitialized).
+    const realDTypes = <DType>[
+      DType.float64,
+      DType.float32,
+      DType.float16,
+      DType.int64,
+      DType.int32,
+      DType.int16,
+      DType.int8,
+      DType.uint64,
+      DType.uint32,
+      DType.uint16,
+      DType.uint8,
+      DType.boolean,
+    ];
+    final ops = <String, NDArray Function(NDArray, NDArray)>{
+      'add': (a, b) => add<DTypeTag>(a, b),
+      'subtract': (a, b) => subtract<DTypeTag>(a, b),
+      'multiply': (a, b) => multiply<DTypeTag>(a, b),
+      'divide': (a, b) => divide(a, b),
+    };
+
+    NDArray make(DType dtype, List<int> values) => switch (dtype) {
+      DType.boolean => NDArray.fromList(values.map((v) => v.isOdd).toList(), [
+        values.length,
+      ], dtype),
+      _ when dtype.isFloating => NDArray.fromList(
+        values.map((v) => v.toDouble()).toList(),
+        [values.length],
+        dtype,
+      ),
+      _ => NDArray.fromList(values, [values.length], dtype),
+    };
+
+    for (final MapEntry(key: name, value: op) in ops.entries) {
+      for (final dtypeA in realDTypes) {
+        for (final dtypeB in realDTypes) {
+          test('$name($dtypeA, $dtypeB) matches cast-then-compute', () {
+            NDArray.scope(() {
+              // Contiguous and strided operands exercise both v_ and s_
+              // kernels.
+              final a = make(dtypeA, [7, 5, 9, 3]);
+              final b = make(dtypeB, [1, 2, 3, 1]);
+              final strided = [const Slice(start: 0, stop: 4, step: 2)];
+              for (final (x, y) in [
+                (a, b),
+                (a.slice(strided), b.slice(strided)),
+              ]) {
+                final actual = op(x, y);
+                final expected = op(
+                  castNDArray(x, actual.dtype),
+                  castNDArray(y, actual.dtype),
+                );
+                expect(actual.toList(), expected.toList());
+              }
+            });
+          });
+        }
+      }
+    }
+  });
 }
 
 bool sameId(Object a, Object b) => identical(a, b);

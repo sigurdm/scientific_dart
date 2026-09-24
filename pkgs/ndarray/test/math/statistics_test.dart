@@ -3389,11 +3389,13 @@ void main() {
 
           expect(cummin(aInt).toList(), [1, 1, 1, 1]);
           expect(cummin(aDouble).toList(), [1.0, 1.0, 1.0, 1.0]);
-          expect(() => cummin(aBool), throwsArgumentError);
+          // Matches np.minimum.accumulate on a bool array.
+          expect(cummin(aBool).toList(), [true, false, false, false]);
 
           expect(cummax(aInt).toList(), [1, 2, 3, 4]);
           expect(cummax(aDouble).toList(), [1.0, 2.0, 3.0, 4.0]);
-          expect(() => cummax(aBool), throwsArgumentError);
+          // Matches np.maximum.accumulate on a bool array.
+          expect(cummax(aBool).toList(), [true, true, true, true]);
         }),
       );
 

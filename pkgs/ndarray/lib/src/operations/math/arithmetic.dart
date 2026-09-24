@@ -4727,7 +4727,8 @@ NDArray<T> add<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int64) when isContig:
+      case (DType.float32, DType.int64)
+          when isContig && result.dtype == DType.float32:
         v_add_float_int64_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -4736,7 +4737,7 @@ NDArray<T> add<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int64):
+      case (DType.float32, DType.int64) when result.dtype == DType.float32:
         s_add_float_int64_float(
           a.pointer.cast(),
           cStridesA,
@@ -4749,7 +4750,8 @@ NDArray<T> add<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int32) when isContig:
+      case (DType.float32, DType.int32)
+          when isContig && result.dtype == DType.float32:
         v_add_float_int32_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -4758,7 +4760,7 @@ NDArray<T> add<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int32):
+      case (DType.float32, DType.int32) when result.dtype == DType.float32:
         s_add_float_int32_float(
           a.pointer.cast(),
           cStridesA,
@@ -4883,7 +4885,8 @@ NDArray<T> add<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int64, DType.float32) when isContig:
+      case (DType.int64, DType.float32)
+          when isContig && result.dtype == DType.float32:
         v_add_float_int64_float(
           b.pointer.cast(),
           a.pointer.cast(),
@@ -4892,7 +4895,7 @@ NDArray<T> add<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int64, DType.float32):
+      case (DType.int64, DType.float32) when result.dtype == DType.float32:
         s_add_float_int64_float(
           b.pointer.cast(),
           cStridesB,
@@ -5061,7 +5064,8 @@ NDArray<T> add<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int32, DType.float32) when isContig:
+      case (DType.int32, DType.float32)
+          when isContig && result.dtype == DType.float32:
         v_add_float_int32_float(
           b.pointer.cast(),
           a.pointer.cast(),
@@ -5070,7 +5074,7 @@ NDArray<T> add<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int32, DType.float32):
+      case (DType.int32, DType.float32) when result.dtype == DType.float32:
         s_add_float_int32_float(
           b.pointer.cast(),
           cStridesB,
@@ -6264,7 +6268,8 @@ NDArray<T> subtract<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int64) when isContig:
+      case (DType.float32, DType.int64)
+          when isContig && result.dtype == DType.float32:
         v_sub_float_int64_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -6273,7 +6278,7 @@ NDArray<T> subtract<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int64):
+      case (DType.float32, DType.int64) when result.dtype == DType.float32:
         s_sub_float_int64_float(
           a.pointer.cast(),
           cStridesA,
@@ -6286,7 +6291,8 @@ NDArray<T> subtract<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int32) when isContig:
+      case (DType.float32, DType.int32)
+          when isContig && result.dtype == DType.float32:
         v_sub_float_int32_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -6295,7 +6301,7 @@ NDArray<T> subtract<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int32):
+      case (DType.float32, DType.int32) when result.dtype == DType.float32:
         s_sub_float_int32_float(
           a.pointer.cast(),
           cStridesA,
@@ -6420,7 +6426,8 @@ NDArray<T> subtract<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int64, DType.float32) when isContig:
+      case (DType.int64, DType.float32)
+          when isContig && result.dtype == DType.float32:
         v_sub_int64_float_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -6429,7 +6436,7 @@ NDArray<T> subtract<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int64, DType.float32):
+      case (DType.int64, DType.float32) when result.dtype == DType.float32:
         s_sub_int64_float_float(
           a.pointer.cast(),
           cStridesA,
@@ -6598,7 +6605,8 @@ NDArray<T> subtract<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int32, DType.float32) when isContig:
+      case (DType.int32, DType.float32)
+          when isContig && result.dtype == DType.float32:
         v_sub_int32_float_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -6607,7 +6615,7 @@ NDArray<T> subtract<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int32, DType.float32):
+      case (DType.int32, DType.float32) when result.dtype == DType.float32:
         s_sub_int32_float_float(
           a.pointer.cast(),
           cStridesA,
@@ -7806,7 +7814,8 @@ NDArray<T> multiply<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int64) when isContig:
+      case (DType.float32, DType.int64)
+          when isContig && result.dtype == DType.float32:
         v_mul_float_int64_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -7815,7 +7824,7 @@ NDArray<T> multiply<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int64):
+      case (DType.float32, DType.int64) when result.dtype == DType.float32:
         s_mul_float_int64_float(
           a.pointer.cast(),
           cStridesA,
@@ -7828,7 +7837,8 @@ NDArray<T> multiply<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int32) when isContig:
+      case (DType.float32, DType.int32)
+          when isContig && result.dtype == DType.float32:
         v_mul_float_int32_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -7837,7 +7847,7 @@ NDArray<T> multiply<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int32):
+      case (DType.float32, DType.int32) when result.dtype == DType.float32:
         s_mul_float_int32_float(
           a.pointer.cast(),
           cStridesA,
@@ -7962,7 +7972,8 @@ NDArray<T> multiply<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int64, DType.float32) when isContig:
+      case (DType.int64, DType.float32)
+          when isContig && result.dtype == DType.float32:
         v_mul_float_int64_float(
           b.pointer.cast(),
           a.pointer.cast(),
@@ -7971,7 +7982,7 @@ NDArray<T> multiply<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int64, DType.float32):
+      case (DType.int64, DType.float32) when result.dtype == DType.float32:
         s_mul_float_int64_float(
           b.pointer.cast(),
           cStridesB,
@@ -8140,7 +8151,8 @@ NDArray<T> multiply<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int32, DType.float32) when isContig:
+      case (DType.int32, DType.float32)
+          when isContig && result.dtype == DType.float32:
         v_mul_float_int32_float(
           b.pointer.cast(),
           a.pointer.cast(),
@@ -8149,7 +8161,7 @@ NDArray<T> multiply<T extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int32, DType.float32):
+      case (DType.int32, DType.float32) when result.dtype == DType.float32:
         s_mul_float_int32_float(
           b.pointer.cast(),
           cStridesB,
@@ -9362,7 +9374,8 @@ NDArray<R> divide<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int64) when isContig:
+      case (DType.float32, DType.int64)
+          when isContig && result.dtype == DType.float32:
         v_div_float_int64_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -9371,7 +9384,7 @@ NDArray<R> divide<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int64):
+      case (DType.float32, DType.int64) when result.dtype == DType.float32:
         s_div_float_int64_float(
           a.pointer.cast(),
           cStridesA,
@@ -9384,7 +9397,8 @@ NDArray<R> divide<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int32) when isContig:
+      case (DType.float32, DType.int32)
+          when isContig && result.dtype == DType.float32:
         v_div_float_int32_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -9393,7 +9407,7 @@ NDArray<R> divide<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.float32, DType.int32):
+      case (DType.float32, DType.int32) when result.dtype == DType.float32:
         s_div_float_int32_float(
           a.pointer.cast(),
           cStridesA,
@@ -9518,7 +9532,8 @@ NDArray<R> divide<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int64, DType.float32) when isContig:
+      case (DType.int64, DType.float32)
+          when isContig && result.dtype == DType.float32:
         v_div_int64_float_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -9527,7 +9542,7 @@ NDArray<R> divide<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int64, DType.float32):
+      case (DType.int64, DType.float32) when result.dtype == DType.float32:
         s_div_int64_float_float(
           a.pointer.cast(),
           cStridesA,
@@ -9696,7 +9711,8 @@ NDArray<R> divide<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int32, DType.float32) when isContig:
+      case (DType.int32, DType.float32)
+          when isContig && result.dtype == DType.float32:
         v_div_int32_float_float(
           a.pointer.cast(),
           b.pointer.cast(),
@@ -9705,7 +9721,7 @@ NDArray<R> divide<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
           maskHolder.pointer,
         );
         return result;
-      case (DType.int32, DType.float32):
+      case (DType.int32, DType.float32) when result.dtype == DType.float32:
         s_div_int32_float_float(
           a.pointer.cast(),
           cStridesA,

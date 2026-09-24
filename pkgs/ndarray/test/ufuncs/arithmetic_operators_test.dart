@@ -225,12 +225,15 @@ void main() {
     test(
       'Mixed Type Arithmetic',
       () => NDArray.scope(() {
-        final NDArray a = NDArray.fromList([1, 2], [2], DType.int32);
+        final a = NDArray.fromList([1, 2], [2], DType.int32);
         final b = NDArray.fromList([0.5, 1.5], [2], DType.float64);
 
-        final c = a + b;
+        final c = addAs(a, b, DType.float64);
         expect(c.dtype, DType.float64);
         expect(c.toList(), [1.5, 3.5]);
+
+        final NDArray erased = a;
+        expect(() => erased + b, throwsArgumentError);
       }),
     );
 
@@ -1874,24 +1877,29 @@ void main() {
     test('Phase 2: Combinatorial DType Promotions', () {
       NDArray.scope(() {
         // int32 + float64 -> float64
-        final NDArray i32 = NDArray.fromList([1, 2], [2], DType.int32);
+        final i32 = NDArray.fromList([1, 2], [2], DType.int32);
         final f64 = NDArray.fromList([0.5, 1.5], [2], DType.float64);
-        final res1 = i32 + f64;
+        final res1 = addAs(i32, f64, DType.float64);
         expect(res1.dtype, DType.float64);
         expect(res1.toList(), [1.5, 3.5]);
 
         // int64 * int32 -> int64
-        final NDArray i64 = NDArray.fromList([3, 4], [2], DType.int64);
-        final res2 = i64 * i32;
+        final i64 = NDArray.fromList([3, 4], [2], DType.int64);
+        final res2 = multiplyAs(i64, i32, DType.int64);
         expect(res2.dtype, DType.int64);
         expect(res2.toList(), [3, 8]);
 
-        // uint8 + int16 -> int16 (promoted to int16 as it can represent all uint8 values)
-        final NDArray u8 = NDArray.fromList([10, 20], [2], DType.uint8);
+        // uint8 + int16 -> int16 (int16 can represent all uint8 values)
+        final u8 = NDArray.fromList([10, 20], [2], DType.uint8);
         final i16 = NDArray.fromList([100, 200], [2], DType.int16);
-        final res3 = u8 + i16;
+        final res3 = addAs(u8, i16, DType.int16);
         expect(res3.dtype, DType.int16);
         expect(res3.toList(), [110, 220]);
+
+        // Operators keep the receiver's dtype, so mixed dtypes are rejected.
+        final NDArray erasedI32 = i32;
+        expect(() => erasedI32 + f64, throwsArgumentError);
+        expect(() => erasedI32 * i64, throwsArgumentError);
       });
     });
 

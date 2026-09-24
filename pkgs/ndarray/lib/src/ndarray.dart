@@ -3529,30 +3529,77 @@ sealed class NDArray<T extends DTypeTag>
     }
   }
 
+  /// Like [_withWrappedScalar], but for operators that return `NDArray<T>`.
+  ///
+  /// The result of these operators has the dtype of `this`, so an array
+  /// operand of a different dtype is rejected: use the `*As` functions (e.g.
+  /// `addAs(a, b, DType.float64)`) for mixed-dtype arithmetic.
+  NDArray<T> _withSameDTypeOperand(
+    Object? other,
+    String operator,
+    NDArray<DTypeTag> Function(NDArray otherArr) fn,
+  ) {
+    if (other is NDArray && other.dtype != dtype) {
+      throw ArgumentError.value(
+        other,
+        'other',
+        'Must have the same dtype as the receiver ($dtype) for operator '
+            '$operator, but has dtype ${other.dtype}. Use the *As functions '
+            '(for example addAs(a, b, DType.float64)) for mixed-dtype '
+            'arithmetic',
+      );
+    }
+    return _withWrappedScalar(other, fn) as NDArray<T>;
+  }
+
   /// Element-wise addition with full broadcasting support.
+  ///
+  /// A scalar [other] is converted to this array's dtype. An array [other]
+  /// must have the same dtype as this array; use `addAs` to combine dtypes.
   NDArray<T> operator +(Object? other) =>
-      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
-          as NDArray<T>;
+      _withSameDTypeOperand(other, '+', (otherArr) => ops.add(this, otherArr));
 
   /// Element-wise subtraction with full broadcasting support.
-  NDArray<T> operator -(Object? other) =>
-      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
-          as NDArray<T>;
+  ///
+  /// A scalar [other] is converted to this array's dtype. An array [other]
+  /// must have the same dtype as this array; use `subtractAs` to combine
+  /// dtypes.
+  NDArray<T> operator -(Object? other) => _withSameDTypeOperand(
+    other,
+    '-',
+    (otherArr) => ops.subtract(this, otherArr),
+  );
 
   /// Element-wise multiplication with full broadcasting support.
-  NDArray<T> operator *(Object? other) =>
-      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
-          as NDArray<T>;
+  ///
+  /// A scalar [other] is converted to this array's dtype. An array [other]
+  /// must have the same dtype as this array; use `multiplyAs` to combine
+  /// dtypes.
+  NDArray<T> operator *(Object? other) => _withSameDTypeOperand(
+    other,
+    '*',
+    (otherArr) => ops.multiply(this, otherArr),
+  );
 
   /// Element-wise floor division with full broadcasting support.
-  NDArray<T> operator ~/(Object? other) =>
-      _withWrappedScalar(other, (otherArr) => ops.floorDivide(this, otherArr))
-          as NDArray<T>;
+  ///
+  /// A scalar [other] is converted to this array's dtype. An array [other]
+  /// must have the same dtype as this array.
+  NDArray<T> operator ~/(Object? other) => _withSameDTypeOperand(
+    other,
+    '~/',
+    (otherArr) => ops.floorDivide(this, otherArr),
+  );
 
   /// Element-wise remainder with full broadcasting support.
-  NDArray<T> operator %(Object? other) =>
-      _withWrappedScalar(other, (otherArr) => ops.remainder(this, otherArr))
-          as NDArray<T>;
+  ///
+  /// A scalar [other] is converted to this array's dtype. An array [other]
+  /// must have the same dtype as this array.
+  NDArray<T> operator %(Object? other) => _withSameDTypeOperand(
+    other,
+    '%',
+    (otherArr) => ops.remainder(this, otherArr),
+  );
 
   /// Numerical negative, element-wise.
   NDArray<T> operator -() {
