@@ -758,13 +758,155 @@ void main() {
         expect(i16Loaded.dtype, DType.int16);
       }),
     );
+    group('Adversarial & Malformed NPY / NPZ Header Robustness', () {
+      test(
+        'Negative shape dimension in .npy throws FormatException',
+        () => NDArray.scope(() {
+          final path1 = '${tempDir.path}/negative_dim_2d.npy';
+          _writeFakeNpy(
+            path1,
+            "{'descr': '<f8', 'fortran_order': False, 'shape': (-1, 4)}",
+          );
+          expect(() => load(path1), throwsFormatException);
+
+          final path2 = '${tempDir.path}/negative_dim_1d.npy';
+          _writeFakeNpy(
+            path2,
+            "{'descr': '<f8', 'fortran_order': False, 'shape': (-5,)}",
+          );
+          expect(() => load(path2), throwsFormatException);
+        }),
+      );
+
+      test(
+        'Overflowing shape dimension (> 2^31 - 1 elements) in .npy throws cleanly',
+        () => NDArray.scope(() {
+          final path = '${tempDir.path}/overflow_dim.npy';
+          _writeFakeNpy(
+            path,
+            "{'descr': '<f8', 'fortran_order': False, 'shape': (3000000000,)}",
+          );
+          expect(
+            () => load(path),
+            throwsA(
+              anyOf(
+                isA<FormatException>(),
+                isA<ArgumentError>(),
+                isA<UnsupportedError>(),
+              ),
+            ),
+          );
+        }),
+      );
+
+      test(
+        'Overflowing shape 64-bit product in .npy throws cleanly',
+        () => NDArray.scope(() {
+          final path1 = '${tempDir.path}/product_overflow_64.npy';
+          _writeFakeNpy(
+            path1,
+            "{'descr': '<f8', 'fortran_order': False, 'shape': (3037000500, 3037000500)}",
+          );
+          expect(
+            () => load(path1),
+            throwsA(
+              anyOf(
+                isA<FormatException>(),
+                isA<ArgumentError>(),
+                isA<UnsupportedError>(),
+              ),
+            ),
+          );
+
+          final path2 = '${tempDir.path}/product_overflow_31.npy';
+          _writeFakeNpy(
+            path2,
+            "{'descr': '<f8', 'fortran_order': False, 'shape': (50000, 50000)}",
+          );
+          expect(
+            () => load(path2),
+            throwsA(
+              anyOf(
+                isA<FormatException>(),
+                isA<ArgumentError>(),
+                isA<UnsupportedError>(),
+              ),
+            ),
+          );
+        }),
+      );
+
+      test('Truncated .npy payload throws FormatException', () {
+        final path = '${tempDir.path}/truncated_payload.npy';
+        _writeFakeNpy(
+          path,
+          "{'descr': '<f8', 'fortran_order': False, 'shape': (10,)}",
+          payloadBytes: Uint8List(16),
+        );
+        expect(() => load(path), throwsFormatException);
+      });
+
+      test(
+        'Negative shape dimension in .npz archive entry throws FormatException',
+        () {
+          final npzPath = '${tempDir.path}/corrupt_negative_dim.npz';
+          final npyBytes = _buildFakeNpyBytes(
+            "{'descr': '<f8', 'fortran_order': False, 'shape': (-1, 4)}",
+            payloadBytes: Uint8List(32),
+          );
+          final archive = Archive();
+          archive.addFile(ArchiveFile('bad.npy', npyBytes.length, npyBytes));
+          File(npzPath).writeAsBytesSync(ZipEncoder().encode(archive)!);
+
+          expect(() => loadz(npzPath), throwsFormatException);
+        },
+      );
+
+      test('Overflowing shape in .npz archive entry throws cleanly', () {
+        final npzPath = '${tempDir.path}/corrupt_overflow_dim.npz';
+        final npyBytes = _buildFakeNpyBytes(
+          "{'descr': '<f8', 'fortran_order': False, 'shape': (3037000500, 3037000500)}",
+          payloadBytes: Uint8List(16),
+        );
+        final archive = Archive();
+        archive.addFile(ArchiveFile('bad.npy', npyBytes.length, npyBytes));
+        File(npzPath).writeAsBytesSync(ZipEncoder().encode(archive)!);
+
+        expect(
+          () => loadz(npzPath),
+          throwsA(
+            anyOf(
+              isA<FormatException>(),
+              isA<ArgumentError>(),
+              isA<UnsupportedError>(),
+            ),
+          ),
+        );
+      });
+
+      test(
+        'Truncated payload in .npz archive entry throws FormatException',
+        () {
+          final npzPath = '${tempDir.path}/corrupt_truncated_payload.npz';
+          final npyBytes = _buildFakeNpyBytes(
+            "{'descr': '<f8', 'fortran_order': False, 'shape': (5,)}",
+            payloadBytes: Uint8List(8),
+          );
+          final archive = Archive();
+          archive.addFile(ArchiveFile('bad.npy', npyBytes.length, npyBytes));
+          File(npzPath).writeAsBytesSync(ZipEncoder().encode(archive)!);
+
+          expect(() => loadz(npzPath), throwsFormatException);
+        },
+      );
+    });
   });
 }
 
-void _writeFakeNpy(
-  String path,
+Uint8List _buildFakeNpyBytes(
   String headerStr, {
   List<int> version = const [1, 0],
+  List<int>? payloadBytes,
 }) {
   final prefixLen = 6 + 2 + 2;
   final paddedHeaderLen =
@@ -778,13 +920,28 @@ void _writeFakeNpy(
     lenBytes.buffer,
   ).setUint16(0, headerBytes.length, Endian.little);
 
-  final fullBuffer = Uint8List(6 + 2 + 2 + headerBytes.length + 16);
+  final payload = payloadBytes ?? Uint8List(16);
+  final fullBuffer = Uint8List(6 + 2 + 2 + headerBytes.length + payload.length);
   fullBuffer.setRange(0, 6, const [0x93, 0x4e, 0x55, 0x4d, 0x50, 0x59]);
   fullBuffer.setRange(6, 8, version);
   fullBuffer.setRange(8, 10, lenBytes);
   fullBuffer.setRange(10, 10 + headerBytes.length, headerBytes);
+  fullBuffer.setRange(10 + headerBytes.length, fullBuffer.length, payload);
+  return fullBuffer;
+}
 
-  File(path).writeAsBytesSync(fullBuffer, flush: true);
+void _writeFakeNpy(
+  String path,
+  String headerStr, {
+  List<int> version = const [1, 0],
+  List<int>? payloadBytes,
+}) {
+  final bytes = _buildFakeNpyBytes(
+    headerStr,
+    version: version,
+    payloadBytes: payloadBytes,
+  );
+  File(path).writeAsBytesSync(bytes, flush: true);
 }
 
 // Simple helper function to map DType to descriptor string for test creation

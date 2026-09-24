@@ -9,6 +9,7 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:ndarray/ndarray.dart';
+import 'package:ndarray/src/hook_helpers/hashes.dart';
 import 'package:test/test.dart';
 
 Directory _findPackageRoot() {
@@ -712,6 +713,71 @@ void main() {
           reason:
               'C++ `-fno-exceptions` / heap discipline violations:\n'
               '${violations.join('\n')}',
+        );
+      },
+    );
+
+    test(
+      'C++ hook sources use 64-bit file offsets and avoid 32-bit long declarations (LLP64 safe)',
+      () {
+        final cppAndHeaderFiles = hookDir
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.cpp') || f.path.endsWith('.h'))
+            .toList();
+        final violations = <String>[];
+
+        for (final file in cppAndHeaderFiles) {
+          final raw = file.readAsStringSync();
+          final stripped = _stripCppComments(raw);
+          final codeOnly = stripped.replaceAll(
+            RegExp(r'"(?:\\.|[^"\\])*"'),
+            '""',
+          );
+          final baseName = file.uri.pathSegments.last;
+
+          // Check for ftell( and fseek(
+          for (final m in RegExp(
+            r'\b(fseek|ftell)\s*\(',
+          ).allMatches(codeOnly)) {
+            violations.add(
+              '$baseName — contains 32-bit `${m.group(1)}(`, require 64-bit npz_fseek64/npz_ftell64 or _fseeki64/ftello.',
+            );
+          }
+
+          // Check for bare `long` (allow `long long` and `unsigned long long`)
+          final bareLongRegex = RegExp(r'(?<!\blong\s+)\blong\b(?!\s+long\b)');
+          final lines = codeOnly.split('\n');
+          for (var i = 0; i < lines.length; i++) {
+            final line = lines[i];
+            if (bareLongRegex.hasMatch(line)) {
+              violations.add(
+                '$baseName:${i + 1} — contains bare `long` declaration/cast (32-bit on Windows LLP64): `${line.trim()}`',
+              );
+            }
+          }
+        }
+
+        expect(
+          violations,
+          isEmpty,
+          reason:
+              'C++ 64-bit file offset / LLP64 integer width violations:\n'
+              '${violations.join('\n')}',
+        );
+      },
+    );
+
+    test(
+      'Pinned nativeSourceHash matches computed digest of hook/ source files',
+      () {
+        final computed = computeNativeSourceHash(pkgRoot.uri);
+        expect(
+          nativeSourceHash,
+          equals(computed),
+          reason:
+              'nativeSourceHash in lib/src/hook_helpers/hashes.dart does not match '
+              'the SHA-256 digest of hook/ native source files.',
         );
       },
     );

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:ffi/ffi.dart';
+import 'package:meta/meta.dart';
 import '../ndarray.dart';
 import '../ndarray_extensions_bindings.dart';
 import '../scratch_arena.dart';
@@ -193,6 +194,56 @@ Uint8List _readExactSync(RandomAccessFile raf, int count) {
   return buffer;
 }
 
+/// Internal header information parsed from a NumPy `.npy` header dictionary.
+///
+/// Throws a [FormatException] if the header string lacks required fields
+/// (`descr`, `fortran_order`, `shape`) or contains negative dimensions.
+@internal
+({DType<DTypeTag> dtype, bool fortranOrder, List<int> shape}) parseNpyHeader(
+  String headerStr,
+) {
+  // Parse descr via regex
+  final descrMatch = _descrRegex.firstMatch(headerStr);
+  if (descrMatch == null) {
+    throw FormatException(
+      'Invalid npy header: could not parse "descr" parameter string',
+    );
+  }
+  final descr = descrMatch.group(1)!;
+  final dtype = _descrToDType(descr);
+
+  // Parse fortran_order bool flag
+  final fortMatch = _fortranRegex.firstMatch(headerStr);
+  if (fortMatch == null) {
+    throw FormatException(
+      'Invalid npy header: could not parse "fortran_order" boolean flag',
+    );
+  }
+  final fortranOrder = fortMatch.group(1)!.toLowerCase() == 'true';
+
+  // Parse shape tuple
+  final shapeMatch = _shapeRegex.firstMatch(headerStr);
+  if (shapeMatch == null) {
+    throw FormatException(
+      'Invalid npy header: could not parse "shape" tuple tokens',
+    );
+  }
+  final shapeTokens = shapeMatch.group(1)!.split(',');
+  final shape = <int>[];
+  for (final tok in shapeTokens) {
+    final cleanTok = tok.trim();
+    if (cleanTok.isNotEmpty) {
+      final dim = int.parse(cleanTok);
+      if (dim < 0) {
+        throw FormatException('Shape dimensions cannot be negative: $dim');
+      }
+      shape.add(dim);
+    }
+  }
+
+  return (dtype: dtype, fortranOrder: fortranOrder, shape: shape);
+}
+
 /// Load an [NDArray] binary data block from a NumPy `.npy` file.
 ///
 /// **Preconditions:**
@@ -258,43 +309,10 @@ NDArray<DTypeTag> load(String filepath) {
     final headerBytes = _readExactSync(raf, headerLen);
     final headerStr = utf8.decode(headerBytes, allowMalformed: true);
 
-    // Parse descr via regex
-    final descrMatch = _descrRegex.firstMatch(headerStr);
-    if (descrMatch == null) {
-      throw FormatException(
-        'Invalid npy header: could not parse "descr" parameter string',
-      );
-    }
-    final descr = descrMatch.group(1)!;
-    final dtype = _descrToDType(descr);
-
-    // Parse fortran_order bool flag
-    final fortMatch = _fortranRegex.firstMatch(headerStr);
-    if (fortMatch == null) {
-      throw FormatException(
-        'Invalid npy header: could not parse "fortran_order" boolean flag',
-      );
-    }
-    final fortranOrder = fortMatch.group(1)!.toLowerCase() == 'true';
-
-    // Parse shape tuple
-    final shapeMatch = _shapeRegex.firstMatch(headerStr);
-    if (shapeMatch == null) {
-      throw FormatException(
-        'Invalid npy header: could not parse "shape" tuple tokens',
-      );
-    }
-    final shapeTokens = shapeMatch.group(1)!.split(',');
-    final shape = <int>[];
-    for (final tok in shapeTokens) {
-      final cleanTok = tok.trim();
-      if (cleanTok.isNotEmpty) {
-        shape.add(int.parse(cleanTok));
-      }
-    }
+    final (:dtype, :fortranOrder, :shape) = parseNpyHeader(headerStr);
 
     // 5. Allocate matching NDArray with target layout strategies
-    final elementCount = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
+    final elementCount = checkTotalSize(shape);
     final byteSize = elementCount * dtype.byteWidth;
 
     List<int>? strides;
@@ -639,35 +657,7 @@ Map<String, NDArray<DTypeTag>> loadz(String filepath) {
           );
           final headerStr = utf8.decode(headerBytes, allowMalformed: true);
 
-          final descrMatch = _descrRegex.firstMatch(headerStr);
-          if (descrMatch == null) {
-            throw FormatException(
-              'Invalid npy header: could not parse "descr" parameter string',
-            );
-          }
-          final descr = descrMatch.group(1)!;
-          final dtype = _descrToDType(descr);
-
-          final fortMatch = _fortranRegex.firstMatch(headerStr);
-          if (fortMatch == null) {
-            throw FormatException(
-              'Invalid npy header: could not parse "fortran_order" boolean flag',
-            );
-          }
-          final fortranOrder = fortMatch.group(1)!.toLowerCase() == 'true';
-
-          final shapeMatch = _shapeRegex.firstMatch(headerStr);
-          if (shapeMatch == null) {
-            throw FormatException(
-              'Invalid npy header: could not parse "shape" tuple tokens',
-            );
-          }
-          final shapeTokens = shapeMatch.group(1)!.split(',');
-          final shape = <int>[];
-          for (final tok in shapeTokens) {
-            final cleanTok = tok.trim();
-            if (cleanTok.isNotEmpty) shape.add(int.parse(cleanTok));
-          }
+          final (:dtype, :fortranOrder, :shape) = parseNpyHeader(headerStr);
 
           List<int>? strides;
           if (fortranOrder && shape.length > 1) {
@@ -680,8 +670,8 @@ Map<String, NDArray<DTypeTag>> loadz(String filepath) {
             strides = fStrides;
           }
 
-          final expectedBytes =
-              shape.fold(1, (a, b) => a * b) * dtype.byteWidth;
+          final totalElements = checkTotalSize(shape);
+          final expectedBytes = totalElements * dtype.byteWidth;
           if (realDataLen != expectedBytes) {
             throw FormatException(
               'Mismatched data size in NPZ archive for entry: expected $expectedBytes bytes from NPY header, got $realDataLen bytes from ZIP header.',
