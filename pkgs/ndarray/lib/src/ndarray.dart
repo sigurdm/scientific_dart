@@ -894,8 +894,10 @@ sealed class NDArray<T extends DTypeTag>
   ///
   /// **Preconditions:**
   /// - All dimensions in [shape] must be strictly non-negative ($\ge 0$).
+  /// - Total element count must not exceed $2^{31} - 1$ ($2,147,483,647$).
   ///
   /// - It is an error if any dimension in [shape] is negative.
+  /// - It is an error if the total element count exceeds $2^{31} - 1$ ($2,147,483,647$).
   /// - It is an error if the provided [dtype] is unsupported.
   ///
   /// **Performance considerations:**
@@ -1117,8 +1119,10 @@ sealed class NDArray<T extends DTypeTag>
   ///
   /// **Preconditions:**
   /// - All dimensions in [shape] must be strictly non-negative ($\ge 0$).
+  /// - Total element count must not exceed $2^{31} - 1$ ($2,147,483,647$).
   ///
   /// - It is an error if any dimension in [shape] is negative.
+  /// - It is an error if the total element count exceeds $2^{31} - 1$ ($2,147,483,647$).
   /// - It is an error if the provided [dtype] is unsupported.
   ///
   /// **Performance considerations:**

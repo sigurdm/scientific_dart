@@ -1101,6 +1101,91 @@ void main() {
         expect(violations, isEmpty, reason: violations.join('\n'));
       },
     );
+
+    test(
+      'All markdown Dart code blocks across doc/ and README.md parse cleanly and obey API invariants',
+      () {
+        final docFiles = [
+          File('${pkgRoot.path}/README.md'),
+          ...Directory(
+            '${pkgRoot.path}/doc',
+          ).listSync().whereType<File>().where((f) => f.path.endsWith('.md')),
+        ];
+
+        final dartBlockRegex = RegExp(r'```dart\s*\n([\s\S]*?)```');
+        final bannedPatterns = [
+          'NDArray<double>',
+          'NDArray<int>',
+          'NDArray<bool>',
+          'Float64(',
+          'Float32(',
+          'Int32(',
+          'Int64(',
+          'view.detachToParentScope()',
+          'view.detachFromScope()',
+        ];
+
+        final violations = <String>[];
+
+        for (final file in docFiles) {
+          if (!file.existsSync()) continue;
+          final content = file.readAsStringSync();
+          final matches = dartBlockRegex.allMatches(content);
+          final relPath = _posix(file.path.substring(pkgRoot.path.length + 1));
+
+          var blockIndex = 0;
+          for (final match in matches) {
+            blockIndex++;
+            final code = match.group(1)!;
+
+            // 1. Check for banned patterns
+            for (final pattern in bannedPatterns) {
+              if (code.contains(pattern)) {
+                violations.add(
+                  '$relPath block #$blockIndex contains banned pattern `$pattern`',
+                );
+              }
+            }
+
+            // 2. Syntax parse check
+            final parseResult = parseString(
+              content: code,
+              featureSet: featureSet,
+              throwIfDiagnostics: false,
+            );
+            if (parseResult.errors.isNotEmpty) {
+              // If top-level statement diagnostics occur, try wrapping in a function
+              final wrapped = 'void _snippet() {\n$code\n}';
+              final wrappedResult = parseString(
+                content: wrapped,
+                featureSet: featureSet,
+                throwIfDiagnostics: false,
+              );
+              if (wrappedResult.errors.isNotEmpty) {
+                final errorsSummary = wrappedResult.errors
+                    .map((e) {
+                      final line = wrappedResult.lineInfo
+                          .getLocation(e.offset)
+                          .lineNumber;
+                      return '    line $line: ${e.message}';
+                    })
+                    .join('\n');
+                violations.add(
+                  '$relPath block #$blockIndex syntax errors:\n$errorsSummary',
+                );
+              }
+            }
+          }
+        }
+
+        expect(
+          violations,
+          isEmpty,
+          reason:
+              'Markdown documentation code block violations:\n${violations.join('\n')}',
+        );
+      },
+    );
   });
 }
 
