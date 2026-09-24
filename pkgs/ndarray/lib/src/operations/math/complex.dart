@@ -76,7 +76,9 @@ NDArray<R> real<R extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype for real.",
       );
@@ -210,7 +212,9 @@ NDArray<R> imag<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype for imag.",
       );
@@ -325,7 +329,9 @@ NDArray<T> conj<T extends DTypeTag>(
   }
   final targetDType = a.dtype;
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype for conj.",
       );

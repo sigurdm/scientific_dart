@@ -8,10 +8,7 @@ void _divisionWorker(SendPort sendPort) {
     try {
       final a = NDArray.scalar(1, dtype: DType.int64);
       final b = NDArray.scalar(0, dtype: DType.int64);
-      floor_divide(
-        a,
-        b,
-      ); // Use floor_divide to trigger integer division by zero
+      floorDivide(a, b); // Use floorDivide to trigger integer division by zero
       sendPort.send('ERROR: Did not throw');
     } catch (e) {
       if (e is UnsupportedError &&
@@ -29,7 +26,7 @@ void _normalWorker(SendPort sendPort) {
     try {
       final a = NDArray.scalar(4, dtype: DType.int64);
       final b = NDArray.scalar(2, dtype: DType.int64);
-      final res = floor_divide(a, b);
+      final res = floorDivide(a, b);
       if (res.scalar == 2) {
         sendPort.send('OK');
       } else {
@@ -173,12 +170,12 @@ void main() {
   });
 
   group('Phase 3 Type Safety Tests', () {
-    test('floor_divide with uint8/int16', () {
+    test('floorDivide with uint8/int16', () {
       final a = NDArray<Uint8>.fromList([4, 5, 6], [3], DType.uint8);
       final b = NDArray<Int16>.fromList([2, 2, 2], [3], DType.int16);
 
       // This should not crash
-      final c = floor_divide(a, b);
+      final c = floorDivide(a, b);
       expect(c.toList(), [2, 2, 3]);
       expect(
         c.dtype,
@@ -186,12 +183,12 @@ void main() {
       ); // resolved dtype of uint8 and int16 is int16 (NumPy style)
     });
 
-    test('floor_divide with uint8/float64', () {
+    test('floorDivide with uint8/float64', () {
       final a = NDArray<Uint8>.fromList([5, 6, 7], [3], DType.uint8);
       final b = NDArray<Float64>.fromList([2.0, 2.0, 2.0], [3], DType.float64);
 
       // This should not crash
-      final c = floor_divide(a, b);
+      final c = floorDivide(a, b);
       expect(c.toList(), [2.0, 3.0, 3.0]);
       expect(c.dtype, DType.float64);
     });

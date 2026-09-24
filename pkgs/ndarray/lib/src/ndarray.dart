@@ -506,7 +506,7 @@ enum DType<T extends DTypeTag> {
 ///     If one or both operands are integers, they are promoted to [DType.float64] (matching NumPy).
 ///     Division of non-zero values by zero results in `double.infinity` or `double.negativeInfinity`.
 ///     Division of zero by zero results in `double.nan`. No exceptions are thrown.
-///   - **Floor Division (`~/` or `floor_divide`) & Remainder (`%` or `remainder`)**:
+///   - **Floor Division (`~/` or `floorDivide`) & Remainder (`%` or `remainder`)**:
 ///     - **For Floating-Point Types**: Behaves identically to true division, returning `double.nan`
 ///       on division by zero without throwing exceptions.
 ///     - **For Integer Types**: It is an error if any element of the divisor is `0`.
@@ -601,6 +601,18 @@ sealed class NDArray<T extends DTypeTag>
   /// **How to make an array contiguous?**
   /// - Call [copy] to allocate a new contiguous array with the same elements.
   final bool isContiguous;
+
+  /// Whether this array is writeable.
+  ///
+  /// Broadcast views created by `broadcast_to` (where any dimension `i` has
+  /// `shape[i] > 1` and `strides[i] == 0`) alias multiple coordinates to the
+  /// same memory address and are read-only (`isWriteable == false`).
+  bool get isWriteable {
+    for (var i = 0; i < shape.length; i++) {
+      if (shape[i] > 1 && strides[i] == 0) return false;
+    }
+    return true;
+  }
 
   /// The parent array if this is a view, to prevent it from being garbage collected.
   final NDArray? _parent;
@@ -753,16 +765,23 @@ sealed class NDArray<T extends DTypeTag>
        shape = List<int>.unmodifiable(shape),
        strides = List<int>.unmodifiable(strides),
        isContiguous = _checkContiguous(shape, strides) {
+    _computeCheckedTotalSize(shape);
+    for (final stride in strides) {
+      if (stride < -0x80000000 || stride > 0x7fffffff) {
+        throw UnsupportedError(
+          'Stride $stride exceeds 32-bit native int limit.',
+        );
+      }
+    }
     _initializeOpenBLASOnce();
     if (_parent == null) {
       final ptrToFree = _allocPointer ?? _pointer;
       // NOTE: Do NOT pass `externalSize` to `NativeFinalizer.attach`.
-      // Per Dart VM team guidance (Slava Egorov), `externalSize` is a blunt
-      // instrument and reporting large off-heap buffer sizes can trigger severe
-      // GC thrashing rather than prompt reclamation. Instead, users and
-      // internal operations should use `NDArray.scope` (or manual `dispose()`)
-      // for deterministic native memory cleanup, with `NativeFinalizer` acting
-      // strictly as a backstop safety net.
+      // `externalSize` is too blunt a tool: reporting large off-heap buffer
+      // sizes can trigger severe GC thrashing rather than prompt reclamation.
+      // Instead, users and internal operations should use `NDArray.scope` (or
+      // manual `dispose()`) for deterministic native memory cleanup, with
+      // `NativeFinalizer` acting strictly as a backstop safety net.
       if (!_isExternallyOwned) {
         _finalizer.attach(this, ptrToFree, detach: this);
       } else if (_customFinalizerInstance != null) {
@@ -1675,9 +1694,11 @@ sealed class NDArray<T extends DTypeTag>
       if (out.isDisposed) {
         throw StateError('Cannot copy to a disposed array.');
       }
-      if (!listEquals(shape, out.shape) || dtype != out.dtype) {
+      if (!out.isWriteable ||
+          !listEquals(shape, out.shape) ||
+          dtype != out.dtype) {
         throw ArgumentError(
-          'Destination array must have matching shape and dtype (expected shape $shape, dtype $dtype; got shape ${out.shape}, dtype ${out.dtype}).',
+          'Destination array must be writeable and have matching shape and dtype (expected shape $shape, dtype $dtype; got shape ${out.shape}, dtype ${out.dtype}).',
         );
       }
       result = out;
@@ -1981,6 +2002,11 @@ sealed class NDArray<T extends DTypeTag>
   void fillUntyped(Object? value) {
     if (isDisposed) {
       throw StateError('Cannot fill an array whose memory has been freed.');
+    }
+    if (!isWriteable) {
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
+      );
     }
     final size = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     if (size == 0) return;
@@ -2314,6 +2340,11 @@ sealed class NDArray<T extends DTypeTag>
   /// ```
   void setCellUntyped(List<int> coords, Object? value) {
     if (isDisposed) throw StateError('Cannot access a disposed NDArray.');
+    if (!isWriteable) {
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
+      );
+    }
     if (coords.length != shape.length) {
       throw ArgumentError(
         'Number of coordinates (${coords.length}) must match array rank (${shape.length})',
@@ -2344,6 +2375,11 @@ sealed class NDArray<T extends DTypeTag>
   /// Internal helper to write at raw physical storage index [rawOffset].
   @internal
   void setCellRawUntyped(int rawOffset, Object? value) {
+    if (!isWriteable) {
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
+      );
+    }
     dataRaw[rawOffset] = value;
   }
 
@@ -2364,6 +2400,11 @@ sealed class NDArray<T extends DTypeTag>
   /// Internal helper to write [value] to the element at a flat index [flatIndex].
   @internal
   void setCellFlatUntyped(int flatIndex, Object? value) {
+    if (!isWriteable) {
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
+      );
+    }
     if (isContiguous) {
       dataRaw[offsetElements + flatIndex] = value;
       return;
@@ -2390,6 +2431,11 @@ sealed class NDArray<T extends DTypeTag>
   void setByMask(NDArray<Boolean> mask, NDArray values) {
     if (isDisposed || mask.isDisposed || values.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
+    }
+    if (!isWriteable) {
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
+      );
     }
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
@@ -2702,7 +2748,7 @@ sealed class NDArray<T extends DTypeTag>
   /// - [selectors] length must not exceed the rank of the array.
   ///
   /// It is an error if [selectors] has more elements than the array rank or if [value] cannot be broadcast to the selected slice shape.
-  void sliceAssign(List<Selector> selectors, dynamic value) {
+  void sliceAssign(List<Selector> selectors, Object? value) {
     if (isDisposed) {
       throw StateError(
         "Cannot access an array or view whose memory has been explicitly freed/disposed!",
@@ -2712,7 +2758,7 @@ sealed class NDArray<T extends DTypeTag>
   }
 
   /// Mutates multi-dimensional slices targeted by normalized [selectors].
-  void _sliceAssign(List<Selector> selectors, dynamic value) {
+  void _sliceAssign(List<Selector> selectors, Object? value) {
     if (selectors.length > shape.length) {
       throw ArgumentError(
         "Too many selectors for array rank (${shape.length})",
@@ -2733,7 +2779,7 @@ sealed class NDArray<T extends DTypeTag>
     }
   }
 
-  void _sliceAssignImpl(List<Selector> selectors, dynamic value) {
+  void _sliceAssignImpl(List<Selector> selectors, Object? value) {
     if (value is NDArray && (value.shape.isEmpty || value.size == 1)) {
       value = value.getCellFlat(0);
     }
@@ -2997,7 +3043,7 @@ sealed class NDArray<T extends DTypeTag>
   ///
   /// - It is an error if this array has been explicitly disposed.
   /// - It is an error if [spec] is an unsupported type or contains dimension mismatch.
-  dynamic operator [](dynamic spec) {
+  dynamic operator [](Object? spec) {
     if (isDisposed) {
       throw StateError(
         "Cannot access an array or view whose memory has been explicitly freed/disposed!",
@@ -3122,10 +3168,15 @@ sealed class NDArray<T extends DTypeTag>
   ///
   /// - It is an error if this array has been explicitly disposed.
   /// - It is an error if [spec] or [value] is unsupported or has dimension mismatch.
-  void operator []=(dynamic spec, dynamic value) {
+  void operator []=(Object? spec, Object? value) {
     if (isDisposed) {
       throw StateError(
         "Cannot access an array or view whose memory has been explicitly freed/disposed!",
+      );
+    }
+    if (!isWriteable) {
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
       );
     }
     if (spec is int) {
@@ -3445,7 +3496,7 @@ sealed class NDArray<T extends DTypeTag>
     );
   }
 
-  R _withWrappedScalar<R>(dynamic other, R Function(NDArray otherArr) fn) {
+  R _withWrappedScalar<R>(Object? other, R Function(NDArray otherArr) fn) {
     if (other is NDArray) {
       return fn(other);
     }
@@ -3458,32 +3509,57 @@ sealed class NDArray<T extends DTypeTag>
     }
   }
 
+  /// Element-wise addition with full broadcasting support.
+  NDArray<T> operator +(Object? other) =>
+      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
+          as NDArray<T>;
+
+  /// Element-wise subtraction with full broadcasting support.
+  NDArray<T> operator -(Object? other) =>
+      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
+          as NDArray<T>;
+
+  /// Element-wise multiplication with full broadcasting support.
+  NDArray<T> operator *(Object? other) =>
+      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
+          as NDArray<T>;
+
+  /// Element-wise floor division with full broadcasting support.
+  NDArray<T> operator ~/(Object? other) =>
+      _withWrappedScalar(other, (otherArr) => ops.floorDivide(this, otherArr))
+          as NDArray<T>;
+
+  /// Element-wise remainder with full broadcasting support.
+  NDArray<T> operator %(Object? other) =>
+      _withWrappedScalar(other, (otherArr) => ops.remainder(this, otherArr))
+          as NDArray<T>;
+
   /// Numerical negative, element-wise.
   NDArray<T> operator -() {
     return ops.negative<T>(this);
   }
 
   /// Element-wise bitwise AND with full broadcasting support.
-  NDArray<T> operator &(dynamic other) {
+  NDArray<T> operator &(Object? other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_and<T>(this, otherArr as NDArray<T>),
+      (otherArr) => ops.bitwiseAnd<T>(this, otherArr as NDArray<T>),
     );
   }
 
   /// Element-wise bitwise OR with full broadcasting support.
-  NDArray<T> operator |(dynamic other) {
+  NDArray<T> operator |(Object? other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_or<T>(this, otherArr as NDArray<T>),
+      (otherArr) => ops.bitwiseOr<T>(this, otherArr as NDArray<T>),
     );
   }
 
   /// Element-wise bitwise XOR with full broadcasting support.
-  NDArray<T> operator ^(dynamic other) {
+  NDArray<T> operator ^(Object? other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.bitwise_xor<T>(this, otherArr as NDArray<T>),
+      (otherArr) => ops.bitwiseXor<T>(this, otherArr as NDArray<T>),
     );
   }
 
@@ -3493,18 +3569,18 @@ sealed class NDArray<T extends DTypeTag>
   }
 
   /// Element-wise left shift with full broadcasting support.
-  NDArray<T> operator <<(dynamic other) {
+  NDArray<T> operator <<(Object? other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.left_shift<T>(this, otherArr as NDArray<T>),
+      (otherArr) => ops.leftShift<T>(this, otherArr as NDArray<T>),
     );
   }
 
   /// Element-wise right shift with full broadcasting support.
-  NDArray<T> operator >>(dynamic other) {
+  NDArray<T> operator >>(Object? other) {
     return _withWrappedScalar(
       other,
-      (otherArr) => ops.right_shift<T>(this, otherArr as NDArray<T>),
+      (otherArr) => ops.rightShift<T>(this, otherArr as NDArray<T>),
     );
   }
 
@@ -3528,7 +3604,7 @@ sealed class NDArray<T extends DTypeTag>
   /// {@example /example/comparison_operations_example.dart lang=dart}
   ///
   /// Reference: See NumPy's [greater](https://numpy.org/doc/stable/reference/generated/numpy.greater.html).
-  NDArray<Boolean> operator >(dynamic other) {
+  NDArray<Boolean> operator >(Object? other) {
     return _withWrappedScalar(other, (otherArr) => ops.greater(this, otherArr));
   }
 
@@ -3551,7 +3627,7 @@ sealed class NDArray<T extends DTypeTag>
   /// {@example /example/comparison_operations_example.dart lang=dart}
   ///
   /// Reference: See NumPy's [less](https://numpy.org/doc/stable/reference/generated/numpy.less.html).
-  NDArray<Boolean> operator <(dynamic other) {
+  NDArray<Boolean> operator <(Object? other) {
     return _withWrappedScalar(other, (otherArr) => ops.less(this, otherArr));
   }
 
@@ -3574,7 +3650,7 @@ sealed class NDArray<T extends DTypeTag>
   /// {@example /example/comparison_operations_example.dart lang=dart}
   ///
   /// Reference: See NumPy's [greater_equal](https://numpy.org/doc/stable/reference/generated/numpy.greater_equal.html).
-  NDArray<Boolean> operator >=(dynamic other) {
+  NDArray<Boolean> operator >=(Object? other) {
     return _withWrappedScalar(
       other,
       (otherArr) => ops.greaterEqual(this, otherArr),
@@ -3600,7 +3676,7 @@ sealed class NDArray<T extends DTypeTag>
   /// {@example /example/comparison_operations_example.dart lang=dart}
   ///
   /// Reference: See NumPy's [less_equal](https://numpy.org/doc/stable/reference/generated/numpy.less_equal.html).
-  NDArray<Boolean> operator <=(dynamic other) {
+  NDArray<Boolean> operator <=(Object? other) {
     return _withWrappedScalar(
       other,
       (otherArr) => ops.lessEqual(this, otherArr),
@@ -3631,12 +3707,12 @@ sealed class NDArray<T extends DTypeTag>
   /// {@example /example/comparison_operations_example.dart lang=dart}
   ///
   /// Reference: See NumPy's [equal](https://numpy.org/doc/stable/reference/generated/numpy.equal.html).
-  NDArray<Boolean> eq(dynamic other) {
+  NDArray<Boolean> eq(Object? other) {
     return _withWrappedScalar(other, (otherArr) => ops.equal(this, otherArr));
   }
 
   /// Element-wise inequality comparison (`ne(other)`) with full broadcasting support.
-  NDArray<Boolean> ne(dynamic other) {
+  NDArray<Boolean> ne(Object? other) {
     return _withWrappedScalar(
       other,
       (otherArr) => ops.notEqual(this, otherArr),
@@ -4476,17 +4552,17 @@ sealed class NDArray<T extends DTypeTag>
     if (invocation.isMethod && invocation.positionalArguments.length == 1) {
       final arg = invocation.positionalArguments[0];
       if (invocation.memberName == #+) {
-        return NDArrayArithmetic(this) + arg;
+        return this + arg;
       } else if (invocation.memberName == #-) {
-        return NDArrayArithmetic(this) - arg;
+        return this - arg;
       } else if (invocation.memberName == #*) {
-        return NDArrayArithmetic(this) * arg;
+        return this * arg;
       } else if (invocation.memberName == #/) {
         return NDArrayBaseDivide(this) / arg;
       } else if (invocation.memberName == #~/) {
-        return NDArrayArithmetic(this) ~/ arg;
+        return this ~/ arg;
       } else if (invocation.memberName == #%) {
-        return NDArrayArithmetic(this) % arg;
+        return this % arg;
       }
     }
     if (invocation.isGetter) {
@@ -4796,43 +4872,26 @@ final class _NDArrayBoolean extends NDArray<Boolean> {
 
 /// Arithmetic operators (`+`, `-`, `*`, `~/`, `%`) preserving the concrete
 /// dtype tag [T] of the left operand.
-extension NDArrayArithmetic<T extends DTypeTag> on NDArray<T> {
-  /// Element-wise addition with full broadcasting support.
-  NDArray<T> operator +(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.add(this, otherArr))
-          as NDArray<T>;
-
-  /// Element-wise subtraction with full broadcasting support.
-  NDArray<T> operator -(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.subtract(this, otherArr))
-          as NDArray<T>;
-
-  /// Element-wise multiplication with full broadcasting support.
-  NDArray<T> operator *(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.multiply(this, otherArr))
-          as NDArray<T>;
-
-  /// Element-wise floor division with full broadcasting support.
-  NDArray<T> operator ~/(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.floor_divide(this, otherArr))
-          as NDArray<T>;
-
-  /// Element-wise remainder with full broadcasting support.
-  NDArray<T> operator %(dynamic other) =>
-      _withWrappedScalar(other, (otherArr) => ops.remainder(this, otherArr))
-          as NDArray<T>;
-}
+extension NDArrayArithmetic<T extends DTypeTag> on NDArray<T> {}
 
 /// True division operator (`/`) inferring the concrete math-promoted dtype [M]
 /// (`Float64` for integer arrays, and preserving [T] for floating-point and
 /// complex arrays).
 extension NDArrayDivide<
-  T extends DTypeSpec<AnySpec, Object?, AnySpec, AnySpec, M, AnySpec, AnySpec>,
-  M extends AnySpec
+  T extends DTypeSpec<
+    DTypeTag,
+    Object?,
+    DTypeTag,
+    DTypeTag,
+    M,
+    DTypeTag,
+    DTypeTag
+  >,
+  M extends DTypeTag
 >
     on NDArray<T> {
   /// Element-wise true division with full broadcasting support.
-  NDArray<M> operator /(dynamic other) =>
+  NDArray<M> operator /(Object? other) =>
       _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr))
           as NDArray<M>;
 }
@@ -5051,7 +5110,7 @@ final class Complex {
 
   Complex(this.real, this.imag);
 
-  Complex operator +(dynamic other) {
+  Complex operator +(Object? other) {
     if (other is Complex) {
       return Complex(real + other.real, imag + other.imag);
     } else if (other is num) {
@@ -5063,7 +5122,7 @@ final class Complex {
     }
   }
 
-  Complex operator -(dynamic other) {
+  Complex operator -(Object? other) {
     if (other is Complex) {
       return Complex(real - other.real, imag - other.imag);
     } else if (other is num) {
@@ -5077,7 +5136,7 @@ final class Complex {
 
   Complex operator -() => Complex(-real, -imag);
 
-  Complex operator *(dynamic other) {
+  Complex operator *(Object? other) {
     if (other is Complex) {
       return Complex(
         real * other.real - imag * other.imag,
@@ -5093,7 +5152,7 @@ final class Complex {
     }
   }
 
-  Complex operator /(dynamic other) {
+  Complex operator /(Object? other) {
     if (other is Complex) {
       final div = other.real * other.real + other.imag * other.imag;
       if (div == 0.0) {
@@ -5125,7 +5184,7 @@ final class Complex {
   /// Returns this complex number raised to the power of [exponent].
   ///
   /// Supports [num] and [Complex] exponents.
-  Complex pow(dynamic exponent) {
+  Complex pow(Object? exponent) {
     if (exponent is num) {
       if (exponent == 0) return Complex(1.0, 0.0);
       final r = abs;
@@ -5367,7 +5426,15 @@ void _initializeOpenBLASOnce() {
 /// resolves to `Object?`, which is the correct answer for dtype-agnostic
 /// operations.
 extension NDArrayElements<
-  T extends DTypeSpec<AnySpec, E, AnySpec, AnySpec, AnySpec, AnySpec, AnySpec>,
+  T extends DTypeSpec<
+    DTypeTag,
+    E,
+    DTypeTag,
+    DTypeTag,
+    DTypeTag,
+    DTypeTag,
+    DTypeTag
+  >,
   E
 >
     on NDArray<T> {
@@ -5467,6 +5534,6 @@ extension NDArrayBaseElements on NDArray<DTypeTag> {
 
 /// Fallback true division operator (`/`) when the receiver is typed as [DTypeTag].
 extension NDArrayBaseDivide on NDArray<DTypeTag> {
-  NDArray<DTypeTag> operator /(dynamic other) =>
+  NDArray<DTypeTag> operator /(Object? other) =>
       _withWrappedScalar(other, (otherArr) => ops.divide(this, otherArr));
 }

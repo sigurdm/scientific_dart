@@ -214,12 +214,7 @@ NDArray<R> binaryUfunc<T extends DTypeTag, R extends DTypeTag>(
       );
       return out ?? _asView<R>(res);
     case BinaryOp.floorDivide:
-      final res = floor_divide(
-        a,
-        b,
-        where: where,
-        out: _asViewNullable<T>(out),
-      );
+      final res = floorDivide(a, b, where: where, out: _asViewNullable<T>(out));
       return out ?? _asView<R>(res);
     case BinaryOp.remainder:
       final res = remainder(a, b, where: where, out: _asViewNullable<T>(out));
@@ -306,22 +301,22 @@ NDArray<R> binaryUfunc<T extends DTypeTag, R extends DTypeTag>(
       );
       return out ?? _asView<R>(res);
     case BinaryOp.bitwiseAnd:
-      final res = bitwise_and<DTypeTag>(a, b, where: where, out: out);
+      final res = bitwiseAnd<DTypeTag>(a, b, where: where, out: out);
       return out ?? _asView<R>(res);
     case BinaryOp.bitwiseOr:
-      final res = bitwise_or<DTypeTag>(a, b, where: where, out: out);
+      final res = bitwiseOr<DTypeTag>(a, b, where: where, out: out);
       return out ?? _asView<R>(res);
     case BinaryOp.bitwiseXor:
-      final res = bitwise_xor<DTypeTag>(a, b, where: where, out: out);
+      final res = bitwiseXor<DTypeTag>(a, b, where: where, out: out);
       return out ?? _asView<R>(res);
     case BinaryOp.leftShift:
-      final res = left_shift<DTypeTag>(a, b, where: where, out: out);
+      final res = leftShift<DTypeTag>(a, b, where: where, out: out);
       return out ?? _asView<R>(res);
     case BinaryOp.rightShift:
-      final res = right_shift<DTypeTag>(a, b, where: where, out: out);
+      final res = rightShift<DTypeTag>(a, b, where: where, out: out);
       return out ?? _asView<R>(res);
     case BinaryOp.logicalAnd:
-      final res = logical_and(
+      final res = logicalAnd(
         a,
         b,
         where: where,
@@ -329,7 +324,7 @@ NDArray<R> binaryUfunc<T extends DTypeTag, R extends DTypeTag>(
       );
       return out ?? _asView<R>(res);
     case BinaryOp.logicalOr:
-      final res = logical_or(
+      final res = logicalOr(
         a,
         b,
         where: where,
@@ -337,7 +332,7 @@ NDArray<R> binaryUfunc<T extends DTypeTag, R extends DTypeTag>(
       );
       return out ?? _asView<R>(res);
     case BinaryOp.logicalXor:
-      final res = logical_xor(
+      final res = logicalXor(
         a,
         b,
         where: where,
@@ -3239,7 +3234,7 @@ NDArray<R> unaryUfunc<T extends DTypeTag, R extends DTypeTag>(
       final res = deg2rad(xSpec, where: where, out: outSpec);
       return out ?? _asView<R>(res);
     case UnaryOp.logicalNot:
-      final res = logical_not(
+      final res = logicalNot(
         x,
         where: where,
         out: _asViewNullable<Boolean>(out),

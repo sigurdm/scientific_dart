@@ -283,6 +283,12 @@ final class SourceMode extends BuildMode {
       cppCompilerPath = compilerPath.replaceAll('clang-', 'clang++-');
     }
 
+    final envX86Flags = Platform.environment['NDARRAY_X86_FLAGS']?.trim();
+    final List<String> x86Flags =
+        (envX86Flags != null && envX86Flags.isNotEmpty)
+        ? envX86Flags.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList()
+        : (isMSVC ? ['/arch:AVX2'] : ['-mavx2', '-mfma', '-mf16c']);
+
     final highwayDir = _root.resolve('third_party/highway/');
     final legacyHwyDir = Directory.fromUri(outputDir.uri.resolve('hwy_build'));
     final highwayBuildDir = (!isMSVC && legacyHwyDir.existsSync())
@@ -332,15 +338,8 @@ final class SourceMode extends BuildMode {
           '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
           '-DHWY_ENABLE_TESTS=OFF',
           '-DHWY_ENABLE_EXAMPLES=OFF',
-          '-DHWY_COMPILE_ONLY_STATIC=ON',
-          if (arch == Architecture.x64)
-            isMSVC
-                ? '-DCMAKE_CXX_FLAGS=/arch:AVX2 /DHWY_COMPILE_ONLY_STATIC=1'
-                : '-DCMAKE_CXX_FLAGS=-mavx2 -mfma -mf16c -DHWY_COMPILE_ONLY_STATIC=1'
-          else
-            isMSVC
-                ? '-DCMAKE_CXX_FLAGS=/DHWY_COMPILE_ONLY_STATIC=1'
-                : '-DCMAKE_CXX_FLAGS=-DHWY_COMPILE_ONLY_STATIC=1',
+          if (arch == Architecture.x64 && x86Flags.isNotEmpty)
+            '-DCMAKE_CXX_FLAGS=${x86Flags.join(' ')}',
           if (cCompiler != null ||
               (isMSVC &&
                   cppCompilerPath.toLowerCase().contains('clang-cl'))) ...[
@@ -472,7 +471,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '/O2',
           '/MD',
           '/EHsc',
-          if (arch == Architecture.x64) '/arch:AVX2',
+          if (arch == Architecture.x64) ...x86Flags,
           '/D_USE_MATH_DEFINES',
           '/DNOMINMAX',
           '/DVECTORIZED_TARGETS=',
@@ -487,10 +486,9 @@ int128_t __divti3(int128_t a, int128_t b) {
           '/O2',
           '/MD',
           '/EHsc',
-          if (arch == Architecture.x64) '/arch:AVX2',
+          if (arch == Architecture.x64) ...x86Flags,
           '/D_USE_MATH_DEFINES',
           '/DNOMINMAX',
-          '/DHWY_COMPILE_ONLY_STATIC=1',
           '/I${_root.toFilePath()}',
           '/I${_root.resolve('third_party/highway/').toFilePath()}',
           _root.resolve('hook/custom_sorting.cpp').toFilePath(),
@@ -503,7 +501,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '/O2',
           '/MD',
           '/EHsc',
-          if (arch == Architecture.x64) '/arch:AVX2',
+          if (arch == Architecture.x64) ...x86Flags,
           '/D_USE_MATH_DEFINES',
           '/DNOMINMAX',
           '/I${_root.toFilePath()}',
@@ -653,7 +651,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-O2',
           '-fno-exceptions',
           ...sanitizeFlags,
-          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
+          if (arch == Architecture.x64) ...x86Flags,
           '-DVECTORIZED_TARGETS=',
           '-fno-math-errno',
           '-I${_root.toFilePath()}',
@@ -672,8 +670,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-O2',
           '-fno-exceptions',
           ...sanitizeFlags,
-          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
-          '-DHWY_COMPILE_ONLY_STATIC=1',
+          if (arch == Architecture.x64) ...x86Flags,
           '-fno-math-errno',
           '-I${_root.toFilePath()}',
           '-I${_root.resolve('third_party/highway/').toFilePath()}',
@@ -692,7 +689,7 @@ int128_t __divti3(int128_t a, int128_t b) {
           '-O2',
           '-fno-exceptions',
           ...sanitizeFlags,
-          if (arch == Architecture.x64) ...['-mavx2', '-mfma', '-mf16c'],
+          if (arch == Architecture.x64) ...x86Flags,
           '-fno-math-errno',
           '-I${_root.toFilePath()}',
           indexingSrc,

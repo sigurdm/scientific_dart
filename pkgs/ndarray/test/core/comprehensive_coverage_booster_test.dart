@@ -231,26 +231,26 @@ void main() {
                 DType.boolean,
               );
 
-              final band = bitwise_and(a, b);
+              final band = bitwiseAnd(a, b);
               expect(band.shape, [2, 2]);
 
-              final bor = bitwise_or(a, b);
+              final bor = bitwiseOr(a, b);
               expect(bor.shape, [2, 2]);
 
-              final bxor = bitwise_xor(a, b);
+              final bxor = bitwiseXor(a, b);
               expect(bxor.shape, [2, 2]);
 
               final inv = invert(a);
               expect(inv.shape, [2, 2]);
 
-              final ls = left_shift(a, b);
+              final ls = leftShift(a, b);
               expect(ls.shape, [2, 2]);
 
-              final rs = right_shift(a, b);
+              final rs = rightShift(a, b);
               expect(rs.shape, [2, 2]);
 
               final outObj = NDArray.create([2, 2], dt);
-              bitwise_and(a, b, out: outObj, where: mask);
+              bitwiseAnd(a, b, out: outObj, where: mask);
               expect(outObj.shape, [2, 2]);
             }
           }
@@ -260,16 +260,16 @@ void main() {
               final a = createArray(dt, [2, 2], strided: isStrided);
               final b = createArray(dt, [2, 2], strided: isStrided);
 
-              final land = logical_and(a, b);
+              final land = logicalAnd(a, b);
               expect(land.shape, [2, 2]);
 
-              final lor = logical_or(a, b);
+              final lor = logicalOr(a, b);
               expect(lor.shape, [2, 2]);
 
-              final lxor = logical_xor(a, b);
+              final lxor = logicalXor(a, b);
               expect(lxor.shape, [2, 2]);
 
-              final lnot = logical_not(a);
+              final lnot = logicalNot(a);
               expect(lnot.shape, [2, 2]);
             }
           }

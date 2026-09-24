@@ -39,7 +39,7 @@ MaskedArray<DTypeTag> _binaryOp(
     final NDArray<DTypeTag> divisorData;
     if (isDivide) {
       final combinedMask = otherMask != null
-          ? ndops.logical_or(self.mask, otherMask)
+          ? ndops.logicalOr(self.mask, otherMask)
           : self.mask;
       final broadcastedCombinedMask = ndops.broadcastTo(
         combinedMask,
@@ -63,7 +63,7 @@ MaskedArray<DTypeTag> _binaryOp(
 
     if (otherMask != null) {
       final broadcastedMaskB = ndops.broadcastTo(otherMask, resultData.shape);
-      resultMask = ndops.logical_or(broadcastedMaskA, broadcastedMaskB);
+      resultMask = ndops.logicalOr(broadcastedMaskA, broadcastedMaskB);
     } else {
       resultMask = broadcastedMaskA.copy();
     }
@@ -72,7 +72,7 @@ MaskedArray<DTypeTag> _binaryOp(
       final zeroArray = NDArray.zeros([], otherData.dtype);
       final isZero = ndops.equal(otherData, zeroArray);
       final broadcastedIsZero = ndops.broadcastTo(isZero, resultData.shape);
-      final finalMask = ndops.logical_or(resultMask, broadcastedIsZero);
+      final finalMask = ndops.logicalOr(resultMask, broadcastedIsZero);
       return dispatchCreateMaskedArray(
         resultData.detachToParentScope(),
         finalMask.detachToParentScope(),

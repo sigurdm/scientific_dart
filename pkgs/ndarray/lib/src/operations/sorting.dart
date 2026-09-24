@@ -73,7 +73,9 @@ NDArray<T> sort<T extends DTypeTag>(
     throw StateError('Cannot write sort result to a disposed output array.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -203,6 +205,7 @@ NDArray<T> sort<T extends DTypeTag>(
       }
     }
 
+    checkNativeOom();
     return finish();
   } finally {
     tempResult?.dispose();
@@ -255,7 +258,9 @@ NDArray<R> argsortAs<T extends DTypeTag, R extends DTypeTag>(
     );
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -600,7 +605,9 @@ NDArray<T> partition<T extends DTypeTag>(
     );
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -869,7 +876,9 @@ NDArray<R> argpartitionAs<T extends DTypeTag, R extends DTypeTag>(
     );
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -1264,7 +1273,9 @@ NDArray<R> searchsortedAs<T extends DTypeTag, R extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, v.shape) || out.dtype != dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, v.shape) ||
+        out.dtype != dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (!out.isContiguous ||
@@ -1621,7 +1632,9 @@ dynamic where<T extends DTypeTag>(
   final DType<DTypeTag> targetDType = resolveDType(x.dtype, y.dtype);
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for where() result.',
       );
@@ -2327,7 +2340,9 @@ NDArray<Int32> count_nonzero<T extends DTypeTag>(
       : (List<int>.from(a.shape)..removeAt(normAxis));
 
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != DType.int32) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != DType.int32) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -2683,7 +2698,9 @@ NDArray<Int32> _argminmaxFFI<T extends DTypeTag>(
             : (List<int>.from(a.shape)..removeAt(normAxis)));
 
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != DType.int32) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != DType.int32) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {

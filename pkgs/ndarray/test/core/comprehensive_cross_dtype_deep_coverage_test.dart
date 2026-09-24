@@ -288,16 +288,16 @@ void main() {
           final a = makeArr(dt, [2, 3]);
           final b = makeArr(dt, [1, 3], offset: 3);
 
-          final land = logical_and(a, b);
+          final land = logicalAnd(a, b);
           expect(land.shape, [2, 3]);
 
-          final lor = logical_or(a, b);
+          final lor = logicalOr(a, b);
           expect(lor.shape, [2, 3]);
 
-          final lxor = logical_xor(a, b);
+          final lxor = logicalXor(a, b);
           expect(lxor.shape, [2, 3]);
 
-          final lnot = logical_not(a);
+          final lnot = logicalNot(a);
           expect(lnot.shape, [2, 3]);
 
           final mask = NDArray<Boolean>.fromList(
@@ -306,7 +306,7 @@ void main() {
             DType.boolean,
           );
           final outArr = NDArray<Boolean>.create([2, 3], DType.boolean);
-          logical_and(a, b, out: outArr, where: mask);
+          logicalAnd(a, b, out: outArr, where: mask);
           expect(outArr.shape, [2, 3]);
         }
       });

@@ -22,29 +22,131 @@
 #include <complex>
 #include <stdio.h>
 #include "custom_sorting.h"
-#include <vector>
 #include <type_traits>
 #if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86))
 #include <immintrin.h>
 #endif
 
+template <typename T>
+struct NoThrowBuffer {
+    T *ptr_ = nullptr;
+    size_t size_ = 0;
+    size_t cap_ = 0;
+    bool ok_ = true;
+
+    NoThrowBuffer() noexcept = default;
+    explicit NoThrowBuffer(size_t n) noexcept {
+        resize(n);
+    }
+    NoThrowBuffer(size_t n, T val) noexcept {
+        assign(n, val);
+    }
+    ~NoThrowBuffer() noexcept {
+        std::free(ptr_);
+    }
+    NoThrowBuffer(const NoThrowBuffer &) = delete;
+    NoThrowBuffer &operator=(const NoThrowBuffer &) = delete;
+
+    bool resize(size_t n) noexcept {
+        std::free(ptr_);
+        ptr_ = nullptr;
+        size_ = 0;
+        cap_ = 0;
+        if (n == 0) {
+            ok_ = true;
+            return true;
+        }
+        if (n > static_cast<size_t>(-1) / sizeof(T)) {
+            ok_ = false;
+            ndarray_set_oom_flag();
+            return false;
+        }
+        ptr_ = static_cast<T *>(std::calloc(n, sizeof(T)));
+        if (!ptr_) {
+            ok_ = false;
+            ndarray_set_oom_flag();
+            return false;
+        }
+        size_ = n;
+        cap_ = n;
+        ok_ = true;
+        return true;
+    }
+
+    bool assign(size_t n, T val) noexcept {
+        if (!resize(n)) return false;
+        const unsigned char *bytes = reinterpret_cast<const unsigned char *>(&val);
+        bool is_zero = true;
+        for (size_t b = 0; b < sizeof(T); ++b) {
+            if (bytes[b] != 0) {
+                is_zero = false;
+                break;
+            }
+        }
+        if (!is_zero) {
+            for (size_t i = 0; i < n; ++i) {
+                ptr_[i] = val;
+            }
+        }
+        return true;
+    }
+
+    bool assign(const T *first, const T *last) noexcept {
+        size_t n = static_cast<size_t>(last - first);
+        if (!resize(n)) return false;
+        if (n > 0 && first != nullptr) {
+            std::memcpy(ptr_, first, n * sizeof(T));
+        }
+        return true;
+    }
+
+    T *data() noexcept { return ptr_; }
+    const T *data() const noexcept { return ptr_; }
+    T *begin() noexcept { return ptr_; }
+    T *end() noexcept { return ptr_ + size_; }
+    const T *begin() const noexcept { return ptr_; }
+    const T *end() const noexcept { return ptr_ + size_; }
+    size_t size() const noexcept { return size_; }
+    bool ok() const noexcept { return ok_; }
+    T &operator[](size_t i) noexcept { return ptr_[i]; }
+    const T &operator[](size_t i) const noexcept { return ptr_[i]; }
+};
+
 constexpr int STACK_RANK_LIMIT = 32;
 
 #define DECLARE_RANK_BUFFER(type, name, rank_expr) \
     type name##_stack[32]; \
-    std::vector<type> name##_heap; \
-    type *name = name##_stack; \
-    do { \
-        int _r_##name = (rank_expr); \
-        if (_r_##name > 32) { \
-            name##_heap.assign(_r_##name, static_cast<type>(0)); \
-            name = name##_heap.data(); \
-        } else if (_r_##name > 0) { \
+    int _r_##name = (rank_expr); \
+    NoThrowBuffer<type> name##_heap(_r_##name > 32 ? _r_##name : 0); \
+    if (_r_##name > 32 && !name##_heap.ok()) { \
+        ndarray_set_oom_flag(); \
+        return; \
+    } \
+    type *name = (_r_##name > 32) ? name##_heap.data() : name##_stack; \
+    if (_r_##name <= 32) { \
+        if (_r_##name > 0) { \
             std::memset(name##_stack, 0, static_cast<size_t>(_r_##name) * sizeof(type)); \
         } else { \
             name##_stack[0] = static_cast<type>(0); \
         } \
-    } while (0)
+    }
+
+#define DECLARE_RANK_BUFFER_RET(type, name, rank_expr, ret_val) \
+    type name##_stack[32]; \
+    int _r_##name = (rank_expr); \
+    NoThrowBuffer<type> name##_heap(_r_##name > 32 ? _r_##name : 0); \
+    if (_r_##name > 32 && !name##_heap.ok()) { \
+        ndarray_set_oom_flag(); \
+        return ret_val; \
+    } \
+    type *name = (_r_##name > 32) ? name##_heap.data() : name##_stack; \
+    if (_r_##name <= 32) { \
+        if (_r_##name > 0) { \
+            std::memset(name##_stack, 0, static_cast<size_t>(_r_##name) * sizeof(type)); \
+        } else { \
+            name##_stack[0] = static_cast<type>(0); \
+        } \
+    }
 
 #if defined(_MSC_VER)
 #define RESTRICT __restrict
@@ -485,7 +587,8 @@ static void s_cast_generic_impl(
         s *= shape[d];
     }
     if (strided_buffers_overlap_not_identical(src, stridesSrc, sizeof(SrcType), dest, stridesDest, sizeof(DestType), shape, rank)) {
-        std::vector<DestType> temp(total_elements);
+        NoThrowBuffer<DestType> temp(total_elements);
+        if (!temp.ok()) return;
         DECLARE_RANK_BUFFER(int, coord, rank);
         int offsetSrc = 0;
         for (int el = 0; el < total_elements; el++) {
@@ -745,7 +848,8 @@ static void strided_cum_op_impl(
             tempStrides[d] = s;
             s *= shape[d];
         }
-        std::vector<T> temp(total_size);
+        NoThrowBuffer<T> temp(total_size);
+        if (!temp.ok()) return;
         strided_cum_op_impl(src, stridesSrc, temp.data(), tempStrides, shape, rank, axis, op);
         DECLARE_RANK_BUFFER(int, coord_out, rank);
         for (int i = 0; i < total_size; i++) {
@@ -811,7 +915,8 @@ static void strided_unwrap_op_impl(
             tempStrides[d] = s;
             s *= shape[d];
         }
-        std::vector<T> temp(total_size);
+        NoThrowBuffer<T> temp(total_size);
+        if (!temp.ok()) return;
         strided_unwrap_op_impl(src, stridesSrc, temp.data(), tempStrides, shape, rank, axis, discont);
         DECLARE_RANK_BUFFER(int, coord_out, rank);
         for (int i = 0; i < total_size; i++) {
@@ -903,7 +1008,8 @@ static void strided_diff_op_impl(
             tempStrides[d] = s;
             s *= resShape[d];
         }
-        std::vector<T> temp(total_res_size);
+        NoThrowBuffer<T> temp(total_res_size);
+        if (!temp.ok()) return;
         strided_diff_op_impl(src, stridesSrc, temp.data(), tempStrides, shape, rank, axis, op);
         DECLARE_RANK_BUFFER(int, coord_out, rank);
         for (int i = 0; i < total_res_size; i++) {
@@ -1003,7 +1109,11 @@ static inline void strided_unary_op_loop(
 
     if (overlap) {
         using TempT = typename std::conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
-        std::vector<TempT> temp(total_size);
+        NoThrowBuffer<TempT> temp(total_size);
+        if (!temp.ok()) {
+            ndarray_set_oom_flag();
+            return;
+        }
         DECLARE_RANK_BUFFER(int, coord, rank);
         for (int i = 0; i < total_size; i++) {
             int offsetSrc = 0;
@@ -1191,7 +1301,11 @@ static void v_unary_impl(const T *src, T *res, int size, const uint8_t *mask, Op
     if (contiguous_buffers_overlap_not_identical(src, (size_t)size * sizeof(T), res, (size_t)size * sizeof(T)) ||
         mask_overlaps_contiguous_buffer(mask, size, res, (size_t)size * sizeof(T))) {
         using TempT = typename std::conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
-        std::vector<TempT> temp(size);
+        NoThrowBuffer<TempT> temp(size);
+        if (!temp.ok()) {
+            ndarray_set_oom_flag();
+            return;
+        }
         if (mask != nullptr) {
             std::memcpy(temp.data(), res, (size_t)size * sizeof(T));
             v_unary_loop<true>(src, reinterpret_cast<T *>(temp.data()), size, mask, op);
@@ -1228,7 +1342,11 @@ static inline void strided_unary_cast_loop(
 
     if (overlap) {
         using TempT = typename std::conditional<std::is_same<T_OUT, bool>::value, uint8_t, T_OUT>::type;
-        std::vector<TempT> temp(total_size);
+        NoThrowBuffer<TempT> temp(total_size);
+        if (!temp.ok()) {
+            ndarray_set_oom_flag();
+            return;
+        }
         DECLARE_RANK_BUFFER(int, coord, rank);
         for (int i = 0; i < total_size; i++) {
             int offsetSrc = 0;
@@ -1318,7 +1436,11 @@ static void v_unary_cast_impl(const T_IN *src, T_OUT *res, int size, const uint8
         (static_cast<const void *>(src) == static_cast<const void *>(res) && sizeof(T_IN) != sizeof(T_OUT)) ||
         mask_overlaps_contiguous_buffer(mask, size, res, (size_t)size * sizeof(T_OUT))) {
         using TempT = typename std::conditional<std::is_same<T_OUT, bool>::value, uint8_t, T_OUT>::type;
-        std::vector<TempT> temp(size);
+        NoThrowBuffer<TempT> temp(size);
+        if (!temp.ok()) {
+            ndarray_set_oom_flag();
+            return;
+        }
         if (mask != nullptr) {
             std::memcpy(temp.data(), res, (size_t)size * sizeof(T_OUT));
             v_unary_cast_loop<true>(src, reinterpret_cast<T_OUT *>(temp.data()), size, mask, op);
@@ -1352,11 +1474,15 @@ static void s_fill_impl(T * RESTRICT res, const int * RESTRICT strides, const in
         res[0] = value;
         return;
     }
-    std::vector<int> coord_vec;
+    NoThrowBuffer<int> coord_vec;
     int coord_stack[32] = {0};
     int *coord = coord_stack;
     if (rank > 32) {
         coord_vec.assign(rank, 0);
+        if (!coord_vec.ok()) {
+            ndarray_set_oom_flag();
+            return;
+        }
         coord = coord_vec.data();
     }
     int offset = 0;
@@ -1415,7 +1541,11 @@ static inline void strided_binary_op_loop(
 
     if (overlap) {
         using TempT = typename std::conditional<std::is_same<TRes, bool>::value, uint8_t, TRes>::type;
-        std::vector<TempT> temp(total_elements);
+        NoThrowBuffer<TempT> temp(total_elements);
+        if (!temp.ok()) {
+            ndarray_set_oom_flag();
+            return;
+        }
         DECLARE_RANK_BUFFER(int, coord, rank);
         int offsetA = 0, offsetB = 0, offsetResIn = 0;
         for (int el = 0; el < total_elements; el++) {
@@ -1684,7 +1814,11 @@ static void v_binary_impl(const T1 *a, const T2 *b, TRes *res, int size, const u
     bool overlap_mask = mask_overlaps_contiguous_buffer(mask, size, res, (size_t)size * sizeof(TRes));
     if (overlap_a || overlap_b || overlap_mask) {
         using TempT = typename std::conditional<std::is_same<TRes, bool>::value, uint8_t, TRes>::type;
-        std::vector<TempT> temp(size);
+        NoThrowBuffer<TempT> temp(size);
+        if (!temp.ok()) {
+            ndarray_set_oom_flag();
+            return;
+        }
         if (mask != nullptr) {
             std::memcpy(temp.data(), res, (size_t)size * sizeof(TRes));
             v_binary_loop<true>(a, b, reinterpret_cast<TRes *>(temp.data()), size, mask, op);
@@ -1724,7 +1858,11 @@ static void s_where_impl(
         strided_buffers_overlap_not_identical(x, stridesX, sizeof(T), res, stridesRes, sizeof(T), shape, rank) ||
         strided_buffers_overlap_not_identical(y, stridesY, sizeof(T), res, stridesRes, sizeof(T), shape, rank);
     if (overlap) {
-        std::vector<T> temp(total_elements);
+        NoThrowBuffer<T> temp(total_elements);
+        if (!temp.ok()) {
+            ndarray_set_oom_flag();
+            return;
+        }
         DECLARE_RANK_BUFFER(int, coord, rank);
         int offsetCond = 0, offsetX = 0, offsetY = 0;
         for (int el = 0; el < total_elements; el++) {
@@ -2687,9 +2825,17 @@ void s_var_double(const double *src, const int *stridesSrc,
         int M = shape[0];
         int N = shape[1];
         int S = stridesSrc[0];
-        std::vector<double> mean_buf_vec;
+        NoThrowBuffer<double> mean_buf_vec;
         double stack_buf[1024];
-        double *mean_buf = (N <= 1024) ? stack_buf : (mean_buf_vec.resize(N), mean_buf_vec.data());
+        double *mean_buf = stack_buf;
+        if (N > 1024) {
+            mean_buf_vec.resize(N);
+            if (!mean_buf_vec.ok()) {
+                ndarray_set_oom_flag();
+                return;
+            }
+            mean_buf = mean_buf_vec.data();
+        }
 
         s_mean_double(src, stridesSrc, mean_buf, stridesDest, shape, rank, 0);
 
@@ -3081,9 +3227,17 @@ void s_var_float(const float *src, const int *stridesSrc,
         int M = shape[0];
         int N = shape[1];
         int S = stridesSrc[0];
-        std::vector<float> mean_buf_vec;
+        NoThrowBuffer<float> mean_buf_vec;
         float stack_buf[1024];
-        float *mean_buf = (N <= 1024) ? stack_buf : (mean_buf_vec.resize(N), mean_buf_vec.data());
+        float *mean_buf = stack_buf;
+        if (N > 1024) {
+            mean_buf_vec.resize(N);
+            if (!mean_buf_vec.ok()) {
+                ndarray_set_oom_flag();
+                return;
+            }
+            mean_buf = mean_buf_vec.data();
+        }
 
         s_mean_float(src, stridesSrc, mean_buf, stridesDest, shape, rank, 0);
 
@@ -4494,13 +4648,7 @@ void s_flatten_double(const double *src, const int *stridesSrc, double *dest, co
         dest[0] = src[0];
         return;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -4524,13 +4672,7 @@ void s_flatten_float(const float *src, const int *stridesSrc, float *dest, const
         dest[0] = src[0];
         return;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -4554,13 +4696,7 @@ void s_flatten_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, c
         dest[0] = src[0];
         return;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -4584,13 +4720,7 @@ void s_flatten_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, c
         dest[0] = src[0];
         return;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -4617,13 +4747,7 @@ void s_flatten_complex128(const double *src, const int *stridesSrc, double *dest
     }
     const cpx_t *c_src = (const cpx_t*)src;
     cpx_t *c_dest = (cpx_t*)dest;
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         c_dest[el] = c_src[offsetSrc];
@@ -4650,13 +4774,7 @@ void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, c
     }
     const cpx_f_t *c_src = (const cpx_f_t*)src;
     cpx_f_t *c_dest = (cpx_f_t*)dest;
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         c_dest[el] = c_src[offsetSrc];
@@ -4680,13 +4798,7 @@ void s_flatten_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, c
         dest[0] = src[0];
         return;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -4710,13 +4822,7 @@ void s_flatten_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, c
         dest[0] = src[0];
         return;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER(int, coord, rank);
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -4753,13 +4859,7 @@ uint32_t s_hash_double(const double *a, const int *strides, const int *shape, in
         }
         return hash;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_double(&hash, a[offset]);
@@ -4793,13 +4893,7 @@ uint32_t s_hash_float(const float *a, const int *strides, const int *shape, int 
         }
         return hash;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_float(&hash, a[offset]);
@@ -4833,13 +4927,7 @@ uint32_t s_hash_int64(const int64_t *a, const int *strides, const int *shape, in
         }
         return hash;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_int64(&hash, a[offset]);
@@ -4873,13 +4961,7 @@ uint32_t s_hash_int32(const int32_t *a, const int *strides, const int *shape, in
         }
         return hash;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_int32(&hash, a[offset]);
@@ -4913,13 +4995,7 @@ uint32_t s_hash_int16(const int16_t *a, const int *strides, const int *shape, in
         }
         return hash;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_int16(&hash, a[offset]);
@@ -4953,13 +5029,7 @@ uint32_t s_hash_uint8(const uint8_t *a, const int *strides, const int *shape, in
         }
         return hash;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_uint8(&hash, a[offset]);
@@ -4996,13 +5066,7 @@ uint32_t s_hash_complex128(const double *a, const int *strides, const int *shape
         }
         return hash;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_double(&hash, c_a[offset].r);
@@ -5040,13 +5104,7 @@ uint32_t s_hash_complex64(const float *a, const int *strides, const int *shape, 
         }
         return hash;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_float(&hash, c_a[offset].r);
@@ -5081,13 +5139,7 @@ uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, 
         }
         return hash;
     }
-    std::vector<int> coord_vec;
-    int coord_stack[32] = {0};
-    int *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_boolean(&hash, a[offset]);
@@ -8184,7 +8236,11 @@ void s_clip_##TYPE_NAME(const TYPE *a, const int *stridesA, \
                    strided_buffers_overlap_not_identical(min_val, stridesMin, sizeof(TYPE), res, stridesRes, sizeof(TYPE), shape, rank) || \
                    strided_buffers_overlap_not_identical(max_val, stridesMax, sizeof(TYPE), res, stridesRes, sizeof(TYPE), shape, rank); \
     if (overlap) { \
-        std::vector<TYPE> temp(total_elements); \
+        NoThrowBuffer<TYPE> temp(total_elements); \
+        if (!temp.ok()) { \
+            ndarray_set_oom_flag(); \
+            return; \
+        } \
         DECLARE_RANK_BUFFER(int, coord, rank); \
         int offsetA = 0, offsetMin = 0, offsetMax = 0; \
         for (int el = 0; el < total_elements; el++) { \
@@ -10172,7 +10228,7 @@ static inline bool is_nan_check(T val) {
     return false;
 }
 
-#define DEFINE_NUMERIC_STATS(TYPE, NAME_SUFFIX, SORTER, CAST_TYPE) static inline TYPE stats_min_##NAME_SUFFIX(const TYPE *base, int stride, int len) {     if (len <= 0) return (TYPE)0;     TYPE m = *base;     for (int i = 1; i < len; i++) {         if (is_nan_check(m)) break;         TYPE v = *(base + i * stride);         if (is_nan_check(v)) { m = v; break; }         if (v < m) m = v;     }     return m; } static inline TYPE stats_max_##NAME_SUFFIX(const TYPE *base, int stride, int len) {     if (len <= 0) return (TYPE)0;     TYPE m = *base;     for (int i = 1; i < len; i++) {         if (is_nan_check(m)) break;         TYPE v = *(base + i * stride);         if (is_nan_check(v)) { m = v; break; }         if (v > m) m = v;     }     return m; } static inline TYPE stats_mean_##NAME_SUFFIX(const TYPE *base, int stride, int len) {     if (len <= 0) return (TYPE)0;     if constexpr (std::is_same_v<TYPE, int64_t>) {         __int128 sum = 0;         for (int i = 0; i < len; i++) {             sum += (__int128)*(base + i * stride);         }         __int128 d = (__int128)len;         __int128 q = sum / d;         __int128 r = sum % d;         if (r > 0 && 2 * r >= d) q += 1;         else if (r < 0 && -2 * r >= d) q -= 1;         return (int64_t)q;     } else {         double sum = 0;         for (int i = 0; i < len; i++) {             sum += (double)*(base + i * stride);         }         return (TYPE)(sum / len);     } } static inline TYPE stats_median_##NAME_SUFFIX(const TYPE *base, int _stride, int len) {     if (len <= 0) return (TYPE)0;     /* Median calculation requires temporary buffer. We use malloc here. */     /* In actual usage, len is capped by dimension size. */     TYPE *buf = (TYPE*)malloc(len * sizeof(TYPE));     if (buf == nullptr) return (TYPE)0;     bool has_nan = false;     for (int i = 0; i < len; i++) {         TYPE v = *(base + i * _stride);         if (is_nan_check(v)) has_nan = true;         buf[i] = v;     }     if (has_nan) {         free(buf);         if constexpr (std::is_floating_point_v<TYPE>) {             return (TYPE)NAN;         }         return (TYPE)0;     }     SORTER((CAST_TYPE)buf, len, 0); /* 0 = quicksort */     TYPE res;     if (len % 2 == 1) {         res = buf[len / 2];     } else if constexpr (std::is_same_v<TYPE, int64_t>) {         __int128 sum = (__int128)buf[len / 2 - 1] + (__int128)buf[len / 2];         __int128 q = sum / 2;         __int128 r = sum % 2;         if (r > 0) q += 1;         else if (r < 0) q -= 1;         res = (int64_t)q;     } else {         res = (TYPE)(((double)buf[len / 2 - 1] + (double)buf[len / 2]) / 2.0);     }     free(buf);     return res; }
+#define DEFINE_NUMERIC_STATS(TYPE, NAME_SUFFIX, SORTER, CAST_TYPE) static inline TYPE stats_min_##NAME_SUFFIX(const TYPE *base, int stride, int len) {     if (len <= 0) return (TYPE)0;     TYPE m = *base;     for (int i = 1; i < len; i++) {         if (is_nan_check(m)) break;         TYPE v = *(base + i * stride);         if (is_nan_check(v)) { m = v; break; }         if (v < m) m = v;     }     return m; } static inline TYPE stats_max_##NAME_SUFFIX(const TYPE *base, int stride, int len) {     if (len <= 0) return (TYPE)0;     TYPE m = *base;     for (int i = 1; i < len; i++) {         if (is_nan_check(m)) break;         TYPE v = *(base + i * stride);         if (is_nan_check(v)) { m = v; break; }         if (v > m) m = v;     }     return m; } static inline TYPE stats_mean_##NAME_SUFFIX(const TYPE *base, int stride, int len) {     if (len <= 0) return (TYPE)0;     if constexpr (std::is_same_v<TYPE, int64_t>) {         __int128 sum = 0;         for (int i = 0; i < len; i++) {             sum += (__int128)*(base + i * stride);         }         __int128 d = (__int128)len;         __int128 q = sum / d;         __int128 r = sum % d;         if (r > 0 && 2 * r >= d) q += 1;         else if (r < 0 && -2 * r >= d) q -= 1;         return (int64_t)q;     } else {         double sum = 0;         for (int i = 0; i < len; i++) {             sum += (double)*(base + i * stride);         }         return (TYPE)(sum / len);     } } static inline TYPE stats_median_##NAME_SUFFIX(const TYPE *base, int _stride, int len) {     if (len <= 0) return (TYPE)0;     /* Median calculation requires temporary buffer. We use malloc here. */     /* In actual usage, len is capped by dimension size. */     TYPE *buf = (TYPE*)malloc(len * sizeof(TYPE));     if (buf == nullptr) { ndarray_set_oom_flag(); return (TYPE)0; }     bool has_nan = false;     for (int i = 0; i < len; i++) {         TYPE v = *(base + i * _stride);         if (is_nan_check(v)) has_nan = true;         buf[i] = v;     }     if (has_nan) {         free(buf);         if constexpr (std::is_floating_point_v<TYPE>) {             return (TYPE)NAN;         }         return (TYPE)0;     }     SORTER((CAST_TYPE)buf, len, 0); /* 0 = quicksort */     TYPE res;     if (len % 2 == 1) {         res = buf[len / 2];     } else if constexpr (std::is_same_v<TYPE, int64_t>) {         __int128 sum = (__int128)buf[len / 2 - 1] + (__int128)buf[len / 2];         __int128 q = sum / 2;         __int128 r = sum % 2;         if (r > 0) q += 1;         else if (r < 0) q -= 1;         res = (int64_t)q;     } else {         res = (TYPE)(((double)buf[len / 2 - 1] + (double)buf[len / 2]) / 2.0);     }     free(buf);     return res; }
 
 DEFINE_NUMERIC_STATS(double, double, native_sort_double, double*)
 DEFINE_NUMERIC_STATS(float, float, native_sort_float, float*)
@@ -10214,7 +10270,10 @@ static inline uint64_t stats_mean_uint64(const uint64_t *base, int stride, int l
 static inline uint64_t stats_median_uint64(const uint64_t *base, int _stride, int len) {
     if (len <= 0) return 0;
     uint64_t *buf = (uint64_t*)malloc(len * sizeof(uint64_t));
-    if (buf == nullptr) return 0;
+    if (buf == nullptr) {
+        ndarray_set_oom_flag();
+        return 0;
+    }
     for (int i = 0; i < len; i++) {
         buf[i] = *(base + i * _stride);
     }
@@ -10268,6 +10327,7 @@ static inline cpx_t stats_median_complex128(const cpx_t *base, int stride, int l
     if (buf_r == nullptr || buf_i == nullptr) {
         if (buf_r) free(buf_r);
         if (buf_i) free(buf_i);
+        ndarray_set_oom_flag();
         return (cpx_t){0, 0};
     }
     for (int i = 0; i < len; i++) {
@@ -10326,6 +10386,7 @@ static inline cpx_f_t stats_median_complex64(const cpx_f_t *base, int stride, in
     if (buf_r == nullptr || buf_i == nullptr) {
         if (buf_r) free(buf_r);
         if (buf_i) free(buf_i);
+        ndarray_set_oom_flag();
         return (cpx_f_t){0, 0};
     }
     for (int i = 0; i < len; i++) {
@@ -10365,11 +10426,15 @@ void pad_axis_##TYPE_NAME( \
     if (src == nullptr && N > 0) return; \
     int total_elements_dest = 1; \
     for (int i = 0; i < rank; i++) total_elements_dest *= shapeDest[i]; \
-    std::vector<int> coordDest_vec; \
+    NoThrowBuffer<int> coordDest_vec; \
     int coordDest_stack[32] = {0}; \
     int *coordDest = coordDest_stack; \
     if (rank > 32) { \
         coordDest_vec.assign(rank, 0); \
+        if (!coordDest_vec.ok()) { \
+            ndarray_set_oom_flag(); \
+            return; \
+        } \
         coordDest = coordDest_vec.data(); \
     } \
     int offsetSrcSlice = 0; \
@@ -10550,11 +10615,15 @@ void pad_axis_##TYPE_NAME( \
     if (src == nullptr && N > 0) return; \
     int total_elements_dest = 1; \
     for (int i = 0; i < rank; i++) total_elements_dest *= shapeDest[i]; \
-    std::vector<int> coordDest_vec; \
+    NoThrowBuffer<int> coordDest_vec; \
     int coordDest_stack[32] = {0}; \
     int *coordDest = coordDest_stack; \
     if (rank > 32) { \
         coordDest_vec.assign(rank, 0); \
+        if (!coordDest_vec.ok()) { \
+            ndarray_set_oom_flag(); \
+            return; \
+        } \
         coordDest = coordDest_vec.data(); \
     } \
     int offsetSrcSlice = 0; \
@@ -10890,7 +10959,7 @@ void NAME(const TYPE *src, const int *stridesSrc, \
     int size_axis = shape[axis]; \
     if (size_axis <= 0) return; \
     TYPE *tmp_buf = (TYPE *)malloc(size_axis * sizeof(TYPE)); \
-    if (tmp_buf == nullptr) return; \
+    if (tmp_buf == nullptr) { ndarray_set_oom_flag(); return; } \
     DECLARE_RANK_BUFFER(int, coord, rank); \
     int outer_size = 1; \
     for (int d = 0; d < rank; d++) { \
@@ -10938,7 +11007,10 @@ void s_median_double(const double *src, const int *stridesSrc,
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     double *tmp_buf = (double *)malloc(size_axis * sizeof(double));
-    if (tmp_buf == nullptr) return;
+    if (tmp_buf == nullptr) {
+        ndarray_set_oom_flag();
+        return;
+    }
     DECLARE_RANK_BUFFER(int, coord, rank);
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -10992,7 +11064,10 @@ void s_median_float(const float *src, const int *stridesSrc,
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     float *tmp_buf = (float *)malloc(size_axis * sizeof(float));
-    if (tmp_buf == nullptr) return;
+    if (tmp_buf == nullptr) {
+        ndarray_set_oom_flag();
+        return;
+    }
     DECLARE_RANK_BUFFER(int, coord, rank);
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -11051,7 +11126,10 @@ void s_median_complex128(const cpx_t *src, const int *stridesSrc,
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     double *tmp_buf = (double *)malloc(size_axis * sizeof(double));
-    if (tmp_buf == nullptr) return;
+    if (tmp_buf == nullptr) {
+        ndarray_set_oom_flag();
+        return;
+    }
     DECLARE_RANK_BUFFER(int, coord, rank);
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -11115,7 +11193,10 @@ void s_median_complex64(const cpx_f_t *src, const int *stridesSrc,
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     float *tmp_buf = (float *)malloc(size_axis * sizeof(float));
-    if (tmp_buf == nullptr) return;
+    if (tmp_buf == nullptr) {
+        ndarray_set_oom_flag();
+        return;
+    }
     DECLARE_RANK_BUFFER(int, coord, rank);
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -11298,7 +11379,7 @@ double stats_quantile_##NAME_SUFFIX(const TYPE *base, int _stride, int len, doub
     if (q < 0.0) q = 0.0; \
     if (q > 1.0) q = 1.0; \
     TYPE *buf = (TYPE*)malloc(len * sizeof(TYPE)); \
-    if (buf == nullptr) return 0.0; \
+    if (buf == nullptr) { ndarray_set_oom_flag(); return 0.0; } \
     for (int i = 0; i < len; i++) { \
         buf[i] = *(base + i * _stride); \
     } \
@@ -11335,7 +11416,7 @@ void NAME(const TYPE *src, const int *stridesSrc, \
     if (size_axis <= 0) return; \
     if (q < 0.0 || q > 1.0) return; \
     TYPE *tmp_buf = (TYPE *)malloc(size_axis * sizeof(TYPE)); \
-    if (tmp_buf == nullptr) return; \
+    if (tmp_buf == nullptr) { ndarray_set_oom_flag(); return; } \
     DECLARE_RANK_BUFFER(int, coord, rank); \
     int outer_size = 1; \
     for (int d = 0; d < rank; d++) { \
@@ -11817,7 +11898,11 @@ void s_compare_impl(const T1 *a, const int *stridesA,
     bool overlap_b = strided_buffers_overlap_not_identical(
         b, stridesB, sizeof(T2), res, stridesRes, sizeof(uint8_t), shape, rank);
     if (overlap_a || overlap_b) {
-        std::vector<uint8_t> temp(total_elements);
+        NoThrowBuffer<uint8_t> temp(total_elements);
+        if (!temp.ok()) {
+            ndarray_set_oom_flag();
+            return;
+        }
         DECLARE_RANK_BUFFER(int, temp_strides, rank);
         int s = 1;
         for (int i = rank - 1; i >= 0; i--) {
@@ -12033,7 +12118,7 @@ int NAME(const TYPE *a, const int *stridesA, \
         } \
         return 1; \
     } \
-    DECLARE_RANK_BUFFER(int, coord, rank); \
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0); \
     int offsetA = 0, offsetB = 0; \
     for (int el = 0; el < total_elements; el++) { \
         if (!(EXPR(a[offsetA], b[offsetB]))) return 0; \
@@ -12320,7 +12405,7 @@ int s_find_index_##NAME(const TYPE *a, const int *stridesA, \
         } \
         return match ? 1 : 0; \
     } \
-    DECLARE_RANK_BUFFER(int, coord, rank); \
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0); \
     for (int i = 0; i < rank; i++) { \
         if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return 0; \
         coord[i] = startCoords[i]; \
@@ -12418,7 +12503,7 @@ int s_find_index_##NAME(const SRC_TYPE *a, const int *stridesA, \
         } \
         return match ? 1 : 0; \
     } \
-    DECLARE_RANK_BUFFER(int, coord, rank); \
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0); \
     for (int i = 0; i < rank; i++) { \
         if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return 0; \
         coord[i] = startCoords[i]; \
@@ -12504,7 +12589,7 @@ int s_find_index_complex128(const cpx_t *a, const int *stridesA,
         }
         return match ? 1 : 0;
     }
-    DECLARE_RANK_BUFFER(int, coord, rank);
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     for (int i = 0; i < rank; i++) {
         if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return 0;
         coord[i] = startCoords[i];
@@ -12583,7 +12668,7 @@ int s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
         }
         return match ? 1 : 0;
     }
-    DECLARE_RANK_BUFFER(int, coord, rank);
+    DECLARE_RANK_BUFFER_RET(int, coord, rank, 0);
     for (int i = 0; i < rank; i++) {
         if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return 0;
         coord[i] = startCoords[i];
@@ -13904,11 +13989,15 @@ static void s_at_impl(T *a, const int *stridesA, const int *shapeA, int rankA,
         if (sliceSize == 1) {
             a[offsetA] = apply_at_op(a[offsetA], b[offsetB], opCode);
         } else {
-            std::vector<int> coord_vec;
+            NoThrowBuffer<int> coord_vec;
             int coord_stack[32] = {0};
             int *coord = coord_stack;
             if (rankA > 33) {
                 coord_vec.assign(rankA, 0);
+                if (!coord_vec.ok()) {
+                    ndarray_set_oom_flag();
+                    return;
+                }
                 coord = coord_vec.data();
             }
             for (int s = 0; s < sliceSize; s++) {
@@ -15455,7 +15544,11 @@ static void s_poly_generic_impl(const T *c, int stride_c, int n_c,
         shape, rank
     );
     if (overlap_c || overlap_x) {
-        std::vector<T> temp(total_elements);
+        NoThrowBuffer<T> temp(total_elements);
+        if (!temp.ok()) {
+            ndarray_set_oom_flag();
+            return;
+        }
         DECLARE_RANK_BUFFER(int, coord, rank);
         int offsetX = 0;
         for (int el = 0; el < total_elements; el++) {
@@ -16366,7 +16459,10 @@ static inline void choice_without_replacement_impl(
     }
 
     int64_t* indices = (int64_t*)malloc(src_size * sizeof(int64_t));
-    if (!indices) return;
+    if (!indices) {
+        ndarray_set_oom_flag();
+        return;
+    }
     for (int64_t i = 0; i < src_size; i++) {
         indices[i] = i;
     }
@@ -16403,6 +16499,7 @@ static inline void choice_weighted_without_replacement_impl(
     if (!temp_probs || !drawn) {
         if (temp_probs) free(temp_probs);
         if (drawn) free(drawn);
+        ndarray_set_oom_flag();
         return;
     }
 
@@ -16491,7 +16588,10 @@ void native_shuffle_1d(
             default: {
                 char stack_buf[256];
                 char* temp = (item_size <= (int)sizeof(stack_buf)) ? stack_buf : (char*)malloc(item_size);
-                if (!temp) return;
+                if (!temp) {
+                    ndarray_set_oom_flag();
+                    return;
+                }
                 char* ptr = (char*)data;
                 for (int64_t i = size - 1; i > 0; i--) {
                     int64_t j = (int64_t)(xoshiro256_next(s) % (uint64_t)(i + 1));
@@ -16525,7 +16625,10 @@ void native_shuffle_1d(
             default: {
                 char stack_buf[256];
                 char* temp = (item_size <= (int)sizeof(stack_buf)) ? stack_buf : (char*)malloc(item_size);
-                if (!temp) return;
+                if (!temp) {
+                    ndarray_set_oom_flag();
+                    return;
+                }
                 char* ptr = (char*)data;
                 for (int64_t i = size - 1; i > 0; i--) {
                     int64_t j = (int64_t)(xoshiro256_next(s) % (uint64_t)(i + 1));
@@ -16604,7 +16707,10 @@ void native_shuffle_nd(
     int64_t slice_bytes = slice_elements * item_size;
     char stack_buf[4096];
     char* temp = (slice_bytes <= (int64_t)sizeof(stack_buf)) ? stack_buf : (char*)malloc(slice_bytes);
-    if (!temp) return;
+    if (!temp) {
+        ndarray_set_oom_flag();
+        return;
+    }
 
     char* base = (char*)data;
     if (slice_is_contiguous) {
@@ -16763,7 +16869,10 @@ void native_choice_without_replacement(
             break;
         default: {
             int64_t* indices = (int64_t*)malloc(src_size * sizeof(int64_t));
-            if (!indices) return;
+            if (!indices) {
+                ndarray_set_oom_flag();
+                return;
+            }
             for (int64_t i = 0; i < src_size; i++) indices[i] = i;
             const char* s_src = (const char*)src;
             char* d_dest = (char*)dest;
@@ -16816,6 +16925,7 @@ void native_choice_weighted_without_replacement(
             if (!temp_probs || !drawn) {
                 if (temp_probs) free(temp_probs);
                 if (drawn) free(drawn);
+                ndarray_set_oom_flag();
                 return;
             }
             for (int64_t i = 0; i < src_size; i++) temp_probs[i] = probs[i];

@@ -205,11 +205,11 @@ void main() {
           expect(() => equal(aF64, bF64, where: badMask), throwsArgumentError);
           verifyNoLeak();
 
-          expect(() => logical_not(aF64, where: badMask), throwsArgumentError);
+          expect(() => logicalNot(aF64, where: badMask), throwsArgumentError);
           verifyNoLeak();
 
           expect(
-            () => logical_and(aF64, bF64, where: badMask),
+            () => logicalAnd(aF64, bF64, where: badMask),
             throwsArgumentError,
           );
           verifyNoLeak();

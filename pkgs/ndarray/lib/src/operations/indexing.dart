@@ -122,7 +122,7 @@ NDArray<T> take_along_axis<T extends DTypeTag>(
         'out dtype (${out.dtype}) must match arr dtype (${arr.dtype})',
       );
     }
-    if (!listEquals(out.shape, targetShape)) {
+    if (!out.isWriteable || !listEquals(out.shape, targetShape)) {
       throw ArgumentError(
         'out shape (${out.shape}) must match target shape ($targetShape)',
       );
@@ -290,7 +290,7 @@ NDArray<T> put_along_axis<T extends DTypeTag>(
       if (valuesAllocated) valuesArr.dispose();
       throw ArgumentError('out dtype must match arr dtype');
     }
-    if (!listEquals(out.shape, arr.shape)) {
+    if (!out.isWriteable || !listEquals(out.shape, arr.shape)) {
       if (valuesAllocated) valuesArr.dispose();
       throw ArgumentError('out shape must match arr shape');
     }
@@ -371,58 +371,65 @@ NDArray<T> put_along_axis<T extends DTypeTag>(
       }
     }
 
-    if (!identical(target, arr)) {
-      arr.copy(out: target);
-    }
-
-    final status = switch (arr.dtype) {
-      DType.float64 ||
-      DType.float32 ||
-      DType.float16 ||
-      DType.bfloat16 ||
-      DType.int64 ||
-      DType.int32 ||
-      DType.int16 ||
-      DType.int8 ||
-      DType.uint64 ||
-      DType.uint32 ||
-      DType.uint16 ||
-      DType.uint8 ||
-      DType.boolean ||
-      DType.complex128 ||
-      DType.complex64 => native_put_along_axis(
-        arr.dtype.index,
-        indices.dtype.index,
-        target.pointer,
-        cTargetShape,
-        cTargetStrides,
-        indices.pointer,
-        cIdxShape,
-        cIdxStrides,
-        valuesArr.pointer,
-        cValShape,
-        cValStrides,
-        rank,
-        normAxis,
-        cOutErrorIdx,
-      ),
-    };
-
-    if (status != 0) {
-      if (status == -1) {
-        final badIdx = cOutErrorIdx.value;
-        final axisSize = target.shape[normAxis];
-        throw RangeError.range(
-          badIdx,
-          0,
-          axisSize - 1,
-          'index along axis $normAxis',
-        );
+    return NDArray.scope(() {
+      final tempTarget = arr.copy();
+      final cTempStrides = ScratchArena.allocate<ffi.Int64>(
+        rank * ffi.sizeOf<ffi.Int64>(),
+      );
+      for (var i = 0; i < rank; i++) {
+        cTempStrides[i] = tempTarget.strides[i];
       }
-      throw ArgumentError('put_along_axis failed with status $status');
-    }
 
-    return target;
+      final status = switch (arr.dtype) {
+        DType.float64 ||
+        DType.float32 ||
+        DType.float16 ||
+        DType.bfloat16 ||
+        DType.int64 ||
+        DType.int32 ||
+        DType.int16 ||
+        DType.int8 ||
+        DType.uint64 ||
+        DType.uint32 ||
+        DType.uint16 ||
+        DType.uint8 ||
+        DType.boolean ||
+        DType.complex128 ||
+        DType.complex64 => native_put_along_axis(
+          arr.dtype.index,
+          indices.dtype.index,
+          tempTarget.pointer,
+          cTargetShape,
+          cTempStrides,
+          indices.pointer,
+          cIdxShape,
+          cIdxStrides,
+          valuesArr.pointer,
+          cValShape,
+          cValStrides,
+          rank,
+          normAxis,
+          cOutErrorIdx,
+        ),
+      };
+
+      if (status != 0) {
+        if (status == -1) {
+          final badIdx = cOutErrorIdx.value;
+          final axisSize = target.shape[normAxis];
+          throw RangeError.range(
+            badIdx,
+            0,
+            axisSize - 1,
+            'index along axis $normAxis',
+          );
+        }
+        throw ArgumentError('put_along_axis failed with status $status');
+      }
+
+      tempTarget.copy(out: target);
+      return target;
+    });
   } finally {
     ScratchArena.reset(marker);
     if (valuesAllocated) {
@@ -520,7 +527,7 @@ NDArray<T> choose<T extends DTypeTag>(
       if (out.dtype != resolvedDType) {
         throw ArgumentError('out dtype must match resolved choices dtype');
       }
-      if (!listEquals(out.shape, targetShape)) {
+      if (!out.isWriteable || !listEquals(out.shape, targetShape)) {
         throw ArgumentError(
           'out shape must match broadcast shape ($targetShape)',
         );
@@ -1027,7 +1034,7 @@ NDArray<T> select<T extends DTypeTag>(
       if (out.dtype != resolvedDType) {
         throw ArgumentError('out dtype must match resolved dtype');
       }
-      if (!listEquals(out.shape, targetShape)) {
+      if (!out.isWriteable || !listEquals(out.shape, targetShape)) {
         throw ArgumentError(
           'out shape must match broadcast shape ($targetShape)',
         );

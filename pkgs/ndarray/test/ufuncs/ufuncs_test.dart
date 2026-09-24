@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 void main() {
   group('Vectorized Bitwise Operations Tests', () {
     test(
-      'bitwise_and, bitwise_or, bitwise_xor basic behavior (int32 and int64)',
+      'bitwiseAnd, bitwiseOr, bitwiseXor basic behavior (int32 and int64)',
       () {
         NDArray.scope(() {
           final a32 = NDArray.fromList([5, 12, 3], [3], DType.int32);
@@ -15,17 +15,17 @@ void main() {
           final a64 = NDArray.fromList([5, 12, 3], [3], DType.int64);
           final b64 = NDArray.fromList([3, 4, 5], [3], DType.int64);
 
-          // bitwise_and: 5 & 3 = 1, 12 & 4 = 4, 3 & 5 = 1
-          expect(bitwise_and(a32, b32).toList(), [1, 4, 1]);
-          expect(bitwise_and(a64, b64).toList(), [1, 4, 1]);
+          // bitwiseAnd: 5 & 3 = 1, 12 & 4 = 4, 3 & 5 = 1
+          expect(bitwiseAnd(a32, b32).toList(), [1, 4, 1]);
+          expect(bitwiseAnd(a64, b64).toList(), [1, 4, 1]);
 
-          // bitwise_or: 5 | 3 = 7, 12 | 4 = 12, 3 | 5 = 7
-          expect(bitwise_or(a32, b32).toList(), [7, 12, 7]);
-          expect(bitwise_or(a64, b64).toList(), [7, 12, 7]);
+          // bitwiseOr: 5 | 3 = 7, 12 | 4 = 12, 3 | 5 = 7
+          expect(bitwiseOr(a32, b32).toList(), [7, 12, 7]);
+          expect(bitwiseOr(a64, b64).toList(), [7, 12, 7]);
 
-          // bitwise_xor: 5 ^ 3 = 6, 12 ^ 4 = 8, 3 ^ 5 = 6
-          expect(bitwise_xor(a32, b32).toList(), [6, 8, 6]);
-          expect(bitwise_xor(a64, b64).toList(), [6, 8, 6]);
+          // bitwiseXor: 5 ^ 3 = 6, 12 ^ 4 = 8, 3 ^ 5 = 6
+          expect(bitwiseXor(a32, b32).toList(), [6, 8, 6]);
+          expect(bitwiseXor(a64, b64).toList(), [6, 8, 6]);
         });
       },
     );
@@ -38,33 +38,33 @@ void main() {
         final a16 = NDArray.fromList([15, 240], [2], DType.int16);
         final b16 = NDArray.fromList([240, 15], [2], DType.int16);
 
-        expect(bitwise_and(a8, b8).toList(), [0, 0]);
-        expect(bitwise_and(a16, b16).toList(), [0, 0]);
+        expect(bitwiseAnd(a8, b8).toList(), [0, 0]);
+        expect(bitwiseAnd(a16, b16).toList(), [0, 0]);
 
-        expect(bitwise_or(a8, b8).toList(), [255, 255]);
-        expect(bitwise_or(a16, b16).toList(), [255, 255]);
+        expect(bitwiseOr(a8, b8).toList(), [255, 255]);
+        expect(bitwiseOr(a16, b16).toList(), [255, 255]);
 
-        expect(bitwise_xor(a8, b8).toList(), [255, 255]);
-        expect(bitwise_xor(a16, b16).toList(), [255, 255]);
+        expect(bitwiseXor(a8, b8).toList(), [255, 255]);
+        expect(bitwiseXor(a16, b16).toList(), [255, 255]);
       });
     });
 
-    test('left_shift and right_shift basic and edge case safe shifting', () {
+    test('leftShift and rightShift basic and edge case safe shifting', () {
       NDArray.scope(() {
         final a = NDArray.fromList([1, 2, 4, 8], [4], DType.int32);
         final shift = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
 
-        // left_shift: 1<<1=2, 2<<2=8, 4<<3=32, 8<<4=128
-        expect(left_shift(a, shift).toList(), [2, 8, 32, 128]);
+        // leftShift: 1<<1=2, 2<<2=8, 4<<3=32, 8<<4=128
+        expect(leftShift(a, shift).toList(), [2, 8, 32, 128]);
 
-        // right_shift: 2>>1=1, 8>>2=2, 32>>3=4, 128>>4=8
-        final shifted = left_shift(a, shift);
-        expect(right_shift(shifted, shift).toList(), [1, 2, 4, 8]);
+        // rightShift: 2>>1=1, 8>>2=2, 32>>3=4, 128>>4=8
+        final shifted = leftShift(a, shift);
+        expect(rightShift(shifted, shift).toList(), [1, 2, 4, 8]);
 
         // Safe shifting behavior (prevents undefined C behavior)
         final badShift = NDArray.fromList([-1, 32, 100, 0], [4], DType.int32);
-        expect(left_shift(a, badShift).toList(), [0, 0, 0, 8]);
-        expect(right_shift(a, badShift).toList(), [0, 0, 0, 8]);
+        expect(leftShift(a, badShift).toList(), [0, 0, 0, 8]);
+        expect(rightShift(a, badShift).toList(), [0, 0, 0, 8]);
       });
     });
 
@@ -88,12 +88,12 @@ void main() {
         final a = NDArray.fromList([3, 4, 5], [3], DType.int32);
         final b = NDArray.fromList([2], [1], DType.int32);
 
-        expect(bitwise_and(a, b).toList(), [2, 0, 0]); // 3&2=2, 4&2=0, 5&2=0
-        expect(bitwise_or(a, b).toList(), [3, 6, 7]); // 3|2=3, 4|2=6, 5|2=7
+        expect(bitwiseAnd(a, b).toList(), [2, 0, 0]); // 3&2=2, 4&2=0, 5&2=0
+        expect(bitwiseOr(a, b).toList(), [3, 6, 7]); // 3|2=3, 4|2=6, 5|2=7
 
         // Strided sliced broadcasting test
         final stridedA = a.slice([Slice(start: 0, stop: 3, step: 2)]); // [3, 5]
-        expect(bitwise_or(stridedA, b).toList(), [3, 7]);
+        expect(bitwiseOr(stridedA, b).toList(), [3, 7]);
       });
     });
 
@@ -102,8 +102,8 @@ void main() {
         final a32 = NDArray.fromList([5, 12], [2], DType.int32);
         final b64 = NDArray.fromList([3, 4], [2], DType.int64);
 
-        // bitwise_and should resolve to DType.int64
-        final res = bitwise_and(a32, b64);
+        // bitwiseAnd should resolve to DType.int64
+        final res = bitwiseAnd(a32, b64);
         expect(res.dtype, DType.int64);
         expect(res.toList(), [1, 4]);
       });
@@ -115,7 +115,7 @@ void main() {
         final b = NDArray.fromList([3, 4], [2], DType.int32);
         final out = NDArray.create([2], DType.int32);
 
-        final res = bitwise_and(a, b, out: out);
+        final res = bitwiseAnd(a, b, out: out);
         expect(identical(res, out), true);
         expect(out.toList(), [1, 4]);
       });
@@ -126,7 +126,7 @@ void main() {
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
         final b = NDArray.fromList([3, 4], [2], DType.int32);
 
-        expect(() => bitwise_and(a, b), throwsArgumentError);
+        expect(() => bitwiseAnd(a, b), throwsArgumentError);
         expect(() => invert(a), throwsArgumentError);
       });
     });
@@ -137,7 +137,7 @@ void main() {
         final b = NDArray.fromList([3, 4], [2], DType.int32);
         final wrongOut = NDArray.create([3], DType.int32);
 
-        expect(() => bitwise_and(a, b, out: wrongOut), throwsArgumentError);
+        expect(() => bitwiseAnd(a, b, out: wrongOut), throwsArgumentError);
       });
     });
   });
@@ -320,7 +320,7 @@ void main() {
       });
     });
 
-    group('floor_divide, remainder/mod, and divmod ufuncs', () {
+    group('floorDivide, remainder/mod, and divmod ufuncs', () {
       test(
         'positive and negative floor division combinations matching Python/NumPy',
         () {
@@ -335,7 +335,7 @@ void main() {
             DType.float64,
           );
 
-          final q = floor_divide(x, y);
+          final q = floorDivide(x, y);
           // 5 // 2 = 2
           // -5 // 2 = -3
           // -5 // -2 = 2
@@ -386,7 +386,7 @@ void main() {
         final x = NDArray.fromList(Int32List.fromList([5]), [1], DType.int32);
         final y = NDArray.fromList(Int32List.fromList([0]), [1], DType.int32);
 
-        expect(() => floor_divide(x, y), throwsA(isA<UnsupportedError>()));
+        expect(() => floorDivide(x, y), throwsA(isA<UnsupportedError>()));
         expect(() => remainder(x, y), throwsA(isA<UnsupportedError>()));
         expect(() => divmod(x, y), throwsA(isA<UnsupportedError>()));
       });
@@ -872,12 +872,12 @@ void main() {
 
     group('Logical Operations', () {
       test(
-        'logical_not on ints and doubles',
+        'logicalNot on ints and doubles',
         () => NDArray.scope(() {
           final a = NDArray.fromList(Float64List.fromList([0.0, 2.5, -1.1]), [
             3,
           ], DType.float64);
-          final resNot = logical_not(a);
+          final resNot = logicalNot(a);
           expect(resNot.dtype, DType.boolean);
           expect(
             resNot.toList(),
@@ -887,7 +887,7 @@ void main() {
       );
 
       test(
-        'logical_and, logical_or, logical_xor with broadcasting',
+        'logicalAnd, logicalOr, logicalXor with broadcasting',
         () => NDArray.scope(() {
           // shape [2, 1]
           final m1 = NDArray.fromList(Int32List.fromList([0, 1]), [
@@ -904,7 +904,7 @@ void main() {
           // m1 expanded: [[0, 0], [1, 1]]
           // m2 expanded: [[0, 1], [0, 1]]
 
-          final andRes = logical_and(m1, m2);
+          final andRes = logicalAnd(m1, m2);
           expect(andRes.dtype, DType.boolean);
           expect(andRes.shape, [2, 2]);
           expect(andRes.toList(), [
@@ -912,14 +912,14 @@ void main() {
             false, true, // true&&false, true&&true
           ]);
 
-          final orRes = logical_or(m1, m2);
+          final orRes = logicalOr(m1, m2);
           expect(orRes.dtype, DType.boolean);
           expect(orRes.toList(), [
             false, true, // false||false, false||true
             true, true, // true||false, true||true
           ]);
 
-          final xorRes = logical_xor(m1, m2);
+          final xorRes = logicalXor(m1, m2);
           expect(xorRes.dtype, DType.boolean);
           expect(xorRes.toList(), [
             false, true, // false^false, false^true
@@ -1009,36 +1009,36 @@ void main() {
     );
 
     test(
-      'logical_and, logical_or, and logical_xor successfully combine boolean mask arrays',
+      'logicalAnd, logicalOr, and logicalXor successfully combine boolean mask arrays',
       () => NDArray.scope(() {
         final mask1 = NDArray.fromList([true, false, true], [3], DType.boolean);
         final mask2 = NDArray.fromList([true, true, false], [3], DType.boolean);
 
-        final resAnd = logical_and(mask1, mask2);
+        final resAnd = logicalAnd(mask1, mask2);
         expect(resAnd.dtype, DType.boolean);
         expect(resAnd.toList(), [true, false, false]);
 
-        final resOr = logical_or(mask1, mask2);
+        final resOr = logicalOr(mask1, mask2);
         expect(resOr.dtype, DType.boolean);
         expect(resOr.toList(), [true, true, true]);
 
-        final resXor = logical_xor(mask1, mask2);
+        final resXor = logicalXor(mask1, mask2);
         expect(resXor.dtype, DType.boolean);
         expect(resXor.toList(), [false, true, true]);
       }),
     );
 
     test(
-      'logical_and cross-type promotions on float/boolean, complex/boolean, and int/boolean',
+      'logicalAnd cross-type promotions on float/boolean, complex/boolean, and int/boolean',
       () => NDArray.scope(() {
         final mask = NDArray.fromList([true, true, false], [3], DType.boolean);
 
         // Float64 / boolean
         final f64 = NDArray.fromList([0.0, 2.5, 0.0], [3], DType.float64);
-        final resF1 = logical_and(f64, mask);
+        final resF1 = logicalAnd(f64, mask);
         expect(resF1.dtype, DType.boolean);
         expect(resF1.toList(), [false, true, false]);
-        final resF2 = logical_and(mask, f64);
+        final resF2 = logicalAnd(mask, f64);
         expect(resF2.dtype, DType.boolean);
         expect(resF2.toList(), [false, true, false]);
 
@@ -1047,19 +1047,19 @@ void main() {
         c128[[0]] = Complex(0.0, 0.0); // false
         c128[[1]] = Complex(1.0, -1.0); // true
         c128[[2]] = Complex(0.0, 0.0);
-        final resC1 = logical_and(c128, mask);
+        final resC1 = logicalAnd(c128, mask);
         expect(resC1.dtype, DType.boolean);
         expect(resC1.toList(), [false, true, false]);
-        final resC2 = logical_and(mask, c128);
+        final resC2 = logicalAnd(mask, c128);
         expect(resC2.dtype, DType.boolean);
         expect(resC2.toList(), [false, true, false]);
 
         // Int32 / boolean
         final i32 = NDArray.fromList([0, 5, 0], [3], DType.int32);
-        final resI1 = logical_and(i32, mask);
+        final resI1 = logicalAnd(i32, mask);
         expect(resI1.dtype, DType.boolean);
         expect(resI1.toList(), [false, true, false]);
-        final resI2 = logical_and(mask, i32);
+        final resI2 = logicalAnd(mask, i32);
         expect(resI2.dtype, DType.boolean);
         expect(resI2.toList(), [false, true, false]);
       }),
@@ -1913,7 +1913,7 @@ void main() {
           [4],
           DType.boolean,
         );
-        logical_and(boolA, boolB, where: whereMask, out: outAnd);
+        logicalAnd(boolA, boolB, where: whereMask, out: outAnd);
         expect(outAnd.toList(), [true, false, false, false]);
       });
     });

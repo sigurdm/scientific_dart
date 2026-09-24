@@ -59,7 +59,11 @@ NDArray<Int32> _maCount(MaskedArray self, {int? axis}) {
 }
 
 MaskedArray<DTypeTag> _maMean(MaskedArray self, {int? axis}) {
-  return self.sum(axis: axis).divide(self.count(axis: axis));
+  return NDArray.scope(() {
+    final s = self.sum(axis: axis);
+    final c = self.count(axis: axis);
+    return s.divide(c).detachToParentScope();
+  });
 }
 
 MaskedArray<DTypeTag> _maVariance(MaskedArray self, {int? axis}) {
@@ -79,9 +83,11 @@ MaskedArray<DTypeTag> _maVariance(MaskedArray self, {int? axis}) {
 }
 
 MaskedArray<DTypeTag> _maStd(MaskedArray self, {int? axis}) {
-  return self
-      .variance(axis: axis)
-      .mapUnary((data) => ndops.sqrt(data as NDArray<AnySpec>));
+  return NDArray.scope(() {
+    final v = self.variance(axis: axis);
+    final result = v.mapUnary((data) => ndops.sqrt(data as NDArray<AnySpec>));
+    return result.detachToParentScope();
+  });
 }
 
 MaskedArray<T> _reduction<T extends DTypeTag>(
@@ -105,29 +111,30 @@ MaskedArray<T> _reduction<T extends DTypeTag>(
   });
 }
 
-// Helpers for reduction default values (from Worker 1, but integrated)
-dynamic _zeroValue(DType dtype) {
-  if (dtype == DType.float64 || dtype == DType.float32) return 0.0;
-  if (dtype == DType.complex128 || dtype == DType.complex64)
-    return Complex(0, 0);
-  if (dtype == DType.int64 ||
-      dtype == DType.int32 ||
-      dtype == DType.int16 ||
-      dtype == DType.uint8)
-    return 0;
-  if (dtype == DType.boolean) return false;
-  throw UnimplementedError('Unsupported dtype: $dtype');
-}
+Object _zeroValue(DType dtype) => switch (dtype) {
+  DType.float64 || DType.float32 || DType.float16 || DType.bfloat16 => 0.0,
+  DType.complex128 || DType.complex64 => Complex(0, 0),
+  DType.int64 ||
+  DType.int32 ||
+  DType.int16 ||
+  DType.int8 ||
+  DType.uint64 ||
+  DType.uint32 ||
+  DType.uint16 ||
+  DType.uint8 => 0,
+  DType.boolean => false,
+};
 
-dynamic _oneValue(DType dtype) {
-  if (dtype == DType.float64 || dtype == DType.float32) return 1.0;
-  if (dtype == DType.complex128 || dtype == DType.complex64)
-    return Complex(1, 0);
-  if (dtype == DType.int64 ||
-      dtype == DType.int32 ||
-      dtype == DType.int16 ||
-      dtype == DType.uint8)
-    return 1;
-  if (dtype == DType.boolean) return true;
-  throw UnimplementedError('Unsupported dtype: $dtype');
-}
+Object _oneValue(DType dtype) => switch (dtype) {
+  DType.float64 || DType.float32 || DType.float16 || DType.bfloat16 => 1.0,
+  DType.complex128 || DType.complex64 => Complex(1, 0),
+  DType.int64 ||
+  DType.int32 ||
+  DType.int16 ||
+  DType.int8 ||
+  DType.uint64 ||
+  DType.uint32 ||
+  DType.uint16 ||
+  DType.uint8 => 1,
+  DType.boolean => true,
+};

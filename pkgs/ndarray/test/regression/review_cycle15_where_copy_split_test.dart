@@ -63,8 +63,8 @@ void main() {
               64,
             ], DType.boolean);
 
-            final resNot = logical_not(a, where: where);
-            final resOr = logical_or(a, b, where: where);
+            final resNot = logicalNot(a, where: where);
+            final resOr = logicalOr(a, b, where: where);
             final resEq = equal(a, a, where: where);
 
             for (var i = 0; i < 64; i++) {
@@ -83,7 +83,7 @@ void main() {
       );
 
       test(
-        'bitwise ufuncs (invert, bitwise_and, bitwise_or, bitwise_xor) zero-initialize masked-out elements',
+        'bitwise ufuncs (invert, bitwiseAnd, bitwiseOr, bitwiseXor) zero-initialize masked-out elements',
         () {
           NDArray.scope(() {
             for (var i = 0; i < 8; i++) {
@@ -105,7 +105,7 @@ void main() {
             ], DType.boolean);
 
             final resInv = invert<Int32>(a, where: where);
-            final resOr = bitwise_or<Int32>(a, b, where: where);
+            final resOr = bitwiseOr<Int32>(a, b, where: where);
 
             for (var i = 0; i < 64; i++) {
               if (i.isOdd) {

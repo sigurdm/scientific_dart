@@ -386,7 +386,7 @@ void main() {
   });
 
   group("Workstream 1: Specialized Binary Mathematical Functions", () {
-    test("floor_divide (and BinaryOp.floorDivide) across numeric DTypes", () {
+    test("floorDivide (and BinaryOp.floorDivide) across numeric DTypes", () {
       NDArray.scope(() {
         final intTypes = [
           DType.int64,
@@ -402,13 +402,13 @@ void main() {
         for (final dtype in intTypes) {
           final x1 = NDArray.fromList([7, 15, 20, 25], [2, 2], dtype);
           final x2 = NDArray.fromList([3, 4, 6, 7], [2, 2], dtype);
-          final res = floor_divide(x1, x2);
+          final res = floorDivide(x1, x2);
           expect(res.shape, [2, 2]);
           expect(res.toList(), [2, 3, 3, 3]);
 
           // Strided
           final x1T = x1.transpose([1, 0]);
-          final resT = floor_divide(x1T, x2);
+          final resT = floorDivide(x1T, x2);
           expect(resT.shape, [2, 2]);
 
           // out and where
@@ -418,11 +418,11 @@ void main() {
             [2, 2],
             DType.boolean,
           );
-          floor_divide(x1, x2, where: mask, out: outBuf);
+          floorDivide(x1, x2, where: mask, out: outBuf);
           expect(outBuf.toList(), [2, 0, 3, 0]);
         }
 
-        // Float floor_divide
+        // Float floorDivide
         final f64_1 = NDArray.fromList(
           [7.5, -7.5, 8.0, -8.0],
           [4],
@@ -433,17 +433,17 @@ void main() {
           [4],
           DType.float64,
         );
-        final f64Res = floor_divide(f64_1, f64_2);
+        final f64Res = floorDivide(f64_1, f64_2);
         expect(f64Res.toList(), [3.0, -4.0, 2.0, -3.0]);
 
         final f32_1 = NDArray.fromList([7.5, -7.5], [2], DType.float32);
         final f32_2 = NDArray.fromList([2.0, 2.0], [2], DType.float32);
-        final f32Res = floor_divide(f32_1, f32_2);
+        final f32Res = floorDivide(f32_1, f32_2);
         expect(f32Res.toList(), [3.0, -4.0]);
 
-        // Complex floor_divide throws UnsupportedError
+        // Complex floorDivide throws UnsupportedError
         final cpx = NDArray.fromList([Complex(1, 2)], [1], DType.complex128);
-        expect(() => floor_divide(cpx, cpx), throwsUnsupportedError);
+        expect(() => floorDivide(cpx, cpx), throwsUnsupportedError);
       });
     });
 

@@ -37,7 +37,7 @@ NDArray<T> _maCompressed<T extends DTypeTag>(MaskedArray<T> self) {
   return NDArray.scope(() {
     final flatData = self.data.reshape([self.size]);
     final flatMask = self.mask.reshape([self.size]);
-    final invertedMask = ndops.logical_not(flatMask);
+    final invertedMask = ndops.logicalNot(flatMask);
     final result = flatData.applyMask(invertedMask);
     return result.detachToParentScope();
   });

@@ -76,17 +76,14 @@ void main() {
             final sum34 = add(a34, b34);
             final diff34 = subtract(b34, a34);
             final prod34 = multiply(a34, b34);
-            final fdiv34 = floor_divide(b34, a34);
+            final fdiv34 = floorDivide(b34, a34);
             final rem34 = remainder(b34, a34);
             final lcm34 = lcm(a34, b34);
-            final band34 = bitwise_and(a34, b34);
-            final bor34 = bitwise_or(a34, b34);
-            final bxor34 = bitwise_xor(a34, b34);
-            final lsh34 = left_shift(
-              a34,
-              NDArray.scalar(1, dtype: DType.int64),
-            );
-            final rsh34 = right_shift(
+            final band34 = bitwiseAnd(a34, b34);
+            final bor34 = bitwiseOr(a34, b34);
+            final bxor34 = bitwiseXor(a34, b34);
+            final lsh34 = leftShift(a34, NDArray.scalar(1, dtype: DType.int64));
+            final rsh34 = rightShift(
               b34,
               NDArray.scalar(1, dtype: DType.int64),
             );
@@ -136,7 +133,7 @@ void main() {
     ];
 
     test(
-      'bitwise_and, bitwise_or, bitwise_xor, left_shift, invert across all 8 integer DTypes (contiguous and strided)',
+      'bitwiseAnd, bitwiseOr, bitwiseXor, leftShift, invert across all 8 integer DTypes (contiguous and strided)',
       () {
         for (final dt in intDTypes) {
           NDArray.scope(() {
@@ -148,10 +145,10 @@ void main() {
             final bFull = NDArray.fromList([1, 3, 2, 4, 7, 5, 6, 3], [8], dt);
 
             // Contiguous tests
-            final cAnd = bitwise_and(aFull, bFull);
-            final cOr = bitwise_or(aFull, bFull);
-            final cXor = bitwise_xor(aFull, bFull);
-            final cShl = left_shift(aFull, NDArray.full([8], 1, dtype: dt));
+            final cAnd = bitwiseAnd(aFull, bFull);
+            final cOr = bitwiseOr(aFull, bFull);
+            final cXor = bitwiseXor(aFull, bFull);
+            final cShl = leftShift(aFull, NDArray.full([8], 1, dtype: dt));
             final cInv = invert(aFull);
 
             expect(cAnd.dtype, equals(dt));
@@ -174,10 +171,10 @@ void main() {
             final bStrided = bFull.slice([Slice(start: 0, stop: 8, step: 2)]);
             expect(aStrided.isContiguous, isFalse);
 
-            final sAnd = bitwise_and(aStrided, bStrided);
-            final sOr = bitwise_or(aStrided, bStrided);
-            final sXor = bitwise_xor(aStrided, bStrided);
-            final sShl = left_shift(aStrided, NDArray.full([4], 1, dtype: dt));
+            final sAnd = bitwiseAnd(aStrided, bStrided);
+            final sOr = bitwiseOr(aStrided, bStrided);
+            final sXor = bitwiseXor(aStrided, bStrided);
+            final sShl = leftShift(aStrided, NDArray.full([4], 1, dtype: dt));
             final sInv = invert(aStrided);
 
             for (var i = 0; i < 4; i++) {
@@ -193,7 +190,7 @@ void main() {
     );
 
     test(
-      'right_shift preserves signed vs unsigned semantics for int8, uint8, int16, uint16, int32, uint32, int64, uint64',
+      'rightShift preserves signed vs unsigned semantics for int8, uint8, int16, uint16, int32, uint32, int64, uint64',
       () {
         NDArray.scope(() {
           // int8: -16 >> 2 == -4 (arithmetic shift)
@@ -203,9 +200,9 @@ void main() {
             DType.int8,
           );
           final s8 = NDArray<Int8>.fromList([2, 3, 2, 1], [4], DType.int8);
-          expect(right_shift(i8, s8).toList(), equals([-4, -8, 8, -4]));
+          expect(rightShift(i8, s8).toList(), equals([-4, -8, 8, -4]));
           expect(
-            right_shift(
+            rightShift(
               i8.slice([Slice(start: 0, stop: 4, step: 2)]),
               s8.slice([Slice(start: 0, stop: 4, step: 2)]),
             ).toList(),
@@ -219,9 +216,9 @@ void main() {
             DType.uint8,
           );
           final su8 = NDArray<Uint8>.fromList([4, 7, 4, 2], [4], DType.uint8);
-          expect(right_shift(u8, su8).toList(), equals([15, 1, 15, 16]));
+          expect(rightShift(u8, su8).toList(), equals([15, 1, 15, 16]));
           expect(
-            right_shift(
+            rightShift(
               u8.slice([Slice(start: 0, stop: 4, step: 2)]),
               su8.slice([Slice(start: 0, stop: 4, step: 2)]),
             ).toList(),
@@ -240,11 +237,11 @@ void main() {
             DType.uint16,
           );
           expect(
-            right_shift(u16, su16).toList(),
+            rightShift(u16, su16).toList(),
             equals([0x00FF, 1, 0x0123, 0x00FF]),
           );
           expect(
-            right_shift(
+            rightShift(
               u16.slice([Slice(start: 0, stop: 4, step: 2)]),
               su16.slice([Slice(start: 0, stop: 4, step: 2)]),
             ).toList(),
@@ -263,11 +260,11 @@ void main() {
             DType.uint32,
           );
           expect(
-            right_shift(u32, su32).toList(),
+            rightShift(u32, su32).toList(),
             equals([0x0000FFFF, 1, 0x00123456, 0x000000FF]),
           );
           expect(
-            right_shift(
+            rightShift(
               u32.slice([Slice(start: 0, stop: 4, step: 2)]),
               su32.slice([Slice(start: 0, stop: 4, step: 2)]),
             ).toList(),
@@ -286,11 +283,11 @@ void main() {
             DType.uint64,
           );
           expect(
-            right_shift(u64, su64).toList(),
+            rightShift(u64, su64).toList(),
             equals([0xFFFFFFFF, 1, 16, 32]),
           );
           expect(
-            right_shift(
+            rightShift(
               u64.slice([Slice(start: 0, stop: 4, step: 2)]),
               su64.slice([Slice(start: 0, stop: 4, step: 2)]),
             ).toList(),
@@ -555,11 +552,11 @@ void main() {
           // Copy w to test against unaliased reference
           final wRef = w.copy();
           final outRef = wRef.transpose().copy();
-          logical_not(src, where: wRef, out: outRef);
+          logicalNot(src, where: wRef, out: outRef);
 
           // Execute with where: w and out: w.transpose() (sharing memory!)
           final wT = w.transpose();
-          logical_not(src, where: w, out: wT);
+          logicalNot(src, where: w, out: wT);
           expect(wT.toList(), equals(outRef.toList()));
         });
       });

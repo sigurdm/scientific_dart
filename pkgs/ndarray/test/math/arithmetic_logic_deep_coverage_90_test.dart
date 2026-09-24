@@ -324,7 +324,7 @@ void main() {
 
   group('Binary Operations Deep Coverage across all 15 DTypes', () {
     test(
-      'divmod, remainder, mod, fmod, floor_divide across Integer and Float types',
+      'divmod, remainder, mod, fmod, floorDivide across Integer and Float types',
       () {
         NDArray.scope(() {
           final mask = NDArray<Boolean>.fromList(
@@ -401,10 +401,10 @@ void main() {
               final fmod2 = fmod(aTrans, bTrans);
               expect(fmod2.shape, [2, 3]);
 
-              // floor_divide
-              final fd1 = floor_divide(aContig, bContig, where: mask);
+              // floorDivide
+              final fd1 = floorDivide(aContig, bContig, where: mask);
               expect(fd1.shape, [2, 3]);
-              final fd2 = floor_divide(aTrans, bTrans);
+              final fd2 = floorDivide(aTrans, bTrans);
               expect(fd2.shape, [2, 3]);
             }
           }
@@ -562,7 +562,7 @@ void main() {
         expect(() => fmod(cCplx, cCplx), throwsUnsupportedError);
 
         // Integer division by zero
-        expect(() => floor_divide(aInt, bZeroInt), throwsUnsupportedError);
+        expect(() => floorDivide(aInt, bZeroInt), throwsUnsupportedError);
         expect(() => remainder(aInt, bZeroInt), throwsUnsupportedError);
         expect(() => fmod(aInt, bZeroInt), throwsUnsupportedError);
         expect(() => divmod(aInt, bZeroInt), throwsUnsupportedError);
@@ -581,7 +581,7 @@ void main() {
         expect(() => subtract(aFloat, disp), throwsStateError);
         expect(() => multiply(disp, bFloat), throwsStateError);
         expect(() => divide(aFloat, disp), throwsStateError);
-        expect(() => floor_divide(disp, disp), throwsStateError);
+        expect(() => floorDivide(disp, disp), throwsStateError);
         expect(() => remainder(disp, disp), throwsStateError);
         expect(() => fmod(disp, disp), throwsStateError);
         expect(() => heaviside(disp, disp), throwsStateError);
@@ -593,7 +593,7 @@ void main() {
   });
 
   group('Logical & Comparison Operations Deep Coverage', () {
-    test('logical_not across all 15 DTypes in Contiguous and Strided views', () {
+    test('logicalNot across all 15 DTypes in Contiguous and Strided views', () {
       NDArray.scope(() {
         final mask = NDArray<Boolean>.fromList(
           [true, false, true, false, true, false],
@@ -604,27 +604,27 @@ void main() {
         for (final dt in all15DTypes) {
           // Contiguous view [2, 3] -> hits v_to_bool_* and v_logical_not
           final aContig = makeSampleArray(dt, [2, 3], seed: 0);
-          final not1 = logical_not(aContig);
+          final not1 = logicalNot(aContig);
           expect(not1.shape, [2, 3]);
           expect(not1.dtype, DType.boolean);
 
           // Non-contiguous transposed view [2, 3] -> hits s_to_bool_* and s_logical_not
           final aBase = makeSampleArray(dt, [3, 2], seed: 0);
           final aTrans = aBase.transpose();
-          final not2 = logical_not(aTrans, where: mask);
+          final not2 = logicalNot(aTrans, where: mask);
           expect(not2.shape, [2, 3]);
           expect(not2.dtype, DType.boolean);
 
           // Out buffer reuse
           final outBuf = NDArray<Boolean>.zeros([2, 3], DType.boolean);
-          final not3 = logical_not(aContig, out: outBuf);
+          final not3 = logicalNot(aContig, out: outBuf);
           expect(identical(not3, outBuf), isTrue);
         }
       });
     });
 
     test(
-      'logical_and, logical_or, logical_xor across all 15 DTypes with Broadcasting',
+      'logicalAnd, logicalOr, logicalXor across all 15 DTypes with Broadcasting',
       () {
         NDArray.scope(() {
           final mask = NDArray<Boolean>.fromList(
@@ -647,27 +647,27 @@ void main() {
               final bBcast = makeSampleArray(dtB, [1, 3], seed: 3);
 
               // Contiguous
-              final land1 = logical_and(aContig, bContig);
+              final land1 = logicalAnd(aContig, bContig);
               expect(land1.shape, [2, 3]);
-              final lor1 = logical_or(aContig, bContig);
+              final lor1 = logicalOr(aContig, bContig);
               expect(lor1.shape, [2, 3]);
-              final lxor1 = logical_xor(aContig, bContig);
+              final lxor1 = logicalXor(aContig, bContig);
               expect(lxor1.shape, [2, 3]);
 
               // Strided transposed with mask
-              final land2 = logical_and(aTrans, bTrans, where: mask);
+              final land2 = logicalAnd(aTrans, bTrans, where: mask);
               expect(land2.shape, [2, 3]);
-              final lor2 = logical_or(aTrans, bTrans, where: mask);
+              final lor2 = logicalOr(aTrans, bTrans, where: mask);
               expect(lor2.shape, [2, 3]);
-              final lxor2 = logical_xor(aTrans, bTrans, where: mask);
+              final lxor2 = logicalXor(aTrans, bTrans, where: mask);
               expect(lxor2.shape, [2, 3]);
 
               // Broadcasting [2, 3] and [1, 3]
-              final land3 = logical_and(aContig, bBcast);
+              final land3 = logicalAnd(aContig, bBcast);
               expect(land3.shape, [2, 3]);
-              final lor3 = logical_or(aContig, bBcast);
+              final lor3 = logicalOr(aContig, bBcast);
               expect(lor3.shape, [2, 3]);
-              final lxor3 = logical_xor(aContig, bBcast);
+              final lxor3 = logicalXor(aContig, bBcast);
               expect(lxor3.shape, [2, 3]);
             }
           }
@@ -760,23 +760,23 @@ void main() {
         final b = NDArray.fromList([1, 4, 3], [3], DType.int32);
         final badShapeOut = NDArray<Boolean>.zeros([5], DType.boolean);
 
-        expect(() => logical_not(a, out: badShapeOut), throwsArgumentError);
+        expect(() => logicalNot(a, out: badShapeOut), throwsArgumentError);
         expect(() => equal(a, b, out: badShapeOut), throwsArgumentError);
         expect(() => notEqual(a, b, out: badShapeOut), throwsArgumentError);
         expect(() => greater(a, b, out: badShapeOut), throwsArgumentError);
         expect(() => greaterEqual(a, b, out: badShapeOut), throwsArgumentError);
         expect(() => less(a, b, out: badShapeOut), throwsArgumentError);
         expect(() => lessEqual(a, b, out: badShapeOut), throwsArgumentError);
-        expect(() => logical_and(a, b, out: badShapeOut), throwsArgumentError);
-        expect(() => logical_or(a, b, out: badShapeOut), throwsArgumentError);
-        expect(() => logical_xor(a, b, out: badShapeOut), throwsArgumentError);
+        expect(() => logicalAnd(a, b, out: badShapeOut), throwsArgumentError);
+        expect(() => logicalOr(a, b, out: badShapeOut), throwsArgumentError);
+        expect(() => logicalXor(a, b, out: badShapeOut), throwsArgumentError);
 
         final disp = NDArray<Boolean>.fromList([true], [1], DType.boolean);
         disp.dispose();
-        expect(() => logical_not(disp), throwsStateError);
-        expect(() => logical_and(disp, disp), throwsStateError);
-        expect(() => logical_or(disp, disp), throwsStateError);
-        expect(() => logical_xor(disp, disp), throwsStateError);
+        expect(() => logicalNot(disp), throwsStateError);
+        expect(() => logicalAnd(disp, disp), throwsStateError);
+        expect(() => logicalOr(disp, disp), throwsStateError);
+        expect(() => logicalXor(disp, disp), throwsStateError);
         expect(() => equal(disp, disp), throwsStateError);
         expect(() => notEqual(disp, disp), throwsStateError);
         expect(() => greater(disp, disp), throwsStateError);
@@ -789,7 +789,7 @@ void main() {
 
   group('Bitwise Operations on Integer Types & Strided Views', () {
     test(
-      'bitwise_and, bitwise_or, bitwise_xor, invert, left_shift, right_shift on supported integer types',
+      'bitwiseAnd, bitwiseOr, bitwiseXor, invert, leftShift, rightShift on supported integer types',
       () {
         NDArray.scope(() {
           final mask = NDArray<Boolean>.fromList(
@@ -819,43 +819,43 @@ void main() {
             final bTrans = makeSampleArray(dtA, [3, 2], seed: 3).transpose();
             final bBcast = makeSampleArray(dtA, [1, 3], seed: 1);
 
-            // bitwise_and
-            final band1 = bitwise_and(aContig, bContig);
+            // bitwiseAnd
+            final band1 = bitwiseAnd(aContig, bContig);
             expect(band1.shape, [2, 3]);
-            final band2 = bitwise_and(aTrans, bTrans, where: mask);
+            final band2 = bitwiseAnd(aTrans, bTrans, where: mask);
             expect(band2.shape, [2, 3]);
-            final band3 = bitwise_and(aContig, bBcast);
+            final band3 = bitwiseAnd(aContig, bBcast);
             expect(band3.shape, [2, 3]);
 
-            // bitwise_or
-            final bor1 = bitwise_or(aContig, bContig);
+            // bitwiseOr
+            final bor1 = bitwiseOr(aContig, bContig);
             expect(bor1.shape, [2, 3]);
-            final bor2 = bitwise_or(aTrans, bTrans, where: mask);
+            final bor2 = bitwiseOr(aTrans, bTrans, where: mask);
             expect(bor2.shape, [2, 3]);
-            final bor3 = bitwise_or(aContig, bBcast);
+            final bor3 = bitwiseOr(aContig, bBcast);
             expect(bor3.shape, [2, 3]);
 
-            // bitwise_xor
-            final bxor1 = bitwise_xor(aContig, bContig);
+            // bitwiseXor
+            final bxor1 = bitwiseXor(aContig, bContig);
             expect(bxor1.shape, [2, 3]);
-            final bxor2 = bitwise_xor(aTrans, bTrans, where: mask);
+            final bxor2 = bitwiseXor(aTrans, bTrans, where: mask);
             expect(bxor2.shape, [2, 3]);
-            final bxor3 = bitwise_xor(aContig, bBcast);
+            final bxor3 = bitwiseXor(aContig, bBcast);
             expect(bxor3.shape, [2, 3]);
 
-            // left_shift & right_shift
-            final lshift1 = left_shift(aContig, bContig);
+            // leftShift & rightShift
+            final lshift1 = leftShift(aContig, bContig);
             expect(lshift1.shape, [2, 3]);
-            final lshift2 = left_shift(aTrans, bTrans, where: mask);
+            final lshift2 = leftShift(aTrans, bTrans, where: mask);
             expect(lshift2.shape, [2, 3]);
-            final lshift3 = left_shift(aContig, bBcast);
+            final lshift3 = leftShift(aContig, bBcast);
             expect(lshift3.shape, [2, 3]);
 
-            final rshift1 = right_shift(aContig, bContig);
+            final rshift1 = rightShift(aContig, bContig);
             expect(rshift1.shape, [2, 3]);
-            final rshift2 = right_shift(aTrans, bTrans, where: mask);
+            final rshift2 = rightShift(aTrans, bTrans, where: mask);
             expect(rshift2.shape, [2, 3]);
-            final rshift3 = right_shift(aContig, bBcast);
+            final rshift3 = rightShift(aContig, bBcast);
             expect(rshift3.shape, [2, 3]);
           }
 
@@ -866,23 +866,23 @@ void main() {
             expect(inv.shape, [2, 3]);
             expect(inv.dtype, dt);
 
-            final band = bitwise_and(arr, arr);
+            final band = bitwiseAnd(arr, arr);
             expect(band.shape, [2, 3]);
             expect(band.dtype, dt);
 
-            final bor = bitwise_or(arr, arr);
+            final bor = bitwiseOr(arr, arr);
             expect(bor.shape, [2, 3]);
             expect(bor.dtype, dt);
 
-            final bxor = bitwise_xor(arr, arr);
+            final bxor = bitwiseXor(arr, arr);
             expect(bxor.shape, [2, 3]);
             expect(bxor.dtype, dt);
 
-            final lshift = left_shift(arr, arr);
+            final lshift = leftShift(arr, arr);
             expect(lshift.shape, [2, 3]);
             expect(lshift.dtype, dt);
 
-            final rshift = right_shift(arr, arr);
+            final rshift = rightShift(arr, arr);
             expect(rshift.shape, [2, 3]);
             expect(rshift.dtype, dt);
           }
@@ -903,21 +903,21 @@ void main() {
         // Non-integer inputs throw ArgumentError
         expect(() => invert(floatArr), throwsArgumentError);
         expect(() => invert(boolArr), throwsArgumentError);
-        expect(() => bitwise_and(floatArr, intArr), throwsArgumentError);
-        expect(() => bitwise_or(intArr, floatArr), throwsArgumentError);
-        expect(() => bitwise_xor(boolArr, intArr), throwsArgumentError);
-        expect(() => left_shift(floatArr, intArr), throwsArgumentError);
-        expect(() => right_shift(intArr, floatArr), throwsArgumentError);
+        expect(() => bitwiseAnd(floatArr, intArr), throwsArgumentError);
+        expect(() => bitwiseOr(intArr, floatArr), throwsArgumentError);
+        expect(() => bitwiseXor(boolArr, intArr), throwsArgumentError);
+        expect(() => leftShift(floatArr, intArr), throwsArgumentError);
+        expect(() => rightShift(intArr, floatArr), throwsArgumentError);
 
         // Disposed array throws StateError
         final disp = NDArray.fromList([1, 2], [2], DType.int32);
         disp.dispose();
         expect(() => invert(disp), throwsStateError);
-        expect(() => bitwise_and(disp, intArr), throwsStateError);
-        expect(() => bitwise_or(intArr, disp), throwsStateError);
-        expect(() => bitwise_xor(disp, disp), throwsStateError);
-        expect(() => left_shift(disp, disp), throwsStateError);
-        expect(() => right_shift(disp, disp), throwsStateError);
+        expect(() => bitwiseAnd(disp, intArr), throwsStateError);
+        expect(() => bitwiseOr(intArr, disp), throwsStateError);
+        expect(() => bitwiseXor(disp, disp), throwsStateError);
+        expect(() => leftShift(disp, disp), throwsStateError);
+        expect(() => rightShift(disp, disp), throwsStateError);
       });
     });
   });

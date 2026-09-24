@@ -48,7 +48,9 @@ NDArray<R> exp<R extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for exp.',
       );
@@ -228,7 +230,9 @@ NDArray<R> log<R extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for log.',
       );
@@ -403,7 +407,9 @@ NDArray<R> log2<R extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for log2.',
       );
@@ -579,7 +585,9 @@ NDArray<R> log10<R extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for log10.',
       );

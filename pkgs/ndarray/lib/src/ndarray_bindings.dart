@@ -10,6 +10,12 @@ library;
 
 import 'dart:ffi' as ffi;
 
+@ffi.Native<ffi.Void Function()>()
+external void ndarray_set_oom_flag();
+
+@ffi.Native<ffi.Int Function()>()
+external int ndarray_consume_oom_flag();
+
 @ffi.Native<
   ffi.Int Function(
     ffi.Pointer<ffi.Uint8>,

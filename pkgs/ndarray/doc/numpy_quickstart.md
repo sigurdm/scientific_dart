@@ -84,7 +84,7 @@ Before diving into code, understand the five structural differences between Pyth
 | `a - b`, `np.subtract(a, b)`| `a - b` or `subtract(a, b)` (same dtype) / `subtractAs(a, b, dtype: ...)` | Element-wise subtraction with broadcasting. |
 | `a * b`, `np.multiply(a, b)`| `a * b` or `multiply(a, b)` (same dtype) / `multiplyAs(a, b, dtype: ...)` | Element-wise Hadamard multiplication. |
 | `a / b`, `np.divide(a, b)` | `a / b` or `divide(a, b)` (auto-promotes ints to `Float64`) / `divideAs(...)` | True IEEE 754 floating-point division (`nan`/`inf`). |
-| `a // b` | `a ~/ b` or `floor_divide(a, b)` | Floor integer/float division (checks `0` divisor upfront). |
+| `a // b` | `a ~/ b` or `floorDivide(a, b)` | Floor integer/float division (checks `0` divisor upfront). |
 | `a % b`, `np.remainder(a,b)`| `a % b` or `remainder(a, b)` | Element-wise remainder. |
 | `-a` | `-a` or `negative(a)` | Element-wise negation. |
 | `a @ b`, `np.matmul(a, b)` | `matmul(a, b)` (same dtype) / `matmulAs(a, b, dtype: ...)` (mixed) | OpenBLAS / LAPACK matrix multiplication. |
@@ -104,7 +104,7 @@ In Dart, `NDArray<T>` is statically typed by its element type tag (`Float64`, `F
 When combining arrays of **different** dtypes, choose one of the four patterns below depending on your use case:
 
 #### 1. Single-Pass Mixed-Type Kernels via `*As` (`addAs`, `subtractAs`, `multiplyAs`, `divideAs`, `matmulAs`) — *Fastest (Zero Copy)*
-Every binary operation and linear algebra contraction has a `*As` counterpart (`addAs`, `subtractAs`, `multiplyAs`, `divideAs`, `floor_divideAs`, `remainderAs`, `powerAs`, `maximumAs`, `minimumAs`, `matmulAs`, `dotAs`, `tensordotAs`, etc.).
+Every binary operation and linear algebra contraction has a `*As` counterpart (`addAs`, `subtractAs`, `multiplyAs`, `divideAs`, `floorDivideAs`, `remainderAs`, `powerAs`, `maximumAs`, `minimumAs`, `matmulAs`, `dotAs`, `tensordotAs`, etc.).
 Under the hood, `package:ndarray`'s C++/Highway SIMD kernels natively accept mixed input pointer types and promote on the fly in registers—**without allocating a temporary converted copy of either input array**:
 
 ```dart
@@ -165,7 +165,7 @@ final meanF32 = mean(f32);     // inferred static type: NDArray<Float32>
 | NumPy Operation | Dart `package:ndarray` Equivalent | Notes |
 | :--- | :--- | :--- |
 | `a > b`, `a <= b` | `a > b`, `a <= b` | Returns boolean mask `NDArray<Boolean>`. |
-| `a == b`, `a != b` | `equal(a, b)`, `not_equal(a, b)` | **IMPORTANT**: Dart `a == b` tests object identity (`bool`). Use `equal(a, b)` for element-wise `NDArray<Boolean>` comparison! |
+| `a == b`, `a != b` | `equal(a, b)`, `notEqual(a, b)` | **IMPORTANT**: Dart `a == b` tests object identity (`bool`). Use `equal(a, b)` for element-wise `NDArray<Boolean>` comparison! |
 | `np.isclose(a, b)` | `isClose(a, b, rtol: 1e-5, atol: 1e-8)` | Element-wise approximate floating-point comparison (`NDArray<Boolean>`). |
 | `np.allclose(a, b)` | `allClose(a, b, rtol: 1e-5)` | Returns a single `bool` if all elements match within tolerance. |
 

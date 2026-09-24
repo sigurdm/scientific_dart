@@ -81,6 +81,7 @@ BroadcastResult broadcastBinaryStrides(
     }
   }
 
+  checkTotalSize(commonShape);
   return BroadcastResult(commonShape, newStridesA, newStridesB);
 }
 

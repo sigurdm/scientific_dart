@@ -47,7 +47,7 @@ NDArray<T> clip<T extends DTypeTag>(
     throw UnsupportedError('Complex numbers are not supported for clip');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape)) {
+    if (!out.isWriteable || !listEquals(out.shape, a.shape)) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape for clip.',
       );
@@ -57,7 +57,7 @@ NDArray<T> clip<T extends DTypeTag>(
         'Provided out buffer has incompatible DType for clip.',
       );
     }
-    if (sharesMemory(a, out)) {
+    if (sharesMemory(a, out) || (where != null && sharesMemory(where, out))) {
       return NDArray.scope(() {
         final temp = where != null
             ? out.copy()
@@ -228,7 +228,7 @@ NDArray<T> clipArray<T extends DTypeTag>(
   if (max != null) commonShape = broadcastShapes(commonShape, max.shape);
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape)) {
+    if (!out.isWriteable || !listEquals(out.shape, commonShape)) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape for clipArray.',
       );

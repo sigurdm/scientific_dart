@@ -8,4 +8,4 @@ export 'src/operations/linalg.dart' show cond;
 export 'src/nditer.dart';
 export 'src/exceptions.dart';
 export 'src/sendable_ndarray.dart';
-export 'package:resource_scope/resource_scope.dart';
+export 'package:resource_scope/resource_scope.dart' show ScopedResource;

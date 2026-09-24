@@ -1025,7 +1025,7 @@ void main() {
     // =========================================================================
     group('Bitwise & Logical Operations Coverage', () {
       test(
-        'bitwise_and, bitwise_or, bitwise_xor, invert, left_shift, right_shift on integer types and error handling',
+        'bitwiseAnd, bitwiseOr, bitwiseXor, invert, leftShift, rightShift on integer types and error handling',
         () {
           NDArray.scope(() {
             final supportedIntDTypes = [
@@ -1043,29 +1043,29 @@ void main() {
               final a = NDArray.fromList([12, 10, 7], [3], dt);
               final b = NDArray.fromList([6, 3, 2], [3], dt);
 
-              // bitwise_and: 12&6=4, 10&3=2, 7&2=2
-              final resAnd = bitwise_and(a, b);
+              // bitwiseAnd: 12&6=4, 10&3=2, 7&2=2
+              final resAnd = bitwiseAnd(a, b);
               expect(resAnd.toList(), equals([4, 2, 2]));
 
-              // bitwise_or: 12|6=14, 10|3=11, 7|2=7
-              final resOr = bitwise_or(a, b);
+              // bitwiseOr: 12|6=14, 10|3=11, 7|2=7
+              final resOr = bitwiseOr(a, b);
               expect(resOr.toList(), equals([14, 11, 7]));
 
-              // bitwise_xor: 12^6=10, 10^3=9, 7^2=5
-              final resXor = bitwise_xor(a, b);
+              // bitwiseXor: 12^6=10, 10^3=9, 7^2=5
+              final resXor = bitwiseXor(a, b);
               expect(resXor.toList(), equals([10, 9, 5]));
 
               // invert (NOT)
               final resInv = invert(a);
               expect(resInv.shape, equals([3]));
 
-              // left_shift: 12<<1=24, 10<<2=40, 7<<1=14
+              // leftShift: 12<<1=24, 10<<2=40, 7<<1=14
               final shifts = NDArray.fromList([1, 2, 1], [3], dt);
-              final resLShift = left_shift(a, shifts);
+              final resLShift = leftShift(a, shifts);
               expect(resLShift.toList(), equals([24, 40, 14]));
 
-              // right_shift: 12>>1=6, 10>>2=2, 7>>1=3
-              final resRShift = right_shift(a, shifts);
+              // rightShift: 12>>1=6, 10>>2=2, 7>>1=3
+              final resRShift = rightShift(a, shifts);
               expect(resRShift.toList(), equals([6, 2, 3]));
             }
           });
@@ -1093,7 +1093,7 @@ void main() {
               DType.int32,
             ); // shape [1] broadcasts to [2, 2]
 
-            final resAnd = bitwise_and(viewA, scalarB);
+            final resAnd = bitwiseAnd(viewA, scalarB);
             expect(resAnd.shape, equals([2, 2]));
             expect(resAnd.toList(), equals([1 & 3, 3 & 3, 5 & 3, 7 & 3]));
 
@@ -1108,7 +1108,7 @@ void main() {
               [2, 2],
               DType.boolean,
             );
-            bitwise_or(viewA, scalarB, where: mask, out: outBuf);
+            bitwiseOr(viewA, scalarB, where: mask, out: outBuf);
             expect(outBuf.getCell([0, 0]), equals(1 | 3));
             expect(outBuf.getCell([0, 1]), equals(0)); // masked out
             expect(outBuf.getCell([1, 0]), equals(5 | 3));
@@ -1120,7 +1120,7 @@ void main() {
               DType.float64,
             );
             expect(
-              () => bitwise_and(floatArr as dynamic, scalarB),
+              () => bitwiseAnd(floatArr as dynamic, scalarB),
               throwsArgumentError,
             );
           });
@@ -1128,7 +1128,7 @@ void main() {
       );
 
       test(
-        'logical_and, logical_or, logical_xor, logical_not across numeric, float, complex, and boolean arrays with broadcasting',
+        'logicalAnd, logicalOr, logicalXor, logicalNot across numeric, float, complex, and boolean arrays with broadcasting',
         () {
           NDArray.scope(() {
             // Numeric truthy/falsy
@@ -1144,19 +1144,19 @@ void main() {
             );
 
             expect(
-              logical_not(numA).toList(),
+              logicalNot(numA).toList(),
               equals([true, false, true, false]),
             );
             expect(
-              logical_and(numA, numB).toList(),
+              logicalAnd(numA, numB).toList(),
               equals([false, false, false, true]),
             );
             expect(
-              logical_or(numA, numB).toList(),
+              logicalOr(numA, numB).toList(),
               equals([true, true, false, true]),
             );
             expect(
-              logical_xor(numA, numB).toList(),
+              logicalXor(numA, numB).toList(),
               equals([true, true, false, false]),
             );
 
@@ -1172,10 +1172,10 @@ void main() {
               DType.complex128,
             );
 
-            expect(logical_not(cA).toList(), equals([true, false, false]));
-            expect(logical_and(cA, cB).toList(), equals([false, false, true]));
-            expect(logical_or(cA, cB).toList(), equals([false, true, true]));
-            expect(logical_xor(cA, cB).toList(), equals([false, true, false]));
+            expect(logicalNot(cA).toList(), equals([true, false, false]));
+            expect(logicalAnd(cA, cB).toList(), equals([false, false, true]));
+            expect(logicalOr(cA, cB).toList(), equals([false, true, true]));
+            expect(logicalXor(cA, cB).toList(), equals([false, true, false]));
 
             // Non-contiguous strided logical operations with where mask and out buffer
             final matA = NDArray<Int32>.fromList(
@@ -1195,7 +1195,7 @@ void main() {
               DType.boolean,
             );
 
-            logical_and(matA, matB, where: whereMask, out: outLog);
+            logicalAnd(matA, matB, where: whereMask, out: outLog);
             expect(outLog.getCell([0, 0]), isFalse);
             expect(outLog.getCell([0, 1]), isTrue);
             expect(outLog.getCell([1, 0]), isFalse); // masked out

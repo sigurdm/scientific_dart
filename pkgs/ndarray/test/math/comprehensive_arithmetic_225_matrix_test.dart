@@ -101,7 +101,7 @@ void main() {
       },
     );
 
-    test('All Non-complex Pairs for floor_divide, remainder, fmod, power', () {
+    test('All Non-complex Pairs for floorDivide, remainder, fmod, power', () {
       NDArray.scope(() {
         final mask = NDArray<Boolean>.fromList(
           [true, false, true, false, true, false],
@@ -121,11 +121,11 @@ void main() {
             final aTrans = aBase.transpose();
             final bTrans = bBase.transpose();
 
-            // Contiguous & Transposed floor_divide
-            final rFloor1 = floor_divide(aContig, bContig, where: mask);
+            // Contiguous & Transposed floorDivide
+            final rFloor1 = floorDivide(aContig, bContig, where: mask);
             expect(rFloor1.shape, [2, 3]);
 
-            final rFloor2 = floor_divide(aTrans, bTrans);
+            final rFloor2 = floorDivide(aTrans, bTrans);
             expect(rFloor2.shape, [2, 3]);
 
             // Contiguous & Transposed remainder

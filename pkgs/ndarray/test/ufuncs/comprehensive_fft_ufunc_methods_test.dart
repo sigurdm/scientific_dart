@@ -1380,22 +1380,22 @@ void main() {
           final col = NDArray.fromList([3, 12], [2, 1], DType.int32);
           final row = NDArray.fromList([1, 4], [1, 2], DType.int32);
 
-          final andRes = bitwise_and(col, row);
+          final andRes = bitwiseAnd(col, row);
           expect(andRes.shape, [2, 2]);
           expect(andRes.toList(), [1, 0, 0, 4]);
 
-          final orRes = bitwise_or(col, row);
+          final orRes = bitwiseOr(col, row);
           expect(orRes.toList(), [3, 7, 13, 12]);
 
-          final xorRes = bitwise_xor(col, row);
+          final xorRes = bitwiseXor(col, row);
           expect(xorRes.toList(), [2, 7, 13, 8]);
 
           // Left shift and right shift broadcasting
           final shiftVal = NDArray.fromList([1, 2], [1, 2], DType.int32);
-          final ls = left_shift(col, shiftVal);
+          final ls = leftShift(col, shiftVal);
           expect(ls.toList(), [6, 12, 24, 48]);
 
-          final rs = right_shift(ls, shiftVal);
+          final rs = rightShift(ls, shiftVal);
           expect(rs.toList(), [3, 3, 12, 12]);
 
           // Strided invert test
@@ -1409,7 +1409,7 @@ void main() {
           final invStrided = invert(strided);
           expect(invStrided.toList(), [-2, -5]);
 
-          // where mask with bitwise_and
+          // where mask with bitwiseAnd
           final mask = NDArray.fromList(
             [true, false, false, true],
             [2, 2],
@@ -1420,7 +1420,7 @@ void main() {
             [2, 2],
             DType.int32,
           );
-          bitwise_and(col, row, where: mask, out: outRecycler);
+          bitwiseAnd(col, row, where: mask, out: outRecycler);
           expect(outRecycler.toList(), [1, 99, 99, 4]);
         });
       },
@@ -1432,12 +1432,12 @@ void main() {
         NDArray.scope(() {
           final fArr = NDArray.fromList([1.0, 2.0], [2], DType.float64);
           final iArr = NDArray.fromList([1, 2], [2], DType.int32);
-          expect(() => bitwise_and(fArr as dynamic, iArr), throwsArgumentError);
+          expect(() => bitwiseAnd(fArr as dynamic, iArr), throwsArgumentError);
           expect(() => invert(fArr as dynamic), throwsArgumentError);
 
           final disposed = NDArray.fromList([1, 2], [2], DType.int32);
           disposed.dispose();
-          expect(() => bitwise_and(disposed, iArr), throwsStateError);
+          expect(() => bitwiseAnd(disposed, iArr), throwsStateError);
         });
       },
     );
@@ -1445,7 +1445,7 @@ void main() {
 
   group('Comprehensive Logical Operations', () {
     test(
-      'logical_and, logical_or, logical_xor, logical_not across numeric types & broadcasting',
+      'logicalAnd, logicalOr, logicalXor, logicalNot across numeric types & broadcasting',
       () {
         NDArray.scope(() {
           // Logical NOT on various dtypes (Float64, Int32, Complex128, Uint8, Int16)
@@ -1454,46 +1454,46 @@ void main() {
             [4],
             DType.float64,
           );
-          expect(logical_not(fArr).toList(), [true, false, false, true]);
+          expect(logicalNot(fArr).toList(), [true, false, false, true]);
 
           final f32Arr = NDArray.fromList([0.0, 1.0], [2], DType.float32);
-          expect(logical_not(f32Arr).toList(), [true, false]);
+          expect(logicalNot(f32Arr).toList(), [true, false]);
 
           final iArr = NDArray.fromList([0, 10, 0, -5], [4], DType.int32);
-          expect(logical_not(iArr).toList(), [true, false, true, false]);
+          expect(logicalNot(iArr).toList(), [true, false, true, false]);
 
           final u8Arr = NDArray.fromList([0, 255], [2], DType.uint8);
-          expect(logical_not(u8Arr).toList(), [true, false]);
+          expect(logicalNot(u8Arr).toList(), [true, false]);
 
           final i16Arr = NDArray.fromList([0, 500], [2], DType.int16);
-          expect(logical_not(i16Arr).toList(), [true, false]);
+          expect(logicalNot(i16Arr).toList(), [true, false]);
 
           final cArr = NDArray.fromList(
             [Complex(0.0, 0.0), Complex(1.0, 0.0), Complex(0.0, 2.0)],
             [3],
             DType.complex128,
           );
-          expect(logical_not(cArr).toList(), [true, false, false]);
+          expect(logicalNot(cArr).toList(), [true, false, false]);
 
           final c64Arr = NDArray.fromList(
             [Complex(0.0, 0.0), Complex(0.0, 1.0)],
             [2],
             DType.complex64,
           );
-          expect(logical_not(c64Arr).toList(), [true, false]);
+          expect(logicalNot(c64Arr).toList(), [true, false]);
 
           // Logical AND, OR, XOR with broadcasting between numeric and boolean
           final numA = NDArray.fromList([0.0, 1.0], [2, 1], DType.float64);
           final numB = NDArray.fromList([0, 5], [1, 2], DType.int32);
 
-          final lAnd = logical_and(numA, numB);
+          final lAnd = logicalAnd(numA, numB);
           expect(lAnd.shape, [2, 2]);
           expect(lAnd.toList(), [false, false, false, true]);
 
-          final lOr = logical_or(numA, numB);
+          final lOr = logicalOr(numA, numB);
           expect(lOr.toList(), [false, true, true, true]);
 
-          final lXor = logical_xor(numA, numB);
+          final lXor = logicalXor(numA, numB);
           expect(lXor.toList(), [false, true, true, false]);
 
           // Non-contiguous / strided logical operations
@@ -1503,7 +1503,7 @@ void main() {
             DType.boolean,
           );
           final transBool = matBool.transposed; // non-contiguous
-          expect(logical_not(transBool).toList(), [false, true, true, false]);
+          expect(logicalNot(transBool).toList(), [false, true, true, false]);
         });
       },
     );

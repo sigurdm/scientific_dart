@@ -113,16 +113,19 @@ NDArray nan_to_num(
     throw StateError('Cannot execute nan_to_num() on a disposed array.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for nan_to_num.',
       );
     }
-    if (sharesMemory(a, out) &&
-        (!a.isContiguous ||
-            !out.isContiguous ||
-            a.offsetElements != out.offsetElements ||
-            !listEquals(a.strides, out.strides))) {
+    if ((sharesMemory(a, out) &&
+            (!a.isContiguous ||
+                !out.isContiguous ||
+                a.offsetElements != out.offsetElements ||
+                !listEquals(a.strides, out.strides))) ||
+        (where != null && sharesMemory(where, out))) {
       return NDArray.scope(() {
         final temp = where != null
             ? out.copy()
@@ -190,8 +193,6 @@ NDArray nan_to_num(
 
           resultCopy.setCellRaw(idxRes, castValue(dVal, resDType));
         }
-      } else if (out == null) {
-        resultCopy.setCellRaw(idxRes, a.getCellRaw(idxA));
       }
       flatIdx++;
     }

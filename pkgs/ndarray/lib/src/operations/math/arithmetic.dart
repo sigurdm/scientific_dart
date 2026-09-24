@@ -46,7 +46,9 @@ NDArray<R> sqrt<R extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for sqrt.',
       );
@@ -145,7 +147,9 @@ NDArray<R> sqrt<R extends DTypeTag>(
       return (val as num).toDouble();
     }
 
-    if (result.isContiguous && !sharesMemory(temp, result)) {
+    if (result.isContiguous &&
+        !sharesMemory(temp, result) &&
+        (where == null || !sharesMemory(where, result))) {
       for (var i = 0; i < temp.size; i++) {
         if (maskHolder.pointer == ffi.nullptr || maskHolder.pointer[i] != 0) {
           result.setCellFlat(
@@ -278,7 +282,9 @@ NDArray<R> expm1<R extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for expm1.',
       );
@@ -480,7 +486,9 @@ NDArray<R> log1p<R extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for log1p.',
       );
@@ -684,7 +692,9 @@ NDArray<DTypeTag> logaddexp<T1 extends DTypeTag, T2 extends DTypeTag>(
       : DType.float64;
 
   if (out != null) {
-    if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for logaddexp.',
       );
@@ -820,7 +830,9 @@ NDArray<DTypeTag> logaddexp2<T1 extends DTypeTag, T2 extends DTypeTag>(
       : DType.float64;
 
   if (out != null) {
-    if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for logaddexp2.',
       );
@@ -952,7 +964,9 @@ NDArray<R> rint<R extends DTypeTag>(
       : DType.float64;
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for rint.',
       );
@@ -1098,7 +1112,9 @@ NDArray<R> trunc<R extends DTypeTag>(
       : DType.float64;
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for trunc.',
       );
@@ -1243,7 +1259,9 @@ NDArray<T> square<T extends DTypeTag>(
     throw StateError('Cannot execute square() on a disposed array.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for square.',
       );
@@ -1461,7 +1479,9 @@ NDArray<T> reciprocal<T extends DTypeTag>(
     throw StateError('Cannot execute reciprocal() on a disposed array.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for reciprocal.',
       );
@@ -1719,7 +1739,9 @@ NDArray<T> positive<T extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for positive.',
       );
@@ -1972,7 +1994,7 @@ NDArray<T> power<T extends DTypeTag>(
   final shape = broadcastResult.shape;
   final dtype = x1.dtype;
 
-  if (dtype.isInteger) {
+  if (dtype.isInteger && x2.size > 0) {
     final NDArray<DTypeTag> x2Num = x2;
     try {
       if (x2Num.rank == 0) {
@@ -1997,7 +2019,9 @@ NDArray<T> power<T extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, shape) || out.dtype != dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, shape) ||
+        out.dtype != dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for power.',
       );
@@ -2243,7 +2267,9 @@ NDArray<T> negative<T extends DTypeTag>(
     throw StateError('Cannot execute negative() on a disposed array.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for negative.',
       );
@@ -2335,9 +2361,9 @@ NDArray<T> negative<T extends DTypeTag>(
 ///
 /// **Example:**
 /// ```dart
-/// final c = floor_divide(a, b);
+/// final c = floorDivide(a, b);
 /// ```
-NDArray<T> floor_divide<T extends DTypeTag>(
+NDArray<T> floorDivide<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2, {
   NDArray<DTypeTag>? where,
@@ -2347,7 +2373,7 @@ NDArray<T> floor_divide<T extends DTypeTag>(
       x2.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
-    throw StateError('Cannot execute floor_divide() on a disposed array.');
+    throw StateError('Cannot execute floorDivide() on a disposed array.');
   }
   final broadcastResult = broadcast(x1, x2);
   final commonShape = broadcastResult.shape;
@@ -2360,9 +2386,11 @@ NDArray<T> floor_divide<T extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype for floor_divide.',
+        'Provided out buffer has incompatible shape or dtype for floorDivide.',
       );
     }
   }
@@ -2633,7 +2661,9 @@ NDArray<T> remainder<T extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for remainder.',
       );
@@ -2907,7 +2937,7 @@ NDArray<T> mod<T extends DTypeTag>(
   NDArray<T> x1,
   NDArray<T> x2,
 ) {
-  return (floor_divide<T>(x1, x2), remainder<T>(x1, x2));
+  return (floorDivide<T>(x1, x2), remainder<T>(x1, x2));
 }
 
 /// Element-wise C-style modulo / remainder of division (`x1 % x2`).
@@ -2950,7 +2980,9 @@ NDArray<T> fmod<T extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for fmod.',
       );
@@ -3196,7 +3228,9 @@ NDArray<T> gcd<T extends DTypeTag>(
 
   final DType<T> targetDType = resolveDType(x1.dtype, x2.dtype) as DType<T>;
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for gcd.',
       );
@@ -3356,7 +3390,9 @@ NDArray<T> lcm<T extends DTypeTag>(
   final stridesB = broadcastResult.stridesB;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for lcm.',
       );
@@ -3525,7 +3561,9 @@ NDArray<T> heaviside<T extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for heaviside.',
       );
@@ -3733,7 +3771,9 @@ NDArray<R> abs<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for abs.',
       );
@@ -4004,7 +4044,9 @@ NDArray<T> sign<T extends DTypeTag>(
     throw StateError('Cannot execute sign() on a disposed array.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for sign.',
       );
@@ -4121,7 +4163,9 @@ NDArray<T> ceil<T extends DTypeTag>(
     throw UnsupportedError('Complex numbers are not supported for ceil');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for ceil.',
       );
@@ -4212,7 +4256,9 @@ NDArray<T> floor<T extends DTypeTag>(
     throw UnsupportedError('Complex numbers are not supported for floor');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for floor.',
       );
@@ -4305,7 +4351,9 @@ NDArray<T> round<T extends DTypeTag>(
     throw UnsupportedError('Complex numbers are not supported for round');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for round.',
       );
@@ -4411,7 +4459,9 @@ NDArray<T> add<T extends DTypeTag>(
   final stridesB = broadcastResult.stridesB;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -5947,7 +5997,9 @@ NDArray<T> subtract<T extends DTypeTag>(
   final stridesB = broadcastResult.stridesB;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -7486,7 +7538,9 @@ NDArray<T> multiply<T extends DTypeTag>(
   final stridesB = broadcastResult.stridesB;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -9040,7 +9094,9 @@ NDArray<R> divide<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
   final stridesB = broadcastResult.stridesB;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );

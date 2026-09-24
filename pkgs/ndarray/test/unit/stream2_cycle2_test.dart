@@ -69,7 +69,7 @@ void main() {
       final mask = NDArray<Uint8>.fromList([1, 0, 1, 0], [4], DType.uint8);
       final out = NDArray.zeros([4], DType.int32);
 
-      final rAnd = bitwise_and(a, b, where: mask, out: out);
+      final rAnd = bitwiseAnd(a, b, where: mask, out: out);
       expect(rAnd.toList(), equals([0, 0, 2, 0]));
 
       final rInv = invert(a, where: mask);

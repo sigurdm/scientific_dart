@@ -89,6 +89,10 @@ dynamic unique<T extends DTypeTag>(
       pCounts,
     );
 
+    if (uniqueCount < 0) {
+      throw OutOfMemoryError();
+    }
+
     if (uniqueCount == 0) {
       if (out != null && !listEquals(out.shape, [0])) {
         throw ArgumentError('Incompatible out buffer shape.');

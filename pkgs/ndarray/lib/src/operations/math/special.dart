@@ -51,18 +51,6 @@ NDArray<R> i0<R extends DTypeTag>(
     throw StateError('Cannot execute i0() on a disposed array.');
   }
 
-  // Handle integer and boolean types by promoting to float64 (double)
-  if ((a.dtype as DType<DTypeTag>).isInteger ||
-      (a.dtype as DType<DTypeTag>) == DType.boolean) {
-    final promoted = promoteToDouble(a);
-    try {
-      return i0<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
-          as NDArray<R>;
-    } finally {
-      promoted.dispose();
-    }
-  }
-
   final DType<R> targetDType = switch (a.dtype) {
     DType.complex128 || DType.complex64 => a.dtype as DType<R>,
     DType.float32 => DType.float32 as DType<R>,
@@ -70,10 +58,29 @@ NDArray<R> i0<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for i0.',
       );
+    }
+  }
+
+  // Handle integer, boolean, and half-precision float types by promoting to float64
+  final aDType = a.dtype as DType<DTypeTag>;
+  if (aDType.isInteger ||
+      aDType == DType.boolean ||
+      aDType == DType.float16 ||
+      aDType == DType.bfloat16) {
+    final promoted = promoteToDouble(a);
+    try {
+      return i0<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+          as NDArray<R>;
+    } finally {
+      if (!identical(promoted, a)) {
+        promoted.dispose();
+      }
     }
   }
 
@@ -260,8 +267,25 @@ NDArray<R> gamma<R extends DTypeTag>(
     throw UnsupportedError("Complex numbers are not supported for gamma.");
   }
 
-  if ((a.dtype as DType<DTypeTag>).isInteger ||
-      (a.dtype as DType<DTypeTag>) == DType.boolean) {
+  final DType<R> targetDType = switch (a.dtype) {
+    DType.float32 => DType.float32 as DType<R>,
+    _ => DType.float64 as DType<R>,
+  };
+  if (out != null) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
+      throw ArgumentError(
+        "Provided out buffer has incompatible shape or dtype for gamma.",
+      );
+    }
+  }
+
+  final aDType = a.dtype as DType<DTypeTag>;
+  if (aDType.isInteger ||
+      aDType == DType.boolean ||
+      aDType == DType.float16 ||
+      aDType == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       return gamma<Float64>(
@@ -271,19 +295,9 @@ NDArray<R> gamma<R extends DTypeTag>(
           )
           as NDArray<R>;
     } finally {
-      promoted.dispose();
-    }
-  }
-
-  final DType<R> targetDType = switch (a.dtype) {
-    DType.float32 => DType.float32 as DType<R>,
-    _ => DType.float64 as DType<R>,
-  };
-  if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
-      throw ArgumentError(
-        "Provided out buffer has incompatible shape or dtype for gamma.",
-      );
+      if (!identical(promoted, a)) {
+        promoted.dispose();
+      }
     }
   }
 
@@ -424,26 +438,33 @@ NDArray<R> erf<R extends DTypeTag>(
     throw UnsupportedError("Complex numbers are not supported for erf.");
   }
 
-  if ((a.dtype as DType<DTypeTag>).isInteger ||
-      (a.dtype as DType<DTypeTag>) == DType.boolean) {
-    final promoted = promoteToDouble(a);
-    try {
-      return erf<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
-          as NDArray<R>;
-    } finally {
-      promoted.dispose();
-    }
-  }
-
   final DType<R> targetDType = switch (a.dtype) {
     DType.float32 => DType.float32 as DType<R>,
     _ => DType.float64 as DType<R>,
   };
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype for erf.",
       );
+    }
+  }
+
+  final aDType = a.dtype as DType<DTypeTag>;
+  if (aDType.isInteger ||
+      aDType == DType.boolean ||
+      aDType == DType.float16 ||
+      aDType == DType.bfloat16) {
+    final promoted = promoteToDouble(a);
+    try {
+      return erf<Float64>(promoted, where: where, out: out as NDArray<Float64>?)
+          as NDArray<R>;
+    } finally {
+      if (!identical(promoted, a)) {
+        promoted.dispose();
+      }
     }
   }
 

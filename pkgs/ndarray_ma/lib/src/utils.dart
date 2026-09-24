@@ -7,8 +7,16 @@ DType _resolveDType(DType a, DType b) {
   if (b == DType.boolean) return a;
   if (a == b) return a;
 
-  final isAIntLarge = a == DType.int64 || a == DType.int32;
-  final isBIntLarge = b == DType.int64 || b == DType.int32;
+  final isAIntLarge =
+      a == DType.int64 ||
+      a == DType.uint64 ||
+      a == DType.int32 ||
+      a == DType.uint32;
+  final isBIntLarge =
+      b == DType.int64 ||
+      b == DType.uint64 ||
+      b == DType.int32 ||
+      b == DType.uint32;
 
   if (a == DType.complex128 || b == DType.complex128) return DType.complex128;
   if (a == DType.complex64 || b == DType.complex64) {
@@ -21,8 +29,59 @@ DType _resolveDType(DType a, DType b) {
     if (isAIntLarge || isBIntLarge) return DType.float64;
     return DType.float32;
   }
+  if (a == DType.float16 ||
+      b == DType.float16 ||
+      a == DType.bfloat16 ||
+      b == DType.bfloat16) {
+    if (a.isInteger || b.isInteger) return DType.float64;
+    if (a != b) return DType.float32;
+    return a;
+  }
+  if (a == DType.uint64 || b == DType.uint64) {
+    if (a.isInteger &&
+        b.isInteger &&
+        (a != DType.uint64 || b != DType.uint64)) {
+      if (a == DType.int64 ||
+          a == DType.int32 ||
+          a == DType.int16 ||
+          a == DType.int8 ||
+          b == DType.int64 ||
+          b == DType.int32 ||
+          b == DType.int16 ||
+          b == DType.int8) {
+        return DType.float64;
+      }
+    }
+    return DType.uint64;
+  }
   if (a == DType.int64 || b == DType.int64) return DType.int64;
-  return DType.int32;
+  if (a == DType.uint32 || b == DType.uint32) {
+    if (a == DType.int32 ||
+        a == DType.int16 ||
+        a == DType.int8 ||
+        b == DType.int32 ||
+        b == DType.int16 ||
+        b == DType.int8) {
+      return DType.int64;
+    }
+    return DType.uint32;
+  }
+  if (a == DType.int32 || b == DType.int32) return DType.int32;
+  if (a == DType.uint16 || b == DType.uint16) {
+    if (a == DType.int16 ||
+        a == DType.int8 ||
+        b == DType.int16 ||
+        b == DType.int8) {
+      return DType.int32;
+    }
+    return DType.uint16;
+  }
+  if (a == DType.int16 || b == DType.int16) return DType.int16;
+  if (a == DType.uint8 || b == DType.uint8) {
+    if (a == DType.int8 || b == DType.int8) return DType.int16;
+    return DType.uint8;
+  }
+  return DType.int8;
 }
 
 /// Default fill value mapping based on DType.

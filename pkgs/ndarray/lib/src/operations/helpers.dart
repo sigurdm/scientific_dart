@@ -9,6 +9,13 @@ import '../scratch_arena.dart';
 import 'spacers.dart';
 import 'broadcasting.dart';
 
+/// Throws [OutOfMemoryError] if a native C/C++ kernel signaled an allocation failure.
+void checkNativeOom() {
+  if (ndarray_consume_oom_flag() != 0) {
+    throw OutOfMemoryError();
+  }
+}
+
 /// Checks if two arrays share the same underlying memory buffer.
 bool sharesMemory(NDArray x, NDArray y) {
   if (identical(x, y)) return true;
@@ -1042,6 +1049,11 @@ NDArray<R> cumOpFFI<T extends DTypeTag, R extends DTypeTag>(
   NDArray<R> result,
   CumOpType opType,
 ) {
+  if (!result.isWriteable) {
+    throw ArgumentError(
+      'Assignment destination is a read-only broadcast view.',
+    );
+  }
   if (sharesMemory(a, result)) {
     return NDArray.scope(() {
       final temp = NDArray<R>.create(result.shape, result.dtype);

@@ -32,7 +32,9 @@ NDArray<Boolean> isnan<T extends DTypeTag>(
     throw StateError('Cannot execute isnan() on a disposed array.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for isnan.',
       );
@@ -101,11 +103,11 @@ NDArray<Boolean> isnan<T extends DTypeTag>(
         case DType.float16:
         case DType.bfloat16:
           final doubleA = castNDArray(a, DType.float64);
-          final doubleRes = isnan(doubleA, where: where);
-          doubleRes.copy(out: result);
-          doubleA.dispose();
-          doubleRes.dispose();
-          return result;
+          try {
+            return isnan(doubleA, where: where, out: result);
+          } finally {
+            if (!identical(doubleA, a)) doubleA.dispose();
+          }
       }
     } else {
       final rank = a.rank;
@@ -184,11 +186,11 @@ NDArray<Boolean> isnan<T extends DTypeTag>(
           case DType.float16:
           case DType.bfloat16:
             final doubleA = castNDArray(a, DType.float64);
-            final doubleRes = isnan(doubleA, where: where);
-            doubleRes.copy(out: result);
-            doubleA.dispose();
-            doubleRes.dispose();
-            return result;
+            try {
+              return isnan(doubleA, where: where, out: result);
+            } finally {
+              if (!identical(doubleA, a)) doubleA.dispose();
+            }
         }
       } finally {
         ScratchArena.reset(marker);
@@ -222,7 +224,9 @@ NDArray<Boolean> isinf<T extends DTypeTag>(
     throw StateError('Cannot execute isinf() on a disposed array.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for isinf.',
       );
@@ -291,11 +295,11 @@ NDArray<Boolean> isinf<T extends DTypeTag>(
         case DType.float16:
         case DType.bfloat16:
           final doubleA = castNDArray(a, DType.float64);
-          final doubleRes = isinf(doubleA, where: where);
-          doubleRes.copy(out: result);
-          doubleA.dispose();
-          doubleRes.dispose();
-          return result;
+          try {
+            return isinf(doubleA, where: where, out: result);
+          } finally {
+            if (!identical(doubleA, a)) doubleA.dispose();
+          }
       }
     } else {
       final rank = a.rank;
@@ -374,11 +378,11 @@ NDArray<Boolean> isinf<T extends DTypeTag>(
           case DType.float16:
           case DType.bfloat16:
             final doubleA = castNDArray(a, DType.float64);
-            final doubleRes = isinf(doubleA, where: where);
-            doubleRes.copy(out: result);
-            doubleA.dispose();
-            doubleRes.dispose();
-            return result;
+            try {
+              return isinf(doubleA, where: where, out: result);
+            } finally {
+              if (!identical(doubleA, a)) doubleA.dispose();
+            }
         }
       } finally {
         ScratchArena.reset(marker);
@@ -412,7 +416,9 @@ NDArray<Boolean> isfinite<T extends DTypeTag>(
     throw StateError('Cannot execute isfinite() on a disposed array.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for isfinite.',
       );
@@ -481,11 +487,11 @@ NDArray<Boolean> isfinite<T extends DTypeTag>(
         case DType.float16:
         case DType.bfloat16:
           final doubleA = castNDArray(a, DType.float64);
-          final doubleRes = isfinite(doubleA, where: where);
-          doubleRes.copy(out: result);
-          doubleA.dispose();
-          doubleRes.dispose();
-          return result;
+          try {
+            return isfinite(doubleA, where: where, out: result);
+          } finally {
+            if (!identical(doubleA, a)) doubleA.dispose();
+          }
       }
     } else {
       final rank = a.rank;
@@ -564,11 +570,11 @@ NDArray<Boolean> isfinite<T extends DTypeTag>(
           case DType.float16:
           case DType.bfloat16:
             final doubleA = castNDArray(a, DType.float64);
-            final doubleRes = isfinite(doubleA, where: where);
-            doubleRes.copy(out: result);
-            doubleA.dispose();
-            doubleRes.dispose();
-            return result;
+            try {
+              return isfinite(doubleA, where: where, out: result);
+            } finally {
+              if (!identical(doubleA, a)) doubleA.dispose();
+            }
         }
       } finally {
         ScratchArena.reset(marker);
@@ -611,7 +617,9 @@ NDArray<T> copysign<T extends DTypeTag>(
   final DType<T> targetDType = x1.dtype;
 
   if (out != null) {
-    if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for copysign.',
       );
@@ -780,7 +788,9 @@ NDArray<Boolean> isClose<Ta extends DTypeTag, Tb extends DTypeTag>(
   final commonShape = broadcastResult.shape;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for isClose.',
       );
@@ -1570,9 +1580,9 @@ extension FrexpRecordExtension<R extends DTypeTag>
 /// Returns `true` if two arrays have the same shape and elements, `false` otherwise.
 ///
 /// Reference: [numpy.array_equal](https://numpy.org/doc/stable/reference/generated/numpy.array_equal.html)
-bool array_equal(NDArray a, NDArray b, {bool equalNan = false}) {
+bool arrayEqual(NDArray a, NDArray b, {bool equalNan = false}) {
   if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot execute array_equal() on a disposed array.');
+    throw StateError('Cannot execute arrayEqual() on a disposed array.');
   }
   if (!equalNan && a.dtype == b.dtype) {
     return a.equals(b);
@@ -1602,7 +1612,3 @@ bool array_equal(NDArray a, NDArray b, {bool equalNan = false}) {
   }
   return true;
 }
-
-/// CamelCase alias for [array_equal].
-bool arrayEqual(NDArray a, NDArray b, {bool equalNan = false}) =>
-    array_equal(a, b, equalNan: equalNan);

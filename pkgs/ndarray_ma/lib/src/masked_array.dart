@@ -83,7 +83,7 @@ final class MaskedArray<T extends DTypeTag> {
     return NDArray.scope(() {
       final nanMask = ndops.isnan(data);
       final infMask = ndops.isinf(data);
-      final mask = ndops.logical_or(nanMask, infMask);
+      final mask = ndops.logicalOr(nanMask, infMask);
       return MaskedArray(
         data,
         mask.detachToParentScope(),

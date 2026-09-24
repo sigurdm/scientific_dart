@@ -16,22 +16,22 @@ void runBasicBitwiseExample() {
     print('Array A: ${a.toList()}');
     print('Array B: ${b.toList()}');
 
-    // bitwise_and: 5 & 3 = 1, 12 & 4 = 4, 3 & 5 = 1
-    final andRes = bitwise_and(a, b);
-    print('bitwise_and(A, B): ${andRes.toList()}');
+    // bitwiseAnd: 5 & 3 = 1, 12 & 4 = 4, 3 & 5 = 1
+    final andRes = bitwiseAnd(a, b);
+    print('bitwiseAnd(A, B): ${andRes.toList()}');
 
-    // bitwise_or: 5 | 3 = 7, 12 | 4 = 12, 3 | 5 = 7
-    final orRes = bitwise_or(a, b);
-    print('bitwise_or(A, B): ${orRes.toList()}');
+    // bitwiseOr: 5 | 3 = 7, 12 | 4 = 12, 3 | 5 = 7
+    final orRes = bitwiseOr(a, b);
+    print('bitwiseOr(A, B): ${orRes.toList()}');
 
-    // bitwise_xor: 5 ^ 3 = 6, 12 ^ 4 = 8, 3 ^ 5 = 6
-    final xorRes = bitwise_xor(a, b);
-    print('bitwise_xor(A, B): ${xorRes.toList()}');
+    // bitwiseXor: 5 ^ 3 = 6, 12 ^ 4 = 8, 3 ^ 5 = 6
+    final xorRes = bitwiseXor(a, b);
+    print('bitwiseXor(A, B): ${xorRes.toList()}');
 
-    // left_shift: 5 << 1 = 10, 12 << 2 = 48
+    // leftShift: 5 << 1 = 10, 12 << 2 = 48
     final shiftAmount = NDArray.fromList([1, 2, 1], [3], DType.int32);
-    final leftRes = left_shift(a, shiftAmount);
-    print('left_shift(A, ShiftAmount): ${leftRes.toList()}');
+    final leftRes = leftShift(a, shiftAmount);
+    print('leftShift(A, ShiftAmount): ${leftRes.toList()}');
 
     // invert (bitwise NOT)
     final invRes = invert(a);
@@ -56,8 +56,8 @@ void runRecyclingBitwiseExample() {
     const iterations = 3;
     for (var step = 1; step <= iterations; step++) {
       // Recycles the pre-allocated buffer to write the left shift results!
-      left_shift(a, shift, out: recycledBuffer);
-      print('Step $step -> left_shift result: ${recycledBuffer.toList()}');
+      leftShift(a, shift, out: recycledBuffer);
+      print('Step $step -> leftShift result: ${recycledBuffer.toList()}');
 
       // Prepare next input by copying recycled buffer contents back
       recycledBuffer.copy(out: a);

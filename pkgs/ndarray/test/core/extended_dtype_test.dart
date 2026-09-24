@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'package:ndarray/ndarray.dart';
+import 'package:resource_scope/resource_scope.dart';
 
 void main() {
   group(

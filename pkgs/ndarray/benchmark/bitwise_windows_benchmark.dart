@@ -55,20 +55,20 @@ void main() async {
           DType.int32,
         );
 
-        c.bench('bitwise_and(a, b) [100k Int32]', () {
-          final res = bitwise_and(intA, intB);
+        c.bench('bitwiseAnd(a, b) [100k Int32]', () {
+          final res = bitwiseAnd(intA, intB);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
 
-        c.bench('bitwise_or(a, b) [100k Int32]', () {
-          final res = bitwise_or(intA, intB);
+        c.bench('bitwiseOr(a, b) [100k Int32]', () {
+          final res = bitwiseOr(intA, intB);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
 
-        c.bench('bitwise_xor(a, b) [100k Int32]', () {
-          final res = bitwise_xor(intA, intB);
+        c.bench('bitwiseXor(a, b) [100k Int32]', () {
+          final res = bitwiseXor(intA, intB);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
@@ -85,14 +85,14 @@ void main() async {
           DType.int32,
         );
 
-        c.bench('left_shift(a, shift) [100k Int32]', () {
-          final res = left_shift(intA, shiftAmt);
+        c.bench('leftShift(a, shift) [100k Int32]', () {
+          final res = leftShift(intA, shiftAmt);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));
 
-        c.bench('right_shift(a, shift) [100k Int32]', () {
-          final res = right_shift(intA, shiftAmt);
+        c.bench('rightShift(a, shift) [100k Int32]', () {
+          final res = rightShift(intA, shiftAmt);
           blackhole(res);
           res.dispose();
         }, throughput: Throughput.elements(size));

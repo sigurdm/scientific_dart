@@ -222,14 +222,14 @@ void main() {
       });
     });
 
-    test('Bitwise ufunc (bitwise_and) with mask', () {
+    test('Bitwise ufunc (bitwiseAnd) with mask', () {
       NDArray.scope(() {
         final a = NDArray.fromList([0xFF, 0xFF, 0xFF], [3], DType.int32);
         final b = NDArray.fromList([0x0F, 0xF0, 0xAA], [3], DType.int32);
         final mask = NDArray.fromList([1, 0, 1], [3], DType.uint8);
         final out = NDArray.zeros([3], DType.int32);
 
-        final res = bitwise_and(a, b, where: mask, out: out);
+        final res = bitwiseAnd(a, b, where: mask, out: out);
         expect(res.data, [0x0F, 0, 0xAA]);
       });
     });

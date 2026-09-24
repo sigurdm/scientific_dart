@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:ndarray/ndarray.dart';
+import 'package:ndarray/src/scratch_arena.dart';
+import 'package:resource_scope/resource_scope.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -666,6 +668,68 @@ void main() {
           );
         },
       );
+
+      test(
+        'B4: view with stride > 2^31 - 1 or < -2^31 throws UnsupportedError',
+        () {
+          final a = NDArray<Float64>.create([1], DType.float64);
+          expect(
+            () => NDArray<Float64>.view(a, shape: [1], strides: [0x80000000]),
+            throwsUnsupportedError,
+          );
+          expect(
+            () => NDArray<Float64>.view(a, shape: [1], strides: [-0x80000001]),
+            throwsUnsupportedError,
+          );
+          a.dispose();
+        },
+      );
+
+      test(
+        'B4: broadcastBinaryStrides guards commonShape exceeding 32-bit limit',
+        () {
+          expect(
+            () =>
+                broadcastBinaryStrides([1, 100000], [0, 1], [30000, 1], [1, 0]),
+            throwsUnsupportedError,
+          );
+        },
+      );
+
+      test('B4: ScratchArena copyInts and copyInt32s guard 32-bit bounds', () {
+        expect(
+          () => ScratchArena.copyInts([0x80000000]),
+          throwsUnsupportedError,
+        );
+        expect(
+          () => ScratchArena.copyInt32s([0x80000000]),
+          throwsUnsupportedError,
+        );
+      });
+
+      test('Instance arithmetic operators +, -, *, ~/, % on NDArray', () {
+        final a = NDArray<Int32>.fromList([10, 20], [2], DType.int32);
+        final b = NDArray<Int32>.fromList([2, 3], [2], DType.int32);
+        final sum = a + b;
+        final diff = a - b;
+        final prod = a * b;
+        final div = a ~/ b;
+        final rem = a % b;
+
+        expect(sum.toList(), equals([12, 23]));
+        expect(diff.toList(), equals([8, 17]));
+        expect(prod.toList(), equals([20, 60]));
+        expect(div.toList(), equals([5, 6]));
+        expect(rem.toList(), equals([0, 2]));
+
+        a.dispose();
+        b.dispose();
+        sum.dispose();
+        diff.dispose();
+        prod.dispose();
+        div.dispose();
+        rem.dispose();
+      });
     });
   });
 }

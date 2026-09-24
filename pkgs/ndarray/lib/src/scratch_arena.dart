@@ -2,6 +2,7 @@ import 'dart:ffi' as ffi;
 import 'dart:math' show min;
 import 'package:ffi/ffi.dart';
 import 'ndarray.dart' show Complex, ComplexList;
+import 'ndarray_bindings.dart' show ndarray_consume_oom_flag;
 
 /// An Isolate-local scratch memory arena for transient FFI allocations.
 ///
@@ -150,6 +151,10 @@ final class ScratchArena {
       _currentPageIndex = pageIndex;
       _offset = offset;
     }
+
+    if (ndarray_consume_oom_flag() != 0) {
+      throw OutOfMemoryError();
+    }
   }
 
   /// Allocates transient memory from the arena and copies the elements of [list] into it as native [ffi.Int]s.
@@ -166,7 +171,11 @@ final class ScratchArena {
   static ffi.Pointer<ffi.Int> copyInts(List<int> list) {
     final ptr = allocate<ffi.Int>(list.length * ffi.sizeOf<ffi.Int>());
     for (var i = 0; i < list.length; i++) {
-      ptr[i] = list[i];
+      final v = list[i];
+      if (v < -0x80000000 || v > 0x7fffffff) {
+        throw UnsupportedError('Value $v exceeds 32-bit native int limit.');
+      }
+      ptr[i] = v;
     }
     return ptr;
   }
@@ -220,6 +229,12 @@ final class ScratchArena {
   /// {@example /example/scratch_arena_example.dart}
   static ffi.Pointer<ffi.Int32> copyInt32s(List<int> list) {
     final ptr = allocate<ffi.Int32>(list.length * ffi.sizeOf<ffi.Int32>());
+    for (var i = 0; i < list.length; i++) {
+      final v = list[i];
+      if (v < -0x80000000 || v > 0x7fffffff) {
+        throw UnsupportedError('Value $v exceeds 32-bit native int limit.');
+      }
+    }
     final typedList = ptr.asTypedList(list.length);
     typedList.setRange(0, list.length, list);
     return ptr;

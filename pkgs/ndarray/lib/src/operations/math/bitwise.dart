@@ -30,7 +30,7 @@ import '../helpers.dart';
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy bitwise_and](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_and.html)
-NDArray<T> bitwise_and<T extends DTypeTag>(
+NDArray<T> bitwiseAnd<T extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   NDArray<DTypeTag>? where,
@@ -40,9 +40,9 @@ NDArray<T> bitwise_and<T extends DTypeTag>(
       b.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
-    throw StateError('Cannot execute bitwise_and() on a disposed array.');
+    throw StateError('Cannot execute bitwiseAnd() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise<T>(a, b, where, out, 'bitwise_and');
+  final prep = _prepareBinaryBitwise<T>(a, b, where, out, 'bitwiseAnd');
   final maskHolder = prep.maskHolder;
   final aCast = prep.aCast;
   final bCast = prep.bCast;
@@ -207,7 +207,7 @@ NDArray<T> bitwise_and<T extends DTypeTag>(
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy bitwise_or](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_or.html)
-NDArray<T> bitwise_or<T extends DTypeTag>(
+NDArray<T> bitwiseOr<T extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   NDArray<DTypeTag>? where,
@@ -217,9 +217,9 @@ NDArray<T> bitwise_or<T extends DTypeTag>(
       b.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
-    throw StateError('Cannot execute bitwise_or() on a disposed array.');
+    throw StateError('Cannot execute bitwiseOr() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise<T>(a, b, where, out, 'bitwise_or');
+  final prep = _prepareBinaryBitwise<T>(a, b, where, out, 'bitwiseOr');
   final maskHolder = prep.maskHolder;
   final aCast = prep.aCast;
   final bCast = prep.bCast;
@@ -384,7 +384,7 @@ NDArray<T> bitwise_or<T extends DTypeTag>(
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy bitwise_xor](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_xor.html)
-NDArray<T> bitwise_xor<T extends DTypeTag>(
+NDArray<T> bitwiseXor<T extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   NDArray<DTypeTag>? where,
@@ -394,9 +394,9 @@ NDArray<T> bitwise_xor<T extends DTypeTag>(
       b.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
-    throw StateError('Cannot execute bitwise_xor() on a disposed array.');
+    throw StateError('Cannot execute bitwiseXor() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise<T>(a, b, where, out, 'bitwise_xor');
+  final prep = _prepareBinaryBitwise<T>(a, b, where, out, 'bitwiseXor');
   final maskHolder = prep.maskHolder;
   final aCast = prep.aCast;
   final bCast = prep.bCast;
@@ -561,7 +561,7 @@ NDArray<T> bitwise_xor<T extends DTypeTag>(
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy left_shift](https://numpy.org/doc/stable/reference/generated/numpy.left_shift.html)
-NDArray<T> left_shift<T extends DTypeTag>(
+NDArray<T> leftShift<T extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   NDArray<DTypeTag>? where,
@@ -571,9 +571,9 @@ NDArray<T> left_shift<T extends DTypeTag>(
       b.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
-    throw StateError('Cannot execute left_shift() on a disposed array.');
+    throw StateError('Cannot execute leftShift() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise<T>(a, b, where, out, 'left_shift');
+  final prep = _prepareBinaryBitwise<T>(a, b, where, out, 'leftShift');
   final maskHolder = prep.maskHolder;
   final aCast = prep.aCast;
   final bCast = prep.bCast;
@@ -757,7 +757,7 @@ int _rightShiftScalar(int a, int b, DType dtype) {
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy right_shift](https://numpy.org/doc/stable/reference/generated/numpy.right_shift.html)
-NDArray<T> right_shift<T extends DTypeTag>(
+NDArray<T> rightShift<T extends DTypeTag>(
   NDArray<T> a,
   NDArray<T> b, {
   NDArray<DTypeTag>? where,
@@ -767,9 +767,9 @@ NDArray<T> right_shift<T extends DTypeTag>(
       b.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
-    throw StateError('Cannot execute right_shift() on a disposed array.');
+    throw StateError('Cannot execute rightShift() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise<T>(a, b, where, out, 'right_shift');
+  final prep = _prepareBinaryBitwise<T>(a, b, where, out, 'rightShift');
   final maskHolder = prep.maskHolder;
   final aCast = prep.aCast;
   final bCast = prep.bCast;
@@ -980,7 +980,9 @@ NDArray<T> invert<T extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for invert.',
       );
@@ -1135,7 +1137,9 @@ _prepareBinaryBitwise<T extends DTypeTag>(
   final commonShape = preBroadcast.shape;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for $opName.',
       );

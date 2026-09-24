@@ -24,7 +24,7 @@ import '../helpers.dart';
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_not](https://numpy.org/doc/stable/reference/generated/numpy.logical_not.html)
-NDArray<Boolean> logical_not<T extends DTypeTag>(
+NDArray<Boolean> logicalNot<T extends DTypeTag>(
   NDArray<T> a, {
   NDArray<DTypeTag>? where,
   NDArray<Boolean>? out,
@@ -32,12 +32,14 @@ NDArray<Boolean> logical_not<T extends DTypeTag>(
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
-    throw StateError('Cannot execute logical_not() on a disposed array.');
+    throw StateError('Cannot execute logicalNot() on a disposed array.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype for logical_not.',
+        'Provided out buffer has incompatible shape or dtype for logicalNot.',
       );
     }
   }
@@ -298,7 +300,9 @@ NDArray<Boolean> equal<Ta extends DTypeTag, Tb extends DTypeTag>(
   final commonShape = broadcastResult.shape;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype.",
       );
@@ -348,7 +352,9 @@ NDArray<Boolean> notEqual<Ta extends DTypeTag, Tb extends DTypeTag>(
   final commonShape = broadcastResult.shape;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype.",
       );
@@ -405,7 +411,9 @@ NDArray<Boolean> greater<Ta extends DTypeTag, Tb extends DTypeTag>(
   final commonShape = broadcastResult.shape;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype.",
       );
@@ -462,7 +470,9 @@ NDArray<Boolean> greaterEqual<Ta extends DTypeTag, Tb extends DTypeTag>(
   final commonShape = broadcastResult.shape;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype.",
       );
@@ -519,7 +529,9 @@ NDArray<Boolean> less<Ta extends DTypeTag, Tb extends DTypeTag>(
   final commonShape = broadcastResult.shape;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype.",
       );
@@ -576,7 +588,9 @@ NDArray<Boolean> lessEqual<Ta extends DTypeTag, Tb extends DTypeTag>(
   final commonShape = broadcastResult.shape;
 
   if (out != null) {
-    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, commonShape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError(
         "Provided out buffer has incompatible shape or dtype.",
       );
@@ -733,7 +747,7 @@ NDArray<Boolean> _compareHelper(
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_and](https://numpy.org/doc/stable/reference/generated/numpy.logical_and.html)
-NDArray<Boolean> logical_and<Ta extends DTypeTag, Tb extends DTypeTag>(
+NDArray<Boolean> logicalAnd<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   NDArray<DTypeTag>? where,
@@ -743,7 +757,7 @@ NDArray<Boolean> logical_and<Ta extends DTypeTag, Tb extends DTypeTag>(
       b.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
-    throw StateError('Cannot execute logical_and() on a disposed array.');
+    throw StateError('Cannot execute logicalAnd() on a disposed array.');
   }
   return _runBinaryLogical(
     a,
@@ -752,7 +766,7 @@ NDArray<Boolean> logical_and<Ta extends DTypeTag, Tb extends DTypeTag>(
     out,
     v_logical_and,
     s_logical_and,
-    'logical_and',
+    'logicalAnd',
   );
 }
 
@@ -777,7 +791,7 @@ NDArray<Boolean> logical_and<Ta extends DTypeTag, Tb extends DTypeTag>(
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_or](https://numpy.org/doc/stable/reference/generated/numpy.logical_or.html)
-NDArray<Boolean> logical_or<Ta extends DTypeTag, Tb extends DTypeTag>(
+NDArray<Boolean> logicalOr<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   NDArray<DTypeTag>? where,
@@ -787,7 +801,7 @@ NDArray<Boolean> logical_or<Ta extends DTypeTag, Tb extends DTypeTag>(
       b.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
-    throw StateError('Cannot execute logical_or() on a disposed array.');
+    throw StateError('Cannot execute logicalOr() on a disposed array.');
   }
   return _runBinaryLogical(
     a,
@@ -796,7 +810,7 @@ NDArray<Boolean> logical_or<Ta extends DTypeTag, Tb extends DTypeTag>(
     out,
     v_logical_or,
     s_logical_or,
-    'logical_or',
+    'logicalOr',
   );
 }
 
@@ -821,7 +835,7 @@ NDArray<Boolean> logical_or<Ta extends DTypeTag, Tb extends DTypeTag>(
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_xor](https://numpy.org/doc/stable/reference/generated/numpy.logical_xor.html)
-NDArray<Boolean> logical_xor<Ta extends DTypeTag, Tb extends DTypeTag>(
+NDArray<Boolean> logicalXor<Ta extends DTypeTag, Tb extends DTypeTag>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   NDArray<DTypeTag>? where,
@@ -831,7 +845,7 @@ NDArray<Boolean> logical_xor<Ta extends DTypeTag, Tb extends DTypeTag>(
       b.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
-    throw StateError('Cannot execute logical_xor() on a disposed array.');
+    throw StateError('Cannot execute logicalXor() on a disposed array.');
   }
   return _runBinaryLogical(
     a,
@@ -840,7 +854,7 @@ NDArray<Boolean> logical_xor<Ta extends DTypeTag, Tb extends DTypeTag>(
     out,
     v_logical_xor,
     s_logical_xor,
-    'logical_xor',
+    'logicalXor',
   );
 }
 
@@ -1118,7 +1132,9 @@ NDArray<Boolean> _runBinaryLogical<Ta extends DTypeTag, Tb extends DTypeTag>(
     final stridesB = broadcastResult.stridesB;
 
     if (out != null) {
-      if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+      if (!out.isWriteable ||
+          !listEquals(out.shape, commonShape) ||
+          out.dtype != DType.boolean) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype for $opName.',
         );

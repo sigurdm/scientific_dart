@@ -507,7 +507,9 @@ NDArray<R> sumAs<T extends DTypeTag, R extends DTypeTag>(
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   final DType<R> effectiveDType = dtype;
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != effectiveDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != effectiveDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -831,7 +833,9 @@ NDArray<R> prodAs<T extends DTypeTag, R extends DTypeTag>(
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   final DType<R> effectiveDType = dtype;
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != effectiveDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != effectiveDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -1132,7 +1136,9 @@ NDArray<Boolean> all<T extends DTypeTag>(
 
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -1216,7 +1222,9 @@ NDArray<Boolean> any<T extends DTypeTag>(
 
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != DType.boolean) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != DType.boolean) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -1311,7 +1319,9 @@ NDArray<R> mean<R extends DTypeTag, T extends DTypeTag>(
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   final expectedDType = a.dtype.isComplex ? DType.complex128 : DType.float64;
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != expectedDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != expectedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -1620,7 +1630,9 @@ NDArray<Float64> std<T extends DTypeTag>(
   }
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != DType.float64) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -1886,7 +1898,9 @@ NDArray<Float64> nanvar<T extends DTypeTag>(
   }
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != DType.float64) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -2029,7 +2043,9 @@ NDArray<Float64> nanstd<T extends DTypeTag>(
   }
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != DType.float64) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -2083,7 +2099,9 @@ NDArray<T> min<T extends DTypeTag>(
 
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -2321,7 +2339,9 @@ NDArray<T> nanmin<T extends DTypeTag>(
 
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -2537,7 +2557,9 @@ NDArray<T> max<T extends DTypeTag>(
 
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -2775,7 +2797,9 @@ NDArray<T> nanmax<T extends DTypeTag>(
 
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -3000,7 +3024,9 @@ NDArray<R> cumsumAs<T extends DTypeTag, R extends DTypeTag>(
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     result = out ?? NDArray<R>.create([size], targetDType);
     if (out != null) {
-      if (!listEquals(out.shape, [size]) || out.dtype != targetDType) {
+      if (!out.isWriteable ||
+          !listEquals(out.shape, [size]) ||
+          out.dtype != targetDType) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -3032,7 +3058,9 @@ NDArray<R> cumsumAs<T extends DTypeTag, R extends DTypeTag>(
 
   result = out ?? NDArray<R>.create(a.shape, targetDType);
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -3090,7 +3118,9 @@ NDArray<R> cumprodAs<T extends DTypeTag, R extends DTypeTag>(
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     result = out ?? NDArray<R>.create([size], targetDType);
     if (out != null) {
-      if (!listEquals(out.shape, [size]) || out.dtype != targetDType) {
+      if (!out.isWriteable ||
+          !listEquals(out.shape, [size]) ||
+          out.dtype != targetDType) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -3122,7 +3152,9 @@ NDArray<R> cumprodAs<T extends DTypeTag, R extends DTypeTag>(
 
   result = out ?? NDArray<R>.create(a.shape, targetDType);
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -3168,7 +3200,9 @@ NDArray<T> cummin<T extends DTypeTag>(
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     result = out ?? NDArray<T>.create([size], a.dtype);
     if (out != null) {
-      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+      if (!out.isWriteable ||
+          !listEquals(out.shape, [size]) ||
+          out.dtype != a.dtype) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -3198,7 +3232,9 @@ NDArray<T> cummin<T extends DTypeTag>(
 
   result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -3244,7 +3280,9 @@ NDArray<T> cummax<T extends DTypeTag>(
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     result = out ?? NDArray<T>.create([size], a.dtype);
     if (out != null) {
-      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+      if (!out.isWriteable ||
+          !listEquals(out.shape, [size]) ||
+          out.dtype != a.dtype) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -3274,7 +3312,9 @@ NDArray<T> cummax<T extends DTypeTag>(
 
   result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -3328,7 +3368,9 @@ NDArray<Float64> variance<T extends DTypeTag>(
   }
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != DType.float64) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -3602,7 +3644,9 @@ NDArray<R> nanmean<R extends DTypeTag>(
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   final expectedDType = a.dtype.isComplex ? DType.complex128 : DType.float64;
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != expectedDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != expectedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -3834,7 +3878,9 @@ NDArray<Float64> quantile<T extends DTypeTag>(
 
   final targetShape = _reductionTargetShape(a.shape, targetAxis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != DType.float64) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -4119,7 +4165,9 @@ NDArray<T> median<T extends DTypeTag>(
 
   final targetShape = _reductionTargetShape(a.shape, targetAxis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -4374,7 +4422,9 @@ NDArray<T> ptp<T extends DTypeTag>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
       : (List<int>.from(a.shape)..removeAt(resolvedAxis));
 
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {
@@ -4554,7 +4604,9 @@ average<T extends DTypeTag, W extends DTypeTag, R extends DTypeTag>(
       }
       expectedDType = resolved;
     }
-    if (!listEquals(out.shape, targetShape) || out.dtype != expectedDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != expectedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out) ||
@@ -4873,7 +4925,9 @@ NDArray<Float64> corrcoef<T extends DTypeTag>(
       final val = C.scalar;
       final resVal = val == 0.0 ? double.nan : 1.0;
       if (out != null) {
-        if (!listEquals(out.shape, []) || out.dtype != DType.float64) {
+        if (!out.isWriteable ||
+            !listEquals(out.shape, []) ||
+            out.dtype != DType.float64) {
           throw ArgumentError('Incompatible out buffer shape or dtype.');
         }
         out.setCell([], resVal);
@@ -4936,7 +4990,9 @@ NDArray<T> nansum<T extends DTypeTag>(
   }
   final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
     if (sharesMemory(a, out)) {

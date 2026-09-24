@@ -136,12 +136,12 @@ void runLogicalOperationsExample() {
     final maskGT2 = a > 2.0;
     final maskLT5 = a < 5.0;
 
-    // Combine them element-wise using logical_and
-    final combined = logical_and(maskGT2, maskLT5);
+    // Combine them element-wise using logicalAnd
+    final combined = logicalAnd(maskGT2, maskLT5);
     print('a: ${a.toList()}');
     print('a > 2.0: ${maskGT2.toList()}');
     print('a < 5.0: ${maskLT5.toList()}');
-    print('logical_and(maskGT2, maskLT5): ${combined.toList()}');
+    print('logicalAnd(maskGT2, maskLT5): ${combined.toList()}');
   });
 }
 

@@ -75,7 +75,7 @@ void main() {
               final rDiv = divide(a, b, where: mask);
               expect(rDiv.shape, [2, 3, 2]);
 
-              final rFloorDiv = floor_divide(a, b, where: mask);
+              final rFloorDiv = floorDivide(a, b, where: mask);
               expect(rFloorDiv.shape, [2, 3, 2]);
 
               final rRem = remainder(a, b, where: mask);

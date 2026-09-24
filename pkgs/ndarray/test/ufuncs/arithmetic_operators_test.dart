@@ -310,13 +310,13 @@ void main() {
   });
 
   group('Type Safety Fixes (Phase 3)', () {
-    test('floor_divide and remainder with uint8 and int16', () {
+    test('floorDivide and remainder with uint8 and int16', () {
       NDArray.scope(() {
         final a = NDArray.fromList([10, 20, 30, 40], [4], DType.uint8);
         final b = NDArray.fromList([3, 3, 3, 3], [4], DType.uint8);
 
-        // floor_divide
-        final resDiv = floor_divide(a, b);
+        // floorDivide
+        final resDiv = floorDivide(a, b);
         expect(resDiv.dtype, DType.uint8);
         expect(resDiv.toList(), [3, 6, 10, 13]);
 
@@ -329,7 +329,7 @@ void main() {
         final a16 = NDArray.fromList([10, -20, 30, -40], [4], DType.int16);
         final b16 = NDArray.fromList([3, 3, 3, 3], [4], DType.int16);
 
-        final resDiv16 = floor_divide(a16, b16);
+        final resDiv16 = floorDivide(a16, b16);
         expect(resDiv16.dtype, DType.int16);
         expect(resDiv16.toList(), [3, -7, 10, -14]);
 
@@ -1481,19 +1481,19 @@ void main() {
       expect(() => negative(a, out: badOut), throwsArgumentError);
     });
 
-    test('floor_divide with out parameter', () {
+    test('floorDivide with out parameter', () {
       final a = NDArray.fromList(Int32List.fromList([10, 25]), [
         2,
       ], DType.int32);
       final b = NDArray.fromList(Int32List.fromList([3, 4]), [2], DType.int32);
       final out = NDArray.create([2], DType.int32);
 
-      final res = floor_divide(a, b, out: out);
+      final res = floorDivide(a, b, out: out);
       expect(identical(res, out), isTrue);
       expect(out.toList(), [3, 6]);
 
       final badOut = NDArray.create([2], DType.float64);
-      expect(() => floor_divide(a, b, out: badOut), throwsArgumentError);
+      expect(() => floorDivide(a, b, out: badOut), throwsArgumentError);
     });
 
     test('remainder and mod with out parameter', () {
@@ -1897,12 +1897,12 @@ void main() {
     });
 
     test(
-      'Phase 2: logical_not on non-boolean numeric arrays (contiguous & strided)',
+      'Phase 2: logicalNot on non-boolean numeric arrays (contiguous & strided)',
       () {
         NDArray.scope(() {
           // --- int32 contiguous ---
           final i32 = NDArray.fromList([0, 1, -2, 0], [4], DType.int32);
-          final resI32 = logical_not(i32);
+          final resI32 = logicalNot(i32);
           expect(resI32.dtype, DType.boolean);
           expect(resI32.toList(), [true, false, false, true]);
 
@@ -1913,7 +1913,7 @@ void main() {
             DType.int32,
           ).slice([const Slice(start: 0, stop: 7, step: 2)]);
           expect(i32Strided.isContiguous, false);
-          final resI32Strided = logical_not(i32Strided);
+          final resI32Strided = logicalNot(i32Strided);
           expect(resI32Strided.toList(), [true, false, false, true]);
 
           // --- float64 contiguous ---
@@ -1922,7 +1922,7 @@ void main() {
             [4],
             DType.float64,
           );
-          final resF64 = logical_not(f64);
+          final resF64 = logicalNot(f64);
           expect(resF64.dtype, DType.boolean);
           expect(resF64.toList(), [true, false, false, true]);
 
@@ -1932,7 +1932,7 @@ void main() {
             [7],
             DType.float64,
           ).slice([const Slice(start: 0, stop: 7, step: 2)]);
-          final resF64Strided = logical_not(f64Strided);
+          final resF64Strided = logicalNot(f64Strided);
           expect(resF64Strided.toList(), [true, false, false, true]);
         });
       },

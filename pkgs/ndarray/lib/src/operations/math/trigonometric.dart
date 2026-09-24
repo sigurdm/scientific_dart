@@ -59,7 +59,9 @@ NDArray<R> sin<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for sin.',
       );
@@ -242,7 +244,9 @@ NDArray<R> sinc<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for sinc.',
       );
@@ -420,7 +424,9 @@ NDArray<R> cos<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for cos.',
       );
@@ -593,7 +599,9 @@ NDArray<R> tan<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for tan.',
       );
@@ -775,7 +783,9 @@ NDArray<R> asin<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for asin.',
       );
@@ -957,7 +967,9 @@ NDArray<R> acos<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for acos.',
       );
@@ -1139,7 +1151,9 @@ NDArray<R> atan<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for atan.',
       );
@@ -1319,7 +1333,9 @@ NDArray<R> sinh<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for sinh.',
       );
@@ -1502,7 +1518,9 @@ NDArray<R> cosh<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for cosh.',
       );
@@ -1685,7 +1703,9 @@ NDArray<R> tanh<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for tanh.',
       );
@@ -1869,7 +1889,9 @@ NDArray<R> asinh<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for asinh.',
       );
@@ -2052,7 +2074,9 @@ NDArray<R> acosh<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for acosh.',
       );
@@ -2235,7 +2259,9 @@ NDArray<R> atanh<R extends DTypeTag>(
   };
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for atanh.',
       );
@@ -2426,7 +2452,9 @@ NDArray<DTypeTag> atan2<Ty extends DTypeTag, Tx extends DTypeTag>(
       : DType.float64;
 
   if (out != null) {
-    if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for atan2.',
       );
@@ -2572,7 +2600,9 @@ NDArray<R> hypot<Ta extends DTypeTag, Tb extends DTypeTag, R extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for hypot.',
       );
@@ -2733,7 +2763,9 @@ NDArray<R> deg2rad<R extends DTypeTag>(
       : DType.float64;
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for deg2rad.',
       );
@@ -2786,7 +2818,9 @@ NDArray<R> rad2deg<R extends DTypeTag>(
       : DType.float64;
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for rad2deg.',
       );

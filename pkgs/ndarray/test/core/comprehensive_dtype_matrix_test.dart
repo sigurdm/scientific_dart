@@ -125,7 +125,7 @@ void main() {
                     dtB != DType.complex128 &&
                     dtB != DType.complex64 &&
                     dtB != DType.boolean) {
-                  final resFDiv = floor_divide(a, b);
+                  final resFDiv = floorDivide(a, b);
                   expect(resFDiv.shape, [2, 3]);
 
                   final resRem = remainder(a, b);

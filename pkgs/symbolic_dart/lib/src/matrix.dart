@@ -1,6 +1,7 @@
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'package:ndarray/ndarray.dart';
+import 'package:resource_scope/resource_scope.dart';
 // ignore: implementation_imports
 import 'package:ndarray/src/scratch_arena.dart';
 import 'expr.dart';

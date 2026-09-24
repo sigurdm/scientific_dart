@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <cstring>
 #include <algorithm>
 #include <cmath>
 #include <limits>

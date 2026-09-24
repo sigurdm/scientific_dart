@@ -86,7 +86,9 @@ NDArray<T> concatenate<T extends DTypeTag>(
     if (out.isDisposed) {
       throw StateError('Cannot concatenate into a disposed out array.');
     }
-    if (!listEquals(out.shape, targetShape) || out.dtype != dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -234,7 +236,9 @@ NDArray<T> stack<T extends DTypeTag>(
     if (out.isDisposed) {
       throw StateError('Cannot execute stack() with a disposed out array.');
     }
-    if (!listEquals(out.shape, stackedShape) || out.dtype != dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, stackedShape) ||
+        out.dtype != dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -821,7 +825,9 @@ NDArray<T> diag<T extends DTypeTag>(
 
     if (len <= 0) {
       if (out != null) {
-        if (!listEquals(out.shape, [0]) || out.dtype != v.dtype) {
+        if (!out.isWriteable ||
+            !listEquals(out.shape, [0]) ||
+            out.dtype != v.dtype) {
           throw ArgumentError(
             'Provided out buffer has incompatible shape or dtype.',
           );
@@ -853,7 +859,9 @@ NDArray<T> diag<T extends DTypeTag>(
     final targetShape = [size, size];
 
     if (out != null) {
-      if (!listEquals(out.shape, targetShape) || out.dtype != v.dtype) {
+      if (!out.isWriteable ||
+          !listEquals(out.shape, targetShape) ||
+          out.dtype != v.dtype) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -924,7 +932,9 @@ NDArray<T> tril<T extends DTypeTag>(
     throw ArgumentError('Input array must have rank >= 2.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -1036,7 +1046,9 @@ NDArray<T> triu<T extends DTypeTag>(
     throw ArgumentError('Input array must have rank >= 2.');
   }
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -1168,7 +1180,9 @@ NDArray<T> diff<T extends DTypeTag>(
     final emptyShape = List<int>.from(a.shape);
     emptyShape[targetAxis] = 0;
     if (out != null) {
-      if (!listEquals(out.shape, emptyShape) || out.dtype != a.dtype) {
+      if (!out.isWriteable ||
+          !listEquals(out.shape, emptyShape) ||
+          out.dtype != a.dtype) {
         throw ArgumentError('Incompatible out buffer shape or dtype for diff.');
       }
       return out;
@@ -1180,7 +1194,9 @@ NDArray<T> diff<T extends DTypeTag>(
   targetShape[targetAxis] = a.shape[targetAxis] - n;
 
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, targetShape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -1395,7 +1411,9 @@ NDArray<T> roll<T extends DTypeTag>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!out.isWriteable ||
+        !listEquals(out.shape, a.shape) ||
+        out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
