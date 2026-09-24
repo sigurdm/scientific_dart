@@ -163,8 +163,8 @@ void main() {
           violations,
           isEmpty,
           reason:
-              'Per Dart VM team guidance, do not pass externalSize to '
-              'NativeFinalizer.attach; rely on NDArray.scope / dispose() instead:\n'
+              'Do not pass externalSize to NativeFinalizer.attach (causes GC '
+              'thrashing on large buffers); rely on NDArray.scope / dispose() instead:\n'
               '${violations.join('\n')}',
         );
       },

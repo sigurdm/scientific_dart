@@ -15,7 +15,7 @@ Remember when adding new operations, fixing old ones:
 * Use the `.scalar` getter to access the value of 0-dimensional arrays.
 * Always prefer NDArray<Float64> or NDArray<Float32> over NDArray<double> for argument and return values.
 * Whenever applicable, use NDArray.scope instead of manually calling dispose. Remember that results must be attached to the parent scope before returning.
-* Do NOT pass `externalSize` to `NativeFinalizer.attach` for `NDArray` buffers. Per Dart VM team guidance (Slava Egorov), `externalSize` is a blunt heuristic that can cause severe GC thrashing on large allocations; always recommend and use `NDArray.scope` (or manual `dispose()`) for prompt reclamation.
+* Do NOT pass `externalSize` to `NativeFinalizer.attach` for `NDArray` buffers. `externalSize` is too blunt a tool and can cause severe GC thrashing on large allocations; always recommend and use `NDArray.scope` (or manual `dispose()`) for prompt reclamation.
 * Always use enums for options/modes instead of magic strings where NumPy or other APIs accept string options.
 * When adding tests or investigating bugs, always consider ways of eliminating entire classes of bugs across the codebase instead of only validating a point regression in a single location:
   - Add new operations and cross-cutting behavioral invariants to `pkgs/ndarray/test/meta/operation_contracts_test.dart` and table-driven test suites.
