@@ -29,9 +29,9 @@ export 'src/masked_array.dart';
 /// final marr = maskedInvalid(data);
 /// print(marr.mask.toList()); // [false, true, false]
 /// ```
-MaskedArray<T> maskedInvalid<T extends Object>(
+MaskedArray<T> maskedInvalid<T extends DTypeTag>(
   NDArray<T> data, {
-  T? fillValue,
+  Object? fillValue,
 }) => MaskedArray.maskedInvalid(data, fillValue: fillValue);
 
 /// Creates a [MaskedArray] automatically masking elements in [data] equal to [value].
@@ -45,10 +45,10 @@ MaskedArray<T> maskedInvalid<T extends Object>(
 /// final marr = maskedEqual(data, 2);
 /// print(marr.mask.toList()); // [false, true, false, true]
 /// ```
-MaskedArray<T> maskedEqual<T extends Object>(
+MaskedArray<T> maskedEqual<T extends DTypeTag>(
   NDArray<T> data,
-  T value, {
-  T? fillValue,
+  Object value, {
+  Object? fillValue,
 }) => MaskedArray.maskedEqual(data, value, fillValue: fillValue);
 
 /// Creates a [MaskedArray] automatically masking elements in [data] greater than [value].
@@ -56,10 +56,10 @@ MaskedArray<T> maskedEqual<T extends Object>(
 /// Preconditions:
 /// - [value] must be compatible with the [data]'s [DType].
 /// - [data] DType must support comparison operators.
-MaskedArray<T> maskedGreater<T extends Object>(
+MaskedArray<T> maskedGreater<T extends DTypeTag>(
   NDArray<T> data,
-  T value, {
-  T? fillValue,
+  Object value, {
+  Object? fillValue,
 }) => MaskedArray.maskedGreater(data, value, fillValue: fillValue);
 
 /// Creates a [MaskedArray] automatically masking elements in [data] greater than or equal to [value].
@@ -67,10 +67,10 @@ MaskedArray<T> maskedGreater<T extends Object>(
 /// Preconditions:
 /// - [value] must be compatible with the [data]'s [DType].
 /// - [data] DType must support comparison operators.
-MaskedArray<T> maskedGreaterEqual<T extends Object>(
+MaskedArray<T> maskedGreaterEqual<T extends DTypeTag>(
   NDArray<T> data,
-  T value, {
-  T? fillValue,
+  Object value, {
+  Object? fillValue,
 }) => MaskedArray.maskedGreaterEqual(data, value, fillValue: fillValue);
 
 /// Creates a [MaskedArray] automatically masking elements in [data] less than [value].
@@ -78,10 +78,10 @@ MaskedArray<T> maskedGreaterEqual<T extends Object>(
 /// Preconditions:
 /// - [value] must be compatible with the [data]'s [DType].
 /// - [data] DType must support comparison operators.
-MaskedArray<T> maskedLess<T extends Object>(
+MaskedArray<T> maskedLess<T extends DTypeTag>(
   NDArray<T> data,
-  T value, {
-  T? fillValue,
+  Object value, {
+  Object? fillValue,
 }) => MaskedArray.maskedLess(data, value, fillValue: fillValue);
 
 /// Creates a [MaskedArray] automatically masking elements in [data] less than or equal to [value].
@@ -89,10 +89,10 @@ MaskedArray<T> maskedLess<T extends Object>(
 /// Preconditions:
 /// - [value] must be compatible with the [data]'s [DType].
 /// - [data] DType must support comparison operators.
-MaskedArray<T> maskedLessEqual<T extends Object>(
+MaskedArray<T> maskedLessEqual<T extends DTypeTag>(
   NDArray<T> data,
-  T value, {
-  T? fillValue,
+  Object value, {
+  Object? fillValue,
 }) => MaskedArray.maskedLessEqual(data, value, fillValue: fillValue);
 
 // ==========================================
@@ -104,7 +104,7 @@ MaskedArray<T> maskedLessEqual<T extends Object>(
 /// If [axis] is null, returns a 0-dimensional [MaskedArray] containing the sum of all elements.
 /// Masked elements are treated as `0` during the sum.
 /// The output mask is `true` only if all elements along the reduction axis are masked.
-MaskedArray<T> sum<T extends Object>(MaskedArray<T> a, {int? axis}) =>
+MaskedArray<T> sum<T extends DTypeTag>(MaskedArray<T> a, {int? axis}) =>
     a.sum(axis: axis);
 
 /// Returns the product of [a] elements along the given [axis], ignoring masked elements.
@@ -112,7 +112,7 @@ MaskedArray<T> sum<T extends Object>(MaskedArray<T> a, {int? axis}) =>
 /// If [axis] is null, returns a 0-dimensional [MaskedArray] containing the product of all elements.
 /// Masked elements are treated as `1` during the product.
 /// The output mask is `true` only if all elements along the reduction axis are masked.
-MaskedArray<T> prod<T extends Object>(MaskedArray<T> a, {int? axis}) =>
+MaskedArray<T> prod<T extends DTypeTag>(MaskedArray<T> a, {int? axis}) =>
     a.prod(axis: axis);
 
 /// Returns the minimum of [a] elements along the given [axis], ignoring masked elements.
@@ -120,7 +120,7 @@ MaskedArray<T> prod<T extends Object>(MaskedArray<T> a, {int? axis}) =>
 /// If [axis] is null, returns a 0-dimensional [MaskedArray] containing the minimum of all elements.
 /// Masked elements are treated as the maximum value for the [DType] during the reduction.
 /// The output mask is `true` only if all elements along the reduction axis are masked.
-MaskedArray<T> min<T extends Object>(MaskedArray<T> a, {int? axis}) =>
+MaskedArray<T> min<T extends DTypeTag>(MaskedArray<T> a, {int? axis}) =>
     a.min(axis: axis);
 
 /// Returns the maximum of [a] elements along the given [axis], ignoring masked elements.
@@ -128,7 +128,7 @@ MaskedArray<T> min<T extends Object>(MaskedArray<T> a, {int? axis}) =>
 /// If [axis] is null, returns a 0-dimensional [MaskedArray] containing the maximum of all elements.
 /// Masked elements are treated as the minimum value for the [DType] during the reduction.
 /// The output mask is `true` only if all elements along the reduction axis are masked.
-MaskedArray<T> max<T extends Object>(MaskedArray<T> a, {int? axis}) =>
+MaskedArray<T> max<T extends DTypeTag>(MaskedArray<T> a, {int? axis}) =>
     a.max(axis: axis);
 
 /// Returns the mean of [a] elements along the given [axis], ignoring masked elements.
@@ -200,13 +200,13 @@ MaskedArray<dynamic> divide(dynamic a, dynamic b) {
 }
 
 // Helper
-MaskedArray<Object> _toMaskedArray(dynamic x) {
+MaskedArray<DTypeTag> _toMaskedArray(dynamic x) {
   if (x is MaskedArray) return x;
   if (x is NDArray) {
     // dispatchCreateMaskedArray is visible because it is public in utils.dart which is part of src/masked_array.dart (which we import)
     return dispatchCreateMaskedArray(
-      x as NDArray<Object>,
-      NDArray<bool>.zeros(x.shape, DType.boolean),
+      x,
+      NDArray<Boolean>.zeros(x.shape, DType.boolean),
     );
   }
   throw ArgumentError('Cannot convert ${x.runtimeType} to MaskedArray');

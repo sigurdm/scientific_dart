@@ -5,6 +5,7 @@ import 'ffi/symengine_bindings.dart' as se;
 import 'ffi/flint_bindings.dart' as fl;
 import 'package:resource_scope/resource_scope.dart';
 import 'expr.dart' as top;
+import 'matrix.dart';
 
 /// The NativeFinalizer that frees C heap-allocated `basic_struct` instances
 /// when Dart garbage collects an `Expr` object.
@@ -344,19 +345,137 @@ final class Expr implements ffi.Finalizable, ScopedResource {
 
   /// Computes the symbolic derivative of this expression with respect to [variable].
   ///
-  /// Throws [ArgumentError] if [variable] is not a symbol.
-  Expr diff(Object variable) {
+  /// [order] specifies the order of differentiation (defaults to 1).
+  ///
+  /// Throws [ArgumentError] if [order] is negative or if [variable] is not a symbol.
+  Expr diff(Object variable, [int order = 1]) {
+    if (order < 0) {
+      throw ArgumentError(
+        'Differentiation order must be non-negative, got $order.',
+      );
+    }
+    if (order == 0) return this;
+
     final sym = Expr.fromObject(variable);
     if (se.is_a_Symbol(sym.pointer) == 0) {
       throw ArgumentError('Differentiation variable must be a Symbol.');
     }
-    final res = se.basic_new_heap();
-    final err = se.basic_diff(res, pointer, sym.pointer);
-    if (err != se.symengine_exceptions_t.SYMENGINE_NO_EXCEPTION) {
-      se.basic_free_heap(res);
-      throw StateError('Symbolic differentiation failed.');
+
+    var current = this;
+    for (var i = 0; i < order; i++) {
+      final res = se.basic_new_heap();
+      final err = se.basic_diff(res, current.pointer, sym.pointer);
+      if (err != se.symengine_exceptions_t.SYMENGINE_NO_EXCEPTION) {
+        se.basic_free_heap(res);
+        if (current != this) {
+          current.dispose();
+        }
+        throw StateError('Symbolic differentiation failed.');
+      }
+      final next = Expr._(res);
+      if (current != this) {
+        current.dispose();
+      }
+      current = next;
     }
-    return Expr._(res);
+    return current;
+  }
+
+  /// Computes the truncated Taylor series expansion of this expression
+  /// with respect to [variable] around the point [at] up to degree [order] - 1.
+  ///
+  /// Evaluates $\sum_{k=0}^{\text{order}-1} \frac{f^{(k)}(a)}{k!} (x - a)^k$.
+  Expr series(Object variable, {Object at = 0, int order = 6}) {
+    if (order < 0) {
+      throw ArgumentError('Series order must be non-negative, got $order.');
+    }
+    if (order == 0) return Expr.zero;
+
+    final x = Expr.fromObject(variable);
+    if (se.is_a_Symbol(x.pointer) == 0) {
+      throw ArgumentError('Series expansion variable must be a Symbol.');
+    }
+    final a = Expr.fromObject(at);
+    final dx = a.isZero ? x : (x - a);
+
+    var result = Expr.zero;
+    var currentDeriv = this;
+    var factorial = BigInt.one;
+
+    for (var k = 0; k < order; k++) {
+      if (k > 0) {
+        factorial *= BigInt.from(k);
+        final nextDeriv = currentDeriv.diff(x);
+        if (currentDeriv != this) {
+          currentDeriv.dispose();
+        }
+        currentDeriv = nextDeriv;
+      }
+
+      final coeffAtA = currentDeriv.subs({x: a});
+      if (!coeffAtA.isZero) {
+        Expr term;
+        if (k == 0) {
+          term = coeffAtA;
+        } else {
+          final coeffDiv = (factorial == BigInt.one)
+              ? coeffAtA
+              : (coeffAtA / Expr.bigInt(factorial));
+          term = (k == 1) ? (coeffDiv * dx) : (coeffDiv * dx.pow(k));
+        }
+        result = (result.isZero) ? term : (result + term);
+      }
+    }
+
+    if (currentDeriv != this) {
+      currentDeriv.dispose();
+    }
+
+    return result;
+  }
+
+  /// Computes the gradient of this scalar expression with respect to [variables].
+  ///
+  /// Returns an `n x 1` column vector [SymbolicMatrix] of partial derivatives
+  /// `[diff(v_1), ..., diff(v_n)]`.
+  SymbolicMatrix gradient(List<Object> variables) {
+    final n = variables.length;
+    final mat = SymbolicMatrix.zeros(n, 1);
+    for (var i = 0; i < n; i++) {
+      final d = diff(variables[i]);
+      try {
+        mat.setCell(i, 0, d);
+      } finally {
+        d.dispose();
+      }
+    }
+    return mat;
+  }
+
+  /// Computes the Hessian matrix of second-order partial derivatives of this
+  /// expression with respect to [variables].
+  ///
+  /// Returns an `n x n` [SymbolicMatrix] where entry `(i, j)` is
+  /// `diff(variables[i]).diff(variables[j])`.
+  SymbolicMatrix hessian(List<Object> variables) {
+    final n = variables.length;
+    final mat = SymbolicMatrix.zeros(n, n);
+    for (var i = 0; i < n; i++) {
+      final d1 = diff(variables[i]);
+      try {
+        for (var j = 0; j < n; j++) {
+          final d2 = d1.diff(variables[j]);
+          try {
+            mat.setCell(i, j, d2);
+          } finally {
+            d2.dispose();
+          }
+        }
+      } finally {
+        d1.dispose();
+      }
+    }
+    return mat;
   }
 
   /// Performs algebraic expansion (e.g., `(x + 1)^2` becomes `x^2 + 2*x + 1`).
@@ -469,6 +588,7 @@ final class Expr implements ffi.Finalizable, ScopedResource {
   Expr sin() => top.sin(this);
   Expr cos() => top.cos(this);
   Expr tan() => top.tan(this);
+  Expr exp() => top.exp(this);
   Expr asin() => top.asin(this);
   Expr acos() => top.acos(this);
   Expr atan() => top.atan(this);
@@ -541,16 +661,20 @@ final class Expr implements ffi.Finalizable, ScopedResource {
   // ===========================================================================
 
   /// Whether this expression evaluates to exactly zero.
-  bool get isZero => se.number_is_zero(pointer) != 0;
+  bool get isZero =>
+      se.is_a_Number(pointer) != 0 && se.number_is_zero(pointer) != 0;
 
   /// Whether this expression evaluates to a positive real number.
-  bool get isPositive => se.number_is_positive(pointer) != 0;
+  bool get isPositive =>
+      se.is_a_Number(pointer) != 0 && se.number_is_positive(pointer) != 0;
 
   /// Whether this expression evaluates to a negative real number.
-  bool get isNegative => se.number_is_negative(pointer) != 0;
+  bool get isNegative =>
+      se.is_a_Number(pointer) != 0 && se.number_is_negative(pointer) != 0;
 
   /// Whether this expression contains any complex numbers.
-  bool get isComplex => se.number_is_complex(pointer) != 0;
+  bool get isComplex =>
+      se.is_a_Number(pointer) != 0 && se.number_is_complex(pointer) != 0;
 
   /// Whether this expression contains the specific symbol [sym].
   bool hasSymbol(Object sym) {
@@ -663,9 +787,23 @@ final class Expr implements ffi.Finalizable, ScopedResource {
 // SHORT SYMBOL FACTORY & ELEMENTARY FUNCTIONS
 // =============================================================================
 
-/// Shorthand helper to create a symbolic variable [name].
-// ignore: non_constant_identifier_names
-Expr Symbol(String name) => Expr.symbol(name);
+/// A symbolic variable (e.g. `x`, `y`).
+///
+/// Can be instantiated via `Symbol('x')` and used as a distinct type implementing [Expr].
+extension type const Symbol._(Expr _expr) implements Expr {
+  /// Creates a symbolic variable with the given [name].
+  factory Symbol(String name) => Symbol._(Expr.symbol(name));
+
+  /// Wraps an existing [expr] as a [Symbol].
+  ///
+  /// Throws [ArgumentError] if [expr] is not a symbol.
+  factory Symbol.fromExpr(Expr expr) {
+    if (se.is_a_Symbol(expr.pointer) == 0) {
+      throw ArgumentError('The provided expression is not a Symbol: $expr');
+    }
+    return Symbol._(expr);
+  }
+}
 
 /// Shorthand helper to create a symbolic integer.
 // ignore: non_constant_identifier_names
@@ -930,4 +1068,26 @@ Expr lcm(Object a, Object b) {
   final res = se.basic_new_heap();
   se.ntheory_lcm(res, ea.pointer, eb.pointer);
   return Expr._(res);
+}
+
+/// Convenient arithmetic operations allowing numeric literals on the LHS
+/// with symbolic expressions and matrices on the RHS.
+extension SymbolicNumExtension on num {
+  /// Converts this numeric value (`int` or `double`) into a symbolic [Expr].
+  Expr get toExpr => Expr.fromObject(this);
+
+  /// Adds this number to symbolic expression [other].
+  Expr operator +(Expr other) => Expr.fromObject(this) + other;
+
+  /// Subtracts symbolic expression [other] from this number.
+  Expr operator -(Expr other) => Expr.fromObject(this) - other;
+
+  /// Multiplies this number by symbolic expression [other].
+  Expr operator *(Expr other) => Expr.fromObject(this) * other;
+
+  /// Divides this number by symbolic expression [other].
+  Expr operator /(Expr other) => Expr.fromObject(this) / other;
+
+  /// Scales a [SymbolicMatrix] by this number (`other * this`).
+  SymbolicMatrix scaleMatrix(SymbolicMatrix other) => other * this;
 }

@@ -1500,6 +1500,9 @@ void _cumOpFallbackHelper<T extends DTypeTag, R extends DTypeTag>(
       }
 
       int acc = 0;
+      final resDType = result.dtype;
+      final resIsBool = resDType == DType.boolean;
+      final resIsIntOrBool = resDType.isInteger || resIsBool;
       for (int i = 0; i < axisLen; i++) {
         final val = a.getCellRaw(baseOffsetA + i * a.strides[axis]);
         final vInt = toIntVal(val);
@@ -1508,19 +1511,19 @@ void _cumOpFallbackHelper<T extends DTypeTag, R extends DTypeTag>(
         } else {
           switch (opType) {
             case CumOpType.sum:
-              if (result.dtype == DType.boolean) {
+              if (resIsBool) {
                 acc = (acc != 0 || vInt != 0) ? 1 : 0;
               } else {
                 acc = acc + vInt;
               }
             case CumOpType.prod:
-              if (result.dtype == DType.boolean) {
+              if (resIsBool) {
                 acc = (acc != 0 && vInt != 0) ? 1 : 0;
               } else {
                 acc = acc * vInt;
               }
             case CumOpType.min:
-              if (result.dtype == DType.boolean) {
+              if (resIsBool) {
                 acc = (acc != 0 && vInt != 0) ? 1 : 0;
               } else if (isUnsigned) {
                 if (uint64Compare(vInt, acc) < 0) acc = vInt;
@@ -1528,7 +1531,7 @@ void _cumOpFallbackHelper<T extends DTypeTag, R extends DTypeTag>(
                 if (vInt < acc) acc = vInt;
               }
             case CumOpType.max:
-              if (result.dtype == DType.boolean) {
+              if (resIsBool) {
                 acc = (acc != 0 || vInt != 0) ? 1 : 0;
               } else if (isUnsigned) {
                 if (uint64Compare(vInt, acc) > 0) acc = vInt;
@@ -1540,9 +1543,9 @@ void _cumOpFallbackHelper<T extends DTypeTag, R extends DTypeTag>(
         final resIdx = baseOffsetRes + i * result.strides[axis];
         result.setCellRaw(
           resIdx,
-          castValue(acc, result.dtype, sourceDType: accSourceDType),
+          castValue(acc, resDType, sourceDType: accSourceDType),
         );
-        if (result.dtype.isInteger || result.dtype == DType.boolean) {
+        if (resIsIntOrBool) {
           acc = toIntVal(result.getCellRaw(resIdx));
         }
       }

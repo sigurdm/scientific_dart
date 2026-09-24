@@ -881,16 +881,6 @@ final class GpuKernels {
     if (v is Complex) return v;
     if (v is num) return Complex(v.toDouble(), 0.0);
     if (v is bool) return Complex(v ? 1.0 : 0.0, 0.0);
-    if (v is Float16) return Complex(v.value, 0.0);
-    if (v is BFloat16) return Complex(v.value, 0.0);
-    if (v is Int64) return Complex(v.value.toDouble(), 0.0);
-    if (v is Int32) return Complex(v.value.toDouble(), 0.0);
-    if (v is Int16) return Complex(v.value.toDouble(), 0.0);
-    if (v is Int8) return Complex(v.value.toDouble(), 0.0);
-    if (v is Uint64) return Complex(v.value.toDouble(), 0.0);
-    if (v is Uint32) return Complex(v.value.toDouble(), 0.0);
-    if (v is Uint16) return Complex(v.value.toDouble(), 0.0);
-    if (v is Uint8) return Complex(v.value.toDouble(), 0.0);
     return Complex(0.0, 0.0);
   }
 

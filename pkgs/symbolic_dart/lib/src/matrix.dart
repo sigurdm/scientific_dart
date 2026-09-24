@@ -1,6 +1,8 @@
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'package:ndarray/ndarray.dart';
+// ignore: implementation_imports
+import 'package:ndarray/src/scratch_arena.dart';
 import 'expr.dart';
 import 'ffi/matrix_bindings.dart' as mat;
 import 'ffi/symengine_bindings.dart' as se;
@@ -12,27 +14,124 @@ final _denseMatrixFinalizer = ffi.NativeFinalizer(
       .cast<ffi.NativeFinalizerFunction>(),
 );
 
+final _lambdaVisitorFinalizer = ffi.NativeFinalizer(
+  ffi.Native.addressOf<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<se.CLambdaRealDoubleVisitor>)
+        >
+      >(se.lambda_real_double_visitor_free)
+      .cast<ffi.NativeFinalizerFunction>(),
+);
+
 /// A callable compiled matrix evaluator that evaluates a [SymbolicMatrix]
 /// into a 2D [NDArray<Float64>] for given variable points.
-final class MatrixLambda {
+final class MatrixLambda implements ffi.Finalizable, ScopedResource {
   final SymbolicMatrix _matrix;
   final List<Expr> _variables;
+  final int _rows;
+  final int _cols;
+  final ffi.Pointer<se.CLambdaRealDoubleVisitor> _visitor;
+  bool _disposed = false;
 
-  MatrixLambda._(this._matrix, this._variables);
+  MatrixLambda._(this._matrix, this._variables)
+    : _rows = _matrix.rows,
+      _cols = _matrix.cols,
+      _visitor = se.lambda_real_double_visitor_new() {
+    if (_visitor == ffi.nullptr) {
+      throw StateError('Cannot allocate CLambdaRealDoubleVisitor');
+    }
+    final argsVec = se.vecbasic_new();
+    final exprsVec = se.vecbasic_new();
+    final cellPtr = se.basic_new_heap();
+    try {
+      for (final v in _variables) {
+        se.vecbasic_push_back(argsVec, v.pointer);
+      }
+      for (var i = 0; i < _rows; i++) {
+        for (var j = 0; j < _cols; j++) {
+          mat.dense_matrix_get_basic(cellPtr, _matrix.pointer, i, j);
+          se.vecbasic_push_back(exprsVec, cellPtr);
+        }
+      }
+      se.lambda_real_double_visitor_init(_visitor, argsVec, exprsVec, 1);
+    } finally {
+      se.basic_free_heap(cellPtr);
+      se.vecbasic_free(argsVec);
+      se.vecbasic_free(exprsVec);
+    }
+    _lambdaVisitorFinalizer.attach(this, _visitor.cast(), detach: this);
+    ResourceScope.track(this);
+  }
+
+  @override
+  bool get isDisposed => _disposed;
+
+  @override
+  void dispose() {
+    if (_disposed) return;
+    _lambdaVisitorFinalizer.detach(this);
+    se.lambda_real_double_visitor_free(_visitor);
+    _disposed = true;
+    ResourceScope.untrack(this);
+  }
+
+  @override
+  MatrixLambda detachFromScope() {
+    ResourceScope.untrack(this);
+    return this;
+  }
+
+  @override
+  MatrixLambda detachToParentScope() {
+    ResourceScope.promoteToParent(this);
+    return this;
+  }
+
+  void _checkDisposed() {
+    if (_disposed) {
+      throw StateError('This MatrixLambda has already been disposed.');
+    }
+  }
 
   /// Evaluates the symbolic matrix into a 2D [NDArray<Float64>] at scalar points [values].
   NDArray<Float64> callScalar(List<num> values, {NDArray<Float64>? out}) {
+    _checkDisposed();
     if (values.length != _variables.length) {
       throw ArgumentError(
         'Expected ${_variables.length} parameters, got ${values.length}',
       );
     }
-    final subsMap = <Object, Object>{};
-    for (var i = 0; i < _variables.length; i++) {
-      subsMap[_variables[i]] = values[i].toDouble();
+    final destination = out ?? NDArray.zeros([_rows, _cols], DType.float64);
+    if (destination.shape.length != 2 ||
+        destination.shape[0] != _rows ||
+        destination.shape[1] != _cols) {
+      throw ArgumentError(
+        'Expected 2D out array of shape [$_rows, $_cols], got ${destination.shape}',
+      );
     }
-    final substituted = _matrix.subs(subsMap);
-    return substituted.toNDArray(out: out);
+    final numInputs = _variables.length;
+    final totalCells = _rows * _cols;
+    final marker = ScratchArena.marker;
+    try {
+      final inPtr = ScratchArena.allocate<ffi.Double>(
+        (numInputs == 0 ? 1 : numInputs) * ffi.sizeOf<ffi.Double>(),
+      );
+      final outPtr = ScratchArena.allocate<ffi.Double>(
+        (totalCells == 0 ? 1 : totalCells) * ffi.sizeOf<ffi.Double>(),
+      );
+      for (var i = 0; i < numInputs; i++) {
+        inPtr[i] = values[i].toDouble();
+      }
+      se.lambda_real_double_visitor_call(_visitor, outPtr, inPtr);
+      for (var i = 0; i < _rows; i++) {
+        for (var j = 0; j < _cols; j++) {
+          destination.setCell([i, j], (outPtr[i * _cols + j]));
+        }
+      }
+    } finally {
+      ScratchArena.reset(marker);
+    }
+    return destination;
   }
 }
 
@@ -329,14 +428,27 @@ final class SymbolicMatrix implements ffi.Finalizable, ScopedResource {
   /// If this is an `m x 1` vector of functions $\vec{f}$ and [variables] has length `n`,
   /// returns an `m x n` Jacobian matrix `J`.
   SymbolicMatrix jacobian(List<Object> variables) {
-    final m = (cols == 1) ? rows : ((rows == 1) ? cols : rows);
+    if (rows != 1 && cols != 1) {
+      throw ArgumentError(
+        'Jacobian is only defined for a row or column vector (1xM or Mx1), got shape $shape',
+      );
+    }
+    final m = (cols == 1) ? rows : cols;
     final n = variables.length;
     final res = mat.dense_matrix_new_rows_cols(m, n);
     for (var i = 0; i < m; i++) {
       final expr = (cols == 1) ? getCell(i, 0) : getCell(0, i);
-      for (var j = 0; j < n; j++) {
-        final d = expr.diff(variables[j]);
-        mat.dense_matrix_set_basic(res, i, j, d.pointer);
+      try {
+        for (var j = 0; j < n; j++) {
+          final d = expr.diff(variables[j]);
+          try {
+            mat.dense_matrix_set_basic(res, i, j, d.pointer);
+          } finally {
+            d.dispose();
+          }
+        }
+      } finally {
+        expr.dispose();
       }
     }
     return SymbolicMatrix._(res);
@@ -350,8 +462,17 @@ final class SymbolicMatrix implements ffi.Finalizable, ScopedResource {
     final res = mat.dense_matrix_new_rows_cols(r, c);
     for (var i = 0; i < r; i++) {
       for (var j = 0; j < c; j++) {
-        final subCell = getCell(i, j).subs(substitutions);
-        mat.dense_matrix_set_basic(res, i, j, subCell.pointer);
+        final cell = getCell(i, j);
+        try {
+          final subCell = cell.subs(substitutions);
+          try {
+            mat.dense_matrix_set_basic(res, i, j, subCell.pointer);
+          } finally {
+            subCell.dispose();
+          }
+        } finally {
+          cell.dispose();
+        }
       }
     }
     return SymbolicMatrix._(res);
@@ -379,8 +500,13 @@ final class SymbolicMatrix implements ffi.Finalizable, ScopedResource {
     }
     for (var i = 0; i < r; i++) {
       for (var j = 0; j < c; j++) {
-        final val = getCell(i, j).asDouble;
-        destination.setCell([i, j], Float64(val));
+        final cell = getCell(i, j);
+        try {
+          final val = cell.asDouble;
+          destination.setCell([i, j], (val));
+        } finally {
+          cell.dispose();
+        }
       }
     }
     return destination;
@@ -418,7 +544,12 @@ final class SymbolicMatrix implements ffi.Finalizable, ScopedResource {
     final sb = StringBuffer(r'\begin{bmatrix}');
     for (var i = 0; i < r; i++) {
       for (var j = 0; j < c; j++) {
-        sb.write(getCell(i, j).toLatex());
+        final cell = getCell(i, j);
+        try {
+          sb.write(cell.toLatex());
+        } finally {
+          cell.dispose();
+        }
         if (j < c - 1) sb.write(' & ');
       }
       if (i < r - 1) sb.write(r' \\ ');
@@ -446,7 +577,12 @@ final class SymbolicMatrix implements ffi.Finalizable, ScopedResource {
     final c = cols;
     for (var i = 0; i < r; i++) {
       for (var j = 0; j < c; j++) {
-        h = h ^ getCell(i, j).hashCode;
+        final cell = getCell(i, j);
+        try {
+          h = h ^ cell.hashCode;
+        } finally {
+          cell.dispose();
+        }
       }
     }
     return h;

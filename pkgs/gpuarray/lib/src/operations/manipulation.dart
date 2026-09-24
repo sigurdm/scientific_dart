@@ -8,7 +8,10 @@ import '../backend/kernels.dart';
 import '../autograd/autograd.dart';
 
 /// Joins a sequence of [arrays] along an existing [axis].
-GpuArray<T> concatenate<T>(List<GpuArray> arrays, {int axis = 0}) {
+GpuArray<T> concatenate<T extends DTypeTag>(
+  List<GpuArray> arrays, {
+  int axis = 0,
+}) {
   if (arrays.isEmpty) {
     throw ArgumentError('Cannot concatenate an empty list of arrays.');
   }
@@ -67,7 +70,7 @@ GpuArray<T> concatenate<T>(List<GpuArray> arrays, {int axis = 0}) {
 }
 
 /// Joins a sequence of [arrays] along a new [axis].
-GpuArray<T> stack<T>(List<GpuArray> arrays, {int axis = 0}) {
+GpuArray<T> stack<T extends DTypeTag>(List<GpuArray> arrays, {int axis = 0}) {
   if (arrays.isEmpty) {
     throw ArgumentError('Cannot stack an empty list of arrays.');
   }
@@ -76,7 +79,7 @@ GpuArray<T> stack<T>(List<GpuArray> arrays, {int axis = 0}) {
 }
 
 /// Stacks arrays in sequence vertically (row wise / along axis 0).
-GpuArray<T> vstack<T>(List<GpuArray> arrays) {
+GpuArray<T> vstack<T extends DTypeTag>(List<GpuArray> arrays) {
   if (arrays.isEmpty) {
     throw ArgumentError('Cannot vstack an empty list of arrays.');
   }
@@ -90,7 +93,7 @@ GpuArray<T> vstack<T>(List<GpuArray> arrays) {
 }
 
 /// Stacks arrays in sequence horizontally (column wise / along axis 1).
-GpuArray<T> hstack<T>(List<GpuArray> arrays) {
+GpuArray<T> hstack<T extends DTypeTag>(List<GpuArray> arrays) {
   if (arrays.isEmpty) {
     throw ArgumentError('Cannot hstack an empty list of arrays.');
   }
@@ -105,7 +108,7 @@ GpuArray<T> hstack<T>(List<GpuArray> arrays) {
 }
 
 /// Stacks arrays in sequence depth wise (along axis 2).
-GpuArray<T> dstack<T>(List<GpuArray> arrays) {
+GpuArray<T> dstack<T extends DTypeTag>(List<GpuArray> arrays) {
   if (arrays.isEmpty) {
     throw ArgumentError('Cannot dstack an empty list of arrays.');
   }
@@ -121,7 +124,7 @@ GpuArray<T> dstack<T>(List<GpuArray> arrays) {
 }
 
 /// Stacks 1D or 2D arrays as columns to create a 2D array.
-GpuArray<T> column_stack<T>(List<GpuArray> arrays) {
+GpuArray<T> column_stack<T extends DTypeTag>(List<GpuArray> arrays) {
   if (arrays.isEmpty) {
     throw ArgumentError('Cannot column_stack an empty list of arrays.');
   }
@@ -135,7 +138,7 @@ GpuArray<T> column_stack<T>(List<GpuArray> arrays) {
 }
 
 /// Splits an array into multiple sub-arrays along [axis].
-List<GpuArray<T>> split<T>(
+List<GpuArray<T>> split<T extends DTypeTag>(
   GpuArray<T> a,
   dynamic indicesOrSections, {
   int axis = 0,
@@ -184,7 +187,7 @@ List<GpuArray<T>> split<T>(
 }
 
 /// Splits an array into multiple sub-arrays (allowing unequal division).
-List<GpuArray<T>> array_split<T>(
+List<GpuArray<T>> array_split<T extends DTypeTag>(
   GpuArray<T> a,
   dynamic indicesOrSections, {
   int axis = 0,
@@ -229,13 +232,19 @@ List<GpuArray<T>> array_split<T>(
 }
 
 /// Splits array horizontally (along axis 1).
-List<GpuArray<T>> hsplit<T>(GpuArray<T> a, dynamic indicesOrSections) {
+List<GpuArray<T>> hsplit<T extends DTypeTag>(
+  GpuArray<T> a,
+  dynamic indicesOrSections,
+) {
   final axis = a.shape.length == 1 ? 0 : 1;
   return split<T>(a, indicesOrSections, axis: axis);
 }
 
 /// Splits array vertically (along axis 0).
-List<GpuArray<T>> vsplit<T>(GpuArray<T> a, dynamic indicesOrSections) {
+List<GpuArray<T>> vsplit<T extends DTypeTag>(
+  GpuArray<T> a,
+  dynamic indicesOrSections,
+) {
   if (a.shape.length < 2) {
     throw ArgumentError('vsplit only works on arrays of 2 or more dimensions.');
   }
@@ -243,7 +252,10 @@ List<GpuArray<T>> vsplit<T>(GpuArray<T> a, dynamic indicesOrSections) {
 }
 
 /// Splits array depth-wise (along axis 2).
-List<GpuArray<T>> dsplit<T>(GpuArray<T> a, dynamic indicesOrSections) {
+List<GpuArray<T>> dsplit<T extends DTypeTag>(
+  GpuArray<T> a,
+  dynamic indicesOrSections,
+) {
   if (a.shape.length < 3) {
     throw ArgumentError('dsplit only works on arrays of 3 or more dimensions.');
   }
@@ -251,7 +263,7 @@ List<GpuArray<T>> dsplit<T>(GpuArray<T> a, dynamic indicesOrSections) {
 }
 
 /// Constructs an array by repeating [a] the number of times given by [reps].
-GpuArray<T> tile<T>(GpuArray<T> a, List<int> reps) {
+GpuArray<T> tile<T extends DTypeTag>(GpuArray<T> a, List<int> reps) {
   final rank = reps.length > a.shape.length ? reps.length : a.shape.length;
   final padRankA = rank - a.shape.length;
   final padRankR = rank - reps.length;
@@ -283,7 +295,11 @@ GpuArray<T> tile<T>(GpuArray<T> a, List<int> reps) {
 }
 
 /// Repeats elements of an array [repeats] times along [axis].
-GpuArray<T> repeat<T>(GpuArray<T> a, int repeats, {int? axis}) {
+GpuArray<T> repeat<T extends DTypeTag>(
+  GpuArray<T> a,
+  int repeats, {
+  int? axis,
+}) {
   if (repeats < 0) {
     throw ArgumentError('repeats must be non-negative.');
   }
@@ -350,7 +366,7 @@ GpuArray<T> repeat<T>(GpuArray<T> a, int repeats, {int? axis}) {
 }
 
 /// Pads an array with [padWidth].
-GpuArray<T> pad<T>(
+GpuArray<T> pad<T extends DTypeTag>(
   GpuArray<T> a,
   List<List<int>> padWidth, {
   String mode = 'constant',
@@ -388,7 +404,11 @@ GpuArray<T> pad<T>(
 }
 
 /// Roll array elements along a given [axis].
-GpuArray<T> roll<T>(GpuArray<T> a, dynamic shift, {dynamic axis}) {
+GpuArray<T> roll<T extends DTypeTag>(
+  GpuArray<T> a,
+  dynamic shift, {
+  dynamic axis,
+}) {
   if (axis == null) {
     final flat = a.flatten();
     final total = flat.shape[0];
@@ -463,7 +483,7 @@ GpuArray<T> roll<T>(GpuArray<T> a, dynamic shift, {dynamic axis}) {
 }
 
 /// Reverses the order of elements along the given [axis].
-GpuArray<T> flip<T>(GpuArray<T> a, {dynamic axis}) {
+GpuArray<T> flip<T extends DTypeTag>(GpuArray<T> a, {dynamic axis}) {
   final rank = a.shape.length;
   final List<int> axes;
   if (axis == null) {
@@ -487,7 +507,7 @@ GpuArray<T> flip<T>(GpuArray<T> a, {dynamic axis}) {
 }
 
 /// Rotates an array by 90 degrees in the plane specified by [axes].
-GpuArray<T> rot90<T>(
+GpuArray<T> rot90<T extends DTypeTag>(
   GpuArray<T> a, {
   int k = 1,
   List<int> axes = const [0, 1],
@@ -511,7 +531,7 @@ GpuArray<T> rot90<T>(
 }
 
 /// Extracts a diagonal or constructs a diagonal array.
-GpuArray<T> diag<T>(GpuArray<T> v, {int k = 0}) {
+GpuArray<T> diag<T extends DTypeTag>(GpuArray<T> v, {int k = 0}) {
   if (v.shape.length == 1) {
     final n = v.shape[0];
     final size = n + k.abs();
@@ -539,7 +559,7 @@ GpuArray<T> diag<T>(GpuArray<T> v, {int k = 0}) {
 }
 
 /// Returns specified diagonals of an array.
-GpuArray<T> diagonal<T>(
+GpuArray<T> diagonal<T extends DTypeTag>(
   GpuArray<T> a, {
   int offset = 0,
   int axis1 = 0,
@@ -582,7 +602,7 @@ GpuArray<T> diagonal<T>(
 }
 
 /// Returns the sum along diagonals of the array.
-dynamic trace<T>(
+dynamic trace<T extends DTypeTag>(
   GpuArray<T> a, {
   int offset = 0,
   int axis1 = 0,
@@ -594,7 +614,7 @@ dynamic trace<T>(
 }
 
 /// Upper triangle of an array.
-GpuArray<T> triu<T>(GpuArray<T> m, {int k = 0}) {
+GpuArray<T> triu<T extends DTypeTag>(GpuArray<T> m, {int k = 0}) {
   final rank = m.shape.length;
   if (rank < 2) {
     throw ArgumentError('triu requires an array of at least 2 dimensions.');
@@ -620,7 +640,7 @@ GpuArray<T> triu<T>(GpuArray<T> m, {int k = 0}) {
 }
 
 /// Lower triangle of an array.
-GpuArray<T> tril<T>(GpuArray<T> m, {int k = 0}) {
+GpuArray<T> tril<T extends DTypeTag>(GpuArray<T> m, {int k = 0}) {
   final rank = m.shape.length;
   if (rank < 2) {
     throw ArgumentError('tril requires an array of at least 2 dimensions.');
@@ -646,7 +666,11 @@ GpuArray<T> tril<T>(GpuArray<T> m, {int k = 0}) {
 }
 
 /// Move axes of an array to new positions.
-GpuArray<T> moveaxis<T>(GpuArray<T> a, dynamic source, dynamic destination) {
+GpuArray<T> moveaxis<T extends DTypeTag>(
+  GpuArray<T> a,
+  dynamic source,
+  dynamic destination,
+) {
   final rank = a.shape.length;
   final srcList = (source is int) ? [source] : (source as List<int>);
   final dstList = (destination is int)
@@ -672,7 +696,7 @@ GpuArray<T> moveaxis<T>(GpuArray<T> a, dynamic source, dynamic destination) {
 }
 
 /// Interchange two axes of an array.
-GpuArray<T> swapaxes<T>(GpuArray<T> a, int axis1, int axis2) {
+GpuArray<T> swapaxes<T extends DTypeTag>(GpuArray<T> a, int axis1, int axis2) {
   final rank = a.shape.length;
   final ax1 = axis1 < 0 ? axis1 + rank : axis1;
   final ax2 = axis2 < 0 ? axis2 + rank : axis2;
@@ -685,7 +709,7 @@ GpuArray<T> swapaxes<T>(GpuArray<T> a, int axis1, int axis2) {
 }
 
 /// Expand the shape of an array by inserting a new axis at [axis].
-GpuArray<T> expand_dims<T>(GpuArray<T> a, dynamic axis) {
+GpuArray<T> expand_dims<T extends DTypeTag>(GpuArray<T> a, dynamic axis) {
   final rank = a.shape.length;
   final axes = (axis is int) ? [axis] : (axis as List<int>);
   final outRank = rank + axes.length;
@@ -702,7 +726,7 @@ GpuArray<T> expand_dims<T>(GpuArray<T> a, dynamic axis) {
 }
 
 /// Broadcast an array to a new shape.
-GpuArray<T> broadcast_to<T>(GpuArray<T> a, List<int> shape) {
+GpuArray<T> broadcast_to<T extends DTypeTag>(GpuArray<T> a, List<int> shape) {
   final bStrides = ShapeUtils.broadcastStrides(a.shape, a.strides, shape);
   final isContig = ShapeUtils.isContiguous(shape, bStrides);
 

@@ -303,8 +303,10 @@ display(descriptor.createBrowserWidget(
     expect(result, contains('fused_mandelbrot_loop'));
   });
 
-  test('evaluates zero-input GpuExpr.coord Mandelbrot in notebook kernel', () async {
-    final code = '''
+  test(
+    'evaluates zero-input GpuExpr.coord Mandelbrot in notebook kernel',
+    () async {
+      final code = '''
 final size = 64;
 final xIn = GpuExpr.coord(1, shape: [size, size], normalized: true) - 0.5;
 final yIn = GpuExpr.coord(0, shape: [size, size], normalized: true) - 0.5;
@@ -350,9 +352,10 @@ display(descriptor.createBrowserWidget(
 ));
 ''';
 
-    final result = await kernel.execute(code);
-    expect(result, contains('text/html'));
-    expect(result, contains('<canvas'));
-    expect(result, contains('zero_input_mandelbrot'));
-  });
+      final result = await kernel.execute(code);
+      expect(result, contains('text/html'));
+      expect(result, contains('<canvas'));
+      expect(result, contains('zero_input_mandelbrot'));
+    },
+  );
 }

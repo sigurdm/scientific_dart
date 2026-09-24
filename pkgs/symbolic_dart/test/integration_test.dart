@@ -16,10 +16,10 @@ void main() {
       final subMat = mat.subs({Symbol('x'): 10.0});
       final arr = subMat.toNDArray();
       expect(arr.shape, [2, 2]);
-      expect(arr.getCell([0, 0]), Float64(1.0));
-      expect(arr.getCell([0, 1]), Float64(10.0));
-      expect(arr.getCell([1, 0]), Float64(2.5));
-      expect(arr.getCell([1, 1]), Float64(4.0));
+      expect(arr.getCell([0, 0]), (1.0));
+      expect(arr.getCell([0, 1]), (10.0));
+      expect(arr.getCell([1, 0]), (2.5));
+      expect(arr.getCell([1, 1]), (4.0));
     });
 
     test('matrix algebra: det, inv, solve', () {
@@ -141,6 +141,41 @@ void main() {
       expect(solX, closeTo(3.0, 1e-5));
       expect(solY, closeTo(-2.0, 1e-5));
     });
+
+    test(
+      'minimizeNewton on Rosenbrock function with exact symbolic Hessian',
+      () {
+        final x = Symbol('x');
+        final y = Symbol('y');
+        // Rosenbrock: f(x, y) = (1 - x)^2 + 100 * (y - x^2)^2, minimum at (1, 1)
+        final rosenbrock =
+            ((1.toExpr - x) ^ 2) + 100.toExpr * ((y - (x ^ 2)) ^ 2);
+        final x0 = NDArray.fromList([-1.2, 1.0], [2], DType.float64);
+
+        final res = SymbolicOptimizer.minimizeNewton(
+          objective: rosenbrock,
+          variables: [x, y],
+          x0: x0,
+          maxIterations: 50,
+          gradientTolerance: 1e-8,
+        );
+
+        final solX = (res.solution.getCell([0]) as num).toDouble();
+        final solY = (res.solution.getCell([1]) as num).toDouble();
+        expect(solX, closeTo(1.0, 1e-6));
+        expect(solY, closeTo(1.0, 1e-6));
+        expect(res.loss, closeTo(0.0, 1e-10));
+      },
+    );
+
+    test('jacobian throws ArgumentError on non-vector 2x2 matrix', () {
+      final x = Symbol('x');
+      final mat2x2 = SymbolicMatrix.fromList([
+        [x, 1],
+        [2, x ^ 2],
+      ]);
+      expect(() => mat2x2.jacobian([x]), throwsArgumentError);
+    });
   });
 
   group('NDArray.scope scoped memory management with symbolic_dart', () {
@@ -178,10 +213,10 @@ void main() {
       });
 
       expect(survived.isDisposed, isFalse);
-      expect(survived.getCell([0, 0]), Float64(4.0));
-      expect(survived.getCell([0, 1]), Float64(15.0));
-      expect(survived.getCell([1, 0]), Float64(7.0));
-      expect(survived.getCell([1, 1]), Float64(10.0));
+      expect(survived.getCell([0, 0]), (4.0));
+      expect(survived.getCell([0, 1]), (15.0));
+      expect(survived.getCell([1, 0]), (7.0));
+      expect(survived.getCell([1, 1]), (10.0));
 
       survived.dispose();
       expect(survived.isDisposed, isTrue);

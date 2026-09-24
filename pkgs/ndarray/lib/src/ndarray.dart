@@ -302,6 +302,187 @@ enum DType<T extends DTypeTag> {
       this == DType.int32 ||
       this == DType.int16 ||
       this == DType.int8;
+
+  NDArray<T> _createRaw(
+    ffi.Pointer<ffi.Void> pointer,
+    List<Object?> data,
+    NDArray? parent, {
+    required List<int> shape,
+    required List<int> strides,
+    int offsetElements = 0,
+    ffi.Pointer<ffi.Void>? allocPointer,
+    bool isExternallyOwned = false,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>?
+    customNativeFinalizer,
+  }) =>
+      (switch (this) {
+            DType.float64 => _NDArrayFloat64(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.float32 => _NDArrayFloat32(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.float16 => _NDArrayFloat16(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.bfloat16 => _NDArrayBFloat16(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.int64 => _NDArrayInt64(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.int32 => _NDArrayInt32(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.int16 => _NDArrayInt16(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.int8 => _NDArrayInt8(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.uint64 => _NDArrayUint64(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.uint32 => _NDArrayUint32(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.uint16 => _NDArrayUint16(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.uint8 => _NDArrayUint8(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.complex128 => _NDArrayComplex128(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.complex64 => _NDArrayComplex64(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+            DType.boolean => _NDArrayBoolean(
+              pointer,
+              data,
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+              allocPointer: allocPointer,
+              isExternallyOwned: isExternallyOwned,
+              customNativeFinalizer: customNativeFinalizer,
+            ),
+          })
+          as NDArray<T>;
 }
 
 /// An n-dimensional array with memory allocated on the C heap.
@@ -349,7 +530,7 @@ enum DType<T extends DTypeTag> {
 /// // Explicitly free memory when done
 /// a.dispose();
 /// ```
-final class NDArray<T extends DTypeTag>
+sealed class NDArray<T extends DTypeTag>
     implements ffi.Finalizable, ScopedResource {
   /// Pointer to the raw C memory allocated for this array (logical origin).
   final ffi.Pointer<ffi.Void> _pointer;
@@ -401,7 +582,7 @@ final class NDArray<T extends DTypeTag>
   final int offsetElements;
 
   /// The data type of the elements in the array.
-  final DType<T> dtype;
+  DType<T> get dtype;
 
   /// Returns true if the array is C-contiguous in memory.
   ///
@@ -534,191 +715,19 @@ final class NDArray<T extends DTypeTag>
     bool isExternallyOwned = false,
     ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>?
     customNativeFinalizer,
-  }) {
-    final NDArray instance = switch (dtype) {
-      DType.float64 => NDArray<Float64>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.float64,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.float32 => NDArray<Float32>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.float32,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.float16 => NDArray<Float16>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.float16,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.bfloat16 => NDArray<BFloat16>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.bfloat16,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.int64 => NDArray<Int64>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.int64,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.int32 => NDArray<Int32>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.int32,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.int16 => NDArray<Int16>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.int16,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.int8 => NDArray<Int8>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.int8,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.uint64 => NDArray<Uint64>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.uint64,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.uint32 => NDArray<Uint32>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.uint32,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.uint16 => NDArray<Uint16>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.uint16,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.uint8 => NDArray<Uint8>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.uint8,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.complex128 => NDArray<Complex128>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.complex128,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.complex64 => NDArray<Complex64>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.complex64,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-      DType.boolean => NDArray<Boolean>._raw(
-        pointer,
-        data,
-        parent,
-        shape: shape,
-        strides: strides,
-        dtype: DType.boolean,
-        offsetElements: offsetElements,
-        allocPointer: allocPointer,
-        isExternallyOwned: isExternallyOwned,
-        customNativeFinalizer: customNativeFinalizer,
-      ),
-    };
-    return instance as NDArray<T>;
-  }
+  }) =>
+      dtype._createRaw(
+            pointer,
+            data,
+            parent,
+            shape: shape,
+            strides: strides,
+            offsetElements: offsetElements,
+            allocPointer: allocPointer,
+            isExternallyOwned: isExternallyOwned,
+            customNativeFinalizer: customNativeFinalizer,
+          )
+          as NDArray<T>;
 
   /// Private generative constructor for internal use.
   NDArray._raw(
@@ -727,7 +736,6 @@ final class NDArray<T extends DTypeTag>
     this._parent, {
     required List<int> shape,
     required List<int> strides,
-    required this.dtype,
     this.offsetElements = 0,
     ffi.Pointer<ffi.Void>? allocPointer,
     bool isExternallyOwned = false,
@@ -2412,6 +2420,7 @@ final class NDArray<T extends DTypeTag>
     }
 
     var valueIndex = 0;
+    final selfDType = dtype;
 
     void walk(int dim, int currentOffset, int maskOffset) {
       if (dim == shape.length) {
@@ -2423,6 +2432,7 @@ final class NDArray<T extends DTypeTag>
           }
           dataRaw[currentOffset] = _coerceScalar(
             values.getCellFlat(valueIndex++),
+            selfDType,
           );
         }
         return;
@@ -2541,10 +2551,11 @@ final class NDArray<T extends DTypeTag>
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
     }
 
+    final selfDType = dtype;
     if (values.shape.isEmpty) {
       setIndicesScalar(
         indices,
-        _coerceScalar(values.getCellFlat(0)),
+        _coerceScalar(values.getCellFlat(0), selfDType),
         axis: axis,
       );
       return;
@@ -2593,6 +2604,7 @@ final class NDArray<T extends DTypeTag>
           }
           dataRaw[currentOffset] = _coerceScalar(
             values.getCellFlat(valOffset++),
+            selfDType,
           );
           return;
         }
@@ -2607,11 +2619,11 @@ final class NDArray<T extends DTypeTag>
 
   /// Accesses elements of the array polymorphically based on the runtime type of [spec].
   /// Safely coercing scalar inputs to matching array element type [T].
-  Object? _coerceScalar(dynamic value) {
+  Object? _coerceScalar(dynamic value, [DType? cachedDType]) {
     if (value is NDArray && (value.shape.isEmpty || value.size == 1)) {
       value = value.getCellFlat(0);
     }
-    switch (dtype) {
+    switch (cachedDType ?? dtype) {
       case DType.float64:
       case DType.float32:
       case DType.float16:
@@ -4503,6 +4515,276 @@ final class NDArray<T extends DTypeTag>
   String toString() => _ndarrayToString(this);
 }
 
+final class _NDArrayFloat64 extends NDArray<Float64> {
+  _NDArrayFloat64(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Float64> get dtype => DType.float64;
+}
+
+final class _NDArrayFloat32 extends NDArray<Float32> {
+  _NDArrayFloat32(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Float32> get dtype => DType.float32;
+}
+
+final class _NDArrayFloat16 extends NDArray<Float16> {
+  _NDArrayFloat16(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Float16> get dtype => DType.float16;
+}
+
+final class _NDArrayBFloat16 extends NDArray<BFloat16> {
+  _NDArrayBFloat16(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<BFloat16> get dtype => DType.bfloat16;
+}
+
+final class _NDArrayInt64 extends NDArray<Int64> {
+  _NDArrayInt64(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Int64> get dtype => DType.int64;
+}
+
+final class _NDArrayInt32 extends NDArray<Int32> {
+  _NDArrayInt32(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Int32> get dtype => DType.int32;
+}
+
+final class _NDArrayInt16 extends NDArray<Int16> {
+  _NDArrayInt16(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Int16> get dtype => DType.int16;
+}
+
+final class _NDArrayInt8 extends NDArray<Int8> {
+  _NDArrayInt8(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Int8> get dtype => DType.int8;
+}
+
+final class _NDArrayUint64 extends NDArray<Uint64> {
+  _NDArrayUint64(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Uint64> get dtype => DType.uint64;
+}
+
+final class _NDArrayUint32 extends NDArray<Uint32> {
+  _NDArrayUint32(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Uint32> get dtype => DType.uint32;
+}
+
+final class _NDArrayUint16 extends NDArray<Uint16> {
+  _NDArrayUint16(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Uint16> get dtype => DType.uint16;
+}
+
+final class _NDArrayUint8 extends NDArray<Uint8> {
+  _NDArrayUint8(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Uint8> get dtype => DType.uint8;
+}
+
+final class _NDArrayComplex128 extends NDArray<Complex128> {
+  _NDArrayComplex128(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Complex128> get dtype => DType.complex128;
+}
+
+final class _NDArrayComplex64 extends NDArray<Complex64> {
+  _NDArrayComplex64(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Complex64> get dtype => DType.complex64;
+}
+
+final class _NDArrayBoolean extends NDArray<Boolean> {
+  _NDArrayBoolean(
+    super.pointer,
+    super.data,
+    super.parent, {
+    required super.shape,
+    required super.strides,
+    super.offsetElements,
+    super.allocPointer,
+    super.isExternallyOwned,
+    super.customNativeFinalizer,
+  }) : super._raw();
+
+  @pragma('vm:prefer-inline')
+  @override
+  DType<Boolean> get dtype => DType.boolean;
+}
+
 /// Arithmetic operators (`+`, `-`, `*`, `~/`, `%`) preserving the concrete
 /// dtype tag [T] of the left operand.
 extension NDArrayArithmetic<T extends DTypeTag> on NDArray<T> {
@@ -4586,18 +4868,19 @@ String _formatScalar(dynamic value, DType dtype) {
 String _format1D(NDArray arr) {
   final len = arr.shape[0];
   if (len == 0) return '[]';
+  final dtype = arr.dtype;
   final items = <String>[];
   if (len <= 6) {
     for (var i = 0; i < len; i++) {
-      items.add(_formatScalar(arr.getCell([i]), arr.dtype));
+      items.add(_formatScalar(arr.getCell([i]), dtype));
     }
   } else {
     for (var i = 0; i < 3; i++) {
-      items.add(_formatScalar(arr.getCell([i]), arr.dtype));
+      items.add(_formatScalar(arr.getCell([i]), dtype));
     }
     items.add('...');
     for (var i = len - 3; i < len; i++) {
-      items.add(_formatScalar(arr.getCell([i]), arr.dtype));
+      items.add(_formatScalar(arr.getCell([i]), dtype));
     }
   }
   return '[${items.join(", ")}]';
@@ -4610,6 +4893,7 @@ String _format2D(NDArray arr, {String indent = ' '}) {
     return '[], shape=[$numRows, $numCols]';
   }
 
+  final dtype = arr.dtype;
   final rowIndices = numRows <= 6
       ? List.generate(numRows, (i) => i)
       : [0, 1, 2, -1, numRows - 3, numRows - 2, numRows - 1];
@@ -4633,7 +4917,7 @@ String _format2D(NDArray arr, {String indent = ' '}) {
       if (c == -1) {
         str = '...';
       } else {
-        str = _formatScalar(arr.getCell([r, c]), arr.dtype);
+        str = _formatScalar(arr.getCell([r, c]), dtype);
       }
       rowStrs.add(str);
       if (str.length > colWidths[cIdx]) {

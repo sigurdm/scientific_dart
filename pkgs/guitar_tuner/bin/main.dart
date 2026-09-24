@@ -17,10 +17,10 @@ void main() async {
   final logic = TunerLogic(sampleRate: sampleRate, bufferSize: bufferSize);
 
   // Pre-allocate capture buffer to avoid garbage collection pressure
-  final NDArray<double> captureBuffer = NDArray<double>.create([
+  final NDArray<Float32> captureBuffer = NDArray<Float32>.create([
     bufferSize,
   ], DType.float32);
-  final NDArray<double> sqSamples = NDArray<double>.create([
+  final NDArray<Float32> sqSamples = NDArray<Float32>.create([
     bufferSize,
   ], DType.float32);
 
@@ -41,12 +41,8 @@ void main() async {
 
       // Check if we have enough signal (RMS threshold) via num_dart
       final (double currentRms, TunerResult result) = NDArray.scope(() {
-        multiply<double, double, double>(
-          captureBuffer,
-          captureBuffer,
-          out: sqSamples,
-        );
-        final meanOut = NDArray<double>.create([], DType.float64);
+        multiply(captureBuffer, captureBuffer, out: sqSamples);
+        final meanOut = NDArray<Float64>.create([], DType.float64);
         mean(sqSamples, out: meanOut);
         final rmsVal = math.sqrt(meanOut.scalar);
 

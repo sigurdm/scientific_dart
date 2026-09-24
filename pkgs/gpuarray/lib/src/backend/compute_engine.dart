@@ -126,37 +126,35 @@ final class ComputeEngine {
       case DType.float32:
         return ptr.cast<ffi.Float>()[idx];
       case DType.float16:
-        return Float16(Float16Utils.decodeFloat16(ptr.cast<ffi.Uint16>()[idx]));
+        return Float16Utils.decodeFloat16(ptr.cast<ffi.Uint16>()[idx]);
       case DType.bfloat16:
-        return BFloat16(
-          Float16Utils.decodeBFloat16(ptr.cast<ffi.Uint16>()[idx]),
-        );
+        return Float16Utils.decodeBFloat16(ptr.cast<ffi.Uint16>()[idx]);
       case DType.int64:
-        return Int64(ptr.cast<ffi.Int64>()[idx]);
+        return ptr.cast<ffi.Int64>()[idx];
       case DType.int32:
-        return Int32(ptr.cast<ffi.Int32>()[idx]);
+        return ptr.cast<ffi.Int32>()[idx];
       case DType.int16:
-        return Int16(ptr.cast<ffi.Int16>()[idx]);
+        return ptr.cast<ffi.Int16>()[idx];
       case DType.int8:
-        return Int8(ptr.cast<ffi.Int8>()[idx]);
+        return ptr.cast<ffi.Int8>()[idx];
       case DType.uint64:
-        return Uint64(ptr.cast<ffi.Uint64>()[idx]);
+        return ptr.cast<ffi.Uint64>()[idx];
       case DType.uint32:
-        return Uint32(ptr.cast<ffi.Uint32>()[idx]);
+        return ptr.cast<ffi.Uint32>()[idx];
       case DType.uint16:
-        return Uint16(ptr.cast<ffi.Uint16>()[idx]);
+        return ptr.cast<ffi.Uint16>()[idx];
       case DType.uint8:
-        return Uint8(ptr.cast<ffi.Uint8>()[idx]);
+        return ptr.cast<ffi.Uint8>()[idx];
       case DType.boolean:
         return ptr.cast<ffi.Uint8>()[idx] != 0;
       case DType.complex64:
         final real = ptr.cast<ffi.Float>()[idx * 2];
         final imag = ptr.cast<ffi.Float>()[idx * 2 + 1];
-        return Complex64(real, imag);
+        return Complex(real, imag);
       case DType.complex128:
         final real = ptr.cast<ffi.Double>()[idx * 2];
         final imag = ptr.cast<ffi.Double>()[idx * 2 + 1];
-        return Complex128(real, imag);
+        return Complex(real, imag);
     }
   }
 
@@ -174,16 +172,6 @@ final class ComputeEngine {
       if (v is bool) return v ? 1.0 : 0.0;
       if (v is num) return v.toDouble();
       if (v is Complex) return v.real;
-      if (v is Float16) return v.value;
-      if (v is BFloat16) return v.value;
-      if (v is Int64) return v.value.toDouble();
-      if (v is Int32) return v.value.toDouble();
-      if (v is Int16) return v.value.toDouble();
-      if (v is Int8) return v.value.toDouble();
-      if (v is Uint64) return v.value.toDouble();
-      if (v is Uint32) return v.value.toDouble();
-      if (v is Uint16) return v.value.toDouble();
-      if (v is Uint8) return v.value.toDouble();
       return 0.0;
     }
 
@@ -191,16 +179,6 @@ final class ComputeEngine {
       if (v is bool) return v ? 1 : 0;
       if (v is num) return v.toInt();
       if (v is BigInt) return v.toSigned(64).toInt();
-      if (v is Float16) return v.value.toInt();
-      if (v is BFloat16) return v.value.toInt();
-      if (v is Int64) return v.value;
-      if (v is Int32) return v.value;
-      if (v is Int16) return v.value;
-      if (v is Int8) return v.value;
-      if (v is Uint64) return v.value;
-      if (v is Uint32) return v.value;
-      if (v is Uint16) return v.value;
-      if (v is Uint8) return v.value;
       return 0;
     }
 
@@ -236,7 +214,7 @@ final class ComputeEngine {
       case DType.uint64:
         ptr.cast<ffi.Uint64>()[idx] = (value is BigInt)
             ? value.toUnsigned(64).toInt()
-            : (value is Uint64 ? value.value : toIntVal(value));
+            : toIntVal(value);
         break;
       case DType.uint32:
         ptr.cast<ffi.Uint32>()[idx] = toIntVal(value);

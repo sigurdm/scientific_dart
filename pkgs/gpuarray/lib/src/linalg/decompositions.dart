@@ -6,7 +6,7 @@ import '../exceptions.dart';
 import '../backend/compute_engine.dart';
 
 /// Result of Singular Value Decomposition (SVD).
-final class SvdResult<T> {
+final class SvdResult<T extends DTypeTag> {
   /// Left singular vectors $U$.
   final GpuArray<T> u;
 
@@ -23,7 +23,7 @@ final class SvdResult<T> {
 }
 
 /// Result of QR Decomposition.
-final class QrResult<T> {
+final class QrResult<T extends DTypeTag> {
   /// Orthonormal matrix $Q$.
   final GpuArray<T> q;
 
@@ -37,7 +37,7 @@ final class QrResult<T> {
 }
 
 /// Result of Eigendecomposition.
-final class EigResult<T> {
+final class EigResult<T extends DTypeTag> {
   /// Eigenvalues $\lambda$.
   final GpuArray<T> eigenvalues;
 
@@ -52,7 +52,7 @@ final class EigResult<T> {
 }
 
 /// Result of LU Decomposition.
-final class LuResult<T> {
+final class LuResult<T extends DTypeTag> {
   /// Permutation matrix $P$.
   final GpuArray<T> p;
 
@@ -69,7 +69,7 @@ final class LuResult<T> {
 }
 
 /// Result of LU Factorization with pivot indices.
-final class LuFactorResult<T> {
+final class LuFactorResult<T extends DTypeTag> {
   /// Combined LU factor matrix where diagonal and upper part is $U$ and strictly lower part is $L$.
   final GpuArray<T> lu;
 
@@ -83,7 +83,7 @@ final class LuFactorResult<T> {
 }
 
 /// Computes the QR decomposition of matrix [a] using Householder reflections.
-QrResult<T> qr<T>(GpuArray<T> a, {String mode = 'reduced'}) {
+QrResult<T> qr<T extends DTypeTag>(GpuArray<T> a, {String mode = 'reduced'}) {
   if (a.rank < 2) {
     throw ArgumentError('qr() requires an array with at least 2 dimensions.');
   }
@@ -196,7 +196,7 @@ QrResult<T> qr<T>(GpuArray<T> a, {String mode = 'reduced'}) {
 }
 
 /// Computes the Cholesky decomposition of a symmetric/Hermitian positive-definite matrix [a].
-GpuArray<T> cholesky<T>(GpuArray<T> a, {bool upper = false}) {
+GpuArray<T> cholesky<T extends DTypeTag>(GpuArray<T> a, {bool upper = false}) {
   if (a.rank < 2) {
     throw ArgumentError(
       'cholesky() requires an array of at least 2 dimensions.',
@@ -261,7 +261,7 @@ GpuArray<T> cholesky<T>(GpuArray<T> a, {bool upper = false}) {
 }
 
 /// Computes the LU decomposition with partial pivoting: $A = P^T L U$.
-LuResult<T> lu<T>(GpuArray<T> a) {
+LuResult<T> lu<T extends DTypeTag>(GpuArray<T> a) {
   if (a.rank < 2) {
     throw ArgumentError('lu() requires an array of at least 2 dimensions.');
   }
@@ -371,7 +371,7 @@ LuResult<T> lu<T>(GpuArray<T> a) {
 }
 
 /// Computes pivoted LU factorization of matrix [a].
-LuFactorResult<T> lu_factor<T>(GpuArray<T> a) {
+LuFactorResult<T> lu_factor<T extends DTypeTag>(GpuArray<T> a) {
   if (a.rank < 2) {
     throw ArgumentError(
       'lu_factor() requires an array of at least 2 dimensions.',
@@ -458,7 +458,11 @@ LuFactorResult<T> lu_factor<T>(GpuArray<T> a) {
 }
 
 /// Solves a linear system $A x = b$ using precomputed LU factorization [lu] and pivots [piv].
-GpuArray<T> lu_solve<T>(GpuArray<T> lu, GpuArray<Int32> piv, GpuArray<T> b) {
+GpuArray<T> lu_solve<T extends DTypeTag>(
+  GpuArray<T> lu,
+  GpuArray<Int32> piv,
+  GpuArray<T> b,
+) {
   if (lu.rank < 2) {
     throw ArgumentError('lu_solve() requires lu of at least 2 dimensions.');
   }
@@ -573,7 +577,7 @@ GpuArray<T> lu_solve<T>(GpuArray<T> lu, GpuArray<Int32> piv, GpuArray<T> b) {
 }
 
 /// Computes the Singular Value Decomposition (SVD) of matrix [a].
-SvdResult<T> svd<T>(
+SvdResult<T> svd<T extends DTypeTag>(
   GpuArray<T> a, {
   bool fullMatrices = true,
   bool computeUv = true,
@@ -775,7 +779,7 @@ SvdResult<T> svd<T>(
 }
 
 /// Computes eigenvalues and eigenvectors of a symmetric/Hermitian matrix [a].
-EigResult<T> eigh<T>(GpuArray<T> a, {String UPLO = 'L'}) {
+EigResult<T> eigh<T extends DTypeTag>(GpuArray<T> a, {String UPLO = 'L'}) {
   if (a.rank < 2) {
     throw ArgumentError('eigh() requires an array of at least 2 dimensions.');
   }
@@ -906,11 +910,11 @@ EigResult<T> eigh<T>(GpuArray<T> a, {String UPLO = 'L'}) {
 }
 
 /// Returns eigenvalues of a symmetric/Hermitian matrix [a].
-GpuArray<T> eigvalsh<T>(GpuArray<T> a, {String UPLO = 'L'}) =>
+GpuArray<T> eigvalsh<T extends DTypeTag>(GpuArray<T> a, {String UPLO = 'L'}) =>
     eigh(a, UPLO: UPLO).eigenvalues;
 
 /// Computes eigenvalues and right eigenvectors of a general square matrix [a].
-EigResult<T> eig<T>(GpuArray<T> a) => eigh(a);
+EigResult<T> eig<T extends DTypeTag>(GpuArray<T> a) => eigh(a);
 
 /// Computes eigenvalues of a general square matrix [a].
-GpuArray<T> eigvals<T>(GpuArray<T> a) => eig(a).eigenvalues;
+GpuArray<T> eigvals<T extends DTypeTag>(GpuArray<T> a) => eig(a).eigenvalues;

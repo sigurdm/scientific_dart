@@ -15,7 +15,9 @@ void main() {
   final tokens = controller.lineTokens.first;
   print('Tokens in line 0:');
   for (final token in tokens) {
-    print('  ${token.type}: "${token.text}" (offset ${token.offset}..${token.end})');
+    print(
+      '  ${token.type}: "${token.text}" (offset ${token.offset}..${token.end})',
+    );
   }
 
   // 3. Perform text manipulation

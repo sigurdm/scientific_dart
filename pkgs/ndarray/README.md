@@ -78,7 +78,7 @@ void main() {
 
     // 3. Broadcast addition with a row vector
     final bias = NDArray.fromList([0.5, -0.5], [1, 2], DType.float64);
-    final shifted = add<Float64, Float64, Float64>(aT, bias);
+    final shifted = add(aT, bias);
 
     // 4. Accelerated OpenBLAS matrix multiplication: [2, 3] x [3, 2] -> [2, 2]
     final product = matmul(a, shifted);
@@ -100,7 +100,7 @@ void main() {
 > **Python / NumPy User Callout: Equality Comparisons (`equal` / `allClose` vs `==`)**
 >
 > In Dart, the `==` operator on `NDArray` checks **object identity / exact handle metadata**, and cannot return a boolean array due to Dart language type rules (`bool operator ==(Object other)`).
-> - To compute an element-wise boolean mask comparing two arrays (equivalent to NumPy's `a == b`), use **`equal(a, b)`**, which returns an `NDArray<bool>`.
+> - To compute an element-wise boolean mask comparing two arrays (equivalent to NumPy's `a == b`), use **`equal(a, b)`**, which returns an `NDArray<Boolean>`.
 > - To check if two floating-point arrays are numerically equal within relative/absolute tolerances ($|a - b| \le \text{atol} + \text{rtol} \cdot |b|$, equivalent to `np.allclose(a, b)`), always use **`allClose(a, b, rtol: 1e-5, atol: 1e-8)`** or **`isClose(a, b)`**.
 
 ---
@@ -121,7 +121,7 @@ void main() {
     const numPoints = 128;
 
     // 1. Vectorized time grid [0.0, 1/128, 2/128, ..., 127/128]
-    final time = NDArray<Float64>.arange(
+    final time = NDArray.arange(
       0.0,
       numPoints / samplingRate,
       step: 1.0 / samplingRate,
@@ -130,31 +130,28 @@ void main() {
 
     // 2. Pure 10 Hz sine wave: y(t) = 5.0 * sin(2 * pi * 10.0 * t)
     final angle = time * (2.0 * math.pi * 10.0);
-    final NDArray<Float64> pureSignal = multiply(
-      sin(angle),
-      NDArray.scalar(Float64(5.0), dtype: DType.float64),
-    );
+    final pureSignal = sin(angle) * 5.0;
 
     // 3. Inject Gaussian white noise (sigma = 0.5)
-    final noise = normal<Float64>(
+    final noise = normal(
       [numPoints],
       loc: 0.0,
       scale: 0.5,
       dtype: DType.float64,
       seed: 42,
     );
-    final NDArray<Float64> noisySignal = add(pureSignal, noise);
+    final noisySignal = add(pureSignal, noise);
 
     // 4. Compute Real FFT and corresponding frequency bin centers (in Hz)
-    final spectrum = rfft<Float64, Complex128>(noisySignal);
+    final spectrum = rfft(noisySignal);
     final freqs = rfftfreq(numPoints, d: 1.0 / samplingRate);
 
     // 5. Vectorized low-pass filter: zero out all frequencies above 15 Hz in-place
     final highFreqMask = freqs > 15.0;
-    spectrum.setByMaskScalar(highFreqMask, Complex128(0.0, 0.0));
+    spectrum.setByMaskScalar(highFreqMask, const Complex(0.0, 0.0));
 
     // 6. Inverse Real FFT back to time domain
-    final reconstructed = irfft<Complex128, Float64>(spectrum, n: numPoints);
+    final reconstructed = irfft(spectrum, n: numPoints);
 
     // 7. Verify accuracy against the original noiseless signal
     final isRecovered = allClose(
@@ -180,8 +177,8 @@ void main() {
   NDArray.scope(() {
     // --- Part A: Batched Multi-Head Attention Scores via einsum ---
     // Batch size B=2, Heads H=4, Sequence length S=8, Head dim D=16
-    final q = normal<Float64>([2, 4, 8, 16], dtype: DType.float64, seed: 1);
-    final k = normal<Float64>([2, 4, 8, 16], dtype: DType.float64, seed: 2);
+    final q = normal([2, 4, 8, 16], dtype: DType.float64, seed: 1);
+    final k = normal([2, 4, 8, 16], dtype: DType.float64, seed: 2);
 
     // Compute raw attention logits: Q * K^T across batch and head dimensions
     // (Also supports batch ellipsis notation: '...id,...jd->...ij')
@@ -189,20 +186,16 @@ void main() {
       EinsumSubscripts.parse('bhid,bhjd->bhij'),
       [q, k],
     );
-    final scale = NDArray.scalar(
-      Float64(1.0 / math.sqrt(16.0)),
-      dtype: DType.float64,
-    );
-    final scaledScores = multiply<Float64, Float64, Float64>(rawScores, scale);
+    final scaledScores = rawScores * (1.0 / math.sqrt(16.0));
     print('Batched Attention Scores shape: ${scaledScores.shape}'); // [2, 4, 8, 8]
 
     // --- Part B: Principal Component Analysis (PCA) via SVD ---
     // Generate synthetic dataset X of shape [50 samples, 6 features]
-    final x = normal<Float64>([50, 6], dtype: DType.float64, seed: 42);
+    final x = normal([50, 6], dtype: DType.float64, seed: 42);
 
     // Center features by subtracting column-wise mean (keepdims: true -> [1, 6])
-    final colMean = mean<Float64, Float64>(x, axis: 0, keepdims: true);
-    final xCentered = subtract<Float64, Float64, Float64>(x, colMean);
+    final colMean = mean(x, axis: 0, keepdims: true);
+    final xCentered = subtract(x, colMean);
 
     // Factorize X_centered = U * S * V^T using LAPACK SVD
     final (:u, :s, :vh) = svd(xCentered);
@@ -289,25 +282,25 @@ void main() {
 
 ## Supported Data Types (`DType<T>`)
 
-`ndarray` provides strict compile-time and runtime type safety across **15 numerical and logical data types**, using zero-cost Dart extension types for FFI precision:
+`ndarray` provides strict compile-time and runtime type safety across **15 numerical and logical data types**:
 
-| `DType` Enum | Dart Element Type `T` | Byte Width | NumPy Descriptor | Category | Description |
-| :--- | :--- | :---: | :---: | :---: | :--- |
-| `DType.float64` | `Float64` (`double`) | 8 | `<f8` | Floating-Point | Double-precision IEEE 754 float |
-| `DType.float32` | `Float32` (`double`) | 4 | `<f4` | Floating-Point | Single-precision IEEE 754 float |
-| `DType.float16` | `Float16` (`double`) | 2 | `<f2` | Floating-Point | Half-precision IEEE 754 float |
-| `DType.bfloat16` | `BFloat16` (`double`) | 2 | `\|V2` | Floating-Point | Brain Floating-Point (16-bit ML format) |
-| `DType.int64` | `Int64` (`int`) | 8 | `<i8` | Signed Integer | 64-bit signed two's complement integer |
-| `DType.int32` | `Int32` (`int`) | 4 | `<i4` | Signed Integer | 32-bit signed two's complement integer |
-| `DType.int16` | `Int16` (`int`) | 2 | `<i2` | Signed Integer | 16-bit signed two's complement integer |
-| `DType.int8` | `Int8` (`int`) | 1 | `<i1` | Signed Integer | 8-bit signed two's complement integer |
-| `DType.uint64` | `Uint64` (`int`) | 8 | `<u8` | Unsigned Integer | 64-bit unsigned integer (use `uint64Compare`) |
-| `DType.uint32` | `Uint32` (`int`) | 4 | `<u4` | Unsigned Integer | 32-bit unsigned integer |
-| `DType.uint16` | `Uint16` (`int`) | 2 | `<u2` | Unsigned Integer | 16-bit unsigned integer |
-| `DType.uint8` | `Uint8` (`int`) | 1 | `\|u1` | Unsigned Integer | 8-bit unsigned byte |
-| `DType.complex128` | `Complex128` (`Complex`) | 16 | `<c16` | Complex | Double-precision complex (`2 x Float64`) |
-| `DType.complex64` | `Complex64` (`Complex`) | 8 | `<c8` | Complex | Single-precision complex (`2 x Float32`) |
-| `DType.boolean` | `bool` | 1 | `\|b1` | Boolean / Mask | 8-bit boolean truth value (`0` or `1`) |
+| `DType` Constant | Type Parameter `T` | Dart Element Type | Byte Width | NumPy Descriptor | Category | Description |
+| :--- | :--- | :---: | :---: | :---: | :--- | :--- |
+| `DType.float64` | `Float64` | `double` | 8 | `<f8` | Floating-Point | Double-precision IEEE 754 float |
+| `DType.float32` | `Float32` | `double` | 4 | `<f4` | Floating-Point | Single-precision IEEE 754 float |
+| `DType.float16` | `Float16` | `double` | 2 | `<f2` | Floating-Point | Half-precision IEEE 754 float |
+| `DType.bfloat16` | `BFloat16` | `double` | 2 | `\|V2` | Floating-Point | Brain Floating-Point (16-bit ML format) |
+| `DType.int64` | `Int64` | `int` | 8 | `<i8` | Signed Integer | 64-bit signed two's complement integer |
+| `DType.int32` | `Int32` | `int` | 4 | `<i4` | Signed Integer | 32-bit signed two's complement integer |
+| `DType.int16` | `Int16` | `int` | 2 | `<i2` | Signed Integer | 16-bit signed two's complement integer |
+| `DType.int8` | `Int8` | `int` | 1 | `<i1` | Signed Integer | 8-bit signed two's complement integer |
+| `DType.uint64` | `Uint64` | `int` | 8 | `<u8` | Unsigned Integer | 64-bit unsigned integer (use `uint64Compare`) |
+| `DType.uint32` | `Uint32` | `int` | 4 | `<u4` | Unsigned Integer | 32-bit unsigned integer |
+| `DType.uint16` | `Uint16` | `int` | 2 | `<u2` | Unsigned Integer | 16-bit unsigned integer |
+| `DType.uint8` | `Uint8` | `int` | 1 | `\|u1` | Unsigned Integer | 8-bit unsigned byte |
+| `DType.complex128` | `Complex128` | `Complex` | 16 | `<c16` | Complex | Double-precision complex (`2 x Float64`) |
+| `DType.complex64` | `Complex64` | `Complex` | 8 | `<c8` | Complex | Single-precision complex (`2 x Float32`) |
+| `DType.boolean` | `Boolean` | `bool` | 1 | `\|b1` | Boolean / Mask | 8-bit boolean truth value (`0` or `1`) |
 
 ---
 

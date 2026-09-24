@@ -2439,24 +2439,22 @@ NDArray<T> solve<T extends DTypeTag>(
         offsetB += coords[d] * bCopyStrides[d];
       }
 
+      final aDType = a.dtype;
+      final aByteWidth = aDType.byteWidth;
       final isSliceAContig =
           aStrides[rankA - 2] == n && aStrides[rankA - 1] == 1;
       if (isSliceAContig) {
         final srcSliceA = ffi.Pointer<ffi.Uint8>.fromAddress(
-          a.pointer.address + offsetA * a.dtype.byteWidth,
+          a.pointer.address + offsetA * aByteWidth,
         );
-        custom_memcpy(
-          aCopyPtr.cast(),
-          srcSliceA.cast(),
-          n * n * a.dtype.byteWidth,
-        );
+        custom_memcpy(aCopyPtr.cast(), srcSliceA.cast(), n * n * aByteWidth);
       } else {
         _copyStrided2DMatrix(
           a.pointer,
           aStrides,
           offsetA,
           n,
-          a.dtype,
+          aDType,
           aCopyPtr.cast(),
         );
       }
@@ -2465,7 +2463,7 @@ NDArray<T> solve<T extends DTypeTag>(
         bCopy.pointer.address + offsetB * bElemSize,
       );
 
-      _lapackeSolve(a.dtype, n, nrhs, aCopyPtr.cast(), ipiv, bSlicePtr);
+      _lapackeSolve(aDType, n, nrhs, aCopyPtr.cast(), ipiv, bSlicePtr);
 
       for (var d = stackDims - 1; d >= 0; d--) {
         coords[d]++;
@@ -3216,13 +3214,15 @@ NDArray<T> pinv<T extends DTypeTag>(
     final resolvedRcond = rcond ?? (maxDim * epsilon);
     final threshold = resolvedRcond * maxSingularVal;
 
-    final sPlus = NDArray.zeros([n, m], a.dtype);
+    final aDType = a.dtype;
+    final sIsF32 = s.dtype == DType.float32;
+    final sPlus = NDArray.zeros([n, m], aDType);
     for (var i = 0; i < s.shape[0]; i++) {
-      final double sVal = (s.dtype == DType.float32)
+      final double sVal = sIsF32
           ? s.pointer.cast<ffi.Float>()[i]
           : s.pointer.cast<ffi.Double>()[i];
       if (sVal > threshold) {
-        sPlus.setCell([i, i], castValue(1.0 / sVal, a.dtype));
+        sPlus.setCell([i, i], castValue(1.0 / sVal, aDType));
       }
     }
 
@@ -4111,6 +4111,7 @@ svd<T extends DTypeTag, R extends DTypeTag>(
           out?.s ?? NDArray<Float64>.zeros(sShape, dtypeS as DType<Float64>);
       final vhMat = out?.vh ?? NDArray<T>.zeros(vtShape, a.dtype);
 
+      final oneTyped = castValue(1.0, a.dtype);
       if (m > 0) {
         walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
           coords,
@@ -4126,7 +4127,7 @@ svd<T extends DTypeTag, R extends DTypeTag>(
             offsetElements: offsetU,
           );
           for (var i = 0; i < m; i++) {
-            uSlice.setCell([i, i], castValue(1.0, a.dtype));
+            uSlice.setCell([i, i], oneTyped);
           }
           uSlice.dispose();
         });
@@ -4146,7 +4147,7 @@ svd<T extends DTypeTag, R extends DTypeTag>(
             offsetElements: offsetVt,
           );
           for (var i = 0; i < n; i++) {
-            vtSlice.setCell([i, i], castValue(1.0, a.dtype));
+            vtSlice.setCell([i, i], oneTyped);
           }
           vtSlice.dispose();
         });
@@ -6876,9 +6877,10 @@ double _matrixNorm<T extends DTypeTag>(
     return minS;
   } else if (ord == NormKind.nuclear) {
     final s = _svdVals(a);
+    final sIsF32 = s.dtype == DType.float32;
     var sumS = 0.0;
     for (var i = 0; i < s.shape[0]; i++) {
-      sumS += (s.dtype == DType.float32)
+      sumS += sIsF32
           ? s.pointer.cast<ffi.Float>()[i]
           : s.pointer.cast<ffi.Double>()[i];
     }

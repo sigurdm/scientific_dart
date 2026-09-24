@@ -1,6 +1,11 @@
 export 'package:ndarray/ndarray.dart'
     show
         DType,
+        DTypeTag,
+        DTypeSpec,
+        AnySpec,
+        Boolean,
+        NDArrayBaseElements,
         Float64,
         Float32,
         Float16,

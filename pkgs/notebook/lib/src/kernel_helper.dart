@@ -992,8 +992,8 @@ Plot plotSymbolic(
   }
   final lambda = f.lambdify([varName]);
   final xArr = linspace<Float64>(
-    Float64(from.toDouble()),
-    Float64(to.toDouble()),
+    from.toDouble(),
+    to.toDouble(),
     points,
     dtype: DType.float64,
   );

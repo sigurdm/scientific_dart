@@ -84,10 +84,10 @@ void main() {
         // Complex128 1D sum reduction
         final a1 = GpuArray.fromList(
           [
-            Complex128(1.0, 2.0),
-            Complex128(3.0, -4.0),
-            Complex128(0.0, 5.0),
-            Complex128(-2.0, 1.0),
+            Complex(1.0, 2.0),
+            Complex(3.0, -4.0),
+            Complex(0.0, 5.0),
+            Complex(-2.0, 1.0),
           ],
           [4],
           DType.complex128,
@@ -101,7 +101,7 @@ void main() {
         // Complex128 1D prod reduction
         // (1+i)(2-i) = 3 + i; (3+i)(3i) = -3 + 9i
         final a2 = GpuArray.fromList(
-          [Complex128(1.0, 1.0), Complex128(2.0, -1.0), Complex128(0.0, 3.0)],
+          [Complex(1.0, 1.0), Complex(2.0, -1.0), Complex(0.0, 3.0)],
           [3],
           DType.complex128,
         );
@@ -114,8 +114,8 @@ void main() {
         // Complex128 2D axis reduction
         final mat = GpuArray.fromList(
           [
-            [Complex128(1.0, 2.0), Complex128(3.0, 4.0)],
-            [Complex128(5.0, 6.0), Complex128(7.0, 8.0)],
+            [Complex(1.0, 2.0), Complex(3.0, 4.0)],
+            [Complex(5.0, 6.0), Complex(7.0, 8.0)],
           ],
           [2, 2],
           DType.complex128,

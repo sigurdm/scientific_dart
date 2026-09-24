@@ -190,5 +190,63 @@ void main() {
       expect((a * b).asDouble, equals(20.0));
       expect((a / b).asDouble, equals(5.0));
     });
+
+    test(
+      'Symbol extension type, SymbolicNumExtension, exp, higher-order diff, series, gradient, hessian',
+      () {
+        final Symbol x = Symbol('x');
+        final Symbol y = Symbol('y');
+        expect(Symbol.fromExpr(x), equals(x));
+        expect(() => Symbol.fromExpr(x + 1), throwsArgumentError);
+
+        // SymbolicNumExtension: natural .toExpr and Expr operator syntax
+        final poly = 2.toExpr * (x ^ 2) + 3.toExpr * x - 5 + (10.toExpr / x);
+        // At x = 2: 2(4) + 3(2) - 5 + 5 = 8 + 6 - 5 + 5 = 14
+        expect(poly.subs({x: 2.0}).asDouble, closeTo(14.0, 1e-12));
+
+        // Instance .exp() method
+        expect(x.exp().subs({x: 0.0}).asDouble, closeTo(1.0, 1e-12));
+
+        // Higher-order derivatives
+        final cubic = (x ^ 3) + ((x ^ 2) * 2) + (x * 5);
+        expect(cubic.diff(x, 0), equals(cubic));
+        expect(cubic.diff(x, 1).subs({x: 2.0}).asDouble, closeTo(25.0, 1e-12));
+        expect(
+          cubic.diff(x, 2).subs({x: 2.0}).asDouble,
+          closeTo(16.0, 1e-12),
+        ); // 6x + 4 at x=2 -> 16
+        expect(cubic.diff(x, 3).asDouble, closeTo(6.0, 1e-12));
+        expect(cubic.diff(x, 4).isZero, isTrue);
+        expect(() => cubic.diff(x, -1), throwsArgumentError);
+
+        // Taylor series expansion
+        // sin(x) around 0 up to order 6 -> x - x^3/6 + x^5/120
+        // At x = 0.5: 0.5 - 0.125/6 + 0.03125/120 = 0.47942708333333334
+        final sinTaylor = sin(x).series(x, at: 0, order: 6);
+        expect(
+          sinTaylor.subs({x: 0.5}).asDouble,
+          closeTo(0.47942708333333334, 1e-12),
+        );
+
+        // Gradient and Hessian
+        // f(x, y) = x^2 * y + 3 * y^2
+        final f = ((x ^ 2) * y) + (3.toExpr * (y ^ 2));
+        final grad = f.gradient([x, y]);
+        expect(grad.shape, equals((rows: 2, cols: 1)));
+        // df/dx = 2xy (at 2, 3 -> 12), df/dy = x^2 + 6y (at 2, 3 -> 4 + 18 = 22)
+        final gradAt = grad.subs({x: 2.0, y: 3.0});
+        expect(gradAt.getCell(0, 0).asDouble, closeTo(12.0, 1e-12));
+        expect(gradAt.getCell(1, 0).asDouble, closeTo(22.0, 1e-12));
+
+        final hess = f.hessian([x, y]);
+        expect(hess.shape, equals((rows: 2, cols: 2)));
+        // d2f/dx2 = 2y (6), d2f/dxdy = 2x (4), d2f/dy2 = 6 (6)
+        final hessAt = hess.subs({x: 2.0, y: 3.0});
+        expect(hessAt.getCell(0, 0).asDouble, closeTo(6.0, 1e-12));
+        expect(hessAt.getCell(0, 1).asDouble, closeTo(4.0, 1e-12));
+        expect(hessAt.getCell(1, 0).asDouble, closeTo(4.0, 1e-12));
+        expect(hessAt.getCell(1, 1).asDouble, closeTo(6.0, 1e-12));
+      },
+    );
   });
 }

@@ -37,10 +37,10 @@ NDArray<Float64> evaluateSymbolic(
   if (inputs.isEmpty) {
     final val = expr.asDouble;
     if (out != null) {
-      out.setCell([], Float64(val));
+      out.setCell([], (val));
       return out;
     }
-    return NDArray.scalar(Float64(val), dtype: DType.float64);
+    return NDArray.scalar((val), dtype: DType.float64);
   }
 
   final variables = inputs.keys.toList(growable: false);

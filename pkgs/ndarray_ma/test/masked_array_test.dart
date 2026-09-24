@@ -554,7 +554,7 @@ void main() {
 
       final ma = NDArray.scope(() {
         final data = NDArray<Float64>.ones([2, 2], DType.float64);
-        final mask = NDArray<bool>.zeros([2, 2], DType.boolean);
+        final mask = NDArray<Boolean>.zeros([2, 2], DType.boolean);
         rawData = data;
         rawMask = mask;
         return MaskedArray<Float64>(data, mask).detachToParentScope();

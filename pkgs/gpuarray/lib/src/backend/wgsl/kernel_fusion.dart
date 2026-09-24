@@ -63,8 +63,6 @@ abstract class Expr {
     return LetExpr(varName, valExpr, body);
   }
 
-
-
   /// Creates a functional loop AST node with state variables, dynamic condition, and step function.
   static LoopExpr loop({
     required List<Object> initialValues,
@@ -128,7 +126,9 @@ abstract class Expr {
 
   Expr operator *(Object other) {
     final o = Expr.from(other);
-    if (this is ConstExpr && (this as ConstExpr).value == 0.0) return ConstExpr(0.0);
+    if (this is ConstExpr && (this as ConstExpr).value == 0.0) {
+      return ConstExpr(0.0);
+    }
     if (o is ConstExpr && o.value == 0.0) return ConstExpr(0.0);
     if (this is ConstExpr && (this as ConstExpr).value == 1.0) return o;
     if (o is ConstExpr && o.value == 1.0) return this;
@@ -137,7 +137,9 @@ abstract class Expr {
 
   Expr operator /(Object other) {
     final o = Expr.from(other);
-    if (this is ConstExpr && (this as ConstExpr).value == 0.0) return ConstExpr(0.0);
+    if (this is ConstExpr && (this as ConstExpr).value == 0.0) {
+      return ConstExpr(0.0);
+    }
     if (o is ConstExpr && o.value == 1.0) return this;
     return BinaryOpExpr('div', this, o);
   }
@@ -608,8 +610,10 @@ final class LetExpr extends Expr {
   Set<VarExpr> get variables => {...value.variables, ...body.variables};
 
   @override
-  Set<ScalarParamExpr> get scalarParams =>
-      {...value.scalarParams, ...body.scalarParams};
+  Set<ScalarParamExpr> get scalarParams => {
+    ...value.scalarParams,
+    ...body.scalarParams,
+  };
 
   @override
   int get depth => 1 + (value.depth > body.depth ? value.depth : body.depth);
@@ -704,7 +708,8 @@ final class OffsetVarExpr extends Expr {
       String sampleLogic;
       switch (boundary) {
         case BoundaryMode.clamp:
-          sampleLogic = '''
+          sampleLogic =
+              '''
   let W = $wStr;
   let H = $hStr;
   let r = i32(idx / W);
@@ -715,7 +720,8 @@ final class OffsetVarExpr extends Expr {
 ''';
           break;
         case BoundaryMode.wrap:
-          sampleLogic = '''
+          sampleLogic =
+              '''
   let W = $wStr;
   let H = $hStr;
   let r = i32(idx / W);
@@ -726,7 +732,8 @@ final class OffsetVarExpr extends Expr {
 ''';
           break;
         case BoundaryMode.zero:
-          sampleLogic = '''
+          sampleLogic =
+              '''
   let W = $wStr;
   let H = $hStr;
   let r = i32(idx / W);
@@ -750,20 +757,23 @@ $sampleLogic}
       String sampleLogic;
       switch (boundary) {
         case BoundaryMode.clamp:
-          sampleLogic = '''
+          sampleLogic =
+              '''
   let target = clamp(i32(idx) + ($d), 0, i32(total_elements - 1u));
   return $tName[u32(target)];
 ''';
           break;
         case BoundaryMode.wrap:
-          sampleLogic = '''
+          sampleLogic =
+              '''
   let N = i32(total_elements);
   let target = ((i32(idx) + ($d)) % N + N) % N;
   return $tName[u32(target)];
 ''';
           break;
         case BoundaryMode.zero:
-          sampleLogic = '''
+          sampleLogic =
+              '''
   let target = i32(idx) + ($d);
   if (target < 0 || target >= i32(total_elements)) {
     return 0.0f;
@@ -1035,13 +1045,17 @@ final class TernaryOpExpr extends Expr {
         return first.where(second.grad(wrt), third.grad(wrt));
       case 'clamp':
         final du = first.grad(wrt);
-        return (first.lessThan(second) | first.greaterThan(third))
-            .where(const ConstExpr(0.0), du);
+        return (first.lessThan(second) | first.greaterThan(third)).where(
+          const ConstExpr(0.0),
+          du,
+        );
       case 'mix':
         final da = first.grad(wrt);
         final db = second.grad(wrt);
         final dt = third.grad(wrt);
-        return (Expr.constant(1.0) - third) * da + third * db + (second - first) * dt;
+        return (Expr.constant(1.0) - third) * da +
+            third * db +
+            (second - first) * dt;
       case 'smoothstep':
         final dx = third.grad(wrt);
         final span = second - first;
@@ -1236,9 +1250,15 @@ final class FusedKernelDescriptor {
     List<ScalarParamExpr>? scalarParams,
     this.outputDType = WgslDType.float32,
     this.isStrided = false,
-  }) : expression = expression ?? outputExpr ?? (throw ArgumentError('Either expression or outputExpr must be provided.')),
+  }) : expression =
+           expression ??
+           outputExpr ??
+           (throw ArgumentError(
+             'Either expression or outputExpr must be provided.',
+           )),
        inputs = inputs ?? _sortVariables((expression ?? outputExpr!).variables),
-       scalarParams = scalarParams ?? (expression ?? outputExpr!).scalarParams.toList();
+       scalarParams =
+           scalarParams ?? (expression ?? outputExpr!).scalarParams.toList();
 
   static List<VarExpr> _sortVariables(Set<VarExpr> vars) {
     final list = vars.toList();
@@ -1399,8 +1419,9 @@ final class FusedKernelDescriptor {
     final bufferDeclarations = bindings
         .map((b) => b.toWgslDeclaration())
         .join('\n');
-    final effectiveExpr =
-        enableCse ? expression.eliminateCommonSubexpressions() : expression;
+    final effectiveExpr = enableCse
+        ? expression.eliminateCommonSubexpressions()
+        : expression;
     final loopFunctions = _collectLoops(
       effectiveExpr,
     ).map((l) => l.generateWgslFunction()).join('\n');
@@ -1585,7 +1606,9 @@ $letStatements
         step: slider.step,
         // In FusedKernelDescriptor, all scalar parameters in FusedUniforms are f32 in WGSL.
         isInteger: false,
-        uniformWordIndex: paramIdx != -1 ? paramIdx + 1 : slider.uniformWordIndex,
+        uniformWordIndex: paramIdx != -1
+            ? paramIdx + 1
+            : slider.uniformWordIndex,
       );
     }).toList();
 

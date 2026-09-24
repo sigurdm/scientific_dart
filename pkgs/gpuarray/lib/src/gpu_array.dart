@@ -6,6 +6,8 @@ import 'package:resource_scope/resource_scope.dart';
 import 'package:ndarray/ndarray.dart' as nd;
 
 import 'dtype.dart';
+export 'dtype.dart'
+    show DTypeTag, DTypeSpec, AnySpec, Boolean, NDArrayBaseElements;
 import 'buffer.dart';
 import 'device.dart';
 import 'exceptions.dart';
@@ -19,7 +21,8 @@ import 'serialization/webgpu_pipeline.dart';
 /// An N-dimensional array living on a GPU device.
 ///
 /// Implements [ScopedResource] for automatic memory management within [ResourceScope.scope].
-final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
+final class GpuArray<T extends DTypeTag>
+    implements ffi.Finalizable, ScopedResource {
   /// The underlying GPU buffer holding tensor data.
   final GpuBuffer buffer;
 
@@ -205,12 +208,12 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
     GpuDevice? device,
     bool requiresGrad = false,
   }) {
-    final dynamic oneVal = dtype == DType.boolean
+    final Object oneVal = dtype == DType.boolean
         ? true
         : (dtype.isFloating ? 1.0 : 1);
     return GpuArray<T>.filled(
       shape,
-      oneVal as T,
+      oneVal,
       dtype,
       device: device,
       requiresGrad: requiresGrad,
@@ -220,7 +223,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   /// Creates a [GpuArray] of the specified [shape] filled with [value].
   factory GpuArray.filled(
     List<int> shape,
-    T value,
+    Object value,
     DType<T> dtype, {
     GpuDevice? device,
     bool requiresGrad = false,
@@ -307,7 +310,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   );
 
   /// Returns the scalar value if this array has exactly one element.
-  T get scalar {
+  dynamic get scalar {
     if (size != 1) {
       throw StateError('Cannot retrieve scalar from tensor with size $size');
     }
@@ -318,12 +321,12 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       offsetElements: offsetElements,
     );
     if (dtype == DType.boolean) {
-      return (raw == true || (raw is num && raw != 0)) as T;
+      return raw == true || (raw is num && raw != 0);
     }
     if (raw is num && (dtype == DType.float64 || dtype == DType.float32)) {
-      return raw.toDouble() as T;
+      return raw.toDouble();
     }
-    return raw as T;
+    return raw;
   }
 
   @override
@@ -372,40 +375,40 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   GpuArray minimum(dynamic other) => _dispatchBinary(BinaryOp.minimum, other);
 
   /// Elementwise equality comparison (`==`). Returns a boolean [GpuArray].
-  GpuArray<bool> equal(dynamic other) =>
+  GpuArray<Boolean> equal(dynamic other) =>
       _dispatchComparison(BinaryOp.equal, other);
 
   /// Elementwise inequality comparison (`!=`). Returns a boolean [GpuArray].
-  GpuArray<bool> notEqual(dynamic other) =>
+  GpuArray<Boolean> notEqual(dynamic other) =>
       _dispatchComparison(BinaryOp.notEqual, other);
 
   /// Elementwise greater than comparison (`>`). Returns a boolean [GpuArray].
-  GpuArray<bool> greater(dynamic other) =>
+  GpuArray<Boolean> greater(dynamic other) =>
       _dispatchComparison(BinaryOp.greater, other);
 
   /// Elementwise greater than or equal comparison (`>=`). Returns a boolean [GpuArray].
-  GpuArray<bool> greaterEqual(dynamic other) =>
+  GpuArray<Boolean> greaterEqual(dynamic other) =>
       _dispatchComparison(BinaryOp.greaterEqual, other);
 
   /// Elementwise less than comparison (`<`). Returns a boolean [GpuArray].
-  GpuArray<bool> less(dynamic other) =>
+  GpuArray<Boolean> less(dynamic other) =>
       _dispatchComparison(BinaryOp.less, other);
 
   /// Elementwise less than alias (`<`).
-  GpuArray<bool> lessThan(dynamic other) => less(other);
+  GpuArray<Boolean> lessThan(dynamic other) => less(other);
 
   /// Elementwise less than or equal comparison (`<=`). Returns a boolean [GpuArray].
-  GpuArray<bool> lessEqual(dynamic other) =>
+  GpuArray<Boolean> lessEqual(dynamic other) =>
       _dispatchComparison(BinaryOp.lessEqual, other);
 
   /// Elementwise less than or equal alias (`<=`).
-  GpuArray<bool> lessThanOrEqual(dynamic other) => lessEqual(other);
+  GpuArray<Boolean> lessThanOrEqual(dynamic other) => lessEqual(other);
 
   /// Elementwise greater than alias (`>`).
-  GpuArray<bool> greaterThan(dynamic other) => greater(other);
+  GpuArray<Boolean> greaterThan(dynamic other) => greater(other);
 
   /// Elementwise greater than or equal alias (`>=`).
-  GpuArray<bool> greaterThanOrEqual(dynamic other) => greaterEqual(other);
+  GpuArray<Boolean> greaterThanOrEqual(dynamic other) => greaterEqual(other);
 
   // --- Unary Math Operations ---
 
@@ -485,7 +488,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   // --- Linear Algebra ---
 
   /// Matrix multiplication of two 2D or batched N-D tensors.
-  GpuArray<R> matmul<R>(GpuArray other) {
+  GpuArray<R> matmul<R extends DTypeTag>(GpuArray other) {
     if (rank < 1 || other.rank < 1) {
       throw GpuShapeMismatchException('matmul', shape, other.shape);
     }
@@ -601,7 +604,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   }
 
   /// Dot product or matrix multiplication.
-  GpuArray<R> dot<R>(GpuArray other) => matmul<R>(other);
+  GpuArray<R> dot<R extends DTypeTag>(GpuArray other) => matmul<R>(other);
 
   // --- Tensor Views & Transformations ---
 
@@ -736,7 +739,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   }
 
   /// Casts this tensor to a different [targetDType].
-  GpuArray<R> astype<R>(DType<R> targetDType) {
+  GpuArray<R> astype<R extends DTypeTag>(DType<R> targetDType) {
     if (dtype == targetDType) return this as GpuArray<R>;
     final dst = GpuArray<R>.empty(shape, targetDType, device: device);
     GpuKernels.copyStrided(
@@ -843,14 +846,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   /// Downloads this GPU tensor into host memory as a standard [NDArray].
   nd.NDArray<T> toNDArray() {
     final contiguousArray = isContiguous ? this : copy();
-    nd.NDArray<T> ndarray;
-    try {
-      ndarray = nd.NDArray<T>.create(shape, dtype);
-    } catch (_) {
-      ndarray =
-          (nd.NDArray<dynamic>.create(shape, dtype) as dynamic)
-              as nd.NDArray<T>;
-    }
+    final ndarray = nd.NDArray<T>.create(shape, dtype);
 
     contiguousArray.buffer.copyToHost(
       ndarray.pointer,
@@ -866,7 +862,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   }
 
   /// Returns a flat Dart list containing a copy of the elements in this tensor.
-  List<T> toList() {
+  List<dynamic> toList() {
     final hostND = toNDArray();
     final list = hostND.toList();
     hostND.dispose();
@@ -971,12 +967,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
 
       return dst;
     } else if (other is num || other is bool) {
-      final scalarArray = GpuArray.filled(
-        [],
-        other as dynamic,
-        dtype,
-        device: device,
-      );
+      final scalarArray = GpuArray.filled([], other, dtype, device: device);
       final res = _dispatchBinary(op, scalarArray);
       if (!res.requiresGrad) {
         scalarArray.dispose();
@@ -989,10 +980,14 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
     }
   }
 
-  GpuArray<bool> _dispatchComparison(BinaryOp op, dynamic other) {
+  GpuArray<Boolean> _dispatchComparison(BinaryOp op, dynamic other) {
     if (other is GpuArray) {
       final outShape = ShapeUtils.broadcastShapes(shape, other.shape);
-      final dst = GpuArray<bool>.empty(outShape, DType.boolean, device: device);
+      final dst = GpuArray<Boolean>.empty(
+        outShape,
+        DType.boolean,
+        device: device,
+      );
 
       GpuKernels.executeBinaryOp(
         op: op,
@@ -1015,12 +1010,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
 
       return dst;
     } else if (other is num || other is bool) {
-      final scalarArray = GpuArray.filled(
-        [],
-        other as dynamic,
-        dtype,
-        device: device,
-      );
+      final scalarArray = GpuArray.filled([], other, dtype, device: device);
       final res = _dispatchComparison(op, scalarArray);
       scalarArray.dispose();
       return res;
@@ -1093,7 +1083,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
 
     final isComplex = dtype == DType.complex64 || dtype == DType.complex128;
     final GpuArray dst = (op == 'mean' && !isComplex)
-        ? GpuArray<double>.empty(outShape, DType.float64, device: device)
+        ? GpuArray<Float64>.empty(outShape, DType.float64, device: device)
         : GpuArray<T>.empty(outShape, dtype, device: device);
     final outDtype = (op == 'mean' && !isComplex) ? DType.float64 : dtype;
 

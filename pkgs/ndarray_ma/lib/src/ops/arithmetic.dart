@@ -1,29 +1,29 @@
 part of '../masked_array.dart';
 
-MaskedArray<dynamic> _maAdd(MaskedArray self, dynamic other) =>
+MaskedArray<DTypeTag> _maAdd(MaskedArray self, dynamic other) =>
     _binaryOp(self, other, 'add');
-MaskedArray<dynamic> _maSubtract(MaskedArray self, dynamic other) =>
+MaskedArray<DTypeTag> _maSubtract(MaskedArray self, dynamic other) =>
     _binaryOp(self, other, 'sub');
-MaskedArray<dynamic> _maMultiply(MaskedArray self, dynamic other) =>
+MaskedArray<DTypeTag> _maMultiply(MaskedArray self, dynamic other) =>
     _binaryOp(self, other, 'mul');
-MaskedArray<dynamic> _maDivide(MaskedArray self, dynamic other) =>
+MaskedArray<DTypeTag> _maDivide(MaskedArray self, dynamic other) =>
     _binaryOp(self, other, 'div', isDivide: true);
 
-MaskedArray<dynamic> _binaryOp(
+MaskedArray<DTypeTag> _binaryOp(
   MaskedArray self,
   dynamic other,
   String opName, {
   bool isDivide = false,
 }) {
   return NDArray.scope(() {
-    final NDArray<Object> otherData;
-    final NDArray<bool>? otherMask;
+    final NDArray<DTypeTag> otherData;
+    final NDArray<Boolean>? otherMask;
 
     if (other is MaskedArray) {
       otherData = other.data;
       otherMask = other.mask;
     } else if (other is NDArray) {
-      otherData = other as NDArray<Object>;
+      otherData = other;
       otherMask = null;
     } else {
       otherData = _wrapScalar(other, self.dtype);
@@ -36,7 +36,7 @@ MaskedArray<dynamic> _binaryOp(
     final broadcastResult = ndops.broadcast(self.data, otherData);
     final resultShape = broadcastResult.shape;
 
-    final NDArray<Object> divisorData;
+    final NDArray<DTypeTag> divisorData;
     if (isDivide) {
       final combinedMask = otherMask != null
           ? ndops.logical_or(self.mask, otherMask)
@@ -46,9 +46,7 @@ MaskedArray<dynamic> _binaryOp(
         resultShape,
       );
       final ones = _wrapScalar(1, otherData.dtype);
-      divisorData =
-          ndops.where(broadcastedCombinedMask, ones, otherData)
-              as NDArray<Object>;
+      divisorData = ndops.where(broadcastedCombinedMask, ones, otherData);
     } else {
       divisorData = otherData;
     }
@@ -61,7 +59,7 @@ MaskedArray<dynamic> _binaryOp(
     );
 
     final broadcastedMaskA = ndops.broadcastTo(self.mask, resultData.shape);
-    NDArray<bool> resultMask;
+    NDArray<Boolean> resultMask;
 
     if (otherMask != null) {
       final broadcastedMaskB = ndops.broadcastTo(otherMask, resultData.shape);

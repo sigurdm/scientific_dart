@@ -10,7 +10,7 @@ void main() {
     final numSamples = 4410; // 0.1s audio @ 44100Hz
     final samples = NDArray<Float64>.zeros([numSamples], DType.float64);
     for (var i = 0; i < numSamples; i++) {
-      samples[[i]] = Float64(math.sin(2 * math.pi * 440 * (i / 44100.0)));
+      samples[[i]] = math.sin(2 * math.pi * 440 * (i / 44100.0));
     }
 
     final audio = Audio(samples, sampleRate: 44100);
@@ -48,7 +48,7 @@ void main() {
       await kernel.start();
       try {
         final code = '''
-var time = linspace<Float64>(Float64(0.0), Float64(0.1), 4410);
+var time = linspace(0.0, 0.1, 4410, dtype: DType.float64);
 var samples = sin(time * 440 * 2 * math.pi) * 0.5;
 display(Audio(samples, sampleRate: 44100));
 display(Spectrogram(samples, sampleRate: 44100));

@@ -634,7 +634,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
       final ci = yIn * zoom + centerY;
 
       final mandelbrotExpr = GpuExpr.loop(
-        initialValues: [GpuExpr.constant(0.0), GpuExpr.constant(0.0), GpuExpr.constant(0.0)],
+        initialValues: [
+          GpuExpr.constant(0.0),
+          GpuExpr.constant(0.0),
+          GpuExpr.constant(0.0),
+        ],
         maxIterations: maxIter,
         condition: (s, i) => (s[0] * s[0] + s[1] * s[1]).lessThan(4.0),
         step: (s, i) => [

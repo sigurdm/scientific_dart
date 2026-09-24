@@ -169,7 +169,12 @@ void _fft1d(
 }
 
 /// Computes the 1D Discrete Fourier Transform of [a] along [axis].
-GpuArray<T> fft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
+GpuArray<T> fft<T extends DTypeTag>(
+  GpuArray a, {
+  int? n,
+  int axis = -1,
+  String? norm,
+}) {
   final normAxis = axis < 0 ? axis + a.rank : axis;
   final length = n ?? a.shape[normAxis];
 
@@ -236,7 +241,12 @@ GpuArray<T> fft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
 }
 
 /// Computes the 1D Inverse Discrete Fourier Transform of [a] along [axis].
-GpuArray<T> ifft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
+GpuArray<T> ifft<T extends DTypeTag>(
+  GpuArray a, {
+  int? n,
+  int axis = -1,
+  String? norm,
+}) {
   final normAxis = axis < 0 ? axis + a.rank : axis;
   final length = n ?? a.shape[normAxis];
 
@@ -303,7 +313,12 @@ GpuArray<T> ifft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
 }
 
 /// Computes 1D real Discrete Fourier Transform of [a].
-GpuArray<T> rfft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
+GpuArray<T> rfft<T extends DTypeTag>(
+  GpuArray a, {
+  int? n,
+  int axis = -1,
+  String? norm,
+}) {
   final normAxis = axis < 0 ? axis + a.rank : axis;
   final length = n ?? a.shape[normAxis];
   final outLen = (length ~/ 2) + 1;
@@ -317,7 +332,12 @@ GpuArray<T> rfft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
 }
 
 /// Computes inverse of 1D real Discrete Fourier Transform.
-GpuArray<T> irfft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
+GpuArray<T> irfft<T extends DTypeTag>(
+  GpuArray a, {
+  int? n,
+  int axis = -1,
+  String? norm,
+}) {
   final normAxis = axis < 0 ? axis + a.rank : axis;
   final inLen = a.shape[normAxis];
   final outLen = n ?? ((inLen - 1) * 2);
@@ -395,7 +415,7 @@ GpuArray<T> irfft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
 }
 
 /// Computes 2D Discrete Fourier Transform of [a].
-GpuArray<T> fft2<T>(
+GpuArray<T> fft2<T extends DTypeTag>(
   GpuArray a, {
   List<int>? s,
   List<int> axes = const [-2, -1],
@@ -413,7 +433,7 @@ GpuArray<T> fft2<T>(
 }
 
 /// Computes 2D Inverse Discrete Fourier Transform of [a].
-GpuArray<T> ifft2<T>(
+GpuArray<T> ifft2<T extends DTypeTag>(
   GpuArray a, {
   List<int>? s,
   List<int> axes = const [-2, -1],
@@ -462,7 +482,7 @@ GpuArray<Float64> rfftfreq(int n, {double d = 1.0}) {
 /// Shifts zero-frequency component to center of spectrum.
 ///
 /// [axes] can be an [int], a `List<int>`, or `null` (shifts all axes).
-GpuArray<T> fftshift<T>(GpuArray<T> x, {Object? axes}) {
+GpuArray<T> fftshift<T extends DTypeTag>(GpuArray<T> x, {Object? axes}) {
   if (axes == null) {
     var curr = x;
     for (var dim = 0; dim < x.rank; dim++) {
@@ -500,7 +520,7 @@ GpuArray<T> fftshift<T>(GpuArray<T> x, {Object? axes}) {
 /// Inverse of [fftshift].
 ///
 /// [axes] can be an [int], a `List<int>`, or `null` (shifts all axes).
-GpuArray<T> ifftshift<T>(GpuArray<T> x, {Object? axes}) {
+GpuArray<T> ifftshift<T extends DTypeTag>(GpuArray<T> x, {Object? axes}) {
   if (axes == null) {
     var curr = x;
     for (var dim = 0; dim < x.rank; dim++) {

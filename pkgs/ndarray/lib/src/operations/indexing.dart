@@ -866,12 +866,13 @@ NDArray<T> choose<T extends DTypeTag>(
           .toList();
 
       final twoPow63Mod = ((1 << 62) % nChoices) * 2;
+      final isUint64 = a.dtype == DType.uint64;
       final iter = NDIter(result);
       while (iter.moveNext()) {
         final coords = iter.coords;
         _mapCoordInPlace(coords, a.shape, aCoord);
         var idxVal = a.getCell(aCoord);
-        if (a.dtype == DType.uint64 && idxVal < 0) {
+        if (isUint64 && idxVal < 0) {
           idxVal = mode == ChooseMode.wrap
               ? ((idxVal & 0x7FFFFFFFFFFFFFFF) % nChoices + twoPow63Mod) %
                     nChoices
@@ -1053,6 +1054,7 @@ NDArray<T> select<T extends DTypeTag>(
           .map((c) => List<int>.filled(c.shape.length, 0))
           .toList();
       final defaultCoord = List<int>.filled(defaultArr.shape.length, 0);
+      final resDType = result.dtype;
 
       final iter = NDIter(result);
       while (iter.moveNext()) {
@@ -1073,11 +1075,11 @@ NDArray<T> select<T extends DTypeTag>(
           final choiceCoord = choiceCoords[selectedIdx];
           _mapCoordInPlace(coords, choiceArr.shape, choiceCoord);
           final val = choiceArr.getCell(choiceCoord);
-          result.setCell(coords, castValue(val, result.dtype));
+          result.setCell(coords, castValue(val, resDType));
         } else {
           _mapCoordInPlace(coords, defaultArr.shape, defaultCoord);
           final val = defaultArr.getCell(defaultCoord);
-          result.setCell(coords, castValue(val, result.dtype));
+          result.setCell(coords, castValue(val, resDType));
         }
       }
 

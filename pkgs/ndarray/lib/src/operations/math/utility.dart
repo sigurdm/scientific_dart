@@ -154,6 +154,7 @@ NDArray nan_to_num(
   try {
     final resultCopy =
         out ?? NDArray.create(a.shape, a.dtype, zeroInit: where != null);
+    final resDType = resultCopy.dtype;
     final iter = NDIter.broadcast2(resultCopy, a);
     final maskPtr = maskHolder.pointer;
     var flatIdx = 0;
@@ -187,7 +188,7 @@ NDArray nan_to_num(
             dVal = targetNegInf;
           }
 
-          resultCopy.setCellRaw(idxRes, castValue(dVal, resultCopy.dtype));
+          resultCopy.setCellRaw(idxRes, castValue(dVal, resDType));
         }
       } else if (out == null) {
         resultCopy.setCellRaw(idxRes, a.getCellRaw(idxA));
