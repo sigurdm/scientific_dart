@@ -36,4 +36,5 @@ dev_dependencies:
   test: ^1.31.1
   coverage: ^1.15.0
   ffigen: ^20.1.1
-
+  criterion:
+    git: https://github.com/sigurdm/criterion.git

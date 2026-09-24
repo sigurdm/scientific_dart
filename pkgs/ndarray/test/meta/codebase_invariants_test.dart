@@ -1254,7 +1254,7 @@ void main() {
     );
 
     test(
-      'Package-level pubspec.yaml files do not contain buildMode: source or git dependencies',
+      'Package-level pubspec.yaml files do not contain buildMode: source or git/path runtime dependencies',
       () {
         final targetPkgs = ['ndarray', 'openblas', 'pocketfft'];
         final violations = <String>[];
@@ -1264,16 +1264,25 @@ void main() {
           if (!pubspecFile.existsSync()) continue;
           final lines = pubspecFile.readAsLinesSync();
 
+          var inRuntimeDeps = false;
           for (var i = 0; i < lines.length; i++) {
             final line = lines[i];
+            final trimmed = line.trim();
+            if (!line.startsWith(' ') &&
+                !line.startsWith('\t') &&
+                trimmed.isNotEmpty &&
+                !trimmed.startsWith('#')) {
+              inRuntimeDeps = trimmed == 'dependencies:';
+            }
             if (line.contains('buildMode: source')) {
               violations.add(
                 'pkgs/$pkgName/pubspec.yaml:${i + 1} — contains `buildMode: source` (belongs only in workspace root pubspec.yaml).',
               );
             }
-            if (line.trim().startsWith('git:')) {
+            if (inRuntimeDeps &&
+                (trimmed.startsWith('git:') || trimmed.startsWith('path:'))) {
               violations.add(
-                'pkgs/$pkgName/pubspec.yaml:${i + 1} — contains `git:` dependency (prohibited in publishable packages).',
+                'pkgs/$pkgName/pubspec.yaml:${i + 1} — contains `$trimmed` in runtime `dependencies:` (prohibited in publishable packages).',
               );
             }
           }
@@ -1283,7 +1292,7 @@ void main() {
           violations,
           isEmpty,
           reason:
-              'Package-level pubspec.yaml must not contain buildMode: source or git dependencies:\n'
+              'Package-level pubspec.yaml must not contain buildMode: source or git/path runtime dependencies:\n'
               '${violations.join('\n')}',
         );
       },
