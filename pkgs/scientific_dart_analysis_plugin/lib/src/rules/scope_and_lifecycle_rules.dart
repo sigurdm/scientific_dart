@@ -1,0 +1,738 @@
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
+import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/token.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/type.dart';
+import 'package:analyzer/error/error.dart';
+
+import '../type_utils.dart';
+
+// =============================================================================
+// 1. ndarray_unescaped_scope_return
+// =============================================================================
+
+/// Flags `NDArray` / `ScopedResource` instances allocated inside
+/// `NDArray.scope` or `ResourceScope.scope` that escape via `return` or outer
+/// assignment without calling `.detachToParentScope()` or `.detachFromScope()`.
+final class UnescapedScopeReturnRule extends AnalysisRule {
+  static const LintCode code = LintCode(
+    'ndarray_unescaped_scope_return',
+    'Returning or escaping a locally allocated ScopedResource from '
+        'NDArray.scope disposes it before the caller can use it.',
+    correctionMessage:
+        'Call .detachToParentScope() (or .detachFromScope()) on the returned '
+        'array, or replace NDArray.scope with NDArray.returning.',
+    severity: DiagnosticSeverity.WARNING,
+  );
+
+  UnescapedScopeReturnRule()
+    : super(
+        name: code.lowerCaseName,
+        description:
+            'Do not return or escape a ScopedResource allocated inside '
+            'NDArray.scope without detaching it from the scope.',
+      );
+
+  @override
+  DiagnosticCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
+    final visitor = _UnescapedScopeReturnVisitor(this);
+    registry.addMethodInvocation(this, visitor);
+  }
+}
+
+final class _UnescapedScopeReturnVisitor extends SimpleAstVisitor<void> {
+  final UnescapedScopeReturnRule rule;
+
+  _UnescapedScopeReturnVisitor(this.rule);
+
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    if (!isScopeInvocation(node)) return;
+    final args = node.argumentList.arguments;
+    if (args.isEmpty) return;
+    final callback = unwrapParenthesized(args.first.argumentExpression);
+    if (callback is! FunctionExpression) return;
+
+    final decls = SubtreeDeclarations.collect(callback);
+    final body = callback.body;
+
+    if (body is ExpressionFunctionBody) {
+      _checkReturnedExpression(body.expression, callback, decls);
+    } else if (body is BlockFunctionBody) {
+      body.block.accept(_ScopeBodyEscapeVisitor(rule, callback, decls));
+    }
+  }
+
+  void _checkReturnedExpression(
+    Expression expr,
+    FunctionExpression scopeCallback,
+    SubtreeDeclarations decls,
+  ) {
+    if (_isUnescapedLocalResource(expr, scopeCallback, decls)) {
+      rule.reportAtNode(expr);
+    }
+  }
+}
+
+bool _isUnescapedLocalResource(
+  Expression expr,
+  FunctionExpression scopeCallback,
+  SubtreeDeclarations decls,
+) {
+  final unwrapped = unwrapParenthesized(expr);
+  if (!containsScopedResourceType(unwrapped.staticType)) return false;
+  if (isDirectlyDetachedExpression(unwrapped)) return false;
+
+  if (unwrapped is RecordLiteral) {
+    for (final field in unwrapped.fields) {
+      final valueExpr = field.fieldExpression;
+      if (_isUnescapedLocalResource(valueExpr, scopeCallback, decls)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (unwrapped is ListLiteral) {
+    for (final elem in unwrapped.elements) {
+      if (elem is Expression &&
+          _isUnescapedLocalResource(elem, scopeCallback, decls)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (unwrapped is SimpleIdentifier) {
+    final element = unwrapped.element;
+    if (element == null) return false;
+    // If declared outside the scope callback (e.g., an `out` parameter or
+    // outer variable), returning it does not dispose it on inner scope exit.
+    if (!decls.elements.contains(element)) return false;
+    final varDecl = decls.variableDeclarations[element];
+    final init = varDecl?.initializer;
+    if (init != null && isDirectlyDetachedExpression(init)) return false;
+    if (wasElementDetachedBefore(element, scopeCallback.body, expr.offset)) {
+      return false;
+    }
+    return true;
+  }
+
+  // Any fresh allocation / operation call inside the scope that is not detached.
+  return true;
+}
+
+final class _ScopeBodyEscapeVisitor extends RecursiveAstVisitor<void> {
+  final UnescapedScopeReturnRule rule;
+  final FunctionExpression scopeCallback;
+  final SubtreeDeclarations decls;
+
+  _ScopeBodyEscapeVisitor(this.rule, this.scopeCallback, this.decls);
+
+  @override
+  void visitFunctionExpression(FunctionExpression node) {
+    // Do not descend into nested closures (including nested NDArray.scope),
+    // which have their own return target.
+    if (!identical(node, scopeCallback)) return;
+    super.visitFunctionExpression(node);
+  }
+
+  @override
+  void visitFunctionDeclaration(FunctionDeclaration node) {
+    // Nested local function has its own return target.
+  }
+
+  @override
+  void visitReturnStatement(ReturnStatement node) {
+    final expr = node.expression;
+    if (expr != null && _isUnescapedLocalResource(expr, scopeCallback, decls)) {
+      rule.reportAtNode(expr);
+    }
+    super.visitReturnStatement(node);
+  }
+
+  @override
+  void visitAssignmentExpression(AssignmentExpression node) {
+    final lhs = node.leftHandSide;
+    if (lhs is SimpleIdentifier) {
+      final lhsElement = lhs.element;
+      if (lhsElement != null &&
+          !decls.elements.contains(lhsElement) &&
+          _isUnescapedLocalResource(node.rightHandSide, scopeCallback, decls)) {
+        rule.reportAtNode(node.rightHandSide);
+      }
+    }
+    super.visitAssignmentExpression(node);
+  }
+}
+
+// =============================================================================
+// 2. ndarray_view_lifecycle_misuse
+// =============================================================================
+
+/// Flags calling `.detachToParentScope()`, `.detachFromScope()`, or `.dispose()`
+/// on a view (`isView == true`), or returning a view from `NDArray.returning`.
+final class ViewLifecycleMisuseRule extends AnalysisRule {
+  static const LintCode code = LintCode(
+    'ndarray_view_lifecycle_misuse',
+    'Views do not own native memory; detaching or returning a view from '
+        'NDArray.returning throws a StateError at runtime, and disposing a '
+        'view is a no-op.',
+    correctionMessage:
+        'Materialize an owning copy with .copy() before detaching/returning, '
+        'or manage the lifetime of the owning parent array instead.',
+    severity: DiagnosticSeverity.WARNING,
+  );
+
+  ViewLifecycleMisuseRule()
+    : super(
+        name: code.lowerCaseName,
+        description:
+            'Do not call detachToParentScope(), detachFromScope(), or '
+            'dispose() on an NDArray view, or return a view from '
+            'NDArray.returning.',
+      );
+
+  @override
+  DiagnosticCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
+    final visitor = _ViewLifecycleMisuseVisitor(this);
+    registry.addMethodInvocation(this, visitor);
+  }
+}
+
+final class _ViewLifecycleMisuseVisitor extends SimpleAstVisitor<void> {
+  final ViewLifecycleMisuseRule rule;
+
+  _ViewLifecycleMisuseVisitor(this.rule);
+
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    final name = node.methodName.name;
+    final enclosingBody = node.thisOrAncestorOfType<FunctionBody>();
+    final decls = enclosingBody != null
+        ? SubtreeDeclarations.collect(enclosingBody)
+        : SubtreeDeclarations();
+
+    if (name == 'detachToParentScope' ||
+        name == 'detachFromScope' ||
+        name == 'dispose') {
+      final target = node.realTarget;
+      if (target != null && isViewProducingExpression(target, decls)) {
+        rule.reportAtNode(node);
+        return;
+      }
+    }
+
+    if (isReturningInvocation(node)) {
+      final args = node.argumentList.arguments;
+      if (args.isEmpty) return;
+      final callback = unwrapParenthesized(args.first.argumentExpression);
+      if (callback is! FunctionExpression) return;
+      final cbDecls = SubtreeDeclarations.collect(callback);
+      final body = callback.body;
+      if (body is ExpressionFunctionBody) {
+        if (isViewProducingExpression(body.expression, cbDecls)) {
+          rule.reportAtNode(body.expression);
+        }
+      } else if (body is BlockFunctionBody) {
+        body.block.accept(_ReturningViewVisitor(rule, callback, cbDecls));
+      }
+    }
+  }
+}
+
+final class _ReturningViewVisitor extends RecursiveAstVisitor<void> {
+  final ViewLifecycleMisuseRule rule;
+  final FunctionExpression callback;
+  final SubtreeDeclarations decls;
+
+  _ReturningViewVisitor(this.rule, this.callback, this.decls);
+
+  @override
+  void visitFunctionExpression(FunctionExpression node) {
+    if (!identical(node, callback)) return;
+    super.visitFunctionExpression(node);
+  }
+
+  @override
+  void visitFunctionDeclaration(FunctionDeclaration node) {}
+
+  @override
+  void visitReturnStatement(ReturnStatement node) {
+    final expr = node.expression;
+    if (expr != null && isViewProducingExpression(expr, decls)) {
+      rule.reportAtNode(expr);
+    }
+    super.visitReturnStatement(node);
+  }
+}
+
+// =============================================================================
+// 3. ndarray_loop_reassignment_leak
+// =============================================================================
+
+/// Flags `curr = op(curr)` inside a `for`/`while`/`do` loop without `out: curr`,
+/// `.dispose()`, or a per-iteration `NDArray.scope`.
+final class LoopReassignmentLeakRule extends AnalysisRule {
+  static const LintCode code = LintCode(
+    'ndarray_loop_reassignment_leak',
+    'Reassigning an outer NDArray variable inside a loop without disposing the '
+        'previous buffer or passing out: leaks off-heap native memory each '
+        'iteration.',
+    correctionMessage:
+        'Pass out: to reuse the existing buffer in-place, dispose the previous '
+        'array before reassigning, or wrap the loop body in NDArray.scope.',
+    severity: DiagnosticSeverity.WARNING,
+  );
+
+  LoopReassignmentLeakRule()
+    : super(
+        name: code.lowerCaseName,
+        description:
+            'Avoid reassigning outer NDArray variables inside loops without '
+            'in-place out: reuse or per-iteration disposal.',
+      );
+
+  @override
+  DiagnosticCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
+    final visitor = _LoopReassignmentVisitor(this);
+    registry.addAssignmentExpression(this, visitor);
+  }
+}
+
+final class _LoopReassignmentVisitor extends SimpleAstVisitor<void> {
+  final LoopReassignmentLeakRule rule;
+
+  _LoopReassignmentVisitor(this.rule);
+
+  @override
+  void visitAssignmentExpression(AssignmentExpression node) {
+    final lhs = node.leftHandSide;
+    if (lhs is! SimpleIdentifier) return;
+    final lhsElement = lhs.element;
+    if (lhsElement == null) return;
+    final lhsType =
+        node.writeType ??
+        lhs.staticType ??
+        (lhsElement is VariableElement ? lhsElement.type : null);
+    if (!isScopedResourceType(lhsType)) return;
+
+    final loopNode = _findEnclosingLoopWithoutInnerScope(node);
+    if (loopNode == null) return;
+
+    // If `lhs` was declared inside the loop body, it's not an outer variable
+    // reassignment across iterations.
+    final loopDecls = SubtreeDeclarations.collect(loopNode);
+    if (loopDecls.elements.contains(lhsElement)) return;
+
+    final rhs = unwrapParenthesized(node.rightHandSide);
+    if (rhs is SimpleIdentifier && rhs.element == lhsElement) return;
+
+    // Check if rhs passes `out: lhs`.
+    if (rhs is MethodInvocation) {
+      for (final arg in rhs.argumentList.arguments) {
+        if (arg is NamedArgument && arg.name.lexeme == 'out') {
+          final outVal = unwrapParenthesized(arg.argumentExpression);
+          if (outVal is SimpleIdentifier && outVal.element == lhsElement) {
+            return;
+          }
+        }
+      }
+    }
+
+    // Check if `lhs.dispose()` or `old.dispose()` (where `final old = lhs;`)
+    // appears anywhere inside the loop body.
+    if (_loopDisposesVariable(loopNode, lhsElement)) return;
+
+    rule.reportAtNode(node);
+  }
+
+  AstNode? _findEnclosingLoopWithoutInnerScope(AstNode node) {
+    AstNode? current = node.parent;
+    while (current != null && current is! FunctionBody) {
+      if (current is MethodInvocation &&
+          (isScopeInvocation(current) || isReturningInvocation(current))) {
+        // Enclosed in a per-iteration scope before reaching the loop!
+        return null;
+      }
+      if (current is ForStatement ||
+          current is WhileStatement ||
+          current is DoStatement) {
+        return current;
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  bool _loopDisposesVariable(AstNode loopNode, Element targetElement) {
+    final checker = _LoopDisposeChecker(targetElement);
+    loopNode.accept(checker);
+    return checker.disposed;
+  }
+}
+
+final class _LoopDisposeChecker extends RecursiveAstVisitor<void> {
+  final Element targetElement;
+  final Set<Element> aliasElements = {};
+  bool disposed = false;
+
+  _LoopDisposeChecker(this.targetElement) {
+    aliasElements.add(targetElement);
+  }
+
+  @override
+  void visitVariableDeclaration(VariableDeclaration node) {
+    final init = node.initializer;
+    final declaredElem = node.declaredFragment?.element;
+    if (declaredElem != null &&
+        init is SimpleIdentifier &&
+        aliasElements.contains(init.element)) {
+      aliasElements.add(declaredElem);
+    }
+    super.visitVariableDeclaration(node);
+  }
+
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    if (node.methodName.name == 'dispose') {
+      final target = node.realTarget;
+      if (target is SimpleIdentifier &&
+          aliasElements.contains(target.element)) {
+        disposed = true;
+        return;
+      }
+    }
+    super.visitMethodInvocation(node);
+  }
+}
+
+// =============================================================================
+// 4. ndarray_identity_cast_dispose
+// =============================================================================
+
+/// Flags calling `.dispose()`, `.detachToParentScope()`, or `.detachFromScope()`
+/// on a variable initialized from an identity-returning cast (`astype(copy: false)`,
+/// `castNDArray`, `promoteToDouble`, `promoteToComplex`, `toNDArray`) without
+/// guarding `if (!identical(v, src))`.
+final class IdentityCastDisposeRule extends AnalysisRule {
+  static const LintCode code = LintCode(
+    'ndarray_identity_cast_dispose',
+    'Disposing or detaching the result of an identity-returning conversion '
+        '(such as astype(..., copy: false) or castNDArray) without checking '
+        '!identical(result, source) will dispose the original input array '
+        'when no conversion was needed.',
+    correctionMessage:
+        'Guard the call with `if (!identical(v, src))` or pass `copy: true`.',
+    severity: DiagnosticSeverity.WARNING,
+  );
+
+  IdentityCastDisposeRule()
+    : super(
+        name: code.lowerCaseName,
+        description:
+            'Guard .dispose() on identity-returning casts (astype(copy: false), '
+            'castNDArray, promoteToDouble) with !identical(result, source).',
+      );
+
+  @override
+  DiagnosticCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
+    final visitor = _IdentityCastDisposeVisitor(this);
+    registry.addMethodInvocation(this, visitor);
+  }
+}
+
+final class _IdentityCastDisposeVisitor extends SimpleAstVisitor<void> {
+  final IdentityCastDisposeRule rule;
+
+  _IdentityCastDisposeVisitor(this.rule);
+
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    final name = node.methodName.name;
+    if (name != 'dispose' &&
+        name != 'detachToParentScope' &&
+        name != 'detachFromScope') {
+      return;
+    }
+    final target = node.realTarget;
+    if (target == null) return;
+
+    // Direct invocation `a.astype(dt, copy: false).dispose()`
+    if (identityCastSourceExpression(target) != null) {
+      rule.reportAtNode(node);
+      return;
+    }
+
+    if (target is SimpleIdentifier) {
+      final element = target.element;
+      if (element == null) return;
+      final body = node.thisOrAncestorOfType<FunctionBody>();
+      if (body == null) return;
+      final decls = SubtreeDeclarations.collect(body);
+      final decl = decls.variableDeclarations[element];
+      final init = decl?.initializer;
+      if (init == null) return;
+      final srcExpr = identityCastSourceExpression(init);
+      if (srcExpr == null) return;
+
+      final srcElem = srcExpr is SimpleIdentifier ? srcExpr.element : null;
+      if (_isGuardedByNotIdentical(node, element, srcElem)) return;
+
+      rule.reportAtNode(node);
+    }
+  }
+
+  bool _isGuardedByNotIdentical(
+    AstNode node,
+    Element castElement,
+    Element? srcElement,
+  ) {
+    AstNode? current = node.parent;
+    while (current != null && current is! FunctionBody) {
+      if (current is IfStatement) {
+        if (_conditionChecksIdentityInequality(
+          current.expression,
+          castElement,
+          srcElement,
+        )) {
+          return true;
+        }
+      }
+      current = current.parent;
+    }
+    return false;
+  }
+
+  bool _conditionChecksIdentityInequality(
+    Expression condition,
+    Element castElement,
+    Element? srcElement,
+  ) {
+    final unwrapped = unwrapParenthesized(condition);
+    if (unwrapped is PrefixExpression &&
+        unwrapped.operator.type == TokenType.BANG) {
+      final operand = unwrapParenthesized(unwrapped.operand);
+      if (operand is MethodInvocation &&
+          operand.methodName.name == 'identical') {
+        final args = operand.argumentList.arguments;
+        if (args.length == 2) {
+          final a0 = unwrapParenthesized(args[0].argumentExpression);
+          final a1 = unwrapParenthesized(args[1].argumentExpression);
+          final e0 = a0 is SimpleIdentifier ? a0.element : null;
+          final e1 = a1 is SimpleIdentifier ? a1.element : null;
+          if (e0 == castElement || e1 == castElement) {
+            if (srcElement == null || e0 == srcElement || e1 == srcElement) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    if (unwrapped is BinaryExpression &&
+        unwrapped.operator.type == TokenType.BANG_EQ) {
+      final l = unwrapParenthesized(unwrapped.leftOperand);
+      final r = unwrapParenthesized(unwrapped.rightOperand);
+      final le = l is SimpleIdentifier ? l.element : null;
+      final re = r is SimpleIdentifier ? r.element : null;
+      if (le == castElement || re == castElement) {
+        return true;
+      }
+    }
+    if (unwrapped is BinaryExpression &&
+        unwrapped.operator.type == TokenType.AMPERSAND_AMPERSAND) {
+      return _conditionChecksIdentityInequality(
+            unwrapped.leftOperand,
+            castElement,
+            srcElement,
+          ) ||
+          _conditionChecksIdentityInequality(
+            unwrapped.rightOperand,
+            castElement,
+            srcElement,
+          );
+    }
+    return false;
+  }
+}
+
+// =============================================================================
+// 5. ndarray_isolate_capture_and_borrow
+// =============================================================================
+
+/// Flags capturing raw `NDArray` instances across `Isolate.run` / `SendPort.send`
+/// or calling `.toSendableBorrow()` in a synchronous or un-awaited `NDArray.scope`.
+final class IsolateCaptureAndBorrowRule extends AnalysisRule {
+  static const LintCode code = LintCode(
+    'ndarray_isolate_capture_and_borrow',
+    'Raw NDArray instances cannot be safely captured across isolates, and '
+        'toSendableBorrow() requires awaiting the worker isolate before '
+        'NDArray.scope exits.',
+    correctionMessage:
+        'Convert the array with .toSendable() (or .toSendableBorrow() inside '
+        'an async scope that awaits Isolate.run) before crossing isolate '
+        'boundaries.',
+    severity: DiagnosticSeverity.WARNING,
+  );
+
+  IsolateCaptureAndBorrowRule()
+    : super(
+        name: code.lowerCaseName,
+        description:
+            'Ensure safe cross-isolate transfer and lifetime management for '
+            'NDArray and SendableNDArray.',
+      );
+
+  @override
+  DiagnosticCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
+    final visitor = _IsolateCaptureAndBorrowVisitor(this);
+    registry.addMethodInvocation(this, visitor);
+  }
+}
+
+final class _IsolateCaptureAndBorrowVisitor extends SimpleAstVisitor<void> {
+  final IsolateCaptureAndBorrowRule rule;
+
+  _IsolateCaptureAndBorrowVisitor(this.rule);
+
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    final name = node.methodName.name;
+
+    // Case 1: `Isolate.run(() => ...)` capturing an outer `NDArray` variable.
+    if (name == 'run' && _isIsolateTarget(node.target)) {
+      final args = node.argumentList.arguments;
+      if (args.isNotEmpty) {
+        final callback = unwrapParenthesized(args.first.argumentExpression);
+        if (callback is FunctionExpression) {
+          final innerDecls = SubtreeDeclarations.collect(callback);
+          final captureFinder = _CapturedNDArrayFinder(innerDecls.elements);
+          callback.accept(captureFinder);
+          for (final capturedNode in captureFinder.capturedNodes) {
+            rule.reportAtNode(capturedNode);
+          }
+        }
+      }
+    }
+
+    // Case 2: `sendPort.send(arr)` where `arr` contains an `NDArray`.
+    if (name == 'send') {
+      final targetType = node.realTarget?.staticType;
+      if (targetType is InterfaceType &&
+          targetType.element.name == 'SendPort') {
+        for (final arg in node.argumentList.arguments) {
+          final expr = arg.argumentExpression;
+          if (containsScopedResourceType(expr.staticType)) {
+            rule.reportAtNode(expr);
+          }
+        }
+      }
+    }
+
+    // Case 3: `a.toSendableBorrow()` inside an `NDArray.scope` whose callback
+    // is synchronous or does not `await` the isolate work before scope exit.
+    if (name == 'toSendableBorrow' &&
+        isNDArrayType(node.realTarget?.staticType)) {
+      final enclosingScopeCallback = _findEnclosingScopeCallback(node);
+      if (enclosingScopeCallback != null) {
+        if (!enclosingScopeCallback.body.isAsynchronous ||
+            !_hasAwaitExpression(enclosingScopeCallback.body)) {
+          rule.reportAtNode(node);
+        }
+      }
+    }
+  }
+
+  bool _isIsolateTarget(Expression? target) {
+    if (target is SimpleIdentifier) return target.name == 'Isolate';
+    if (target is PrefixedIdentifier) {
+      return target.identifier.name == 'Isolate';
+    }
+    return false;
+  }
+
+  FunctionExpression? _findEnclosingScopeCallback(AstNode node) {
+    AstNode? current = node.parent;
+    while (current != null) {
+      if (current is FunctionExpression) {
+        final parent = current.parent;
+        if (parent is ArgumentList) {
+          final grandParent = parent.parent;
+          if (grandParent is MethodInvocation &&
+              (isScopeInvocation(grandParent) ||
+                  isReturningInvocation(grandParent))) {
+            return current;
+          }
+        }
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  bool _hasAwaitExpression(AstNode body) {
+    final finder = _AwaitFinder();
+    body.accept(finder);
+    return finder.found;
+  }
+}
+
+final class _CapturedNDArrayFinder extends RecursiveAstVisitor<void> {
+  final Set<Element> innerElements;
+  final List<SimpleIdentifier> capturedNodes = [];
+
+  _CapturedNDArrayFinder(this.innerElements);
+
+  @override
+  void visitSimpleIdentifier(SimpleIdentifier node) {
+    if (node.inDeclarationContext()) return;
+    final element = node.element;
+    if (element is VariableElement || element is FormalParameterElement) {
+      if (!innerElements.contains(element) && isNDArrayType(node.staticType)) {
+        capturedNodes.add(node);
+      }
+    }
+  }
+}
+
+final class _AwaitFinder extends RecursiveAstVisitor<void> {
+  bool found = false;
+
+  @override
+  void visitAwaitExpression(AwaitExpression node) {
+    found = true;
+  }
+}

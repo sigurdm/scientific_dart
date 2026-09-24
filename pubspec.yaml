@@ -12,6 +12,7 @@ workspace:
   - pkgs/symbolic_dart
   - pkgs/resource_scope
   - pkgs/gpuarray
+  - pkgs/scientific_dart_analysis_plugin
 dependencies:
   args: ^2.7.0
   code_assets: ^1.0.0
