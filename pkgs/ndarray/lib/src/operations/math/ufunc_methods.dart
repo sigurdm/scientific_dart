@@ -1,4 +1,5 @@
 import 'dart:ffi' as ffi;
+
 import '../../ndarray.dart';
 import '../../ndarray_bindings.dart';
 import '../../nditer.dart';
@@ -2816,6 +2817,11 @@ void atUfunc<T extends DTypeTag>(
 }) {
   if (a.isDisposed || indices.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute at on a disposed array.');
+  }
+  if (!a.isWriteable) {
+    throw ArgumentError(
+      'Assignment destination is a read-only broadcast view.',
+    );
   }
   if (a.rank == 0) {
     throw ArgumentError('Cannot execute at on a 0-dimensional array.');

@@ -1,5 +1,6 @@
 // ignore_for_file: non_constant_identifier_names
 import 'dart:ffi' as ffi;
+
 import '../ndarray.dart';
 import '../ndarray_extensions_bindings.dart';
 import '../nditer.dart';
@@ -312,6 +313,12 @@ NDArray<T> put_along_axis<T extends DTypeTag>(
     }
     target = out;
   } else {
+    if (!arr.isWriteable) {
+      if (valuesAllocated) valuesArr.dispose();
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
+      );
+    }
     if (sharesMemory(arr, indices) || sharesMemory(arr, valuesArr)) {
       try {
         return put_along_axis(arr, indices, valuesArr, axis, out: arr);

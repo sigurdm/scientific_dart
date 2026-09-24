@@ -1048,7 +1048,100 @@ void main() {
         expect(mismatches, isEmpty, reason: mismatches.join('\n'));
       },
     );
+
+    test(
+      'All NDArray mutator methods check isWriteable and same-dtype operators use _withSameDTypeOperand',
+      () {
+        final ndarrayFile = File('${pkgRoot.path}/lib/src/ndarray.dart');
+        final parsed = parseFile(
+          path: _native(ndarrayFile.path),
+          featureSet: featureSet,
+          throwIfDiagnostics: false,
+        );
+
+        const requiredWriteableMethods = {
+          'fillUntyped',
+          'setCellUntyped',
+          'setCellRawUntyped',
+          'setCellFlatUntyped',
+          'setByMask',
+          'setByMaskScalar',
+          'setIndicesScalar',
+          'setIndices',
+          'sliceAssign',
+          '[]=',
+        };
+        const sameDTypeOperators = {
+          '+',
+          '-',
+          '*',
+          '~/',
+          '%',
+          '&',
+          '|',
+          '^',
+          '<<',
+          '>>',
+        };
+
+        final visitor = _NDArrayMutatorAndOperatorVisitor(
+          requiredWriteableMethods: requiredWriteableMethods,
+          sameDTypeOperators: sameDTypeOperators,
+        );
+        parsed.unit.accept(visitor);
+
+        final missing = requiredWriteableMethods.difference(
+          visitor.foundMutators,
+        );
+        final violations = [...visitor.violations];
+        if (missing.isNotEmpty) {
+          violations.add('Could not find expected mutator methods: $missing');
+        }
+
+        expect(violations, isEmpty, reason: violations.join('\n'));
+      },
+    );
   });
+}
+
+class _NDArrayMutatorAndOperatorVisitor extends RecursiveAstVisitor<void> {
+  final Set<String> requiredWriteableMethods;
+  final Set<String> sameDTypeOperators;
+  final Set<String> foundMutators = {};
+  final List<String> violations = [];
+
+  _NDArrayMutatorAndOperatorVisitor({
+    required this.requiredWriteableMethods,
+    required this.sameDTypeOperators,
+  });
+
+  @override
+  void visitClassDeclaration(ClassDeclaration node) {
+    if (node.namePart.typeName.lexeme == 'NDArray') {
+      super.visitClassDeclaration(node);
+    }
+  }
+
+  @override
+  void visitMethodDeclaration(MethodDeclaration member) {
+    final name = member.name.lexeme;
+    final bodySrc = member.body.toSource();
+    if (requiredWriteableMethods.contains(name)) {
+      foundMutators.add(name);
+      if (!bodySrc.contains('!isWriteable')) {
+        violations.add('NDArray.$name is missing `if (!isWriteable)` guard.');
+      }
+    }
+    if (member.isOperator &&
+        sameDTypeOperators.contains(name) &&
+        member.parameters?.parameters.length == 1) {
+      if (!bodySrc.contains('_withSameDTypeOperand')) {
+        violations.add(
+          'NDArray.operator $name must dispatch via `_withSameDTypeOperand` (never raw `as NDArray<T>`).',
+        );
+      }
+    }
+  }
 }
 
 class _ResolvedSemanticVisitor extends RecursiveAstVisitor<void> {

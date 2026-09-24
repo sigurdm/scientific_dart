@@ -1,12 +1,17 @@
 import 'package:meta/meta.dart';
+
 import 'dart:math' as math;
 import 'dart:ffi' as ffi;
 import 'dart:typed_data';
+
 import 'package:ffi/ffi.dart';
+
 import 'dart:collection';
+
 import 'ndarray_bindings.dart';
 import 'ndarray_extensions_bindings.dart';
 import 'scratch_arena.dart';
+
 import 'package:openblas/openblas.dart' show openblas_set_num_threads;
 import 'package:resource_scope/resource_scope.dart';
 
@@ -2532,6 +2537,11 @@ sealed class NDArray<T extends DTypeTag>
     if (isDisposed || mask.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
     }
+    if (!isWriteable) {
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
+      );
+    }
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
         'Mask shape length (${mask.shape.length}) must match array rank (${shape.length})',
@@ -2578,6 +2588,11 @@ sealed class NDArray<T extends DTypeTag>
     if (isDisposed || indices.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
     }
+    if (!isWriteable) {
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
+      );
+    }
     if (axis < 0 || axis >= shape.length) {
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
     }
@@ -2620,6 +2635,11 @@ sealed class NDArray<T extends DTypeTag>
   void setIndices(NDArray<DTypeTag> indices, NDArray values, {int axis = 0}) {
     if (isDisposed || indices.isDisposed || values.isDisposed) {
       throw StateError('Cannot access a disposed NDArray.');
+    }
+    if (!isWriteable) {
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
+      );
     }
     if (axis < 0 || axis >= shape.length) {
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
@@ -2772,6 +2792,11 @@ sealed class NDArray<T extends DTypeTag>
     if (isDisposed) {
       throw StateError(
         "Cannot access an array or view whose memory has been explicitly freed/disposed!",
+      );
+    }
+    if (!isWriteable) {
+      throw ArgumentError(
+        'Assignment destination is a read-only broadcast view.',
       );
     }
     _sliceAssign(selectors, value);
@@ -3141,24 +3166,18 @@ sealed class NDArray<T extends DTypeTag>
         return taken;
       }
       final newShape = <int>[...spec.shape, ...shape.sublist(1)];
-      final newStrides = computeCStrides(newShape);
-      final takenData = taken._data;
-      final takenPointer = taken._pointer;
-      final takenOffset = taken.offsetElements;
-      final takenAlloc = taken._allocPointer;
-      taken._isDisposed = true;
-      ResourceScope.untrack(taken);
-      _finalizer.detach(taken);
-      return NDArray._(
-        takenPointer,
-        takenData,
-        null,
-        shape: newShape,
-        strides: newStrides,
-        dtype: dtype,
-        offsetElements: takenOffset,
-        allocPointer: takenAlloc,
-      );
+      final result = NDArray<T>.create(newShape, dtype);
+      final flatView = result.reshape(<int>[
+        intList.length,
+        ...shape.sublist(1),
+      ]);
+      try {
+        taken.copy(out: flatView);
+      } finally {
+        flatView.dispose();
+        taken.dispose();
+      }
+      return result;
     } else {
       throw ArgumentError(
         "Unsupported selector type for operator []: ${spec.runtimeType}",
@@ -3371,7 +3390,7 @@ sealed class NDArray<T extends DTypeTag>
       }
     } else {
       throw ArgumentError(
-        "Unsupported selector type for operator []: ${spec.runtimeType}",
+        "Unsupported selector type for operator []=: ${spec.runtimeType}",
       );
     }
   }
@@ -3532,12 +3551,13 @@ sealed class NDArray<T extends DTypeTag>
   /// Like [_withWrappedScalar], but for operators that return `NDArray<T>`.
   ///
   /// The result of these operators has the dtype of `this`, so an array
-  /// operand of a different dtype is rejected: use the `*As` functions (e.g.
+  /// operand of a different dtype or an out-of-range/incompatible scalar is
+  /// rejected with [ArgumentError]: use the `*As` functions (e.g.
   /// `addAs(a, b, DType.float64)`) for mixed-dtype arithmetic.
   NDArray<T> _withSameDTypeOperand(
     Object? other,
     String operator,
-    NDArray<DTypeTag> Function(NDArray otherArr) fn,
+    NDArray<DTypeTag> Function(NDArray<T> otherArr) fn,
   ) {
     if (other is NDArray && other.dtype != dtype) {
       throw ArgumentError.value(
@@ -3549,7 +3569,18 @@ sealed class NDArray<T extends DTypeTag>
             'arithmetic',
       );
     }
-    return _withWrappedScalar(other, fn) as NDArray<T>;
+    return _withWrappedScalar(other, (otherArr) {
+          if (otherArr.dtype != dtype) {
+            throw ArgumentError.value(
+              other,
+              'other',
+              'Scalar value cannot be represented in receiver dtype $dtype for '
+                  'operator $operator (inferred ${otherArr.dtype}).',
+            );
+          }
+          return fn(otherArr as NDArray<T>);
+        })
+        as NDArray<T>;
   }
 
   /// Element-wise addition with full broadcasting support.
@@ -3607,28 +3638,25 @@ sealed class NDArray<T extends DTypeTag>
   }
 
   /// Element-wise bitwise AND with full broadcasting support.
-  NDArray<T> operator &(Object? other) {
-    return _withWrappedScalar(
-      other,
-      (otherArr) => ops.bitwiseAnd<T>(this, otherArr as NDArray<T>),
-    );
-  }
+  NDArray<T> operator &(Object? other) => _withSameDTypeOperand(
+    other,
+    '&',
+    (otherArr) => ops.bitwiseAnd<T>(this, otherArr),
+  );
 
   /// Element-wise bitwise OR with full broadcasting support.
-  NDArray<T> operator |(Object? other) {
-    return _withWrappedScalar(
-      other,
-      (otherArr) => ops.bitwiseOr<T>(this, otherArr as NDArray<T>),
-    );
-  }
+  NDArray<T> operator |(Object? other) => _withSameDTypeOperand(
+    other,
+    '|',
+    (otherArr) => ops.bitwiseOr<T>(this, otherArr),
+  );
 
   /// Element-wise bitwise XOR with full broadcasting support.
-  NDArray<T> operator ^(Object? other) {
-    return _withWrappedScalar(
-      other,
-      (otherArr) => ops.bitwiseXor<T>(this, otherArr as NDArray<T>),
-    );
-  }
+  NDArray<T> operator ^(Object? other) => _withSameDTypeOperand(
+    other,
+    '^',
+    (otherArr) => ops.bitwiseXor<T>(this, otherArr),
+  );
 
   /// Element-wise bitwise NOT.
   NDArray<T> operator ~() {
@@ -3636,20 +3664,18 @@ sealed class NDArray<T extends DTypeTag>
   }
 
   /// Element-wise left shift with full broadcasting support.
-  NDArray<T> operator <<(Object? other) {
-    return _withWrappedScalar(
-      other,
-      (otherArr) => ops.leftShift<T>(this, otherArr as NDArray<T>),
-    );
-  }
+  NDArray<T> operator <<(Object? other) => _withSameDTypeOperand(
+    other,
+    '<<',
+    (otherArr) => ops.leftShift<T>(this, otherArr),
+  );
 
   /// Element-wise right shift with full broadcasting support.
-  NDArray<T> operator >>(Object? other) {
-    return _withWrappedScalar(
-      other,
-      (otherArr) => ops.rightShift<T>(this, otherArr as NDArray<T>),
-    );
-  }
+  NDArray<T> operator >>(Object? other) => _withSameDTypeOperand(
+    other,
+    '>>',
+    (otherArr) => ops.rightShift<T>(this, otherArr),
+  );
 
   /// Element-wise greater than comparison (`this > other`) with full broadcasting support.
   ///

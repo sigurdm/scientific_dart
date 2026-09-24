@@ -1266,6 +1266,131 @@ void main() {
       }
     }
   });
+
+  group('Read-only broadcast view mutability contracts', () {
+    test(
+      'Every in-place mutator rejects read-only broadcastTo views across all 15 DTypes and preserves source memory',
+      () {
+        for (final dtype in DType.values) {
+          NDArray.scope(() {
+            final Object sampleScalar = switch (dtype) {
+              DType.boolean => true,
+              DType.complex128 || DType.complex64 => Complex(3.0, 4.0),
+              _ when dtype.isFloating => 5.0,
+              _ => 5,
+            };
+            final src = NDArray.full([1, 2], sampleScalar, dtype: dtype);
+            final expectedSnapshot = src.toList();
+            final view = broadcastTo(src, [2, 2]);
+            expect(view.isWriteable, isFalse);
+
+            final mask = NDArray<Boolean>.fromList(
+              [true, false, true, false],
+              [2, 2],
+              DType.boolean,
+            );
+            final indices1D = NDArray<Int32>.fromList([0], [1], DType.int32);
+            final indices2D = NDArray<Int32>.fromList(
+              [0, 1, 0, 1],
+              [2, 2],
+              DType.int32,
+            );
+            final replacementRow = NDArray.full(
+              [1, 2],
+              sampleScalar,
+              dtype: dtype,
+            );
+
+            expect(() => view.fill(sampleScalar), throwsArgumentError);
+            expect(
+              () => view.setCell([0, 0], sampleScalar),
+              throwsArgumentError,
+            );
+            expect(
+              () => view.setCellFlat(0, sampleScalar),
+              throwsArgumentError,
+            );
+            expect(() => view.setCellRaw(0, sampleScalar), throwsArgumentError);
+            expect(
+              () => view.setByMask(mask, replacementRow),
+              throwsArgumentError,
+            );
+            expect(
+              () => view.setByMaskScalar(mask, sampleScalar),
+              throwsArgumentError,
+            );
+            expect(
+              () => view.setIndices(indices1D, replacementRow),
+              throwsArgumentError,
+            );
+            expect(
+              () => view.setIndicesScalar(indices1D, sampleScalar),
+              throwsArgumentError,
+            );
+            expect(
+              () => view.sliceAssign([const Slice.all()], sampleScalar),
+              throwsArgumentError,
+            );
+            expect(() => view[0] = sampleScalar, throwsArgumentError);
+            expect(() => view[mask] = sampleScalar, throwsArgumentError);
+            expect(
+              () => put_along_axis(view, indices2D, replacementRow, 1),
+              throwsArgumentError,
+            );
+            expect(
+              () => atUfunc(view, indices1D, replacementRow, op: BinaryOp.add),
+              throwsArgumentError,
+            );
+
+            // Source array must remain completely untouched
+            expect(src.toList(), equals(expectedSnapshot));
+          });
+        }
+      },
+    );
+  });
+
+  group('Operator dtype & scalar bounds contracts', () {
+    test(
+      'All same-dtype binary operators throw ArgumentError (never TypeError) on mismatched array dtype or out-of-range scalar',
+      () {
+        NDArray.scope(() {
+          final aInt8 = NDArray<Int8>.fromList([1, 2, 3], [3], DType.int8);
+          final bInt32 = NDArray<Int32>.fromList([1, 2, 3], [3], DType.int32);
+
+          final sameDTypeOps =
+              <String, Object? Function(NDArray<Int8>, Object?)>{
+                '+': (a, o) => a + o,
+                '-': (a, o) => a - o,
+                '*': (a, o) => a * o,
+                '~/': (a, o) => a ~/ o,
+                '%': (a, o) => a % o,
+                '&': (a, o) => a & o,
+                '|': (a, o) => a | o,
+                '^': (a, o) => a ^ o,
+                '<<': (a, o) => a << o,
+                '>>': (a, o) => a >> o,
+              };
+
+          for (final MapEntry(key: opName, value: invoke)
+              in sameDTypeOps.entries) {
+            expect(
+              () => invoke(aInt8, bInt32),
+              throwsArgumentError,
+              reason:
+                  'Operator $opName with mismatched NDArray<Int32> must throw ArgumentError',
+            );
+            expect(
+              () => invoke(aInt8, 255),
+              throwsArgumentError,
+              reason:
+                  'Operator $opName with out-of-range scalar 255 on Int8 must throw ArgumentError',
+            );
+          }
+        });
+      },
+    );
+  });
 }
 
 bool sameId(Object a, Object b) => identical(a, b);
