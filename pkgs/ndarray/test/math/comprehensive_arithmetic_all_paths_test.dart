@@ -50,7 +50,7 @@ void main() {
             );
 
             final mask = NDArray<Boolean>.fromList(
-              List.generate(16, (i) => i % 2 == 0),
+              List.generate(16, (i) => i.isEven),
               [2, 2, 2, 2],
               DType.boolean,
             );

@@ -702,7 +702,7 @@ final class Table extends Displayable {
     sb.writeln('</tr>');
 
     for (var r = 0; r < rows; r++) {
-      final bg = r % 2 == 0 ? '#181825' : '#1e1e2e';
+      final bg = r.isEven ? '#181825' : '#1e1e2e';
       sb.writeln(
         '<tr style="background: $bg; border-bottom: 1px solid #313244;">',
       );

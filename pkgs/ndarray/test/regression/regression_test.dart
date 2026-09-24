@@ -49,7 +49,7 @@ void main() {
 
         for (var i = 0; i < numWorkers; i++) {
           futures.add(receivePorts[i].first);
-          if (i % 2 == 0) {
+          if (i.isEven) {
             await Isolate.spawn(_divisionWorker, receivePorts[i].sendPort);
           } else {
             await Isolate.spawn(_normalWorker, receivePorts[i].sendPort);

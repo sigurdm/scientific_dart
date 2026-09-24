@@ -31,7 +31,7 @@ void main() {
       final size = shape.reduce((a, b) => a * b);
       final rawList = List<Object>.generate(size * (strided ? 2 : 1), (i) {
         final val = (i % 5) + 2;
-        if (dt == DType.boolean) return val % 2 == 1;
+        if (dt == DType.boolean) return val.isOdd;
         if (dt == DType.complex128 || dt == DType.complex64) {
           return Complex(val.toDouble(), (val + 0.5));
         }
@@ -57,7 +57,7 @@ void main() {
               final a = createArray3D(dt, [2, 3, 2], strided: isStrided);
               final b = createArray3D(dt, [2, 3, 2], strided: isStrided);
               final mask = NDArray<Boolean>.fromList(
-                List.generate(12, (i) => i % 2 == 0),
+                List.generate(12, (i) => i.isEven),
                 [2, 3, 2],
                 DType.boolean,
               );
@@ -126,7 +126,7 @@ void main() {
             for (final isStrided in [false, true]) {
               final a = createArray3D(dt, [2, 2, 3], strided: isStrided);
               final mask = NDArray<Boolean>.fromList(
-                List.generate(12, (i) => i % 2 == 0),
+                List.generate(12, (i) => i.isEven),
                 [2, 2, 3],
                 DType.boolean,
               );

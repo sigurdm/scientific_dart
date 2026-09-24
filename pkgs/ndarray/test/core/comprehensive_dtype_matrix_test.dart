@@ -55,7 +55,7 @@ void main() {
       final size = shape.reduce((a, b) => a * b);
       final rawList = List<Object>.generate(size * (strided ? 2 : 1), (i) {
         final val = (i % 5) + 1;
-        if (dt == DType.boolean) return val % 2 == 1;
+        if (dt == DType.boolean) return val.isOdd;
         if (dt == DType.complex128 || dt == DType.complex64) {
           return Complex(val.toDouble(), (val + 1).toDouble());
         }

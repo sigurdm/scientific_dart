@@ -49,7 +49,7 @@ void main() {
   }) {
     final size = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     if (dt == DType.boolean) {
-      final raw = List<bool>.generate(size, (i) => (i + seed) % 2 == 0);
+      final raw = List<bool>.generate(size, (i) => (i + seed).isEven);
       return NDArray<Boolean>.fromList(raw, shape, DType.boolean);
     }
     if (dt == DType.complex128) {

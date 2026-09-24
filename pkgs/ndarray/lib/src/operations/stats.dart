@@ -192,7 +192,7 @@ int _r_uint64_prod(NDArray arr, int size) {
 int _r_uint64_median(NDArray a, int size) {
   final list = List<int>.generate(size, (i) => a.getCellFlat(i) as int);
   list.sort(uint64Compare);
-  if (size % 2 == 1) {
+  if (size.isOdd) {
     return list[size ~/ 2];
   } else {
     final v1 = BigInt.from(list[(size ~/ 2) - 1]).toUnsigned(64);
@@ -352,7 +352,7 @@ void _s_uint64_median(
 
     buffer.sort(uint64Compare);
     int med;
-    if (axisLen % 2 == 1) {
+    if (axisLen.isOdd) {
       med = buffer[axisLen ~/ 2];
     } else {
       final v1 = BigInt.from(buffer[(axisLen ~/ 2) - 1]).toUnsigned(64);

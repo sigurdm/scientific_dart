@@ -34,7 +34,7 @@ void main() {
       case DType.bfloat16:
         return seed.toDouble() + 1.5;
       case DType.boolean:
-        return seed % 2 == 1;
+        return seed.isOdd;
       default:
         return (seed % 10) + 1;
     }

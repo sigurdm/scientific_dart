@@ -184,7 +184,7 @@ dynamic det<T extends DTypeTag>(GpuArray<T> a) {
         swaps++;
       }
     }
-    final permSign = (swaps % 2 == 1) ? -1.0 : 1.0;
+    final permSign = swaps.isOdd ? -1.0 : 1.0;
 
     ComputeEngine.writeValue(result.buffer, a.dtype, b, permSign * d);
   }
@@ -245,7 +245,7 @@ SlogdetResult<T> slogdet<T extends DTypeTag>(GpuArray<T> a) {
           swaps++;
         }
       }
-      if (swaps % 2 == 1) {
+      if (swaps.isOdd) {
         sign = -sign;
       }
     }
@@ -298,7 +298,7 @@ GpuArray<T> matrix_power<T extends DTypeTag>(GpuArray<T> a, int n) {
 
   var result = matrix_power(base, 0);
   while (exp > 0) {
-    if (exp % 2 == 1) {
+    if (exp.isOdd) {
       result = result.matmul<T>(base);
     }
     base = base.matmul<T>(base);

@@ -50,7 +50,7 @@ void main() {
     test('_matrixNorm on 3D batched strided tensor with axis and keepdims', () {
       NDArray.scope(() {
         final data = Float64List.fromList(
-          List<double>.generate(24, (i) => (i % 2 == 0 ? 1.0 : -1.0) * (i + 1)),
+          List<double>.generate(24, (i) => (i.isEven ? 1.0 : -1.0) * (i + 1)),
         );
         final batch = NDArray.fromList(data, [2, 3, 4], DType.float64);
 

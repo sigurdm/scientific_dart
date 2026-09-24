@@ -1215,7 +1215,7 @@ NDArray<Float64> fftfreq(int n, {double d = 1.0}) {
   }
   final val = 1.0 / (d * n);
   final list = List<double>.filled(n, 0.0);
-  if (n % 2 == 0) {
+  if (n.isEven) {
     final half = n ~/ 2;
     for (var i = 0; i < half; i++) {
       list[i] = i * val;
@@ -1375,7 +1375,7 @@ NDArray<R> rfft<R extends DTypeTag>(
     });
   }
 
-  if (targetLen % 2 == 0) {
+  if (targetLen.isEven) {
     // Even targetLen: Optimized Path
     if (normAxis != rank - 1) {
       final axes = List.generate(rank, (i) => i);
@@ -1610,7 +1610,7 @@ NDArray<R> irfft<R extends DTypeTag>(
     });
   }
 
-  if (targetLen % 2 == 0) {
+  if (targetLen.isEven) {
     // Even targetLen: Optimized Path
     final targetInputLen = targetLen ~/ 2 + 1;
 
