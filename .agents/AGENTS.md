@@ -17,6 +17,7 @@ Remember when adding new operations, fixing old ones:
 * Whenever applicable, use NDArray.scope instead of manually calling dispose. Remember that results must be attached to the parent scope before returning.
 * Do NOT pass `externalSize` to `NativeFinalizer.attach` for `NDArray` buffers. Per Dart VM team guidance (Slava Egorov), `externalSize` is a blunt heuristic that can cause severe GC thrashing on large allocations; always recommend and use `NDArray.scope` (or manual `dispose()`) for prompt reclamation.
 * Always use enums for options/modes instead of magic strings where NumPy or other APIs accept string options.
+* When adding tests, always consider ways of eliminating entire classes of bugs across the codebase instead of only validating a point regression in a single location. Prefer adding new operations and invariants to `pkgs/ndarray/test/meta/operation_contracts_test.dart`, `pkgs/ndarray/test/meta/codebase_invariants_test.dart`, and table-driven test suites.
 
 
 When running dart commands use the sdk specified in .vscode/settings.json.
